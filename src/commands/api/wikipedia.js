@@ -11,9 +11,9 @@ const { checkAccess, AccessType } = require('../../services');
 // Import services
 let wikipediaService, wikipediaHandler, cooldownManager, COOLDOWN_SETTINGS;
 try {
-    wikipediaService = require('../../modules/api/services/wikipediaService');
-    wikipediaHandler = require('../../modules/api/handlers/wikipediaHandler');
-    const cooldown = require('../../modules/api/shared/utils/cooldown');
+    wikipediaService = require('../../services/api/wikipediaService');
+    wikipediaHandler = require('../../handlers/api/wikipediaHandler');
+    const cooldown = require('../../utils/common/cooldown');
     cooldownManager = cooldown.cooldownManager;
     COOLDOWN_SETTINGS = cooldown.COOLDOWN_SETTINGS;
 } catch (e) {

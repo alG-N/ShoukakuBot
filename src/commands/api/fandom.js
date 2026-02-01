@@ -6,13 +6,13 @@
 
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { BaseCommand, CommandCategory } = require('../BaseCommand');
-const { COLORS } = require('../../utils/constants');
+const { COLORS } = require('../../constants');
 const { checkAccess, AccessType } = require('../../services');
 
 // Import service
 let fandomService;
 try {
-    fandomService = require('../../modules/api/services/fandomService');
+    fandomService = require('../../services/api/fandomService');
 } catch (e) {
     console.warn('[Fandom] Could not load service:', e.message);
 }

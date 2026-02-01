@@ -11,7 +11,7 @@ const { checkAccess, AccessType } = require('../../services');
 // Import handler
 let handleSaleCommand;
 try {
-    const steamHandler = require('../../modules/api/handlers/steamSaleHandler');
+    const steamHandler = require('../../handlers/api/steamSaleHandler');
     handleSaleCommand = steamHandler.handleSaleCommand;
 } catch (e) {
     console.warn('[Steam] Could not load handler:', e.message);

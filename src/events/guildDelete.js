@@ -6,7 +6,7 @@
 
 const { Events } = require('discord.js');
 const { BaseEvent } = require('./BaseEvent');
-const logger = require('../utils/Logger');
+const logger = require('../core/Logger');
 
 class GuildDeleteEvent extends BaseEvent {
     constructor() {

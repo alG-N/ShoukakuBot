@@ -11,8 +11,8 @@ const { checkAccess, AccessType } = require('../../services');
 // Import services
 let nhentaiService, nhentaiHandler;
 try {
-    nhentaiService = require('../../modules/api/services/nhentaiService');
-    nhentaiHandler = require('../../modules/api/handlers/nhentaiHandler');
+    nhentaiService = require('../../services/api/nhentaiService');
+    nhentaiHandler = require('../../handlers/api/nhentaiHandler');
 } catch (e) {
     console.warn('[NHentai] Could not load services:', e.message);
 }

@@ -1,65 +1,47 @@
 /**
- * alterGolden Services Module
- * Centralized exports for all services and middleware
+ * Services Module
+ * Business logic services organized by feature
  * @module services
  */
 
-// Services
-const GuildSettingsService = require('./GuildSettingsService');
-const ModerationService = require('./ModerationService');
-const SnipeService = require('./SnipeService');
-const CommandRegistry = require('./CommandRegistry');
-const EventRegistry = require('./EventRegistry');
+// Core Services
+const registry = require('./registry');
+const guild = require('./guild');
+const moderation = require('./moderation');
 
-// Middleware
-const restrictions = require('./restrictions');
-const accessControl = require('./accessControl');
-const cooldown = require('./cooldown');
-const unified = require('./unified');
+// Feature Services
+const music = require('./music');
+const video = require('./video');
+const api = require('./api');
+const fun = require('./fun');
+
+// Middleware (re-export for convenience)
+const { AccessType, checkAccess, checkMaintenance, createErrorEmbed, createWarningEmbed } = require('../middleware/access');
 
 module.exports = {
-    // ============================================
-    // Core Services
-    // ============================================
-    GuildSettingsService,
-    ModerationService,
-    SnipeService,
-    CommandRegistry,
-    EventRegistry,
+    // Core
+    registry,
+    guild,
+    moderation,
     
-    // ============================================
-    // Unified Middleware (RECOMMENDED)
-    // ============================================
-    AccessType: unified.AccessType,
-    checkAccess: unified.checkAccess,
-    checkMaintenance: unified.checkMaintenance,
-    checkDJAccess: unified.checkDJAccess,
-    createErrorEmbed: unified.createErrorEmbed,
-    createWarningEmbed: unified.createWarningEmbed,
+    // Features
+    music,
+    video,
+    api,
+    fun,
     
-    // ============================================
-    // Legacy Access Control (for backward compat)
-    // ============================================
-    hasPermissions: accessControl.hasPermissions,
-    isServerAdmin: accessControl.isServerAdmin,
-    isServerOwner: accessControl.isServerOwner,
-    isBotOwner: accessControl.isBotOwner,
-    isBotDeveloper: accessControl.isBotDeveloper,
-    canModerate: accessControl.canModerate,
-    botCanModerate: accessControl.botCanModerate,
+    // Direct exports for convenience
+    CommandRegistry: registry.CommandRegistry,
+    EventRegistry: registry.EventRegistry,
+    GuildSettingsService: guild.GuildSettingsService,
+    RedisCache: guild.RedisCache,
+    ModerationService: moderation.ModerationService,
+    SnipeService: moderation.SnipeService,
     
-    // ============================================
-    // Restrictions
-    // ============================================
-    canExecute: restrictions.canExecute,
-    withRestrictions: restrictions.withRestrictions,
-    isInMaintenance: restrictions.isInMaintenance,
-    
-    // ============================================
-    // Cooldown
-    // ============================================
-    checkCooldown: cooldown.checkCooldown,
-    clearCooldown: cooldown.clearCooldown,
-    clearUserCooldowns: cooldown.clearUserCooldowns,
-    withCooldown: cooldown.withCooldown
+    // Middleware exports
+    AccessType,
+    checkAccess,
+    checkMaintenance,
+    createErrorEmbed,
+    createWarningEmbed
 };

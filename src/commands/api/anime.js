@@ -6,16 +6,16 @@
 
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { BaseCommand, CommandCategory } = require('../BaseCommand');
-const { COLORS } = require('../../utils/constants');
+const { COLORS } = require('../../constants');
 const { checkAccess, AccessType } = require('../../services');
 
 // Import services
 let anilistService, myAnimeListService, animeHandler, animeRepository;
 try {
-    anilistService = require('../../modules/api/services/anilistService');
-    myAnimeListService = require('../../modules/api/services/myAnimeListService');
-    animeHandler = require('../../modules/api/handlers/animeHandler');
-    animeRepository = require('../../modules/api/repositories/animeRepository');
+    anilistService = require('../../services/api/anilistService');
+    myAnimeListService = require('../../services/api/myAnimeListService');
+    animeHandler = require('../../handlers/api/animeHandler');
+    animeRepository = require('../../repositories/api/animeRepository');
 } catch (e) {
     console.warn('[Anime] Could not load services:', e.message);
 }
@@ -279,6 +279,79 @@ class AnimeCommand extends BaseCommand {
         } catch (error) {
             console.error('[Anime Autocomplete]', error);
             await interaction.respond([]);
+        }
+    }
+
+    /**
+     * Handle button interactions
+     */
+    async handleButton(interaction) {
+        const parts = interaction.customId.split('_');
+        const action = parts[1]; // 'fav'
+        const animeId = parts[2];
+        const userId = interaction.user.id;
+
+        if (action === 'fav') {
+            try {
+                await interaction.deferUpdate();
+
+                // Get cached search result for anime title
+                const cached = searchResultCache.get(userId);
+                let animeTitle = 'Unknown';
+                let source = 'anilist';
+                
+                if (cached && cached.anime) {
+                    const anime = cached.anime;
+                    source = cached.source;
+                    animeTitle = anime.title?.english || anime.title?.romaji || 
+                                anime.title?.native || anime.title || 'Unknown';
+                }
+
+                // Check if already favourited
+                const isFav = await animeRepository.isFavourited(userId, animeId);
+                
+                if (isFav) {
+                    // Remove from favourites
+                    await animeRepository.removeFavourite(userId, animeId);
+                    
+                    // Update button to show "Add to Favourites"
+                    const row = await this._createActionRow(
+                        cached?.anime || { id: animeId }, 
+                        source, 
+                        cached?.mediaType || 'anime', 
+                        userId
+                    );
+                    
+                    await interaction.editReply({ components: [row] });
+                    return interaction.followUp({ 
+                        content: `💔 Removed **${animeTitle}** from favourites`, 
+                        ephemeral: true 
+                    });
+                } else {
+                    // Add to favourites
+                    await animeRepository.addFavourite(userId, animeId, animeTitle);
+                    
+                    // Update button to show "Remove from Favourites"
+                    const row = await this._createActionRow(
+                        cached?.anime || { id: animeId }, 
+                        source, 
+                        cached?.mediaType || 'anime', 
+                        userId
+                    );
+                    
+                    await interaction.editReply({ components: [row] });
+                    return interaction.followUp({ 
+                        content: `⭐ Added **${animeTitle}** to favourites!`, 
+                        ephemeral: true 
+                    });
+                }
+            } catch (error) {
+                console.error('[Anime Favourite]', error);
+                return interaction.followUp({ 
+                    content: '❌ Failed to update favourites. Please try again.', 
+                    ephemeral: true 
+                }).catch(() => {});
+            }
         }
     }
 }

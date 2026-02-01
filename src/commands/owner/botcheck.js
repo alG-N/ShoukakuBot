@@ -7,9 +7,9 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const os = require('os');
 const { BaseCommand, CommandCategory } = require('../BaseCommand');
-const { COLORS } = require('../../utils/constants');
+const { COLORS } = require('../../constants');
 const { isOwner } = require('../../config/owner');
-const { formatUptime } = require('../../utils/time');
+const { formatUptime } = require('../../utils/common/time');
 
 class BotCheckCommand extends BaseCommand {
     constructor() {

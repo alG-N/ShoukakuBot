@@ -11,9 +11,9 @@ const { checkAccess, AccessType } = require('../../services');
 // Import services
 let pixivService, pixivCache, contentHandler;
 try {
-    pixivService = require('../../modules/api/services/pixivService');
-    pixivCache = require('../../modules/api/repositories/pixivCache');
-    contentHandler = require('../../modules/api/handlers/pixivContentHandler');
+    pixivService = require('../../services/api/pixivService');
+    pixivCache = require('../../repositories/api/pixivCache');
+    contentHandler = require('../../handlers/api/pixivContentHandler');
 } catch (e) {
     console.warn('[Pixiv] Could not load services:', e.message);
 }
@@ -165,17 +165,23 @@ class PixivCommand extends BaseCommand {
     }
 
     async _handleSearch(interaction, options) {
-        const results = await pixivService.search(options.query, {
+        // Calculate offset from page number (each page has ~30 items)
+        const offset = ((options.page || 1) - 1) * 30;
+        
+        const searchResult = await pixivService.search(options.query, {
             type: options.type,
             sort: options.sort,
             nsfw: options.nsfw,
             aiFilter: options.aiFilter,
             qualityFilter: options.qualityFilter,
             translate: options.translate,
-            page: options.page,
+            offset: offset,
             minBookmarks: options.minBookmarks
         });
 
+        // Service returns { items, nextUrl } - extract items array
+        const results = searchResult?.items || searchResult || [];
+        
         if (!results || results.length === 0) {
             const embed = contentHandler.createNoResultsEmbed(options.query);
             return this.safeReply(interaction, { embeds: [embed] });
@@ -183,6 +189,17 @@ class PixivCommand extends BaseCommand {
 
         // Use first result with createContentEmbed
         const cacheKey = `${interaction.user.id}_${Date.now()}`;
+        
+        // Cache results for button navigation
+        if (pixivCache?.setSearchResults) {
+            pixivCache.setSearchResults(cacheKey, {
+                items: results,
+                query: options.query,
+                options: options,
+                hasNextPage: !!searchResult?.nextUrl
+            });
+        }
+        
         const { embed, rows } = await contentHandler.createContentEmbed(results[0], {
             resultIndex: 0,
             totalResults: results.length,
@@ -191,7 +208,8 @@ class PixivCommand extends BaseCommand {
             contentType: options.type,
             originalQuery: options.query,
             sortMode: options.sort,
-            showNsfw: options.nsfw !== 'sfw'
+            showNsfw: options.nsfw !== 'sfw',
+            hasNextPage: !!searchResult?.nextUrl
         });
         await this.safeReply(interaction, { embeds: [embed], components: rows || [] });
     }
@@ -228,6 +246,144 @@ class PixivCommand extends BaseCommand {
             await interaction.respond(choices).catch(() => {});
         } catch {
             await interaction.respond([]).catch(() => {});
+        }
+    }
+
+    async handleButton(interaction) {
+        const customId = interaction.customId;
+        const parts = customId.split('_');
+        const action = parts[1]; // prev, next, counter, pageup, pagedown, searchprev, searchnext
+        const cacheKey = parts.slice(2).join('_'); // Everything after action is cacheKey
+
+        try {
+            // Get cached search results
+            const cached = pixivCache?.getSearchResults?.(cacheKey);
+            if (!cached || !cached.items) {
+                return interaction.reply({
+                    content: '⏱️ Session expired. Please run the command again.',
+                    ephemeral: true
+                });
+            }
+
+            await interaction.deferUpdate();
+
+            let resultIndex = cached.currentIndex || 0;
+            let mangaPageIndex = cached.mangaPageIndex || 0;
+            let searchPage = cached.options?.page || 1;
+            const items = cached.items;
+
+            switch (action) {
+                case 'prev':
+                    resultIndex = Math.max(0, resultIndex - 1);
+                    mangaPageIndex = 0; // Reset manga page when changing result
+                    break;
+                case 'next':
+                    resultIndex = Math.min(items.length - 1, resultIndex + 1);
+                    mangaPageIndex = 0;
+                    break;
+                case 'pageup':
+                    // Next image in manga/multi-page
+                    const maxPages = items[resultIndex]?.page_count || 1;
+                    mangaPageIndex = Math.min(maxPages - 1, mangaPageIndex + 1);
+                    break;
+                case 'pagedown':
+                    mangaPageIndex = Math.max(0, mangaPageIndex - 1);
+                    break;
+                case 'searchnext':
+                    // Load next search page
+                    searchPage++;
+                    return this._loadSearchPage(interaction, cached, cacheKey, searchPage);
+                case 'searchprev':
+                    searchPage = Math.max(1, searchPage - 1);
+                    return this._loadSearchPage(interaction, cached, cacheKey, searchPage);
+                case 'counter':
+                case 'pagecounter':
+                case 'searchpageinfo':
+                    // Info buttons - just ignore
+                    return;
+                default:
+                    return;
+            }
+
+            // Update cache
+            pixivCache?.updateSearchResults?.(cacheKey, {
+                currentIndex: resultIndex,
+                mangaPageIndex: mangaPageIndex
+            });
+
+            // Build new embed
+            const item = items[resultIndex];
+            const { embed, rows } = await contentHandler.createContentEmbed(item, {
+                resultIndex,
+                totalResults: items.length,
+                searchPage,
+                cacheKey,
+                contentType: cached.options?.type || 'illust',
+                mangaPageIndex,
+                hasNextPage: cached.hasNextPage,
+                originalQuery: cached.query
+            });
+
+            await interaction.editReply({ embeds: [embed], components: rows });
+        } catch (error) {
+            console.error('[Pixiv Button Error]', error);
+            await interaction.followUp({
+                content: '❌ An error occurred. Please try again.',
+                ephemeral: true
+            }).catch(() => {});
+        }
+    }
+
+    async _loadSearchPage(interaction, cached, cacheKey, newPage) {
+        try {
+            // Fetch new page - calculate offset based on page number
+            // Pixiv uses offset, not page number. Each page has ~30 items
+            const offset = (newPage - 1) * 30;
+            
+            const searchResult = await pixivService.search(cached.query, {
+                ...cached.options,
+                page: newPage,
+                offset: offset  // Pass offset explicitly
+            });
+
+            const results = searchResult?.items || searchResult || [];
+
+            if (!results || results.length === 0) {
+                return interaction.followUp({
+                    content: '❌ No more results found.',
+                    ephemeral: true
+                });
+            }
+
+            // Update cache with new results
+            pixivCache?.setSearchResults?.(cacheKey, {
+                items: results,
+                query: cached.query,
+                options: { ...cached.options, page: newPage },
+                hasNextPage: !!searchResult?.nextUrl,
+                currentIndex: 0,
+                mangaPageIndex: 0
+            });
+
+            // Build embed for first result of new page
+            const { embed, rows } = await contentHandler.createContentEmbed(results[0], {
+                resultIndex: 0,
+                totalResults: results.length,
+                searchPage: newPage,
+                cacheKey,
+                contentType: cached.options?.type || 'illust',
+                mangaPageIndex: 0,
+                hasNextPage: !!searchResult?.nextUrl,
+                originalQuery: cached.query
+            });
+
+            await interaction.editReply({ embeds: [embed], components: rows });
+        } catch (error) {
+            console.error('[Pixiv LoadPage Error]', error);
+            await interaction.followUp({
+                content: '❌ Failed to load next page.',
+                ephemeral: true
+            }).catch(() => {});
         }
     }
 }

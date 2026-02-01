@@ -6,14 +6,14 @@
 
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { BaseCommand, CommandCategory } = require('../BaseCommand');
-const { COLORS } = require('../../utils/constants');
+const { COLORS } = require('../../constants');
 const { checkAccess, AccessType } = require('../../services');
 
 // Import services
 let sayService, logger;
 try {
-    sayService = require('../../modules/fun/services/SayService/SayService');
-    logger = require('../../modules/fun/utility/SayUtility/logger');
+    sayService = require('../../services/fun/say/SayService');
+    logger = require('../../utils/say/logger');
 } catch (e) {
     console.warn('[Say] Could not load services:', e.message);
 }

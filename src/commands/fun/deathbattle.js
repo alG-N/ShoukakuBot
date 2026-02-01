@@ -11,11 +11,11 @@ const { checkAccess, AccessType } = require('../../services');
 // Import services
 let skillsetService, battleService, embedBuilder, logger, config;
 try {
-    skillsetService = require('../../modules/fun/services/DeathBattleService/SkillsetService');
-    battleService = require('../../modules/fun/services/DeathBattleService/BattleService');
-    embedBuilder = require('../../modules/fun/utility/DeathbattleUtility/embedBuilder');
-    logger = require('../../modules/fun/utility/DeathbattleUtility/logger');
-    config = require('../../modules/fun/config/Deathbattle/deathBattleConfig');
+    skillsetService = require('../../services/fun/deathbattle/SkillsetService');
+    battleService = require('../../services/fun/deathbattle/BattleService');
+    embedBuilder = require('../../utils/deathbattle/embedBuilder');
+    logger = require('../../utils/deathbattle/logger');
+    config = require('../../config/deathbattle');
 } catch (e) {
     console.warn('[DeathBattle] Could not load services:', e.message);
 }

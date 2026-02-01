@@ -1,49 +1,39 @@
 /**
- * alterGolden Middleware Module
- * Centralized exports for all middleware
- * Re-exports from services for backward compatibility
+ * Middleware Module
+ * Centralized access control, validation, and restrictions
  * @module middleware
  */
 
-const restrictions = require('../services/restrictions');
-const accessControl = require('../services/accessControl');
-const cooldown = require('../services/cooldown');
-const unified = require('../services/unified');
+// Access control and rate limiting
+const access = require('./access');
+
+// Voice channel checks
+const voiceChannelCheck = require('./voiceChannelCheck');
+
+// URL validation
+const urlValidator = require('./urlValidator');
 
 module.exports = {
     // ============================================
-    // Unified Middleware (RECOMMENDED)
+    // Access Control (from access.js)
     // ============================================
-    AccessType: unified.AccessType,
-    checkAccess: unified.checkAccess,
-    checkMaintenance: unified.checkMaintenance,
-    checkDJAccess: unified.checkDJAccess,
-    createErrorEmbed: unified.createErrorEmbed,
-    createWarningEmbed: unified.createWarningEmbed,
+    AccessType: access.AccessType,
+    RateLimiter: access.RateLimiter,
+    validators: access.validators,
+    checkMaintenance: access.checkMaintenance,
+    checkNSFW: access.checkNSFW,
+    createErrorEmbed: access.createErrorEmbed,
+    createWarningEmbed: access.createWarningEmbed,
+    createSuccessEmbed: access.createSuccessEmbed,
+    createCooldownEmbed: access.createCooldownEmbed,
     
     // ============================================
-    // Legacy Access Control (for backward compat)
+    // Voice Channel Checks
     // ============================================
-    hasPermissions: accessControl.hasPermissions,
-    isServerAdmin: accessControl.isServerAdmin,
-    isServerOwner: accessControl.isServerOwner,
-    isBotOwner: accessControl.isBotOwner,
-    isBotDeveloper: accessControl.isBotDeveloper,
-    canModerate: accessControl.canModerate,
-    botCanModerate: accessControl.botCanModerate,
+    ...voiceChannelCheck,
     
     // ============================================
-    // Restrictions
+    // URL Validation
     // ============================================
-    canExecute: restrictions.canExecute,
-    withRestrictions: restrictions.withRestrictions,
-    isInMaintenance: restrictions.isInMaintenance,
-    
-    // ============================================
-    // Cooldown
-    // ============================================
-    checkCooldown: cooldown.checkCooldown,
-    clearCooldown: cooldown.clearCooldown,
-    clearUserCooldowns: cooldown.clearUserCooldowns,
-    withCooldown: cooldown.withCooldown
+    ...urlValidator
 };

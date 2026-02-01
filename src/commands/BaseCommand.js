@@ -6,9 +6,9 @@
  */
 
 const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const { COLORS, TIMEOUTS, EMOJIS } = require('../utils/constants');
-const { AppError, ValidationError, PermissionError } = require('../utils/AppError');
-const logger = require('../utils/Logger');
+const { COLORS, TIMEOUTS, EMOJIS } = require('../constants');
+const { AppError, ValidationError, PermissionError } = require('../errors');
+const logger = require('../core/Logger');
 
 /**
  * Command categories
@@ -327,6 +327,38 @@ class BaseCommand {
         return new EmbedBuilder()
             .setColor(COLORS.WARNING)
             .setDescription(`${EMOJIS.WARNING} ${message}`);
+    }
+
+    /**
+     * Send info reply
+     */
+    async infoReply(interaction, message, ephemeral = true) {
+        const embed = this.infoEmbed('Info', message);
+        return this.safeReply(interaction, { embeds: [embed], ephemeral });
+    }
+
+    /**
+     * Send error reply
+     */
+    async errorReply(interaction, message, ephemeral = true) {
+        const embed = this.errorEmbed(message);
+        return this.safeReply(interaction, { embeds: [embed], ephemeral });
+    }
+
+    /**
+     * Send success reply
+     */
+    async successReply(interaction, title, description, ephemeral = false) {
+        const embed = this.successEmbed(title, description);
+        return this.safeReply(interaction, { embeds: [embed], ephemeral });
+    }
+
+    /**
+     * Send warning reply
+     */
+    async warningReply(interaction, message, ephemeral = true) {
+        const embed = this.warningEmbed(message);
+        return this.safeReply(interaction, { embeds: [embed], ephemeral });
     }
 }
 

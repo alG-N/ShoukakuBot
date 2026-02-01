@@ -1,12 +1,10 @@
 /**
- * Video Commands - Presentation Layer
- * @module presentation/commands/video
+ * Video Commands Index
  */
-
-const video = require('./video');
+const videoCommand = require('./VideoCommand');
 
 module.exports = {
-    video
+    video: videoCommand
 };
 
 

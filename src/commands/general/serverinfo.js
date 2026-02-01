@@ -6,7 +6,7 @@
 
 const { SlashCommandBuilder, EmbedBuilder, ChannelType } = require('discord.js');
 const { BaseCommand, CommandCategory } = require('../BaseCommand');
-const { COLORS } = require('../../utils/constants');
+const { COLORS } = require('../../constants');
 
 class ServerInfoCommand extends BaseCommand {
     constructor() {

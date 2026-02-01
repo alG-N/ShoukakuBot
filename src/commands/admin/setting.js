@@ -10,11 +10,17 @@ const {
     ActionRowBuilder, 
     ButtonBuilder,
     ButtonStyle,
+    StringSelectMenuBuilder,
+    ChannelSelectMenuBuilder,
+    RoleSelectMenuBuilder,
     ChannelType,
-    PermissionFlagsBits
+    PermissionFlagsBits,
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle
 } = require('discord.js');
 const { BaseCommand, CommandCategory } = require('../BaseCommand');
-const { COLORS } = require('../../utils/constants');
+const { COLORS } = require('../../constants');
 
 class SettingCommand extends BaseCommand {
     constructor() {
@@ -149,7 +155,7 @@ class SettingCommand extends BaseCommand {
     async _handleView(interaction) {
         await interaction.deferReply({ ephemeral: true });
 
-        const { GuildSettingsService } = require('../../../services');
+        const { GuildSettingsService } = require('../../services');
         
         const settings = await GuildSettingsService.getGuildSettings(interaction.guild.id);
         const snipeLimit = await GuildSettingsService.getSnipeLimit(interaction.guild.id);
@@ -168,23 +174,409 @@ class SettingCommand extends BaseCommand {
         const embed = new EmbedBuilder()
             .setColor(COLORS.INFO)
             .setTitle('⚙️ Server Settings')
-            .setDescription(`Settings for **${interaction.guild.name}**`)
+            .setDescription(`Settings for **${interaction.guild.name}**\n\nSelect an option below to edit settings.`)
             .addFields(
-                { name: '📝 Snipe Limit', value: `${snipeLimit} messages`, inline: true },
-                { name: '🗑️ Delete Limit', value: `${deleteLimit} messages`, inline: true },
+                { name: '📝 Snipe Limit', value: `\`${snipeLimit}\` messages`, inline: true },
+                { name: '🗑️ Delete Limit', value: `\`${deleteLimit}\` messages`, inline: true },
+                { name: '\u200b', value: '\u200b', inline: true },
                 { name: '📋 Log Channel', value: settings.log_channel ? `<#${settings.log_channel}>` : '*Not set*', inline: true },
-                { name: '🔨 Mod Log Channel', value: settings.mod_log_channel ? `<#${settings.mod_log_channel}>` : '*Not set*', inline: true },
+                { name: '📢 Announcement', value: settings.announcement_channel ? `<#${settings.announcement_channel}>` : '*Not set*', inline: true },
+                { name: '\u200b', value: '\u200b', inline: true },
                 { name: '👑 Admin Roles', value: adminRolesMention },
                 { name: '🛡️ Moderator Roles', value: modRolesMention }
             )
-            .setFooter({ text: 'Use /setting <option> to change settings' })
+            .setFooter({ text: 'Settings are saved automatically' })
             .setTimestamp();
 
-        return interaction.editReply({ embeds: [embed] });
+        // Select menu for editing settings
+        const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('setting_select')
+            .setPlaceholder('📝 Select setting to edit...')
+            .addOptions([
+                { label: 'Snipe Limit', value: 'snipe', emoji: '📝', description: 'Number of deleted messages to track' },
+                { label: 'Delete Limit', value: 'delete', emoji: '🗑️', description: 'Max messages to delete at once' },
+                { label: 'Log Channel', value: 'log', emoji: '📋', description: 'Channel for moderation logs' },
+                { label: 'Announcement Channel', value: 'announce', emoji: '📢', description: 'Channel for bot announcements' },
+                { label: 'Admin Roles', value: 'admin', emoji: '👑', description: 'Manage admin roles' },
+                { label: 'Moderator Roles', value: 'mod', emoji: '🛡️', description: 'Manage moderator roles' },
+            ]);
+
+        const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+        
+        const buttonRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('setting_refresh')
+                .setLabel('Refresh')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('🔄'),
+            new ButtonBuilder()
+                .setCustomId('setting_reset_all')
+                .setLabel('Reset All')
+                .setStyle(ButtonStyle.Danger)
+                .setEmoji('🗑️')
+        );
+
+        const response = await interaction.editReply({ 
+            embeds: [embed], 
+            components: [selectRow, buttonRow] 
+        });
+
+        // Create collector for interactions
+        const collector = response.createMessageComponentCollector({
+            filter: i => i.user.id === interaction.user.id,
+            time: 5 * 60 * 1000 // 5 minutes
+        });
+
+        collector.on('collect', async (i) => {
+            try {
+                if (i.customId === 'setting_refresh') {
+                    await this._refreshSettingsView(i);
+                } else if (i.customId === 'setting_reset_all') {
+                    await this._handleResetFromView(i);
+                } else if (i.customId === 'setting_select') {
+                    await this._handleSettingSelect(i, i.values[0]);
+                } else if (i.customId === 'setting_log_channel') {
+                    await this._handleChannelSelect(i, 'log_channel');
+                } else if (i.customId === 'setting_announce_channel') {
+                    await this._handleChannelSelect(i, 'announcement_channel');
+                } else if (i.customId === 'setting_admin_role') {
+                    await this._handleRoleSelect(i, 'admin');
+                } else if (i.customId === 'setting_mod_role') {
+                    await this._handleRoleSelect(i, 'mod');
+                } else if (i.customId === 'setting_back') {
+                    await this._refreshSettingsView(i);
+                } else if (i.customId === 'setting_clear_channel') {
+                    await this._handleClearChannel(i);
+                }
+            } catch (error) {
+                console.error('[Settings] Interaction error:', error);
+                if (!i.replied && !i.deferred) {
+                    await i.reply({ content: '❌ An error occurred.', ephemeral: true }).catch(() => {});
+                }
+            }
+        });
+
+        collector.on('end', async () => {
+            try {
+                const disabledSelect = StringSelectMenuBuilder.from(selectMenu).setDisabled(true);
+                const disabledButtons = buttonRow.components.map(b => ButtonBuilder.from(b).setDisabled(true));
+                await interaction.editReply({ 
+                    components: [
+                        new ActionRowBuilder().addComponents(disabledSelect),
+                        new ActionRowBuilder().addComponents(disabledButtons)
+                    ] 
+                }).catch(() => {});
+            } catch {}
+        });
+    }
+
+    async _refreshSettingsView(interaction) {
+        const { GuildSettingsService } = require('../../services');
+        
+        const settings = await GuildSettingsService.getGuildSettings(interaction.guild.id);
+        const snipeLimit = await GuildSettingsService.getSnipeLimit(interaction.guild.id);
+        const deleteLimit = await GuildSettingsService.getDeleteLimit(interaction.guild.id);
+        const adminRoles = await GuildSettingsService.getAdminRoles(interaction.guild.id);
+        const modRoles = await GuildSettingsService.getModRoles(interaction.guild.id);
+
+        const adminRolesMention = adminRoles.length > 0 
+            ? adminRoles.map(id => `<@&${id}>`).join(', ')
+            : '*None configured*';
+        
+        const modRolesMention = modRoles.length > 0 
+            ? modRoles.map(id => `<@&${id}>`).join(', ')
+            : '*None configured*';
+
+        const embed = new EmbedBuilder()
+            .setColor(COLORS.INFO)
+            .setTitle('⚙️ Server Settings')
+            .setDescription(`Settings for **${interaction.guild.name}**\n\nSelect an option below to edit settings.`)
+            .addFields(
+                { name: '📝 Snipe Limit', value: `\`${snipeLimit}\` messages`, inline: true },
+                { name: '🗑️ Delete Limit', value: `\`${deleteLimit}\` messages`, inline: true },
+                { name: '\u200b', value: '\u200b', inline: true },
+                { name: '📋 Log Channel', value: settings.log_channel ? `<#${settings.log_channel}>` : '*Not set*', inline: true },
+                { name: '📢 Announcement', value: settings.announcement_channel ? `<#${settings.announcement_channel}>` : '*Not set*', inline: true },
+                { name: '\u200b', value: '\u200b', inline: true },
+                { name: '👑 Admin Roles', value: adminRolesMention },
+                { name: '🛡️ Moderator Roles', value: modRolesMention }
+            )
+            .setFooter({ text: 'Settings are saved automatically' })
+            .setTimestamp();
+
+        const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('setting_select')
+            .setPlaceholder('📝 Select setting to edit...')
+            .addOptions([
+                { label: 'Snipe Limit', value: 'snipe', emoji: '📝', description: 'Number of deleted messages to track' },
+                { label: 'Delete Limit', value: 'delete', emoji: '🗑️', description: 'Max messages to delete at once' },
+                { label: 'Log Channel', value: 'log', emoji: '📋', description: 'Channel for moderation logs' },
+                { label: 'Announcement Channel', value: 'announce', emoji: '📢', description: 'Channel for bot announcements' },
+                { label: 'Admin Roles', value: 'admin', emoji: '👑', description: 'Manage admin roles' },
+                { label: 'Moderator Roles', value: 'mod', emoji: '🛡️', description: 'Manage moderator roles' },
+            ]);
+
+        const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+        
+        const buttonRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('setting_refresh')
+                .setLabel('Refresh')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('🔄'),
+            new ButtonBuilder()
+                .setCustomId('setting_reset_all')
+                .setLabel('Reset All')
+                .setStyle(ButtonStyle.Danger)
+                .setEmoji('🗑️')
+        );
+
+        await interaction.update({ embeds: [embed], components: [selectRow, buttonRow] });
+    }
+
+    async _handleSettingSelect(interaction, setting) {
+        switch (setting) {
+            case 'snipe':
+            case 'delete': {
+                const isSnipe = setting === 'snipe';
+                const modal = new ModalBuilder()
+                    .setCustomId(isSnipe ? 'setting_snipe_modal' : 'setting_delete_modal')
+                    .setTitle(isSnipe ? '📝 Set Snipe Limit' : '🗑️ Set Delete Limit');
+
+                const input = new TextInputBuilder()
+                    .setCustomId('limit_value')
+                    .setLabel(isSnipe ? 'Snipe limit (1-50)' : 'Delete limit (1-500)')
+                    .setStyle(TextInputStyle.Short)
+                    .setPlaceholder(isSnipe ? 'Enter a number between 1-50' : 'Enter a number between 1-500')
+                    .setRequired(true)
+                    .setMinLength(1)
+                    .setMaxLength(3);
+
+                modal.addComponents(new ActionRowBuilder().addComponents(input));
+                await interaction.showModal(modal);
+
+                try {
+                    const modalResponse = await interaction.awaitModalSubmit({
+                        filter: i => i.customId === modal.data.custom_id && i.user.id === interaction.user.id,
+                        time: 60000
+                    });
+
+                    const value = parseInt(modalResponse.fields.getTextInputValue('limit_value'));
+                    const max = isSnipe ? 50 : 500;
+                    
+                    if (isNaN(value) || value < 1 || value > max) {
+                        await modalResponse.reply({ 
+                            content: `❌ Please enter a valid number between 1 and ${max}.`, 
+                            ephemeral: true 
+                        });
+                        return;
+                    }
+
+                    const { GuildSettingsService } = require('../../services');
+                    if (isSnipe) {
+                        await GuildSettingsService.setSnipeLimit(interaction.guild.id, value);
+                    } else {
+                        await GuildSettingsService.setDeleteLimit(interaction.guild.id, value);
+                    }
+
+                    await modalResponse.deferUpdate();
+                    await this._refreshSettingsView(modalResponse);
+                } catch (error) {
+                    // Modal timeout or error - ignore
+                }
+                break;
+            }
+
+            case 'log':
+            case 'announce': {
+                const isLog = setting === 'log';
+                const embed = new EmbedBuilder()
+                    .setColor(COLORS.INFO)
+                    .setTitle(isLog ? '📋 Set Log Channel' : '📢 Set Announcement Channel')
+                    .setDescription('Select a channel from the dropdown below, or click "Clear" to disable.');
+
+                const channelSelect = new ChannelSelectMenuBuilder()
+                    .setCustomId(isLog ? 'setting_log_channel' : 'setting_announce_channel')
+                    .setPlaceholder('Select a channel...')
+                    .setChannelTypes(ChannelType.GuildText);
+
+                const buttonRow = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('setting_clear_channel')
+                        .setLabel('Clear Channel')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setEmoji('🚫'),
+                    new ButtonBuilder()
+                        .setCustomId('setting_back')
+                        .setLabel('Back')
+                        .setStyle(ButtonStyle.Primary)
+                        .setEmoji('◀️')
+                );
+
+                // Store which channel type we're editing
+                interaction.message._settingType = isLog ? 'log_channel' : 'announcement_channel';
+
+                await interaction.update({
+                    embeds: [embed],
+                    components: [
+                        new ActionRowBuilder().addComponents(channelSelect),
+                        buttonRow
+                    ]
+                });
+                break;
+            }
+
+            case 'admin':
+            case 'mod': {
+                const isAdmin = setting === 'admin';
+                const { GuildSettingsService } = require('../../services');
+                const currentRoles = isAdmin 
+                    ? await GuildSettingsService.getAdminRoles(interaction.guild.id)
+                    : await GuildSettingsService.getModRoles(interaction.guild.id);
+
+                const currentRolesMention = currentRoles.length > 0
+                    ? currentRoles.map(id => `<@&${id}>`).join(', ')
+                    : '*None*';
+
+                const embed = new EmbedBuilder()
+                    .setColor(COLORS.INFO)
+                    .setTitle(isAdmin ? '👑 Manage Admin Roles' : '🛡️ Manage Moderator Roles')
+                    .setDescription(`**Current roles:** ${currentRolesMention}\n\nSelect roles to **add** or **remove** them (toggle).`);
+
+                const roleSelect = new RoleSelectMenuBuilder()
+                    .setCustomId(isAdmin ? 'setting_admin_role' : 'setting_mod_role')
+                    .setPlaceholder('Select roles to toggle...')
+                    .setMinValues(1)
+                    .setMaxValues(10);
+
+                const buttonRow = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('setting_back')
+                        .setLabel('Back')
+                        .setStyle(ButtonStyle.Primary)
+                        .setEmoji('◀️')
+                );
+
+                await interaction.update({
+                    embeds: [embed],
+                    components: [
+                        new ActionRowBuilder().addComponents(roleSelect),
+                        buttonRow
+                    ]
+                });
+                break;
+            }
+        }
+    }
+
+    async _handleChannelSelect(interaction, settingKey) {
+        const { GuildSettingsService } = require('../../services');
+        const channelId = interaction.values[0];
+
+        if (settingKey === 'log_channel') {
+            await GuildSettingsService.setLogChannel(interaction.guild.id, channelId);
+        } else {
+            await GuildSettingsService.updateSetting(interaction.guild.id, settingKey, channelId);
+        }
+
+        await this._refreshSettingsView(interaction);
+    }
+
+    async _handleClearChannel(interaction) {
+        const { GuildSettingsService } = require('../../services');
+        const settingType = interaction.message._settingType || 'log_channel';
+
+        if (settingType === 'log_channel') {
+            await GuildSettingsService.setLogChannel(interaction.guild.id, null);
+        } else {
+            await GuildSettingsService.updateSetting(interaction.guild.id, settingType, null);
+        }
+
+        await this._refreshSettingsView(interaction);
+    }
+
+    async _handleRoleSelect(interaction, type) {
+        const { GuildSettingsService } = require('../../services');
+        const selectedRoles = interaction.values;
+        
+        const currentRoles = type === 'admin'
+            ? await GuildSettingsService.getAdminRoles(interaction.guild.id)
+            : await GuildSettingsService.getModRoles(interaction.guild.id);
+
+        // Toggle logic - add if not present, remove if present
+        for (const roleId of selectedRoles) {
+            // Skip @everyone and managed roles
+            const role = interaction.guild.roles.cache.get(roleId);
+            if (!role || role.id === interaction.guild.id || role.managed) continue;
+
+            if (currentRoles.includes(roleId)) {
+                // Remove
+                if (type === 'admin') {
+                    await GuildSettingsService.removeAdminRole(interaction.guild.id, roleId);
+                } else {
+                    await GuildSettingsService.removeModRole(interaction.guild.id, roleId);
+                }
+            } else {
+                // Add
+                if (type === 'admin') {
+                    await GuildSettingsService.addAdminRole(interaction.guild.id, roleId);
+                } else {
+                    await GuildSettingsService.addModRole(interaction.guild.id, roleId);
+                }
+            }
+        }
+
+        await this._refreshSettingsView(interaction);
+    }
+
+    async _handleResetFromView(interaction) {
+        const embed = new EmbedBuilder()
+            .setColor(COLORS.WARNING)
+            .setTitle('⚠️ Reset All Settings?')
+            .setDescription('This will reset:\n• Snipe limit → 10\n• Delete limit → 100\n• Clear all channels\n• Remove all admin/mod roles');
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('setting_reset_confirm_view')
+                .setLabel('Yes, Reset')
+                .setStyle(ButtonStyle.Danger),
+            new ButtonBuilder()
+                .setCustomId('setting_back')
+                .setLabel('Cancel')
+                .setStyle(ButtonStyle.Secondary)
+        );
+
+        await interaction.update({ embeds: [embed], components: [row] });
+
+        try {
+            const confirm = await interaction.message.awaitMessageComponent({
+                filter: i => i.user.id === interaction.user.id && i.customId === 'setting_reset_confirm_view',
+                time: 30000
+            });
+
+            const { GuildSettingsService } = require('../../services');
+            await GuildSettingsService.updateGuildSettings(interaction.guild.id, {
+                log_channel: null,
+                mod_log_channel: null,
+                announcement_channel: null,
+                mute_role: null,
+                settings: {
+                    snipe_limit: 10,
+                    delete_limit: 100,
+                    admin_roles: [],
+                    mod_roles: []
+                }
+            });
+            GuildSettingsService.clearCache(interaction.guild.id);
+
+            await this._refreshSettingsView(confirm);
+        } catch {
+            // Timeout or cancel - will be handled by back button
+        }
     }
 
     async _handleSnipe(interaction) {
-        const { GuildSettingsService } = require('../../../services');
+        const { GuildSettingsService } = require('../../services');
         
         const limit = interaction.options.getInteger('limit');
         await GuildSettingsService.setSnipeLimit(interaction.guild.id, limit);
@@ -199,7 +591,7 @@ class SettingCommand extends BaseCommand {
     }
 
     async _handleDeleteLimit(interaction) {
-        const { GuildSettingsService } = require('../../../services');
+        const { GuildSettingsService } = require('../../services');
         
         const limit = interaction.options.getInteger('limit');
         await GuildSettingsService.setDeleteLimit(interaction.guild.id, limit);
@@ -214,7 +606,7 @@ class SettingCommand extends BaseCommand {
     }
 
     async _handleAnnouncement(interaction) {
-        const { GuildSettingsService } = require('../../../services');
+        const { GuildSettingsService } = require('../../services');
         
         const channel = interaction.options.getChannel('channel');
         const channelId = channel?.id || null;
@@ -237,7 +629,7 @@ class SettingCommand extends BaseCommand {
     }
 
     async _handleLog(interaction) {
-        const { GuildSettingsService } = require('../../../services');
+        const { GuildSettingsService } = require('../../services');
         
         const channel = interaction.options.getChannel('channel');
         const channelId = channel?.id || null;
@@ -260,7 +652,7 @@ class SettingCommand extends BaseCommand {
     }
 
     async _handleAdminRole(interaction) {
-        const { GuildSettingsService } = require('../../../services');
+        const { GuildSettingsService } = require('../../services');
         
         const action = interaction.options.getString('action');
         const role = interaction.options.getRole('role');
@@ -288,7 +680,7 @@ class SettingCommand extends BaseCommand {
     }
 
     async _handleModRole(interaction) {
-        const { GuildSettingsService } = require('../../../services');
+        const { GuildSettingsService } = require('../../services');
         
         const action = interaction.options.getString('action');
         const role = interaction.options.getRole('role');
@@ -347,7 +739,7 @@ class SettingCommand extends BaseCommand {
             });
 
             if (buttonInteraction.customId === 'setting_reset_confirm') {
-                const { GuildSettingsService } = require('../../../services');
+                const { GuildSettingsService } = require('../../services');
                 
                 // Reset all settings
                 await GuildSettingsService.updateGuildSettings(interaction.guild.id, {

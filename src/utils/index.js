@@ -1,35 +1,25 @@
 /**
- * alterGolden Utilities Module
+ * Utils Module
+ * Pure utility functions and helpers
  * @module utils
  */
 
-// Core utilities
-const { createClient, setPresence, ActivityType, CLIENT_OPTIONS } = require('./Client');
-const logger = require('./Logger');
-const time = require('./time');
-const { initializeErrorHandlers } = require('./errorHandler');
+const common = require('./common');
 
-// Error classes
-const AppErrors = require('./AppError');
-const MusicErrors = require('./MusicError');
+// Feature-specific utils
+const music = require('./music');
+const video = require('./video');
+const deathbattle = require('./deathbattle');
+const say = require('./say');
 
 module.exports = {
-    // Client
-    createClient,
-    setPresence,
-    ActivityType,
-    CLIENT_OPTIONS,
+    // Common utilities
+    ...common,
+    common,
     
-    // Logger
-    logger,
-    
-    // Time utilities
-    ...time,
-    
-    // Error handler
-    initializeErrorHandlers,
-    
-    // Error classes
-    ...AppErrors,
-    ...MusicErrors,
+    // Feature utils
+    music,
+    video,
+    deathbattle,
+    say
 };

@@ -13,7 +13,7 @@ const {
     ActionRowBuilder
 } = require('discord.js');
 const { BaseCommand, CommandCategory } = require('../BaseCommand');
-const { COLORS } = require('../../utils/constants');
+const { COLORS } = require('../../constants');
 
 class ReportCommand extends BaseCommand {
     constructor() {

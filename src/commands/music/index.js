@@ -1,12 +1,10 @@
 /**
- * Music Commands - Presentation Layer
- * @module presentation/commands/music
+ * Music Commands Index
  */
-
-const music = require('./music');
+const musicCommand = require('./MusicCommand');
 
 module.exports = {
-    music
+    music: musicCommand
 };
 
 

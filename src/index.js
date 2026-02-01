@@ -4,31 +4,37 @@
  * 
  * Professional utility bot with music, video download, API commands and moderation
  * 
+ * Architecture:
+ * - src/core/        - Core client & logging
+ * - src/shared/      - Shared utilities, errors, cache, middleware
+ * - src/config/      - Centralized configuration
+ * - src/infrastructure/ - Database abstraction layer
+ * - src/modules/     - Feature modules (music, video, api, fun)
+ * - src/commands/    - Slash commands (presentation layer)
+ * - src/events/      - Discord event handlers
+ * - src/services/    - Application services
+ * 
  * @author alterGolden Team
- * @version 3.1.0
+ * @version 4.0.0
  */
 
 require('dotenv').config();
 const { REST, Routes, Events } = require('discord.js');
 
-// Core utilities
-const { createClient } = require('./utils/Client');
-const logger = require('./utils/Logger');
+// Core utilities (from src/core)
+const { createClient, logger, initializeShutdownHandlers, initializeErrorHandlers } = require('./core');
 
 // Services
-const commandRegistry = require('./services/CommandRegistry');
-const eventRegistry = require('./services/EventRegistry');
-const { SnipeService } = require('./services');
-const redisCache = require('./services/RedisCache');
+const { CommandRegistry, EventRegistry, SnipeService, RedisCache } = require('./services');
+const commandRegistry = CommandRegistry;
+const eventRegistry = EventRegistry;
+const redisCache = RedisCache;
 
 // Configuration
 const { bot, music } = require('./config');
 
 // Database (PostgreSQL)
 const { initializeDatabase } = require('./database/admin');
-
-// Utilities
-const { initializeErrorHandlers } = require('./utils/errorHandler');
 
 // ==========================================
 // APPLICATION INITIALIZATION
@@ -65,6 +71,9 @@ class AlterGoldenBot {
             // Initialize error handlers
             initializeErrorHandlers(this.client);
 
+            // Initialize shutdown handlers (NEW: graceful shutdown)
+            initializeShutdownHandlers(this.client);
+
             // Initialize Lavalink BEFORE login
             if (music.enabled) {
                 this.initializeLavalink();
@@ -75,6 +84,9 @@ class AlterGoldenBot {
 
             // After ready setup
             this.client.once(Events.ClientReady, async () => {
+                // Initialize logger with client
+                logger.initialize(this.client);
+                
                 // Initialize Snipe Service
                 SnipeService.initialize(this.client);
                 logger.info('Services', 'SnipeService initialized');
@@ -114,8 +126,8 @@ class AlterGoldenBot {
      * Load all commands
      */
     loadCommands() {
-        // Load commands (no legacy mode)
-        commandRegistry.loadCommands({ useLegacy: false });
+        // Load commands from feature modules AND presentation layer
+        commandRegistry.loadCommands({ useLegacy: false, useModules: true });
         
         // Attach to client for easy access
         this.client.commands = commandRegistry.commands;
@@ -149,6 +161,11 @@ class AlterGoldenBot {
                     if (!command) {
                         logger.warn('Interaction', `Unknown command: ${interaction.commandName}`);
                         return;
+                    }
+
+                    // Auto-defer if command has deferReply enabled
+                    if (command.deferReply && !interaction.replied && !interaction.deferred) {
+                        await interaction.deferReply({ ephemeral: command.ephemeral ?? false });
                     }
 
                     // Execute command
@@ -201,6 +218,12 @@ class AlterGoldenBot {
                 }
                 
             } catch (error) {
+                // Ignore "Unknown interaction" errors (interaction expired/already handled)
+                if (error.code === 10062) {
+                    logger.warn('Interaction', `Interaction expired for ${interaction.commandName || interaction.customId || 'unknown'}`);
+                    return;
+                }
+                
                 logger.error('Interaction', `Error handling interaction: ${error.message}`);
                 console.error(error);
                 
@@ -213,7 +236,7 @@ class AlterGoldenBot {
                         await interaction.reply(errorMsg);
                     }
                 } catch (e) {
-                    // Ignore
+                    // Ignore - interaction likely expired
                 }
             }
         });
@@ -224,7 +247,7 @@ class AlterGoldenBot {
      */
     initializeLavalink() {
         try {
-            const lavalinkService = require('./modules/music/service/LavalinkService');
+            const lavalinkService = require('./services/music/LavalinkService');
             lavalinkService.preInitialize(this.client);
             lavalinkService.finalize();
             logger.info('Lavalink', 'Music service pre-initialized');

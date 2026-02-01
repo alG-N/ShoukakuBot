@@ -11,9 +11,9 @@ const { checkAccess, AccessType } = require('../../services');
 // Import services
 let rule34Service, rule34Cache, postHandler;
 try {
-    rule34Service = require('../../modules/api/services/rule34Service');
-    rule34Cache = require('../../modules/api/repositories/rule34Cache');
-    postHandler = require('../../modules/api/handlers/rule34PostHandler');
+    rule34Service = require('../../services/api/rule34Service');
+    rule34Cache = require('../../repositories/api/rule34Cache');
+    postHandler = require('../../handlers/api/rule34PostHandler');
 } catch (e) {
     console.warn('[Rule34] Could not load services:', e.message);
 }
@@ -184,45 +184,10 @@ class Rule34Command extends BaseCommand {
                             .setAutocomplete(true)
                     )
             )
-            .addSubcommandGroup(group =>
-                group
-                    .setName('blacklist')
-                    .setDescription('Manage your personal blacklist')
-                    .addSubcommand(subcommand =>
-                        subcommand
-                            .setName('view')
-                            .setDescription('View your blacklisted tags')
-                    )
-                    .addSubcommand(subcommand =>
-                        subcommand
-                            .setName('add')
-                            .setDescription('Add tags to your blacklist')
-                            .addStringOption(option =>
-                                option.setName('tags')
-                                    .setDescription('Tags to blacklist (space-separated)')
-                                    .setRequired(true)
-                            )
-                    )
-                    .addSubcommand(subcommand =>
-                        subcommand
-                            .setName('remove')
-                            .setDescription('Remove tags from your blacklist')
-                            .addStringOption(option =>
-                                option.setName('tags')
-                                    .setDescription('Tags to remove (space-separated)')
-                                    .setRequired(true)
-                            )
-                    )
-                    .addSubcommand(subcommand =>
-                        subcommand
-                            .setName('clear')
-                            .setDescription('Clear your entire blacklist')
-                    )
-            )
             .addSubcommand(subcommand =>
                 subcommand
                     .setName('settings')
-                    .setDescription('Configure your Rule34 preferences')
+                    .setDescription('Configure your Rule34 preferences and blacklist')
             );
     }
 
@@ -301,11 +266,6 @@ class Rule34Command extends BaseCommand {
         const userId = interaction.user.id;
 
         try {
-            // Handle subcommand groups
-            if (subcommandGroup === 'blacklist') {
-                return await this._handleBlacklistCommands(interaction, subcommand, userId);
-            }
-
             // Handle regular subcommands
             switch (subcommand) {
                 case 'search':
@@ -583,44 +543,313 @@ class Rule34Command extends BaseCommand {
     }
 
     async _handleSettings(interaction, userId) {
-        const embed = postHandler?.createSettingsEmbed?.(userId) || this.infoEmbed('Settings', 'Use the buttons below to configure your preferences');
-        const rows = postHandler?.createSettingsComponents?.(userId) || [];
+        const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+        
+        // Build settings embed with blacklist info
+        const prefs = rule34Cache?.getPreferences?.(userId) || {};
+        const blacklist = rule34Cache?.getBlacklist?.(userId) || [];
+        
+        const embed = new EmbedBuilder()
+            .setColor('#5865F2')
+            .setTitle('⚙️ Rule34 Settings & Blacklist')
+            .setDescription('Configure your search preferences and manage blacklisted tags.');
 
-        return interaction.reply({ embeds: [embed], components: rows, ephemeral: true });
+        // Current settings
+        const aiStatus = prefs.aiFilter ? '✅ Hidden' : '❌ Shown';
+        const qualityStatus = prefs.highQualityOnly ? '🔷 High Only' : (prefs.excludeLowQuality ? '🔶 No Low' : '⚪ All');
+        const sortDisplay = {
+            'score:desc': '⬆️ Score (High)',
+            'score:asc': '⬇️ Score (Low)',
+            'id:desc': '🆕 Newest',
+            'id:asc': '📅 Oldest',
+            'random': '🎲 Random'
+        }[prefs.sortMode] || '⬆️ Score (High)';
+        
+        const settingsText = [
+            `🤖 **AI Content:** ${aiStatus}`,
+            `⭐ **Min Score:** ${prefs.minScore || 0}`,
+            `📊 **Quality:** ${qualityStatus}`,
+            `📑 **Sort:** ${sortDisplay}`
+        ].join('\n');
+
+        // Blacklist display
+        const blacklistText = blacklist.length > 0 
+            ? blacklist.slice(0, 20).map(t => `\`${t}\``).join(' ') + (blacklist.length > 20 ? `\n...and ${blacklist.length - 20} more` : '')
+            : '*No tags blacklisted*';
+
+        embed.addFields(
+            { name: '📋 Current Settings', value: settingsText, inline: true },
+            { name: `🚫 Blacklist (${blacklist.length})`, value: blacklistText, inline: true }
+        );
+
+        embed.setFooter({ text: '💡 Use the menus below to configure • Settings auto-save' });
+
+        // Row 1: Setting select menu
+        const settingSelect = new StringSelectMenuBuilder()
+            .setCustomId(`rule34_settingmenu_${userId}`)
+            .setPlaceholder('⚙️ Select a setting to change...')
+            .addOptions([
+                { label: 'AI Content Filter', value: 'ai', emoji: '🤖', description: 'Hide or show AI-generated content' },
+                { label: 'Minimum Score', value: 'score', emoji: '⭐', description: 'Set minimum post score' },
+                { label: 'Quality Filter', value: 'quality', emoji: '📊', description: 'Filter by image quality' },
+                { label: 'Default Sort', value: 'sort', emoji: '📑', description: 'Change default sort order' },
+                { label: 'Manage Blacklist', value: 'blacklist', emoji: '🚫', description: 'Add or remove blacklisted tags' }
+            ]);
+
+        // Row 2: Quick actions
+        const quickRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId(`rule34_settings_refresh_${userId}`)
+                .setLabel('Refresh')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('🔄'),
+            new ButtonBuilder()
+                .setCustomId(`rule34_settings_reset_${userId}`)
+                .setLabel('Reset All')
+                .setStyle(ButtonStyle.Danger)
+                .setEmoji('🗑️'),
+            new ButtonBuilder()
+                .setCustomId(`rule34_settings_close_${userId}`)
+                .setLabel('Done')
+                .setStyle(ButtonStyle.Success)
+                .setEmoji('✅')
+        );
+
+        const response = await interaction.reply({ 
+            embeds: [embed], 
+            components: [new ActionRowBuilder().addComponents(settingSelect), quickRow],
+            ephemeral: true 
+        });
+
+        // Create collector
+        const collector = response.createMessageComponentCollector({
+            filter: i => i.user.id === userId,
+            time: 5 * 60 * 1000
+        });
+
+        collector.on('collect', async (i) => {
+            try {
+                if (i.customId === `rule34_settingmenu_${userId}`) {
+                    await this._handleSettingMenuSelect(i, i.values[0], userId);
+                } else if (i.customId.startsWith('rule34_settings_refresh')) {
+                    await this._refreshSettingsEmbed(i, userId);
+                } else if (i.customId.startsWith('rule34_settings_reset')) {
+                    rule34Cache?.resetPreferences?.(userId);
+                    rule34Cache?.clearBlacklist?.(userId);
+                    await this._refreshSettingsEmbed(i, userId);
+                } else if (i.customId.startsWith('rule34_settings_close')) {
+                    await i.update({ components: [] });
+                    collector.stop();
+                }
+            } catch (error) {
+                console.error('[Rule34 Settings] Error:', error);
+            }
+        });
+
+        collector.on('end', async () => {
+            try {
+                await interaction.editReply({ components: [] }).catch(() => {});
+            } catch {}
+        });
     }
 
-    async _handleBlacklistCommands(interaction, subcommand, userId) {
-        switch (subcommand) {
-            case 'view': {
+    async _handleSettingMenuSelect(interaction, setting, userId) {
+        const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+        
+        switch (setting) {
+            case 'ai': {
+                const prefs = rule34Cache?.getPreferences?.(userId) || {};
+                const newValue = !prefs.aiFilter;
+                rule34Cache?.setPreferences?.(userId, { aiFilter: newValue });
+                await this._refreshSettingsEmbed(interaction, userId);
+                break;
+            }
+            case 'score': {
+                const modal = new ModalBuilder()
+                    .setCustomId(`rule34_score_modal_${userId}`)
+                    .setTitle('⭐ Set Minimum Score');
+
+                const input = new TextInputBuilder()
+                    .setCustomId('score_value')
+                    .setLabel('Minimum score (0-10000)')
+                    .setStyle(TextInputStyle.Short)
+                    .setPlaceholder('Enter a number, e.g., 100')
+                    .setRequired(true)
+                    .setMinLength(1)
+                    .setMaxLength(5);
+
+                modal.addComponents(new ActionRowBuilder().addComponents(input));
+                await interaction.showModal(modal);
+
+                try {
+                    const modalResponse = await interaction.awaitModalSubmit({
+                        filter: i => i.customId === `rule34_score_modal_${userId}`,
+                        time: 60000
+                    });
+
+                    const value = parseInt(modalResponse.fields.getTextInputValue('score_value'));
+                    if (!isNaN(value) && value >= 0 && value <= 10000) {
+                        rule34Cache?.setPreferences?.(userId, { minScore: value });
+                    }
+                    await this._refreshSettingsEmbed(modalResponse, userId);
+                } catch {}
+                break;
+            }
+            case 'quality': {
+                const prefs = rule34Cache?.getPreferences?.(userId) || {};
+                // Cycle: All -> Exclude Low -> High Only -> All
+                if (!prefs.excludeLowQuality && !prefs.highQualityOnly) {
+                    rule34Cache?.setPreferences?.(userId, { excludeLowQuality: true, highQualityOnly: false });
+                } else if (prefs.excludeLowQuality) {
+                    rule34Cache?.setPreferences?.(userId, { excludeLowQuality: false, highQualityOnly: true });
+                } else {
+                    rule34Cache?.setPreferences?.(userId, { excludeLowQuality: false, highQualityOnly: false });
+                }
+                await this._refreshSettingsEmbed(interaction, userId);
+                break;
+            }
+            case 'sort': {
+                const sortSelect = new StringSelectMenuBuilder()
+                    .setCustomId(`rule34_sort_select_${userId}`)
+                    .setPlaceholder('Select sort order...')
+                    .addOptions([
+                        { label: 'Score (High to Low)', value: 'score:desc', emoji: '⬆️' },
+                        { label: 'Score (Low to High)', value: 'score:asc', emoji: '⬇️' },
+                        { label: 'Newest First', value: 'id:desc', emoji: '🆕' },
+                        { label: 'Oldest First', value: 'id:asc', emoji: '📅' },
+                        { label: 'Random', value: 'random', emoji: '🎲' }
+                    ]);
+
+                const backBtn = new ButtonBuilder()
+                    .setCustomId(`rule34_settings_back_${userId}`)
+                    .setLabel('Back')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setEmoji('◀️');
+
+                await interaction.update({
+                    components: [
+                        new ActionRowBuilder().addComponents(sortSelect),
+                        new ActionRowBuilder().addComponents(backBtn)
+                    ]
+                });
+                break;
+            }
+            case 'blacklist': {
                 const blacklist = rule34Cache?.getBlacklist?.(userId) || [];
-                const embed = postHandler?.createBlacklistEmbed?.(userId, blacklist) || 
-                    this.infoEmbed('Your Blacklist', blacklist.length > 0 ? blacklist.map(t => `\`${t}\``).join(', ') : 'No tags blacklisted');
-                return interaction.reply({ embeds: [embed], ephemeral: true });
-            }
-            case 'add': {
-                const tags = interaction.options.getString('tags').split(/\s+/);
-                const updated = rule34Cache?.addToBlacklist?.(userId, tags) || tags;
-                return interaction.reply({
-                    content: `✅ Added **${tags.length}** tag(s) to your blacklist.\nTotal blacklisted: **${updated.length}**`,
-                    ephemeral: true
-                });
-            }
-            case 'remove': {
-                const tags = interaction.options.getString('tags').split(/\s+/);
-                const updated = rule34Cache?.removeFromBlacklist?.(userId, tags) || [];
-                return interaction.reply({
-                    content: `✅ Removed tag(s) from your blacklist.\nRemaining: **${updated.length}**`,
-                    ephemeral: true
-                });
-            }
-            case 'clear': {
-                rule34Cache?.clearBlacklist?.(userId);
-                return interaction.reply({
-                    content: '✅ Your blacklist has been cleared.',
-                    ephemeral: true
-                });
+                
+                const embed = new EmbedBuilder()
+                    .setColor('#2F3136')
+                    .setTitle('🚫 Manage Blacklist')
+                    .setDescription(
+                        blacklist.length > 0
+                            ? `**Current blacklist (${blacklist.length}):**\n${blacklist.map(t => `\`${t}\``).join(' ')}`
+                            : '*No tags blacklisted yet*'
+                    )
+                    .setFooter({ text: '💡 Click Add to blacklist tags, or Clear to remove all' });
+
+                const buttons = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`rule34_bl_add_${userId}`)
+                        .setLabel('Add Tags')
+                        .setStyle(ButtonStyle.Primary)
+                        .setEmoji('➕'),
+                    new ButtonBuilder()
+                        .setCustomId(`rule34_bl_remove_${userId}`)
+                        .setLabel('Remove Tags')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setEmoji('➖')
+                        .setDisabled(blacklist.length === 0),
+                    new ButtonBuilder()
+                        .setCustomId(`rule34_bl_clear_${userId}`)
+                        .setLabel('Clear All')
+                        .setStyle(ButtonStyle.Danger)
+                        .setEmoji('🗑️')
+                        .setDisabled(blacklist.length === 0),
+                    new ButtonBuilder()
+                        .setCustomId(`rule34_settings_back_${userId}`)
+                        .setLabel('Back')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setEmoji('◀️')
+                );
+
+                await interaction.update({ embeds: [embed], components: [buttons] });
+                break;
             }
         }
+    }
+
+    async _refreshSettingsEmbed(interaction, userId) {
+        const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
+        
+        const prefs = rule34Cache?.getPreferences?.(userId) || {};
+        const blacklist = rule34Cache?.getBlacklist?.(userId) || [];
+        
+        const embed = new EmbedBuilder()
+            .setColor('#5865F2')
+            .setTitle('⚙️ Rule34 Settings & Blacklist')
+            .setDescription('Configure your search preferences and manage blacklisted tags.');
+
+        const aiStatus = prefs.aiFilter ? '✅ Hidden' : '❌ Shown';
+        const qualityStatus = prefs.highQualityOnly ? '🔷 High Only' : (prefs.excludeLowQuality ? '🔶 No Low' : '⚪ All');
+        const sortDisplay = {
+            'score:desc': '⬆️ Score (High)',
+            'score:asc': '⬇️ Score (Low)',
+            'id:desc': '🆕 Newest',
+            'id:asc': '📅 Oldest',
+            'random': '🎲 Random'
+        }[prefs.sortMode] || '⬆️ Score (High)';
+        
+        const settingsText = [
+            `🤖 **AI Content:** ${aiStatus}`,
+            `⭐ **Min Score:** ${prefs.minScore || 0}`,
+            `📊 **Quality:** ${qualityStatus}`,
+            `📑 **Sort:** ${sortDisplay}`
+        ].join('\n');
+
+        const blacklistText = blacklist.length > 0 
+            ? blacklist.slice(0, 20).map(t => `\`${t}\``).join(' ') + (blacklist.length > 20 ? `\n...and ${blacklist.length - 20} more` : '')
+            : '*No tags blacklisted*';
+
+        embed.addFields(
+            { name: '📋 Current Settings', value: settingsText, inline: true },
+            { name: `🚫 Blacklist (${blacklist.length})`, value: blacklistText, inline: true }
+        );
+
+        embed.setFooter({ text: '💡 Use the menus below to configure • Settings auto-save' });
+
+        const settingSelect = new StringSelectMenuBuilder()
+            .setCustomId(`rule34_settingmenu_${userId}`)
+            .setPlaceholder('⚙️ Select a setting to change...')
+            .addOptions([
+                { label: 'AI Content Filter', value: 'ai', emoji: '🤖', description: 'Hide or show AI-generated content' },
+                { label: 'Minimum Score', value: 'score', emoji: '⭐', description: 'Set minimum post score' },
+                { label: 'Quality Filter', value: 'quality', emoji: '📊', description: 'Filter by image quality' },
+                { label: 'Default Sort', value: 'sort', emoji: '📑', description: 'Change default sort order' },
+                { label: 'Manage Blacklist', value: 'blacklist', emoji: '🚫', description: 'Add or remove blacklisted tags' }
+            ]);
+
+        const quickRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId(`rule34_settings_refresh_${userId}`)
+                .setLabel('Refresh')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('🔄'),
+            new ButtonBuilder()
+                .setCustomId(`rule34_settings_reset_${userId}`)
+                .setLabel('Reset All')
+                .setStyle(ButtonStyle.Danger)
+                .setEmoji('🗑️'),
+            new ButtonBuilder()
+                .setCustomId(`rule34_settings_close_${userId}`)
+                .setLabel('Done')
+                .setStyle(ButtonStyle.Success)
+                .setEmoji('✅')
+        );
+
+        await interaction.update({ 
+            embeds: [embed], 
+            components: [new ActionRowBuilder().addComponents(settingSelect), quickRow]
+        });
     }
 
     async handleButton(interaction) {
@@ -651,7 +880,11 @@ class Rule34Command extends BaseCommand {
                     return await this._handleTagsToggle(interaction, userId);
                 case 'related':
                     return await this._handleRelatedFromPost(interaction, userId);
+                case 'setting':
+                    // Handle individual setting toggles: rule34_setting_aifilter_userId
+                    return await this._handleSettingToggle(interaction, parts[2], userId);
                 case 'settings':
+                    // Handle settings actions: rule34_settings_reset_userId or rule34_settings_close_userId
                     if (parts[2] === 'reset') {
                         return await this._handleSettingsReset(interaction, userId);
                     }
@@ -661,6 +894,9 @@ class Rule34Command extends BaseCommand {
                     break;
                 case 'counter':
                 case 'pageinfo':
+                    return interaction.deferUpdate();
+                default:
+                    console.warn(`[Rule34] Unknown button action: ${action}`);
                     return interaction.deferUpdate();
             }
         } catch (error) {
@@ -899,6 +1135,35 @@ class Rule34Command extends BaseCommand {
         rule34Cache?.resetPreferences?.(userId);
         
         const embed = postHandler?.createSettingsEmbed?.(userId) || this.infoEmbed('Settings', 'Settings have been reset');
+        const rows = postHandler?.createSettingsComponents?.(userId) || [];
+        
+        await interaction.update({ embeds: [embed], components: rows });
+    }
+
+    async _handleSettingToggle(interaction, settingType, userId) {
+        // Handle individual setting toggle buttons
+        const prefs = rule34Cache?.getPreferences?.(userId) || {};
+        
+        switch (settingType) {
+            case 'aifilter':
+                rule34Cache?.setPreferences?.(userId, { aiFilter: !prefs.aiFilter });
+                break;
+            case 'quality':
+                // Cycle through quality options
+                if (prefs.highQualityOnly) {
+                    rule34Cache?.setPreferences?.(userId, { excludeLowQuality: false, highQualityOnly: false });
+                } else if (prefs.excludeLowQuality) {
+                    rule34Cache?.setPreferences?.(userId, { excludeLowQuality: false, highQualityOnly: true });
+                } else {
+                    rule34Cache?.setPreferences?.(userId, { excludeLowQuality: true, highQualityOnly: false });
+                }
+                break;
+            default:
+                // For select menu based settings, just defer
+                return interaction.deferUpdate();
+        }
+        
+        const embed = postHandler?.createSettingsEmbed?.(userId) || this.infoEmbed('Settings', 'Setting updated');
         const rows = postHandler?.createSettingsComponents?.(userId) || [];
         
         await interaction.update({ embeds: [embed], components: rows });

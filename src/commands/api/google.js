@@ -6,15 +6,15 @@
 
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { BaseCommand, CommandCategory } = require('../BaseCommand');
-const { COLORS } = require('../../utils/constants');
+const { COLORS } = require('../../constants');
 const { checkAccess, AccessType } = require('../../services');
 
 // Import services
 let googleService, googleHandler, cooldownManager, COOLDOWN_SETTINGS;
 try {
-    googleService = require('../../modules/api/services/googleService');
-    googleHandler = require('../../modules/api/handlers/googleHandler');
-    const cooldown = require('../../modules/api/shared/utils/cooldown');
+    googleService = require('../../services/api/googleService');
+    googleHandler = require('../../handlers/api/googleHandler');
+    const cooldown = require('../../utils/common/cooldown');
     cooldownManager = cooldown.cooldownManager;
     COOLDOWN_SETTINGS = cooldown.COOLDOWN_SETTINGS;
 } catch (e) {

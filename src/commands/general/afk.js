@@ -6,7 +6,7 @@
 
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { BaseCommand, CommandCategory } = require('../BaseCommand');
-const { COLORS } = require('../../utils/constants');
+const { COLORS } = require('../../constants');
 const fs = require('fs');
 const path = require('path');
 

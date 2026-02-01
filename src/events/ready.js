@@ -6,8 +6,8 @@
 
 const { Events } = require('discord.js');
 const { BaseEvent } = require('./BaseEvent');
-const logger = require('../utils/Logger');
-const { setPresence, ActivityType } = require('../utils/Client');
+const logger = require('../core/Logger');
+const { setPresence, ActivityType } = require('../core/Client');
 const { bot } = require('../config');
 
 class ReadyEvent extends BaseEvent {
