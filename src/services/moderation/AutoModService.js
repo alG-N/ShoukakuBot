@@ -10,18 +10,11 @@ const InfractionService = require('./InfractionService');
 const automodConfig = require('../../config/features/moderation/automod');
 const moderationConfig = require('../../config/features/moderation');
 const logger = require('../../core/Logger');
-
-// In-memory tracking for spam detection
-const messageTracker = new Map(); // guildId:userId -> { messages: [], lastCleanup: timestamp }
-const duplicateTracker = new Map(); // guildId:userId -> { content: string, count: number, firstTime: timestamp }
-const automodWarnTracker = new Map(); // guildId:userId -> { count: number, lastWarn: timestamp }
+const redisCache = require('../guild/RedisCache');
 
 // Settings cache
 const settingsCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-// Cleanup interval
-setInterval(() => cleanupTrackers(), 60000); // Every minute
 
 /**
  * Get auto-mod settings for a guild (with caching)
@@ -274,36 +267,31 @@ function checkLinks(message, settings) {
 }
 
 /**
- * Check for spam
+ * Check for spam (uses Redis for distributed tracking)
  * @param {Object} message - Discord message
  * @param {Object} settings - Auto-mod settings
- * @returns {Object|null} Violation or null
+ * @returns {Promise<Object|null>} Violation or null
  */
-function checkSpam(message, settings) {
+async function checkSpam(message, settings) {
     if (!settings.spam_enabled) return null;
 
-    const key = `${message.guild.id}:${message.author.id}`;
-    const now = Date.now();
-    const windowMs = settings.spam_window_ms || 5000;
+    const windowSeconds = Math.ceil((settings.spam_window_ms || 5000) / 1000);
     const threshold = settings.spam_threshold || 5;
 
-    let tracker = messageTracker.get(key);
-    if (!tracker) {
-        tracker = { messages: [], lastCleanup: now };
-        messageTracker.set(key, tracker);
-    }
+    // Use Redis for distributed tracking
+    const count = await redisCache.trackSpamMessage(
+        message.guild.id,
+        message.author.id,
+        windowSeconds
+    );
 
-    // Clean old messages
-    tracker.messages = tracker.messages.filter(t => now - t < windowMs);
-    tracker.messages.push(now);
-
-    if (tracker.messages.length >= threshold) {
-        // Reset tracker
-        tracker.messages = [];
+    if (count >= threshold) {
+        // Reset tracker after violation
+        await redisCache.resetSpamTracker(message.guild.id, message.author.id);
         
         return {
             type: 'spam',
-            trigger: `${threshold}+ messages in ${windowMs / 1000}s`,
+            trigger: `${threshold}+ messages in ${windowSeconds}s`,
             action: settings.spam_action || 'delete_warn',
             severity: 3,
             muteDuration: settings.spam_mute_duration_ms
@@ -314,33 +302,31 @@ function checkSpam(message, settings) {
 }
 
 /**
- * Check for duplicate messages
+ * Check for duplicate messages (uses Redis for distributed tracking)
  * @param {Object} message - Discord message
  * @param {Object} settings - Auto-mod settings
- * @returns {Object|null} Violation or null
+ * @returns {Promise<Object|null>} Violation or null
  */
-function checkDuplicates(message, settings) {
+async function checkDuplicates(message, settings) {
     if (!settings.duplicate_enabled) return null;
 
-    const key = `${message.guild.id}:${message.author.id}`;
-    const now = Date.now();
-    const windowMs = settings.duplicate_window_ms || 30000;
+    const windowSeconds = Math.ceil((settings.duplicate_window_ms || 30000) / 1000);
     const threshold = settings.duplicate_threshold || 3;
     const content = message.content.toLowerCase().trim();
 
     if (content.length < 5) return null; // Too short to be meaningful spam
 
-    let tracker = duplicateTracker.get(key);
-    
-    if (!tracker || now - tracker.firstTime > windowMs || tracker.content !== content) {
-        duplicateTracker.set(key, { content, count: 1, firstTime: now });
-        return null;
-    }
+    // Use Redis for distributed tracking
+    const { count } = await redisCache.trackDuplicateMessage(
+        message.guild.id,
+        message.author.id,
+        content,
+        windowSeconds
+    );
 
-    tracker.count++;
-
-    if (tracker.count >= threshold) {
-        duplicateTracker.delete(key);
+    if (count >= threshold) {
+        // Reset tracker after violation
+        await redisCache.resetDuplicateTracker(message.guild.id, message.author.id);
         
         return {
             type: 'duplicate',
@@ -486,7 +472,7 @@ async function executeAction(message, violation) {
 }
 
 /**
- * Track auto-mod warnings and escalate if needed
+ * Track auto-mod warnings and escalate if needed (uses Redis for distributed tracking)
  * @param {Object} message - Discord message
  * @param {Object} violation - Violation details
  * @returns {Promise<Object>} Warn result with count and threshold
@@ -494,40 +480,31 @@ async function executeAction(message, violation) {
 async function trackAutomodWarn(message, violation) {
     const guild = message.guild;
     const member = message.member;
-    const key = `${guild.id}:${member.id}`;
-    const now = Date.now();
     
     // Get settings from database
     const settings = await getSettings(guild.id);
     const maxWarns = settings.warn_threshold || 3;
     const resetHours = settings.warn_reset_hours || 1;
-    const resetTime = resetHours * 60 * 60 * 1000;
     const warnAction = settings.warn_action || 'mute';
     const muteDurationMinutes = settings.mute_duration || 10;
 
-    let tracker = automodWarnTracker.get(key);
-    if (!tracker || now - tracker.lastWarn > resetTime) {
-        tracker = { count: 0, lastWarn: now };
-    }
-
-    tracker.count++;
-    tracker.lastWarn = now;
-    automodWarnTracker.set(key, tracker);
+    // Use Redis for distributed tracking
+    const warnCount = await redisCache.trackAutomodWarn(guild.id, member.id, resetHours);
 
     // Log the warning count
-    logger.info('[AutoModService]', `${member.user.tag} has ${tracker.count}/${maxWarns} auto-mod warnings`);
+    logger.info('[AutoModService]', `${member.user.tag} has ${warnCount}/${maxWarns} auto-mod warnings`);
 
     const result = {
-        count: tracker.count,
+        count: warnCount,
         threshold: maxWarns,
         escalated: false
     };
 
     // Send simple warning message to user (auto-delete after 10s)
     try {
-        const warningText = tracker.count >= maxWarns
-            ? `⚠️ <@${member.id}> **Violation:** ${violation.trigger} | **Warnings:** ${tracker.count}/${maxWarns} | 🚨 Threshold reached! You will be ${warnAction === 'mute' ? `muted for ${muteDurationMinutes} minutes` : 'kicked'}.`
-            : `⚠️ <@${member.id}> **Violation:** ${violation.trigger} | **Warnings:** ${tracker.count}/${maxWarns} | ${maxWarns - tracker.count} more violation(s) will result in a ${warnAction}.`;
+        const warningText = warnCount >= maxWarns
+            ? `⚠️ <@${member.id}> **Violation:** ${violation.trigger} | **Warnings:** ${warnCount}/${maxWarns} | 🚨 Threshold reached! You will be ${warnAction === 'mute' ? `muted for ${muteDurationMinutes} minutes` : 'kicked'}.`
+            : `⚠️ <@${member.id}> **Violation:** ${violation.trigger} | **Warnings:** ${warnCount}/${maxWarns} | ${maxWarns - warnCount} more violation(s) will result in a ${warnAction}.`;
 
         const warningMsg = await message.channel.send(warningText);
 
@@ -540,7 +517,7 @@ async function trackAutomodWarn(message, violation) {
     }
 
     // Escalate when threshold reached
-    if (tracker.count >= maxWarns) {
+    if (warnCount >= maxWarns) {
         const muteDuration = muteDurationMinutes * 60 * 1000;
         result.escalated = true;
         
@@ -552,11 +529,11 @@ async function trackAutomodWarn(message, violation) {
                     guild,
                     member.user,
                     { id: guild.client.user.id, tag: 'Auto-Mod' },
-                    `Auto-escalation: ${tracker.count} violations`,
+                    `Auto-escalation: ${warnCount} violations`,
                     muteDuration
                 );
                 
-                logger.info('[AutoModService]', `Muted ${member.user.tag} for ${muteDurationMinutes} minutes (${tracker.count} violations)`);
+                logger.info('[AutoModService]', `Muted ${member.user.tag} for ${muteDurationMinutes} minutes (${warnCount} violations)`);
             } else if (warnAction === 'kick') {
                 await member.kick(`[Auto-Mod] ${maxWarns} violations in ${resetHours}h`);
                 
@@ -564,39 +541,20 @@ async function trackAutomodWarn(message, violation) {
                     guild,
                     member.user,
                     { id: guild.client.user.id, tag: 'Auto-Mod' },
-                    `Auto-escalation: ${tracker.count} violations`
+                    `Auto-escalation: ${warnCount} violations`
                 );
                 
-                logger.info('[AutoModService]', `Kicked ${member.user.tag} (${tracker.count} violations)`);
+                logger.info('[AutoModService]', `Kicked ${member.user.tag} (${warnCount} violations)`);
             }
             
-            automodWarnTracker.delete(key);
+            // Reset warning count in Redis after escalation
+            await redisCache.resetAutomodWarn(guild.id, member.id);
         } catch (e) {
             logger.warn('[AutoModService] Could not escalate:', e.message);
         }
     }
 
     return result;
-}
-
-/**
- * Clean up old tracking data
- */
-function cleanupTrackers() {
-    const now = Date.now();
-    const maxAge = 60000; // 1 minute
-
-    for (const [key, tracker] of messageTracker) {
-        if (now - tracker.lastCleanup > maxAge) {
-            messageTracker.delete(key);
-        }
-    }
-
-    for (const [key, tracker] of duplicateTracker) {
-        if (now - tracker.firstTime > 60000) {
-            duplicateTracker.delete(key);
-        }
-    }
 }
 
 /**

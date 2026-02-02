@@ -19,6 +19,10 @@ class RedisCache {
             COOLDOWN: 60,             // 1 minute
             API_RESPONSE: 300,        // 5 minutes
             MUSIC_QUEUE: 3600,        // 1 hour
+            SPAM_WINDOW: 10,          // 10 seconds for spam tracking
+            DUPLICATE_WINDOW: 60,     // 60 seconds for duplicate tracking
+            RATE_LIMIT: 60,           // 1 minute for rate limits
+            AUTOMOD_WARN: 3600,       // 1 hour for automod warn tracking
         };
     }
 
@@ -268,6 +272,243 @@ class RedisCache {
             fallbackSize: this.fallbackCache.size,
             redisInfo: this.isConnected ? await this.client.info('memory') : null,
         };
+    }
+
+    // ========================================
+    // Spam & Duplicate Tracking (AutoMod)
+    // ========================================
+
+    /**
+     * Track a message for spam detection
+     * Returns the count of messages in the time window
+     * @param {string} guildId - Guild ID
+     * @param {string} userId - User ID
+     * @param {number} windowSeconds - Time window in seconds
+     * @returns {Promise<number>} Message count in window
+     */
+    async trackSpamMessage(guildId, userId, windowSeconds = 5) {
+        const key = `spam:${guildId}:${userId}`;
+        try {
+            if (this.isConnected) {
+                const multi = this.client.multi();
+                multi.incr(key);
+                multi.expire(key, windowSeconds);
+                const results = await multi.exec();
+                return results[0][1]; // Get the INCR result
+            }
+            // Fallback to in-memory
+            const now = Date.now();
+            const windowMs = windowSeconds * 1000;
+            let tracker = this.fallbackCache.get(key);
+            if (!tracker || now - tracker.start > windowMs) {
+                tracker = { count: 0, start: now };
+            }
+            tracker.count++;
+            this.fallbackCache.set(key, tracker);
+            setTimeout(() => this.fallbackCache.delete(key), windowMs);
+            return tracker.count;
+        } catch (error) {
+            console.error('[Redis] trackSpamMessage error:', error.message);
+            return 1;
+        }
+    }
+
+    /**
+     * Reset spam tracker for a user
+     * @param {string} guildId - Guild ID
+     * @param {string} userId - User ID
+     */
+    async resetSpamTracker(guildId, userId) {
+        const key = `spam:${guildId}:${userId}`;
+        await this.delete(key);
+    }
+
+    /**
+     * Track duplicate messages
+     * @param {string} guildId - Guild ID
+     * @param {string} userId - User ID
+     * @param {string} content - Message content (will be hashed)
+     * @param {number} windowSeconds - Time window in seconds
+     * @returns {Promise<{count: number, isNew: boolean}>} Count and whether it's a new content
+     */
+    async trackDuplicateMessage(guildId, userId, content, windowSeconds = 30) {
+        // Create a simple hash of the content
+        const contentHash = Buffer.from(content.toLowerCase().trim()).toString('base64').slice(0, 32);
+        const countKey = `dup:${guildId}:${userId}:count`;
+        const hashKey = `dup:${guildId}:${userId}:hash`;
+        
+        try {
+            if (this.isConnected) {
+                const storedHash = await this.client.get(hashKey);
+                
+                if (storedHash !== contentHash) {
+                    // New content - reset counter
+                    const multi = this.client.multi();
+                    multi.set(hashKey, contentHash, 'EX', windowSeconds);
+                    multi.set(countKey, 1, 'EX', windowSeconds);
+                    await multi.exec();
+                    return { count: 1, isNew: true };
+                }
+                
+                // Same content - increment
+                const multi = this.client.multi();
+                multi.incr(countKey);
+                multi.expire(countKey, windowSeconds);
+                multi.expire(hashKey, windowSeconds);
+                const results = await multi.exec();
+                return { count: results[0][1], isNew: false };
+            }
+            
+            // Fallback
+            const cacheKey = `dup:${guildId}:${userId}`;
+            const now = Date.now();
+            const windowMs = windowSeconds * 1000;
+            let tracker = this.fallbackCache.get(cacheKey);
+            
+            if (!tracker || now - tracker.start > windowMs || tracker.hash !== contentHash) {
+                tracker = { hash: contentHash, count: 1, start: now };
+                this.fallbackCache.set(cacheKey, tracker);
+                setTimeout(() => this.fallbackCache.delete(cacheKey), windowMs);
+                return { count: 1, isNew: true };
+            }
+            
+            tracker.count++;
+            return { count: tracker.count, isNew: false };
+        } catch (error) {
+            console.error('[Redis] trackDuplicateMessage error:', error.message);
+            return { count: 1, isNew: true };
+        }
+    }
+
+    /**
+     * Reset duplicate tracker for a user
+     * @param {string} guildId - Guild ID
+     * @param {string} userId - User ID
+     */
+    async resetDuplicateTracker(guildId, userId) {
+        await this.delete(`dup:${guildId}:${userId}:count`);
+        await this.delete(`dup:${guildId}:${userId}:hash`);
+        this.fallbackCache.delete(`dup:${guildId}:${userId}`);
+    }
+
+    /**
+     * Track automod warnings for escalation
+     * @param {string} guildId - Guild ID
+     * @param {string} userId - User ID
+     * @param {number} resetHours - Hours until warning count resets
+     * @returns {Promise<number>} Current warning count
+     */
+    async trackAutomodWarn(guildId, userId, resetHours = 1) {
+        const key = `automod:warn:${guildId}:${userId}`;
+        const ttlSeconds = resetHours * 3600;
+        
+        try {
+            if (this.isConnected) {
+                const multi = this.client.multi();
+                multi.incr(key);
+                multi.expire(key, ttlSeconds);
+                const results = await multi.exec();
+                return results[0][1];
+            }
+            // Fallback
+            const current = (this.fallbackCache.get(key) || 0) + 1;
+            this.fallbackCache.set(key, current);
+            setTimeout(() => this.fallbackCache.delete(key), ttlSeconds * 1000);
+            return current;
+        } catch (error) {
+            console.error('[Redis] trackAutomodWarn error:', error.message);
+            return 1;
+        }
+    }
+
+    /**
+     * Get current automod warning count
+     * @param {string} guildId - Guild ID
+     * @param {string} userId - User ID
+     * @returns {Promise<number>} Current warning count
+     */
+    async getAutomodWarnCount(guildId, userId) {
+        const key = `automod:warn:${guildId}:${userId}`;
+        try {
+            if (this.isConnected) {
+                const count = await this.client.get(key);
+                return parseInt(count) || 0;
+            }
+            return this.fallbackCache.get(key) || 0;
+        } catch (error) {
+            return 0;
+        }
+    }
+
+    /**
+     * Reset automod warning count
+     * @param {string} guildId - Guild ID
+     * @param {string} userId - User ID
+     */
+    async resetAutomodWarn(guildId, userId) {
+        await this.delete(`automod:warn:${guildId}:${userId}`);
+    }
+
+    // ========================================
+    // Rate Limiting
+    // ========================================
+
+    /**
+     * Check and consume rate limit
+     * @param {string} key - Rate limit key (e.g., 'cmd:userId' or 'api:userId')
+     * @param {number} limit - Max requests allowed
+     * @param {number} windowSeconds - Time window in seconds
+     * @returns {Promise<{allowed: boolean, remaining: number, resetIn: number}>}
+     */
+    async checkRateLimit(key, limit, windowSeconds) {
+        const redisKey = `ratelimit:${key}`;
+        
+        try {
+            if (this.isConnected) {
+                const multi = this.client.multi();
+                multi.incr(redisKey);
+                multi.ttl(redisKey);
+                const results = await multi.exec();
+                
+                const count = results[0][1];
+                let ttl = results[1][1];
+                
+                // Set expiry on first request
+                if (ttl === -1) {
+                    await this.client.expire(redisKey, windowSeconds);
+                    ttl = windowSeconds;
+                }
+                
+                const allowed = count <= limit;
+                return {
+                    allowed,
+                    remaining: Math.max(0, limit - count),
+                    resetIn: ttl * 1000
+                };
+            }
+            
+            // Fallback
+            const now = Date.now();
+            const windowMs = windowSeconds * 1000;
+            let tracker = this.fallbackCache.get(redisKey);
+            
+            if (!tracker || now - tracker.start > windowMs) {
+                tracker = { count: 0, start: now };
+                this.fallbackCache.set(redisKey, tracker);
+                setTimeout(() => this.fallbackCache.delete(redisKey), windowMs);
+            }
+            
+            tracker.count++;
+            const allowed = tracker.count <= limit;
+            return {
+                allowed,
+                remaining: Math.max(0, limit - tracker.count),
+                resetIn: windowMs - (now - tracker.start)
+            };
+        } catch (error) {
+            console.error('[Redis] checkRateLimit error:', error.message);
+            return { allowed: true, remaining: limit, resetIn: 0 };
+        }
     }
 
     /**

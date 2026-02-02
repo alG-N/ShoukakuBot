@@ -7,7 +7,7 @@
 const { createClient, setPresence, getClientStats, ActivityType, CLIENT_OPTIONS } = require('./Client');
 const logger = require('./Logger');
 const { Logger, LOG_CHANNEL_ID, LOG_LEVELS } = require('./Logger');
-const { bootstrap, healthCheck, BOOTSTRAP_CONFIG } = require('./bootstrap');
+const { bootstrap, healthCheck: bootstrapHealthCheck, BOOTSTRAP_CONFIG } = require('./bootstrap');
 const { 
     registerShutdownHandler, 
     handleShutdown, 
@@ -15,6 +15,8 @@ const {
     isShuttingDown 
 } = require('./shutdown');
 const { initializeErrorHandlers } = require('./errorHandler');
+const sentry = require('./sentry');
+const health = require('./health');
 
 module.exports = {
     // Client
@@ -32,7 +34,7 @@ module.exports = {
     
     // Bootstrap
     bootstrap,
-    healthCheck,
+    bootstrapHealthCheck,
     BOOTSTRAP_CONFIG,
     
     // Shutdown
@@ -42,5 +44,11 @@ module.exports = {
     isShuttingDown,
     
     // Error Handler
-    initializeErrorHandlers
+    initializeErrorHandlers,
+    
+    // Sentry Error Tracking
+    sentry,
+    
+    // Health Check
+    health
 };

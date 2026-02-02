@@ -5,11 +5,11 @@
  */
 
 module.exports = {
-    // Bot identification
-    clientId: '1467027746906701951',
+    // Bot identification (from environment variable)
+    clientId: process.env.CLIENT_ID || '1467027746906701951',
     
     // Command deployment
-    autoDeploy: true,
+    autoDeploy: process.env.AUTO_DEPLOY !== 'false',
     
     // Presence settings
     presence: {

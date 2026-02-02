@@ -22,7 +22,14 @@ require('dotenv').config();
 const { REST, Routes, Events } = require('discord.js');
 
 // Core utilities (from src/core)
-const { createClient, logger, initializeShutdownHandlers, initializeErrorHandlers } = require('./core');
+const { 
+    createClient, 
+    logger, 
+    initializeShutdownHandlers, 
+    initializeErrorHandlers,
+    sentry,
+    health
+} = require('./core');
 
 // Services
 const { CommandRegistry, EventRegistry, SnipeService, RedisCache } = require('./services');
@@ -35,6 +42,7 @@ const { bot, music } = require('./config');
 
 // Database (PostgreSQL)
 const { initializeDatabase } = require('./database/admin');
+const postgres = require('./database/postgres');
 
 // ==========================================
 // APPLICATION INITIALIZATION
@@ -44,6 +52,7 @@ class AlterGoldenBot {
     constructor() {
         this.client = createClient();
         this.rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);
+        this.healthServer = null;
     }
 
     /**
@@ -51,7 +60,16 @@ class AlterGoldenBot {
      */
     async start() {
         try {
-            logger.info('Startup', 'Initializing alterGolden v3.1...');
+            logger.info('Startup', 'Initializing alterGolden v4.0...');
+
+            // Initialize Sentry error tracking first
+            sentry.initialize({
+                release: '4.0.0',
+                tags: { bot: 'alterGolden' }
+            });
+
+            // Start health check server
+            this.startHealthServer();
 
             // Initialize database (PostgreSQL)
             await initializeDatabase();
@@ -87,6 +105,10 @@ class AlterGoldenBot {
                 // Initialize logger with client
                 logger.initialize(this.client);
                 
+                // Register health checks now that services are ready
+                this.registerHealthChecks();
+                health.setStatus('healthy');
+                
                 // Initialize Snipe Service
                 SnipeService.initialize(this.client);
                 logger.info('Services', 'SnipeService initialized');
@@ -101,9 +123,30 @@ class AlterGoldenBot {
 
         } catch (error) {
             logger.critical('Startup', `Failed to start: ${error.message}`);
+            sentry.captureException(error, { extra: { phase: 'startup' } });
             console.error(error);
             process.exit(1);
         }
+    }
+
+    /**
+     * Start health check HTTP server
+     */
+    startHealthServer() {
+        const port = parseInt(process.env.HEALTH_PORT) || 3000;
+        this.healthServer = health.startHealthServer(port);
+    }
+
+    /**
+     * Register health checks for all services
+     */
+    registerHealthChecks() {
+        health.registerDefaultChecks({
+            client: this.client,
+            database: postgres,
+            redis: redisCache,
+            lavalink: music.enabled ? require('./services/music/LavalinkService') : null
+        });
     }
 
     /**

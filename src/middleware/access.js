@@ -6,6 +6,7 @@
 
 const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const { COLORS, EMOJIS } = require('../constants');
+const redisCache = require('../services/guild/RedisCache');
 
 // ============================================================================
 // ACCESS TYPES
@@ -30,7 +31,8 @@ const AccessType = {
 // ============================================================================
 
 /**
- * Generic rate limiter for any feature
+ * In-memory rate limiter for single-instance deployments
+ * For multi-instance/sharded deployments, use DistributedRateLimiter instead
  * @class
  */
 class RateLimiter {
@@ -121,6 +123,93 @@ class RateLimiter {
             clearInterval(this._cleanupInterval);
         }
         this.cooldowns.clear();
+        this.active.clear();
+    }
+}
+
+/**
+ * Distributed rate limiter using Redis
+ * Works across multiple instances/shards
+ * @class
+ */
+class DistributedRateLimiter {
+    /**
+     * @param {Object} options - Rate limiter options
+     * @param {string} options.name - Unique name for this limiter (e.g., 'video', 'api')
+     * @param {number} [options.limit=5] - Max requests per window
+     * @param {number} [options.windowSeconds=60] - Time window in seconds
+     * @param {number} [options.maxConcurrent=5] - Max concurrent operations
+     */
+    constructor(options = {}) {
+        this.name = options.name || 'default';
+        this.limit = options.limit || 5;
+        this.windowSeconds = options.windowSeconds || 60;
+        this.maxConcurrent = options.maxConcurrent || 5;
+        
+        // In-memory tracking for concurrent operations (still needed per-instance)
+        this.active = new Set();
+    }
+
+    /**
+     * Check if user is allowed (rate limit not exceeded)
+     * @param {string} userId - User ID
+     * @returns {Promise<{allowed: boolean, remaining: number, resetIn: number}>}
+     */
+    async check(userId) {
+        const key = `${this.name}:${userId}`;
+        return redisCache.checkRateLimit(key, this.limit, this.windowSeconds);
+    }
+
+    /**
+     * Check and consume a rate limit slot
+     * @param {string} userId - User ID
+     * @returns {Promise<{allowed: boolean, remaining: number, resetIn: number}>}
+     */
+    async consume(userId) {
+        return this.check(userId);
+    }
+
+    /**
+     * Get remaining seconds until rate limit resets
+     * @param {string} userId - User ID
+     * @returns {Promise<number>} Seconds until reset, 0 if not limited
+     */
+    async getRemainingCooldown(userId) {
+        const result = await this.check(userId);
+        if (!result.allowed) {
+            return Math.ceil(result.resetIn / 1000);
+        }
+        return 0;
+    }
+
+    /**
+     * Check if concurrent limit reached (per-instance)
+     * @returns {boolean} True if at limit
+     */
+    isAtLimit() {
+        return this.active.size >= this.maxConcurrent;
+    }
+
+    /**
+     * Add user to active set
+     * @param {string} userId - User ID
+     */
+    addActive(userId) {
+        this.active.add(userId);
+    }
+
+    /**
+     * Remove user from active set
+     * @param {string} userId - User ID
+     */
+    removeActive(userId) {
+        this.active.delete(userId);
+    }
+
+    /**
+     * Destroy rate limiter (cleanup)
+     */
+    destroy() {
         this.active.clear();
     }
 }
@@ -492,7 +581,8 @@ module.exports = {
     AccessType,
     
     // Rate Limiting
-    RateLimiter,
+    RateLimiter,                    // Legacy in-memory (deprecated)
+    DistributedRateLimiter,         // Redis-based for multi-instance
     
     // Permission Checks
     hasPermissions,
