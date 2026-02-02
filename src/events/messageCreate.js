@@ -1,11 +1,12 @@
 /**
  * Message Create Event - Presentation Layer
- * Handles AFK mentions and other message-based features
+ * Handles AFK mentions, auto-moderation, and other message-based features
  * @module presentation/events/messageCreate
  */
 
 const { Events } = require('discord.js');
 const { BaseEvent } = require('./BaseEvent');
+const { AutoModHandler } = require('../handlers/moderation');
 
 class MessageCreateEvent extends BaseEvent {
     constructor() {
@@ -19,11 +20,27 @@ class MessageCreateEvent extends BaseEvent {
         // Ignore bots and DMs
         if (message.author.bot || !message.guild) return;
         
+        // Run auto-moderation first - if message is deleted, stop processing
+        const automodResult = await this._handleAutoMod(client, message);
+        if (automodResult?.deleted) return;
+        
         // Handle AFK system
         await this._handleAfk(client, message);
-        
-        // Handle deleted message tracking for snipe
-        // Note: This is handled by messageDelete event, not here
+    }
+    
+    /**
+     * Handle auto-moderation
+     * @param {Client} client 
+     * @param {Message} message 
+     * @returns {Object|null}
+     */
+    async _handleAutoMod(client, message) {
+        try {
+            return await AutoModHandler.handleMessage(client, message);
+        } catch (error) {
+            console.error('[AutoMod] Error:', error.message);
+            return null;
+        }
     }
 
     async _handleAfk(client, message) {

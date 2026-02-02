@@ -8,7 +8,7 @@
  * - maintenance: Maintenance mode settings
  * - database: PostgreSQL & Redis settings
  * - services: External API credentials
- * - features/: Feature-specific configs (music, video, admin, lavalink)
+ * - features/: Feature-specific configs (music, video, admin, lavalink, moderation)
  * 
  * @module config
  */
@@ -42,5 +42,6 @@ module.exports = {
     music: features.music,
     video: features.video,
     admin: features.admin,
-    lavalink: features.lavalink
+    lavalink: features.lavalink,
+    moderation: features.moderation
 };

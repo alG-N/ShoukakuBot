@@ -8,11 +8,10 @@ const logger = require('../../core/Logger');
 // Import circuit breaker for API protection
 let withCircuitBreaker, recordFailure, recordSuccess;
 try {
-    const circuitBreaker = require('../../../../Ultility/circuitBreaker');
+    const circuitBreaker = require('../../utils/common/circuitBreaker');
     withCircuitBreaker = circuitBreaker.withCircuitBreaker;
     recordFailure = circuitBreaker.recordFailure;
     recordSuccess = circuitBreaker.recordSuccess;
-    logger.debug('Pixiv', 'Circuit breaker loaded successfully');
 } catch (e) {
     // Fallback if circuit breaker not available - use retry utility instead
     logger.warn('Pixiv', 'Circuit breaker not available, using fallback');
