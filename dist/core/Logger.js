@@ -304,10 +304,12 @@ const logger = new Logger();
 exports.logger = logger;
 // Default export
 exports.default = logger;
-// CommonJS COMPATIBILITY
+// Expose methods on module.exports for CommonJS compatibility
+// This allows both `require('Logger')` and `require('Logger').logger` to work
 module.exports = logger;
+module.exports.default = logger;
+module.exports.logger = logger;
 module.exports.Logger = Logger;
 module.exports.LOG_CHANNEL_ID = exports.LOG_CHANNEL_ID;
 module.exports.LOG_LEVELS = exports.LOG_LEVELS;
-module.exports.default = logger;
 //# sourceMappingURL=Logger.js.map

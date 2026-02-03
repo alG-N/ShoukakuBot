@@ -438,11 +438,14 @@ const logger = new Logger();
 // Default export
 export default logger;
 
-// Named exports
+// Named exports for ESM
 export { logger };
-// CommonJS COMPATIBILITY
+
+// Expose methods on module.exports for CommonJS compatibility
+// This allows both `require('Logger')` and `require('Logger').logger` to work
 module.exports = logger;
+module.exports.default = logger;
+module.exports.logger = logger;
 module.exports.Logger = Logger;
 module.exports.LOG_CHANNEL_ID = LOG_CHANNEL_ID;
 module.exports.LOG_LEVELS = LOG_LEVELS;
-module.exports.default = logger;

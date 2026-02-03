@@ -433,23 +433,46 @@ export function checkCaps(message: Message, settings: AutoModSettings): Violatio
     return null;
 }
 // ACTION EXECUTION
+
+export interface ExecuteActionResult {
+    deleted: boolean;
+    warned: boolean;
+    muted: boolean;
+    escalated: boolean;
+    warnCount: number;
+    warnThreshold: number;
+    muteDuration: number;
+    error: string | null;
+}
+
 /**
- * Execute auto-mod action
+ * Execute auto-mod action with warn tracking and escalation
  */
 export async function executeAction(
     message: Message,
     violation: Violation
-): Promise<{ deleted: boolean; warned: boolean; muted: boolean; error: string | null }> {
-    const results = {
+): Promise<ExecuteActionResult> {
+    const results: ExecuteActionResult = {
         deleted: false,
         warned: false,
         muted: false,
-        error: null as string | null
+        escalated: false,
+        warnCount: 0,
+        warnThreshold: 3,
+        muteDuration: 15,
+        error: null
     };
 
     try {
         const action = violation.action || 'delete';
+        const settings = await getSettings(message.guild!.id);
+        
+        // Get warn settings from guild settings
+        results.warnThreshold = settings.warn_threshold || 3;
+        results.muteDuration = settings.mute_duration || 15; // minutes
+        const warnResetHours = settings.warn_reset_hours || 1;
 
+        // Delete message if action includes delete
         if (action.includes('delete')) {
             try {
                 await message.delete();
@@ -459,11 +482,40 @@ export async function executeAction(
             }
         }
 
+        // Track warn in Redis if action includes warn
         if (action.includes('warn')) {
             results.warned = true;
+            
+            // Track warn count in Redis
+            results.warnCount = await redisCache.trackAutomodWarn(
+                message.guild!.id,
+                message.author.id,
+                warnResetHours
+            );
+
+            // Check if threshold reached -> escalate to mute
+            if (results.warnCount >= results.warnThreshold && message.member) {
+                try {
+                    const muteDurationMs = results.muteDuration * 60 * 1000; // Convert minutes to ms
+                    await message.member.timeout(
+                        muteDurationMs,
+                        `[Auto-Mod] Exceeded warn threshold (${results.warnCount}/${results.warnThreshold})`
+                    );
+                    results.muted = true;
+                    results.escalated = true;
+                    
+                    // Reset warn count after mute
+                    await redisCache.resetAutomodWarn(message.guild!.id, message.author.id);
+                    
+                    logger.info('AutoMod', `Escalated to mute: ${message.author.tag} (${results.warnCount} warns)`);
+                } catch (e) {
+                    logger.warn('[AutoModService] Could not escalate mute:', (e as Error).message);
+                }
+            }
         }
 
-        if (action === 'mute' && violation.muteDuration && message.member) {
+        // Direct mute action (not from escalation)
+        if (action === 'mute' && violation.muteDuration && message.member && !results.muted) {
             try {
                 await message.member.timeout(
                     violation.muteDuration,
@@ -479,11 +531,13 @@ export async function executeAction(
             message.guild!,
             message.author,
             violation.trigger,
-            action,
+            results.escalated ? 'mute' : action,
             {
                 channelId: message.channelId,
                 messageContent: message.content.slice(0, 100),
-                type: violation.type
+                type: violation.type,
+                warnCount: results.warnCount,
+                escalated: results.escalated
             }
         );
 

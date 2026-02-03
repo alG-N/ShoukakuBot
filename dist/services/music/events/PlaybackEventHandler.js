@@ -231,9 +231,11 @@ class PlaybackEventHandler {
                 const error = err;
                 console.error(`[PlaybackEventHandler] Auto-play error:`, error.message);
                 MusicEventBus_js_1.default.emitEvent(MusicEvents_js_1.MusicEvents.AUTOPLAY_FAILED, { guildId, error: error.message });
+                // Auto-play failed, but don't show queue finished - will retry or user can add songs
+                return;
             }
         }
-        // No auto-play, show finished message
+        // No auto-play enabled, show finished message
         MusicCacheFacade_js_1.default.setCurrentTrack(guildId, null);
         MusicEventBus_js_1.default.emitEvent(MusicEvents_js_1.MusicEvents.NOWPLAYING_DISABLE, { guildId });
         if (queue?.textChannel && 'send' in queue.textChannel) {

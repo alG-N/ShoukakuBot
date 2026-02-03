@@ -48,6 +48,10 @@ export interface ActionResult {
     muted?: boolean;
     kicked?: boolean;
     banned?: boolean;
+    escalated?: boolean;
+    warnCount?: number;
+    warnThreshold?: number;
+    muteDuration?: number;
 }
 
 /**
@@ -108,9 +112,9 @@ export async function handleMessage(client: unknown, message: Message): Promise<
             // Execute action
             const result: ActionResult = await AutoModService.executeAction(message, violation);
 
-            // Send notification to channel (optional)
-            if (result.warned && !result.deleted) {
-                await sendViolationNotice(message, violation);
+            // Send soft warn notification for warn actions (including delete_warn)
+            if (result.warned) {
+                await sendViolationNotice(message, violation, result);
             }
 
             // Log violation
@@ -129,25 +133,39 @@ export async function handleMessage(client: unknown, message: Message): Promise<
 }
 
 /**
- * Send a violation notice to the channel
+ * Send a violation notice to the channel (plain text, not embed)
  * @param message - Original message
  * @param violation - Violation details
+ * @param result - Action result with warn info
  */
-async function sendViolationNotice(message: Message, violation: Violation): Promise<void> {
+async function sendViolationNotice(message: Message, violation: Violation, result: ActionResult): Promise<void> {
     try {
-        const embed = new EmbedBuilder()
-            .setColor(moderationConfig.COLORS?.AUTOMOD || '#FFD700')
-            .setDescription(`${moderationConfig.EMOJIS?.AUTOMOD || '🤖'} <@${message.author.id}>, your message was flagged: **${violation.trigger}**`)
-            .setFooter({ text: 'Auto-Mod' })
-            .setTimestamp();
-
         const channel = message.channel as GuildTextBasedChannel;
-        const notice = await channel.send({ embeds: [embed] });
+        
+        let noticeText: string;
+        
+        if (result.escalated && result.muted) {
+            // User was muted due to reaching threshold
+            noticeText = `⚠️ <@${message.author.id}>, you have been **muted for ${result.muteDuration || 15} minutes** for repeated violations.`;
+        } else if (result.warned && result.warnCount && result.warnThreshold) {
+            // Regular warn with count
+            const remaining = result.warnThreshold - result.warnCount;
+            if (remaining > 0) {
+                noticeText = `⚠️ <@${message.author.id}>, you violated the rules: **${violation.trigger}**. **${remaining}** more violation${remaining > 1 ? 's' : ''} and you will be muted for **${result.muteDuration || 15} minutes**.`;
+            } else {
+                noticeText = `⚠️ <@${message.author.id}>, you violated the rules: **${violation.trigger}**.`;
+            }
+        } else {
+            // Fallback
+            noticeText = `⚠️ <@${message.author.id}>, you violated the rules: **${violation.trigger}**. Please follow server rules.`;
+        }
 
-        // Auto-delete notice after 10 seconds
+        const notice = await channel.send(noticeText);
+
+        // Auto-delete notice after 15 seconds
         setTimeout(() => {
             notice.delete().catch(() => {});
-        }, 10000);
+        }, 15000);
 
     } catch {
         // Channel might not allow sending
