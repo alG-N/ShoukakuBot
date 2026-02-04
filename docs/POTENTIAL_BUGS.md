@@ -289,5 +289,3 @@ The architecture is **production-ready at 9/10**. All actionable issues fixed:
 - BattleService local state (ephemeral, non-serializable Discord objects)
 - PlaybackService local locks (Discord guarantees one shard per guild)
 - SnipeService init guard (only affects dev hot reload)
-
-**The system is production-ready for 1000+ server multi-shard deployment.**
