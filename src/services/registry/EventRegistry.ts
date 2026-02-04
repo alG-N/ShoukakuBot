@@ -13,10 +13,6 @@ interface Event {
     once?: boolean;
     execute: (client: DiscordClient, ...args: unknown[]) => Promise<void> | void;
 }
-
-interface LoadOptions {
-    useLegacy?: boolean;
-}
 // EVENT REGISTRY CLASS
 class EventRegistry {
     public events: Map<string, Event> = new Map();
@@ -24,7 +20,7 @@ class EventRegistry {
     /**
      * Load events from presentation layer
      */
-    loadEvents(options: LoadOptions = { useLegacy: true }): Map<string, Event> {
+    loadEvents(): Map<string, Event> {
         console.log('[EventRegistry] Loading events...');
 
         // Load presentation layer events
@@ -99,4 +95,4 @@ export { EventRegistry };
 export default eventRegistry;
 
 // Type export
-export type { Event, LoadOptions };
+export type { Event };

@@ -6,7 +6,7 @@
 
 import { ChatInputCommandInteraction, MessageFlags, Guild, ButtonInteraction, TextChannel } from 'discord.js';
 import { trackHandler } from './trackHandler.js';
-import musicCache from '../../repositories/music/MusicCacheFacade.js';
+import musicCache from '../../cache/music/MusicCacheFacade.js';
 import { checkVoiceChannelSync, checkVoicePermissionsSync } from '../../middleware/voiceChannelCheck.js';
 import { music } from '../../config/index.js';
 import { musicFacade as musicService } from '../../services/music/MusicFacade.js';
@@ -425,3 +425,4 @@ export const playHandler = {
 };
 
 export default playHandler;
+

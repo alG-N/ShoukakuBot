@@ -8,7 +8,7 @@
 import { Result } from '../../../core/Result.js';
 import { ErrorCodes } from '../../../core/ErrorCodes.js';
 import type { MusicTrack } from '../events/MusicEvents.js';
-import musicCacheImport from '../../../repositories/music/MusicCacheFacade.js';
+import musicCacheImport from '../../../cache/music/MusicCacheFacade.js';
 
 // Type assertion for the imported cache
 const musicCache = musicCacheImport as unknown as MusicCacheFacade;
@@ -399,3 +399,4 @@ const queueService = new QueueService();
 export { QueueService };
 export type { MusicQueue, QueueState };
 export default queueService;
+

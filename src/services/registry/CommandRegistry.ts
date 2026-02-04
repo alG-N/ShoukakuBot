@@ -19,10 +19,6 @@ interface Command {
     autocomplete?: (interaction: unknown) => Promise<void>;
 }
 
-interface LoadOptions {
-    useLegacy?: boolean;
-    useModules?: boolean;
-}
 // COMMAND REGISTRY CLASS
 class CommandRegistry {
     public commands: Collection<string, Command> = new Collection();
@@ -33,7 +29,7 @@ class CommandRegistry {
     /**
      * Load commands from all sources
      */
-    loadCommands(options: LoadOptions = { useLegacy: true }): Collection<string, Command> {
+    loadCommands(): Collection<string, Command> {
         console.log('[CommandRegistry] Loading commands...');
 
         // Load all commands from commands/ folder
@@ -147,4 +143,4 @@ export { CommandRegistry };
 export default commandRegistry;
 
 // Type export for client usage
-export type { Command, LoadOptions };
+export type { Command };

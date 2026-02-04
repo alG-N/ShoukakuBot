@@ -19,7 +19,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.snipeService = exports.moderationService = exports.RedisCache = exports.GuildSettingsService = exports.EventRegistry = exports.CommandRegistry = exports.createWarningEmbed = exports.createErrorEmbed = exports.checkMaintenance = exports.checkAccess = exports.AccessType = void 0;
+exports.snipeService = exports.moderationService = exports.GuildSettingsService = exports.EventRegistry = exports.CommandRegistry = exports.createWarningEmbed = exports.createErrorEmbed = exports.checkMaintenance = exports.checkAccess = exports.AccessType = void 0;
 // Core Services
 __exportStar(require("./registry/index.js"), exports);
 __exportStar(require("./guild/index.js"), exports);
@@ -43,7 +43,6 @@ Object.defineProperty(exports, "CommandRegistry", { enumerable: true, get: funct
 Object.defineProperty(exports, "EventRegistry", { enumerable: true, get: function () { return index_js_1.EventRegistry; } });
 const index_js_2 = require("./guild/index.js");
 Object.defineProperty(exports, "GuildSettingsService", { enumerable: true, get: function () { return index_js_2.GuildSettingsService; } });
-Object.defineProperty(exports, "RedisCache", { enumerable: true, get: function () { return index_js_2.RedisCache; } });
 const index_js_3 = require("./moderation/index.js");
 Object.defineProperty(exports, "moderationService", { enumerable: true, get: function () { return index_js_3.moderationService; } });
 Object.defineProperty(exports, "snipeService", { enumerable: true, get: function () { return index_js_3.snipeService; } });

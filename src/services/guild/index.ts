@@ -3,8 +3,9 @@
  * @module services/guild
  */
 
+// RedisCache is internal - exported only for bootstrap/container initialization
+// Application code should use CacheService instead
 export { RedisCache, default as redisCache } from './RedisCache.js';
-export type { } from './RedisCache.js';
 
 export { 
     DEFAULT_GUILD_SETTINGS,

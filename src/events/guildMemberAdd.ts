@@ -55,11 +55,11 @@ class GuildMemberAddEvent extends BaseEvent {
      */
     private async _handleAntiRaid(client: Client, member: GuildMember): Promise<void> {
         try {
-            const result: RaidResult = AntiRaidService.trackJoin(member);
+            const result: RaidResult = await AntiRaidService.trackJoin(member);
             
             // If raid detected and not already in raid mode, activate
-            if (result.isRaid && !AntiRaidService.isRaidModeActive(member.guild.id)) {
-                AntiRaidService.activateRaidMode(
+            if (result.isRaid && !(await AntiRaidService.isRaidModeActive(member.guild.id))) {
+                await AntiRaidService.activateRaidMode(
                     member.guild.id,
                     'system',
                     `Auto-detected: ${result.triggers.join(', ')}`

@@ -7,7 +7,7 @@
 import { ButtonInteraction, TextChannel } from 'discord.js';
 import { trackHandler, LoopMode } from './trackHandler.js';
 import { playHandler } from './playHandler.js';
-import musicCache from '../../repositories/music/MusicCacheFacade.js';
+import musicCache from '../../cache/music/MusicCacheFacade.js';
 import { checkSameVoiceChannel } from '../../middleware/voiceChannelCheck.js';
 import { music } from '../../config/index.js';
 import { logger } from '../../core/Logger.js';
@@ -690,3 +690,4 @@ export const buttonHandler = {
 };
 
 export default buttonHandler;
+

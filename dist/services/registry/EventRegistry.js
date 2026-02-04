@@ -12,7 +12,7 @@ class EventRegistry {
     /**
      * Load events from presentation layer
      */
-    loadEvents(options = { useLegacy: true }) {
+    loadEvents() {
         console.log('[EventRegistry] Loading events...');
         // Load presentation layer events
         this._loadPresentationEvents();

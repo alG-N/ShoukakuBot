@@ -66,8 +66,7 @@ export {
     safeAsync,
     withErrorHandling,
     withTimeout,
-    interactionErrorBoundary,
-    registerShutdownHandler as registerErrorShutdownHandler
+    interactionErrorBoundary
 } from './errorHandler';
 
 // Sentry

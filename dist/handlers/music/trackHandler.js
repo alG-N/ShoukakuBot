@@ -11,7 +11,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TrackHandler = exports.trackHandler = exports.LOOP_DISPLAY = exports.COLORS = void 0;
 const discord_js_1 = require("discord.js");
-const MusicCacheFacade_js_1 = __importDefault(require("../../repositories/music/MusicCacheFacade.js"));
+const MusicCacheFacade_js_1 = __importDefault(require("../../cache/music/MusicCacheFacade.js"));
 const index_js_1 = require("../../utils/music/index.js");
 /**
  * Enhanced color scheme

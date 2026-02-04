@@ -1,14 +1,15 @@
 /**
  * Repositories - Data access layer organized by feature
+ * Note: Music caches have been moved to src/cache/music/
  */
 
 // Import all repository modules
 import * as api from './api';
-import * as music from './music';
 import * as moderation from './moderation';
+import * as general from './general';
 
 // Re-export all modules
-export { api, music, moderation };
+export { api, moderation, general };
 
 // Re-export individual repositories for convenience
 export { 
@@ -20,14 +21,8 @@ export {
     rule34Cache 
 } from './api';
 
-export { 
-    QueueCache, 
-    UserMusicCache, 
-    VoteCache, 
-    GuildMusicCache, 
-    MusicCacheFacade, 
-    MusicCache 
-} from './music';
+// Music caches are now in src/cache/music/
+// Import from there: import { MusicCache } from '../../cache/music';
 
 export { 
     InfractionRepository, 
@@ -36,9 +31,14 @@ export {
     ModLogRepository 
 } from './moderation';
 
+export {
+    afkRepository,
+    AfkRepository
+} from './general';
+
 // Default export
 export default {
     api,
-    music,
-    moderation
+    moderation,
+    general
 };

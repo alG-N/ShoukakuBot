@@ -13,7 +13,7 @@ import {
     StringSelectMenuBuilder,
     User
 } from 'discord.js';
-import musicCache, { UserPreferences } from '../../repositories/music/MusicCacheFacade.js';
+import musicCache, { UserPreferences } from '../../cache/music/MusicCacheFacade.js';
 import { formatSecondsToTime as fmtDur } from '../../utils/music/index.js';
 /**
  * Track data structure
@@ -1070,3 +1070,4 @@ export default trackHandler;
 
 // Export class for type usage
 export { TrackHandler };
+

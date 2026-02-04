@@ -10,7 +10,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.queueHandler = void 0;
 const trackHandler_js_1 = require("./trackHandler.js");
-const MusicCacheFacade_js_1 = __importDefault(require("../../repositories/music/MusicCacheFacade.js"));
+const MusicCacheFacade_js_1 = __importDefault(require("../../cache/music/MusicCacheFacade.js"));
 const voiceChannelCheck_js_1 = require("../../middleware/voiceChannelCheck.js");
 const MusicFacade_js_1 = require("../../services/music/MusicFacade.js");
 exports.queueHandler = {

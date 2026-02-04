@@ -2,6 +2,7 @@
 /**
  * Redis Cache Service
  * High-performance caching for scale (1000+ servers)
+ * @internal Used by CacheService - prefer CacheService for new code
  * @module services/guild/RedisCache
  */
 var __importDefault = (this && this.__importDefault) || function (mod) {

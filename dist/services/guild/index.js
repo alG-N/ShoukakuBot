@@ -8,6 +8,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GuildSettingsService = exports.clearCache = exports.isServerOwner = exports.hasModPermission = exports.hasAdminPermission = exports.removeModRole = exports.addModRole = exports.getModRoles = exports.removeAdminRole = exports.addAdminRole = exports.getAdminRoles = exports.setModLogChannel = exports.getModLogChannel = exports.setLogChannel = exports.getLogChannel = exports.setDeleteLimit = exports.getDeleteLimit = exports.setSnipeLimit = exports.getSnipeLimit = exports.updateSetting = exports.getSetting = exports.updateGuildSettings = exports.getGuildSettings = exports.DEFAULT_GUILD_SETTINGS = exports.redisCache = exports.RedisCache = void 0;
+// RedisCache is internal - exported only for bootstrap/container initialization
+// Application code should use CacheService instead
 var RedisCache_js_1 = require("./RedisCache.js");
 Object.defineProperty(exports, "RedisCache", { enumerable: true, get: function () { return RedisCache_js_1.RedisCache; } });
 Object.defineProperty(exports, "redisCache", { enumerable: true, get: function () { return __importDefault(RedisCache_js_1).default; } });

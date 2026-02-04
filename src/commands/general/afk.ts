@@ -1,6 +1,7 @@
 /**
  * AFK Command - Presentation Layer
  * Set AFK status (guild or global)
+ * Uses AfkRepository for PostgreSQL-backed storage (shard-safe)
  * @module presentation/commands/general/afk
  */
 
@@ -12,32 +13,12 @@ import {
     Client
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
-import * as fs from 'fs';
-import * as path from 'path';
+import afkRepository, { type AfkInfo } from '../../repositories/general/AfkRepository.js';
 
-// File path for persistence - stored in src/data/afk.json
-const afkFilePath = path.join(process.cwd(), 'src', 'data', 'afk.json');
-// TYPES
-interface AfkInfo {
-    reason: string;
-    timestamp: number;
-    type: 'guild' | 'global';
-}
-
-interface AfkUserData {
-    [key: string]: AfkInfo | string | number | undefined;
-    reason?: string;
-    timestamp?: number;
-    type?: 'global';
-}
-
-interface AfkData {
-    [userId: string]: AfkUserData;
-}
-// STATE
-let afkCache: AfkData | null = null;
-let isDirty = false;
+// ============================================================================
 // UTILITY FUNCTIONS
+// ============================================================================
+
 /**
  * Format duration from seconds to readable string
  */
@@ -59,111 +40,23 @@ export function formatDuration(seconds: number): string {
 }
 
 /**
- * Load AFK users from file (cached)
+ * Check if user is AFK (exported for external use)
  */
-function loadAfkUsers(): AfkData {
-    if (afkCache !== null) return afkCache;
-    
-    try {
-        const dir = path.dirname(afkFilePath);
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
-        if (!fs.existsSync(afkFilePath)) {
-            afkCache = {};
-            fs.promises.writeFile(afkFilePath, '{}').catch(() => {});
-            return afkCache;
-        }
-        afkCache = JSON.parse(fs.readFileSync(afkFilePath, 'utf-8').trim() || '{}');
-    } catch {
-        afkCache = {};
-    }
-    return afkCache as AfkData;
+export async function isUserAfk(userId: string, guildId: string | null = null): Promise<AfkInfo | null> {
+    return afkRepository.isUserAfk(userId, guildId);
 }
 
 /**
- * Save AFK users to cache (async save with dirty flag)
+ * Remove user from AFK (exported for external use)
  */
-function saveAfkUsers(data: AfkData): void {
-    afkCache = data;
-    isDirty = true;
+export async function removeAfk(userId: string, guildId: string | null = null): Promise<AfkInfo | null> {
+    return afkRepository.removeAfk(userId, guildId);
 }
 
-// Periodic async save every 30s if dirty
-const saveInterval = setInterval(async () => {
-    if (isDirty && afkCache !== null) {
-        try {
-            await fs.promises.writeFile(afkFilePath, JSON.stringify(afkCache, null, 2));
-            isDirty = false;
-        } catch (err) {
-            console.error('[AFK] Failed to save:', err);
-        }
-    }
-}, 30000);
-
-// Cleanup on process exit
-process.on('exit', () => {
-    clearInterval(saveInterval);
-    if (isDirty && afkCache !== null) {
-        try {
-            fs.writeFileSync(afkFilePath, JSON.stringify(afkCache, null, 2));
-        } catch (err) {
-            console.error('[AFK] Failed to save on exit:', err);
-        }
-    }
-});
-
-/**
- * Check if user is AFK
- */
-export function isUserAfk(userId: string, guildId: string | null = null): AfkInfo | null {
-    const afkData = loadAfkUsers();
-    const userData = afkData[userId];
-    
-    if (!userData) return null;
-    
-    // Check global AFK
-    if (userData.type === 'global') {
-        return userData as unknown as AfkInfo;
-    }
-    
-    // Check guild-specific AFK
-    if (guildId && userData[guildId]) {
-        return userData[guildId] as AfkInfo;
-    }
-    
-    return null;
-}
-
-/**
- * Remove user from AFK
- */
-export function removeAfk(userId: string, guildId: string | null = null): AfkInfo | null {
-    const afkData = loadAfkUsers();
-    const userData = afkData[userId];
-    
-    if (!userData) return null;
-    
-    let removed: AfkInfo | null = null;
-    
-    if (userData.type === 'global') {
-        removed = userData as unknown as AfkInfo;
-        delete afkData[userId];
-    } else if (guildId && userData[guildId]) {
-        removed = userData[guildId] as AfkInfo;
-        delete userData[guildId];
-        if (Object.keys(userData).length === 0) {
-            delete afkData[userId];
-        }
-    }
-    
-    if (removed) {
-        saveAfkUsers(afkData);
-    }
-    
-    return removed;
-}
+// ============================================================================
 // COMMAND CLASS
+// ============================================================================
+
 class AfkCommand extends BaseCommand {
     constructor() {
         super({
@@ -193,26 +86,26 @@ class AfkCommand extends BaseCommand {
     }
 
     async run(interaction: ChatInputCommandInteraction): Promise<void> {
-        const afkData = loadAfkUsers();
         const userId = interaction.user.id;
-        const guildId = interaction.guild?.id;
+        const guildId = interaction.guild?.id || null;
         const type = (interaction.options.getString('type') || 'guild') as 'guild' | 'global';
         const reason = interaction.options.getString('reason') || 'No reason provided.';
-        const timestamp = Date.now();
 
-        // Set AFK status
-        if (type === 'global') {
-            afkData[userId] = { reason, timestamp, type: 'global' } as unknown as AfkUserData;
-        } else {
-            if (!afkData[userId] || (afkData[userId] as AfkUserData).type === 'global') {
-                afkData[userId] = {};
-            }
-            if (guildId) {
-                afkData[userId][guildId] = { reason, timestamp, type: 'guild' };
-            }
+        // Set AFK status via repository
+        const success = await afkRepository.setAfk({
+            userId,
+            guildId: type === 'global' ? null : guildId,
+            reason,
+            type
+        });
+
+        if (!success) {
+            await interaction.reply({ 
+                content: '❌ Failed to set AFK status. Please try again.',
+                ephemeral: true 
+            });
+            return;
         }
-
-        saveAfkUsers(afkData);
 
         const embed = new EmbedBuilder()
             .setColor(0x8A2BE2)
@@ -228,35 +121,26 @@ class AfkCommand extends BaseCommand {
     }
 }
 
+// ============================================================================
+// MESSAGE HANDLER
+// ============================================================================
+
 /**
  * Handle message events for AFK system
+ * Checks if author is AFK (removes them) and notifies about mentioned AFK users
  */
-export function onMessage(message: Message, client: Client): void {
+export async function onMessage(message: Message, client: Client): Promise<void> {
     try {
         if (message.author.bot) return;
         if (!message.guild) return;
 
-        const afkData = loadAfkUsers();
         const userId = message.author.id;
         const guildId = message.guild.id;
 
         // Check if message author is AFK and remove them
-        let wasAfk = false;
-        let afkInfo: AfkInfo | undefined;
+        const afkInfo = await afkRepository.removeAfk(userId, guildId);
         
-        if ((afkData[userId] as AfkUserData)?.type === 'global') {
-            wasAfk = true;
-            afkInfo = afkData[userId] as unknown as AfkInfo;
-            delete afkData[userId];
-        } else if (afkData[userId]?.[guildId]) {
-            wasAfk = true;
-            afkInfo = afkData[userId][guildId] as AfkInfo;
-            delete afkData[userId][guildId];
-            if (Object.keys(afkData[userId]).length === 0) delete afkData[userId];
-        }
-
-        if (wasAfk && afkInfo) {
-            saveAfkUsers(afkData);
+        if (afkInfo) {
             const timeAway = Math.floor((Date.now() - afkInfo.timestamp) / 1000);
             const embed = new EmbedBuilder()
                 .setColor(0x00CED1)
@@ -265,6 +149,7 @@ export function onMessage(message: Message, client: Client): void {
                 .setThumbnail(message.author.displayAvatarURL())
                 .setImage('https://media.tenor.com/blCLnVdO3CgAAAAd/senko-sewayaki-kitsune-no-senko-san.gif')
                 .setFooter({ text: 'We missed you! 🎌', iconURL: client.user?.displayAvatarURL() });
+            
             message.reply({ embeds: [embed] })
                 .then(msg => setTimeout(() => msg.delete().catch(() => {}), 15000))
                 .catch(() => {});
@@ -272,31 +157,34 @@ export function onMessage(message: Message, client: Client): void {
         }
 
         // Check mentions for AFK users
-        message.mentions.users.forEach(user => {
-            let mentionedAfkInfo: AfkInfo | undefined;
-            if ((afkData[user.id] as AfkUserData)?.type === 'global') {
-                mentionedAfkInfo = afkData[user.id] as unknown as AfkInfo;
-            } else if (afkData[user.id]?.[guildId]) {
-                mentionedAfkInfo = afkData[user.id][guildId] as AfkInfo;
-            }
+        const mentionedUsers = message.mentions.users;
+        if (mentionedUsers.size === 0) return;
 
-            if (mentionedAfkInfo) {
-                const timeAway = Math.floor((Date.now() - mentionedAfkInfo.timestamp) / 1000);
-                const embed = new EmbedBuilder()
-                    .setColor(0xFFA07A)
-                    .setTitle(`${user.username} is currently AFK 💤`)
-                    .setDescription(`**AFK for:** ${formatDuration(timeAway)}\n**Reason:** ${mentionedAfkInfo.reason}`)
-                    .setThumbnail(user.displayAvatarURL())
-                    .addFields([
-                        {
-                            name: 'While you wait...',
-                            value: '🍵 Grab tea\n📺 Watch anime\n🎮 Play a game\n🈶 Practice Japanese\n🎨 Draw a fumo\n'
-                        }
-                    ])
-                    .setFooter({ text: 'They\'ll return soon 🌸', iconURL: client.user?.displayAvatarURL() });
-                message.reply({ embeds: [embed] }).catch(() => {});
-            }
-        });
+        // Batch fetch AFK status for all mentioned users
+        const mentionedIds = Array.from(mentionedUsers.keys());
+        const afkMap = await afkRepository.getMultipleAfk(mentionedIds, guildId);
+
+        // Notify about each AFK user
+        for (const [mentionedUserId, mentionedAfkInfo] of afkMap) {
+            const user = mentionedUsers.get(mentionedUserId);
+            if (!user) continue;
+
+            const timeAway = Math.floor((Date.now() - mentionedAfkInfo.timestamp) / 1000);
+            const embed = new EmbedBuilder()
+                .setColor(0xFFA07A)
+                .setTitle(`${user.username} is currently AFK 💤`)
+                .setDescription(`**AFK for:** ${formatDuration(timeAway)}\n**Reason:** ${mentionedAfkInfo.reason}`)
+                .setThumbnail(user.displayAvatarURL())
+                .addFields([
+                    {
+                        name: 'While you wait...',
+                        value: '🍵 Grab tea\n📺 Watch anime\n🎮 Play a game\n🈶 Practice Japanese\n🎨 Draw a fumo\n'
+                    }
+                ])
+                .setFooter({ text: 'They\'ll return soon 🌸', iconURL: client.user?.displayAvatarURL() });
+            
+            message.reply({ embeds: [embed] }).catch(() => {});
+        }
     } catch (error: unknown) {
         const err = error as Error;
         console.error('[AFK] onMessage error:', err.message);

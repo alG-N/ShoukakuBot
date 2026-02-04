@@ -7,6 +7,7 @@
 
 import { Pool, PoolClient, QueryResult, PoolConfig } from 'pg';
 import gracefulDegradation, { ServiceState } from '../core/GracefulDegradation.js';
+import { databasePoolSize, databaseQueriesTotal, databaseQueryDuration } from '../core/metrics.js';
 
 // Use require for internal modules to avoid circular dependency
 const logger = require('../core/Logger');
@@ -207,6 +208,9 @@ export class PostgresDatabase {
 
         this.pool = new Pool(config);
         
+        // Setup pool monitoring
+        this._setupPoolMonitoring(this.pool, 'primary');
+        
         // Initialize read replica if configured
         if (process.env.DB_READ_HOST) {
             await this._initializeReadReplica();
@@ -274,11 +278,69 @@ export class PostgresDatabase {
             this.readPool.on('error', (err: Error) => {
                 logger.error('PostgreSQL', `Read pool error: ${err.message}`);
             });
+            
+            // Setup monitoring for read pool
+            this._setupPoolMonitoring(this.readPool, 'replica');
         } catch (error) {
             logger.warn('PostgreSQL', `Read replica connection failed, using primary only: ${(error as Error).message}`);
             this.readPool = null;
             this.readReplicaEnabled = false;
         }
+    }
+
+    /**
+     * Setup pool monitoring with Prometheus metrics
+     * Tracks connections acquired, released, and pool utilization
+     */
+    private _setupPoolMonitoring(pool: Pool, poolName: string): void {
+        // Track connection acquisition
+        pool.on('connect', () => {
+            databasePoolSize.labels({ state: `${poolName}_total` }).inc();
+            logger.debug('PostgreSQL', `${poolName} pool: connection created`);
+        });
+
+        pool.on('acquire', () => {
+            databasePoolSize.labels({ state: `${poolName}_active` }).inc();
+        });
+
+        pool.on('release', () => {
+            databasePoolSize.labels({ state: `${poolName}_active` }).dec();
+        });
+
+        pool.on('remove', () => {
+            databasePoolSize.labels({ state: `${poolName}_total` }).dec();
+            logger.debug('PostgreSQL', `${poolName} pool: connection removed`);
+        });
+
+        // Start periodic pool stats collection
+        const statsInterval = setInterval(() => {
+            if (!pool) return;
+            
+            const total = pool.totalCount;
+            const idle = pool.idleCount;
+            const waiting = pool.waitingCount;
+            const active = total - idle;
+            
+            // Update gauges
+            databasePoolSize.labels({ state: `${poolName}_total` }).set(total);
+            databasePoolSize.labels({ state: `${poolName}_idle` }).set(idle);
+            databasePoolSize.labels({ state: `${poolName}_active` }).set(active);
+            databasePoolSize.labels({ state: `${poolName}_waiting` }).set(waiting);
+            
+            // Log warning if pool is near exhaustion
+            const utilization = active / (total || 1);
+            if (utilization > 0.8) {
+                logger.warn('PostgreSQL', `${poolName} pool high utilization: ${(utilization * 100).toFixed(1)}% (${active}/${total} active, ${waiting} waiting)`);
+            }
+            
+            // Critical alert if there are waiting clients
+            if (waiting > 0) {
+                logger.error('PostgreSQL', `${poolName} pool exhaustion: ${waiting} clients waiting for connections`);
+            }
+        }, 10000); // Every 10 seconds
+        
+        // Don't prevent process exit
+        statsInterval.unref();
     }
 
     /**
@@ -750,6 +812,54 @@ export class PostgresDatabase {
  */
 const defaultInstance = new PostgresDatabase();
 
+// ============================================================================
+// HIGH-LEVEL INITIALIZATION
+// ============================================================================
+
+let isDbInitialized = false;
+
+/**
+ * Initialize database connection with table verification
+ * This is the recommended entry point for application startup
+ * Tables are created by 01-schema.sql when Docker starts
+ */
+export async function initializeDatabase(): Promise<void> {
+    if (isDbInitialized) {
+        console.log('⚠️ [Database] Already initialized');
+        return;
+    }
+
+    try {
+        await defaultInstance.initialize();
+        
+        // Verify tables exist
+        const result = await defaultInstance.query<{ table_name: string }>(`
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name IN ('guild_settings', 'moderation_logs', 'snipes')
+        `);
+        
+        if (result.rows.length < 3) {
+            console.warn('⚠️ [Database] Some tables missing. Ensure 01-schema.sql has been executed.');
+        }
+        
+        isDbInitialized = true;
+        console.log('✅ [Database] PostgreSQL initialized');
+    } catch (error: unknown) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        console.error('❌ [Database] PostgreSQL initialization failed:', errMsg);
+        throw error; // Don't fail silently - DB is required
+    }
+}
+
+/**
+ * Check if database is initialized
+ */
+export function isDatabaseReady(): boolean {
+    return isDbInitialized;
+}
+
 // Default export
 export default defaultInstance;
 // CommonJS COMPATIBILITY
@@ -759,4 +869,6 @@ module.exports.validateTable = validateTable;
 module.exports.validateIdentifier = validateIdentifier;
 module.exports.ALLOWED_TABLES = ALLOWED_TABLES;
 module.exports.TRANSIENT_ERROR_CODES = TRANSIENT_ERROR_CODES;
+module.exports.initializeDatabase = initializeDatabase;
+module.exports.isDatabaseReady = isDatabaseReady;
 module.exports.default = defaultInstance;

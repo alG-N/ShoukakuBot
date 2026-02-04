@@ -16,7 +16,7 @@ class CommandRegistry {
     /**
      * Load commands from all sources
      */
-    loadCommands(options = { useLegacy: true }) {
+    loadCommands() {
         console.log('[CommandRegistry] Loading commands...');
         // Load all commands from commands/ folder
         this._loadPresentationCommands();

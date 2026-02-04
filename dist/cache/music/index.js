@@ -1,7 +1,9 @@
 "use strict";
 /**
- * Music Repositories (Caches)
- * @module repositories/music
+ * Music Caches
+ * In-memory caching for music playback state
+ * Note: These are per-shard caches, not database repositories
+ * @module cache/music
  */
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };

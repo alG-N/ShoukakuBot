@@ -4,7 +4,7 @@
  * @module errors
  */
 
-// Base errors
+// Base errors (AppError subclasses)
 export {
     AppError,
     ValidationError,
@@ -20,46 +20,14 @@ export {
 
 export type { SerializedError, ErrorCode } from './AppError';
 
-// Music errors
-export {
-    MusicError,
-    NoVoiceChannelError,
-    DifferentVoiceChannelError,
-    NoPlayerError,
-    EmptyQueueError,
-    TrackNotFoundError,
-    LavalinkNotReadyError,
-    QueueFullError,
-    TrackTooLongError,
-    DJOnlyError,
-    VoicePermissionError,
-} from './MusicError';
+// Domain base errors (for instanceof checks only)
+export { MusicError } from './MusicError';
+export { VideoError } from './VideoError';
+export { ApiError } from './ApiError';
 
+// Type exports
 export type { MusicErrorCode } from './MusicError';
-
-// Video errors
-export {
-    VideoError,
-    InvalidUrlError,
-    VideoNotFoundError,
-    VideoTooLongError,
-    VideoTooLargeError,
-    DownloadError,
-    UnsupportedPlatformError,
-} from './VideoError';
-
 export type { VideoErrorCode } from './VideoError';
-
-// API errors
-export {
-    ApiError,
-    ApiUnavailableError,
-    ApiRateLimitError,
-    NoResultsError,
-    NsfwContentError,
-    ContentBlockedError,
-} from './ApiError';
-
 export type { ApiErrorCode } from './ApiError';
 
 // CommonJS compatibility - import from .ts files
@@ -69,15 +37,10 @@ const VideoErrorModule = require('./VideoError');
 const ApiErrorModule = require('./ApiError');
 
 module.exports = {
-    // Base
+    // Base errors
     ...AppErrorModule,
-    
-    // Music
-    ...MusicErrorModule,
-    
-    // Video
-    ...VideoErrorModule,
-    
-    // API
-    ...ApiErrorModule,
+    // Domain base errors only (subclasses removed in v8.5)
+    MusicError: MusicErrorModule.MusicError,
+    VideoError: VideoErrorModule.VideoError,
+    ApiError: ApiErrorModule.ApiError,
 };

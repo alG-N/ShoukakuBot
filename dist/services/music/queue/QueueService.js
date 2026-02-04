@@ -12,7 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.QueueService = void 0;
 const Result_js_1 = require("../../../core/Result.js");
 const ErrorCodes_js_1 = require("../../../core/ErrorCodes.js");
-const MusicCacheFacade_js_1 = __importDefault(require("../../../repositories/music/MusicCacheFacade.js"));
+const MusicCacheFacade_js_1 = __importDefault(require("../../../cache/music/MusicCacheFacade.js"));
 // Type assertion for the imported cache
 const musicCache = MusicCacheFacade_js_1.default;
 // QUEUE SERVICE CLASS

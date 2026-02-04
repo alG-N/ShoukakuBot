@@ -12,7 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PlaybackService = void 0;
 const LavalinkService_js_1 = __importDefault(require("../LavalinkService.js"));
 const index_js_1 = require("../queue/index.js");
-const MusicCacheFacade_js_1 = __importDefault(require("../../../repositories/music/MusicCacheFacade.js"));
+const MusicCacheFacade_js_1 = __importDefault(require("../../../cache/music/MusicCacheFacade.js"));
 const Result_js_1 = require("../../../core/Result.js");
 const ErrorCodes_js_1 = require("../../../core/ErrorCodes.js");
 // GUILD MUTEX CLASS

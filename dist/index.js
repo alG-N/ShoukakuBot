@@ -18,6 +18,39 @@
  * @author alterGolden Team
  * @version 4.1.0
  */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -36,8 +69,7 @@ const ShardBridge_js_1 = __importDefault(require("./services/guild/ShardBridge.j
 // Configuration
 const index_js_3 = require("./config/index.js");
 // Database (PostgreSQL)
-const admin_js_1 = require("./database/admin.js");
-const postgres_js_1 = __importDefault(require("./database/postgres.js"));
+const postgres_js_1 = __importStar(require("./database/postgres.js"));
 // Services resolved from container (set during start())
 let commandReg;
 let eventReg;
@@ -66,7 +98,7 @@ class AlterGoldenBot {
             // Start health check server
             this.startHealthServer();
             // Initialize database (PostgreSQL)
-            await (0, admin_js_1.initializeDatabase)();
+            await (0, postgres_js_1.initializeDatabase)();
             // Register services with DI container
             (0, services_js_1.registerServices)();
             // Boot core services (this initializes Redis)
@@ -171,8 +203,8 @@ class AlterGoldenBot {
      * Load all commands
      */
     loadCommands() {
-        // Load commands from feature modules AND presentation layer
-        commandReg.loadCommands({ useLegacy: false, useModules: true });
+        // Load all commands from commands/ folder
+        commandReg.loadCommands();
         // Attach to client for easy access
         this.client.commands = commandReg.commands;
         index_js_1.logger.info('Commands', `Loaded ${commandReg.size} commands`);
@@ -181,8 +213,8 @@ class AlterGoldenBot {
      * Load all events
      */
     loadEvents() {
-        // Load events (no legacy mode)
-        eventReg.loadEvents({ useLegacy: false });
+        // Load all events
+        eventReg.loadEvents();
         // Register with client
         eventReg.registerWithClient(this.client);
         index_js_1.logger.info('Events', `Loaded ${eventReg.size} events`);
@@ -200,15 +232,9 @@ class AlterGoldenBot {
                         index_js_1.logger.warn('Interaction', `Unknown command: ${interaction.commandName}`);
                         return;
                     }
-                    // Execute command - always use execute() for metrics tracking
-                    // BaseCommand.execute() handles defer, cooldown, validation, and metrics
-                    if (command.execute) {
-                        await command.execute(interaction);
-                    }
-                    else if (command.run) {
-                        // Fallback for legacy commands without execute()
-                        await command.run(interaction);
-                    }
+                    // Execute command via BaseCommand.execute()
+                    // Handles defer, cooldown, validation, and metrics
+                    await command.execute(interaction);
                 }
                 // Handle autocomplete
                 else if (interaction.isAutocomplete()) {

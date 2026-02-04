@@ -37,19 +37,16 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.lavalink = exports.admin = exports.video = exports.music = void 0;
+exports.lavalink = exports.video = exports.music = void 0;
 const music = __importStar(require("./music.js"));
 exports.music = music;
 const video = __importStar(require("./video.js"));
 exports.video = video;
-const admin = __importStar(require("./admin.js"));
-exports.admin = admin;
 const lavalink = __importStar(require("./lavalink.js"));
 exports.lavalink = lavalink;
 exports.default = {
     music,
     video,
-    admin,
     lavalink
 };
 //# sourceMappingURL=index.js.map

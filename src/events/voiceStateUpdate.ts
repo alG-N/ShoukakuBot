@@ -1,15 +1,27 @@
 /**
  * Voice State Update Event - Presentation Layer
  * Handles voice channel updates for auto-disconnect
+ * Uses Redis for shard-safe disconnect scheduling
  * @module presentation/events/voiceStateUpdate
  */
 
 import { Events, Client, VoiceState, VoiceBasedChannel } from 'discord.js';
 import { BaseEvent } from './BaseEvent.js';
+import cacheService from '../cache/CacheService.js';
+
+// Cache namespace for voice disconnect deadlines
+const CACHE_NAMESPACE = 'voice';
+const DISCONNECT_DELAY_SEC = 30;
+const POLL_INTERVAL_MS = 5000; // Check every 5 seconds
+
 // VOICE STATE UPDATE EVENT
 class VoiceStateUpdateEvent extends BaseEvent {
-    private _disconnectTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
-    private readonly _disconnectDelay: number = 30000; // 30 seconds
+    /** Local timers for executing disconnects (immediate action) */
+    private _localTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
+    /** Global polling interval for checking Redis deadlines */
+    private _pollInterval: ReturnType<typeof setInterval> | null = null;
+    /** Reference to client for polling */
+    private _client: Client | null = null;
     
     constructor() {
         super({
@@ -19,6 +31,12 @@ class VoiceStateUpdateEvent extends BaseEvent {
     }
 
     async execute(client: Client, oldState: VoiceState, newState: VoiceState): Promise<void> {
+        // Store client reference for polling
+        if (!this._client) {
+            this._client = client;
+            this._startPolling();
+        }
+        
         // Only handle when someone leaves a channel
         if (!oldState.channel) return;
         
@@ -34,6 +52,39 @@ class VoiceStateUpdateEvent extends BaseEvent {
     }
     
     /**
+     * Start polling Redis for disconnect deadlines
+     */
+    private _startPolling(): void {
+        if (this._pollInterval) return;
+        
+        this._pollInterval = setInterval(async () => {
+            await this._checkExpiredDeadlines();
+        }, POLL_INTERVAL_MS);
+    }
+    
+    /**
+     * Check Redis for any expired disconnect deadlines
+     */
+    private async _checkExpiredDeadlines(): Promise<void> {
+        if (!this._client) return;
+        
+        try {
+            // Check all guilds the bot is in
+            for (const [guildId, guild] of this._client.guilds.cache) {
+                const deadline = await cacheService.get<number>(CACHE_NAMESPACE, `disconnect:${guildId}`);
+                
+                if (deadline && Date.now() >= deadline) {
+                    // Deadline expired, disconnect
+                    await cacheService.delete(CACHE_NAMESPACE, `disconnect:${guildId}`);
+                    await this._handleDisconnect(this._client, guildId);
+                }
+            }
+        } catch (error) {
+            // Silent fail - polling will retry
+        }
+    }
+    
+    /**
      * Check if voice channel is empty and schedule disconnect
      */
     private async _checkEmptyChannel(
@@ -46,36 +97,50 @@ class VoiceStateUpdateEvent extends BaseEvent {
         
         if (humanMembers.size === 0) {
             // Channel is empty, schedule disconnect
-            this._scheduleDisconnect(client, guildId);
+            await this._scheduleDisconnect(client, guildId);
         } else {
             // Someone rejoined, cancel scheduled disconnect
-            this._cancelDisconnect(guildId);
+            await this._cancelDisconnect(guildId);
         }
     }
     
     /**
-     * Schedule auto-disconnect after delay
+     * Schedule auto-disconnect after delay (Redis-backed)
      */
-    private _scheduleDisconnect(client: Client, guildId: string): void {
-        // Cancel existing timer if any
-        this._cancelDisconnect(guildId);
+    private async _scheduleDisconnect(client: Client, guildId: string): Promise<void> {
+        // Cancel existing deadline if any
+        await this._cancelDisconnect(guildId);
         
+        // Set deadline in Redis (TTL slightly longer than delay for safety)
+        const deadline = Date.now() + (DISCONNECT_DELAY_SEC * 1000);
+        await cacheService.set(CACHE_NAMESPACE, `disconnect:${guildId}`, deadline, DISCONNECT_DELAY_SEC + 10);
+        
+        // Also set a local timer for immediate action on this shard
         const timer = setTimeout(async () => {
-            await this._handleDisconnect(client, guildId);
-            this._disconnectTimers.delete(guildId);
-        }, this._disconnectDelay);
+            // Double-check Redis in case another shard handled it
+            const currentDeadline = await cacheService.get<number>(CACHE_NAMESPACE, `disconnect:${guildId}`);
+            if (currentDeadline && Date.now() >= currentDeadline) {
+                await cacheService.delete(CACHE_NAMESPACE, `disconnect:${guildId}`);
+                await this._handleDisconnect(client, guildId);
+            }
+            this._localTimers.delete(guildId);
+        }, DISCONNECT_DELAY_SEC * 1000);
         
-        this._disconnectTimers.set(guildId, timer);
+        this._localTimers.set(guildId, timer);
     }
     
     /**
      * Cancel scheduled disconnect
      */
-    private _cancelDisconnect(guildId: string): void {
-        const timer = this._disconnectTimers.get(guildId);
+    private async _cancelDisconnect(guildId: string): Promise<void> {
+        // Clear Redis deadline
+        await cacheService.delete(CACHE_NAMESPACE, `disconnect:${guildId}`);
+        
+        // Clear local timer
+        const timer = this._localTimers.get(guildId);
         if (timer) {
             clearTimeout(timer);
-            this._disconnectTimers.delete(guildId);
+            this._localTimers.delete(guildId);
         }
     }
     

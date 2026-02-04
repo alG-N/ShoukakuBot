@@ -11,7 +11,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.settingsHandler = void 0;
 const discord_js_1 = require("discord.js");
 const trackHandler_js_1 = require("./trackHandler.js");
-const MusicCacheFacade_js_1 = __importDefault(require("../../repositories/music/MusicCacheFacade.js"));
+const MusicCacheFacade_js_1 = __importDefault(require("../../cache/music/MusicCacheFacade.js"));
 const index_js_1 = require("../../config/index.js");
 const index_js_2 = require("../../utils/music/index.js");
 const MusicFacade_js_1 = require("../../services/music/MusicFacade.js");

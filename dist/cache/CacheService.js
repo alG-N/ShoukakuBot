@@ -87,7 +87,8 @@ class CacheService {
             GracefulDegradation_js_1.default.initialize();
             GracefulDegradation_js_1.default.registerFallback('redis', async () => null); // Fallback returns null (cache miss)
             // Recover any pending write queue from previous session
-            GracefulDegradation_js_1.default.recoverWriteQueue().catch((err) => {
+            // Pass Redis client directly to avoid circular dependency timing issues
+            GracefulDegradation_js_1.default.recoverWriteQueue(redisClient).catch((err) => {
                 logger.error('CacheService', `Failed to recover write queue: ${err.message}`);
             });
             // Listen for Redis errors

@@ -95,16 +95,13 @@ class ShardBridge extends EventEmitter {
         }
 
         try {
-            // Import Redis dynamically
-            const redisModule = await import('./RedisCache.js');
-            const redisCache = redisModule.default as { getStats?: () => Promise<{ connected: boolean }> };
-            
-            // Check if Redis is connected
-            let isConnected = false;
-            if (typeof redisCache.getStats === 'function') {
-                const stats = await redisCache.getStats();
-                isConnected = stats?.connected ?? false;
-            }
+            // Check if Redis is connected via CacheService singleton
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const cacheService = require('../../cache/CacheService.js').default as { 
+                getStats: () => { redis: { connected: boolean } } 
+            };
+            const stats = cacheService.getStats();
+            const isConnected = stats.redis.connected;
 
             if (!isConnected) {
                 console.warn('[ShardBridge] Redis not connected, using fallback mode');

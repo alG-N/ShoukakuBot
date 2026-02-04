@@ -7,7 +7,7 @@
 
 import lavalinkService from '../LavalinkService.js';
 import { queueService } from '../queue/index.js';
-import musicCache from '../../../repositories/music/MusicCacheFacade.js';
+import musicCache from '../../../cache/music/MusicCacheFacade.js';
 import { Result } from '../../../core/Result.js';
 import { ErrorCodes } from '../../../core/ErrorCodes.js';
 import { TRACK_TRANSITION_DELAY } from '../../../config/features/music.js';
@@ -415,3 +415,4 @@ const playbackService = new PlaybackService();
 export { PlaybackService };
 export type { PlaybackState, PlayNextResult };
 export default playbackService;
+

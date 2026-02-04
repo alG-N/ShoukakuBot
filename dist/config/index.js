@@ -38,7 +38,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.lavalink = exports.admin = exports.video = exports.music = exports.features = exports.services = exports.database = exports.maintenance = exports.owner = exports.bot = void 0;
+exports.lavalink = exports.video = exports.music = exports.features = exports.services = exports.database = exports.maintenance = exports.owner = exports.bot = void 0;
 // Core configs
 const bot = __importStar(require("./bot.js"));
 exports.bot = bot;
@@ -55,7 +55,7 @@ exports.services = services;
 const features = __importStar(require("./features/index.js"));
 exports.features = features;
 // Direct exports for convenience
-exports.music = features.music, exports.video = features.video, exports.admin = features.admin, exports.lavalink = features.lavalink;
+exports.music = features.music, exports.video = features.video, exports.lavalink = features.lavalink;
 exports.default = {
     // Core
     bot,
@@ -69,7 +69,6 @@ exports.default = {
     // Direct feature access
     music: features.music,
     video: features.video,
-    admin: features.admin,
     lavalink: features.lavalink
 };
 //# sourceMappingURL=index.js.map

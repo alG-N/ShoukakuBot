@@ -34,11 +34,24 @@ class MusicEventBus extends EventEmitter {
     
     /** Debug mode flag */
     private debugMode: boolean;
+    
+    /** Stats reset interval (1 hour) */
+    private statsResetInterval: ReturnType<typeof setInterval> | null = null;
+    private readonly STATS_RESET_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 
     constructor() {
         super();
         this.setMaxListeners(50); // Allow many listeners for music system
         this.debugMode = process.env.MUSIC_EVENT_DEBUG === 'true';
+        
+        // Schedule periodic stats reset to prevent unbounded growth
+        this.statsResetInterval = setInterval(() => {
+            const stats = this.getStats();
+            if (this.debugMode) {
+                console.log('[MusicEventBus] Hourly stats reset:', stats);
+            }
+            this.eventCounts.clear();
+        }, this.STATS_RESET_INTERVAL_MS);
     }
 
     /**
@@ -141,6 +154,12 @@ class MusicEventBus extends EventEmitter {
      * Call this on bot shutdown
      */
     shutdown(): void {
+        // Clear stats reset interval
+        if (this.statsResetInterval) {
+            clearInterval(this.statsResetInterval);
+            this.statsResetInterval = null;
+        }
+        
         this.removeAllListeners();
         this.guildListeners.clear();
         this.eventCounts.clear();

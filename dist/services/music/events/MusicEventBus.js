@@ -17,10 +17,21 @@ class MusicEventBus extends events_1.EventEmitter {
     eventCounts = new Map();
     /** Debug mode flag */
     debugMode;
+    /** Stats reset interval (1 hour) */
+    statsResetInterval = null;
+    STATS_RESET_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
     constructor() {
         super();
         this.setMaxListeners(50); // Allow many listeners for music system
         this.debugMode = process.env.MUSIC_EVENT_DEBUG === 'true';
+        // Schedule periodic stats reset to prevent unbounded growth
+        this.statsResetInterval = setInterval(() => {
+            const stats = this.getStats();
+            if (this.debugMode) {
+                console.log('[MusicEventBus] Hourly stats reset:', stats);
+            }
+            this.eventCounts.clear();
+        }, this.STATS_RESET_INTERVAL_MS);
     }
     /**
      * Emit an event with optional guild context
@@ -109,6 +120,11 @@ class MusicEventBus extends events_1.EventEmitter {
      * Call this on bot shutdown
      */
     shutdown() {
+        // Clear stats reset interval
+        if (this.statsResetInterval) {
+            clearInterval(this.statsResetInterval);
+            this.statsResetInterval = null;
+        }
         this.removeAllListeners();
         this.guildListeners.clear();
         this.eventCounts.clear();

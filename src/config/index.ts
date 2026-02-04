@@ -19,7 +19,7 @@ import * as features from './features/index.js';
 export { bot, owner, maintenance, database, services, features };
 
 // Direct exports for convenience
-export const { music, video, admin, lavalink } = features;
+export const { music, video, lavalink } = features;
 
 export default {
     // Core
@@ -37,6 +37,5 @@ export default {
     // Direct feature access
     music: features.music,
     video: features.video,
-    admin: features.admin,
     lavalink: features.lavalink
 };

@@ -2,34 +2,62 @@
 /**
  * Anti-Raid Service
  * Detects and responds to raid attacks
+ * Shard-safe: Uses Redis via CacheService for all state
  * @module services/moderation/AntiRaidService
  */
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AntiRaidService = void 0;
-const discord_js_1 = require("discord.js");
+const CacheService_js_1 = __importDefault(require("../../cache/CacheService.js"));
 // Use require for CommonJS config
 const automodConfigModule = require('../../config/features/moderation/automod.js');
 // Handle both ESM default export and direct export
 const automodConfig = automodConfigModule.default || automodConfigModule;
+// Cache namespace and TTLs
+const CACHE_NAMESPACE = 'antiraid';
+const JOIN_TRACKER_TTL = 300; // 5 minutes
+const RAID_MODE_TTL = 1800; // 30 minutes (auto-disable)
+const FLAGGED_ACCOUNTS_TTL = 3600; // 1 hour
 // ANTI-RAID SERVICE CLASS
 class AntiRaidService {
-    joinTracker = new discord_js_1.Collection();
-    raidModeState = new discord_js_1.Collection();
-    flaggedAccounts = new discord_js_1.Collection();
     cleanupInterval = null;
     constructor() {
+        // Register cache namespace with appropriate settings
+        CacheService_js_1.default.registerNamespace(CACHE_NAMESPACE, {
+            ttl: JOIN_TRACKER_TTL,
+            maxSize: 10000,
+            useRedis: true
+        });
         this._startCleanup();
+    }
+    /**
+     * Build cache key for join tracker
+     */
+    _joinKey(guildId) {
+        return `joins:${guildId}`;
+    }
+    /**
+     * Build cache key for raid mode state
+     */
+    _raidModeKey(guildId) {
+        return `raidmode:${guildId}`;
+    }
+    /**
+     * Build cache key for flagged accounts
+     */
+    _flaggedKey(guildId) {
+        return `flagged:${guildId}`;
     }
     /**
      * Track a member join event
      */
-    trackJoin(member) {
+    async trackJoin(member) {
         const guildId = member.guild.id;
         const now = Date.now();
-        if (!this.joinTracker.has(guildId)) {
-            this.joinTracker.set(guildId, []);
-        }
-        const joins = this.joinTracker.get(guildId);
+        // Get current joins from Redis
+        const joins = await CacheService_js_1.default.get(CACHE_NAMESPACE, this._joinKey(guildId)) || [];
         // Add this join
         joins.push({
             userId: member.id,
@@ -41,13 +69,14 @@ class AntiRaidService {
         const ANTI_RAID = automodConfig.ANTI_RAID || { JOIN_RATE: { WINDOW_SECONDS: 30, THRESHOLD: 10 }, ACCOUNT_AGE: { MIN_DAYS: 7 }, ACTIONS: { ON_RAID: 'lockdown' } };
         const windowStart = now - ANTI_RAID.JOIN_RATE.WINDOW_SECONDS * 1000;
         const recentJoins = joins.filter(j => j.timestamp > windowStart);
-        this.joinTracker.set(guildId, recentJoins);
+        // Save back to Redis
+        await CacheService_js_1.default.set(CACHE_NAMESPACE, this._joinKey(guildId), recentJoins, JOIN_TRACKER_TTL);
         return this._analyzeJoins(guildId, recentJoins, member);
     }
     /**
      * Analyze joins for raid patterns
      */
-    _analyzeJoins(guildId, recentJoins, newMember) {
+    async _analyzeJoins(guildId, recentJoins, newMember) {
         const ANTI_RAID = automodConfig.ANTI_RAID || { JOIN_RATE: { WINDOW_SECONDS: 30, THRESHOLD: 10 }, ACCOUNT_AGE: { MIN_DAYS: 7 }, ACTIONS: { ON_RAID: 'lockdown' } };
         const result = {
             isRaid: false,
@@ -61,10 +90,10 @@ class AntiRaidService {
             }
         };
         // Check if raid mode already active
-        if (this.isRaidModeActive(guildId)) {
+        if (await this.isRaidModeActive(guildId)) {
             result.isSuspicious = true;
             result.triggers.push('raid_mode_active');
-            this._flagAccount(guildId, newMember.id);
+            await this._flagAccount(guildId, newMember.id);
             return result;
         }
         // Count new accounts
@@ -138,80 +167,73 @@ class AntiRaidService {
         };
     }
     /**
-     * Flag an account during raid
+     * Flag an account during raid (stored in Redis)
      */
-    _flagAccount(guildId, userId) {
-        if (!this.flaggedAccounts.has(guildId)) {
-            this.flaggedAccounts.set(guildId, new Set());
+    async _flagAccount(guildId, userId) {
+        const flagged = await CacheService_js_1.default.get(CACHE_NAMESPACE, this._flaggedKey(guildId)) || [];
+        if (!flagged.includes(userId)) {
+            flagged.push(userId);
+            await CacheService_js_1.default.set(CACHE_NAMESPACE, this._flaggedKey(guildId), flagged, FLAGGED_ACCOUNTS_TTL);
         }
-        this.flaggedAccounts.get(guildId).add(userId);
     }
     /**
-     * Activate raid mode
+     * Activate raid mode (stored in Redis)
      */
-    activateRaidMode(guildId, activatedBy, reason) {
-        this.raidModeState.set(guildId, {
+    async activateRaidMode(guildId, activatedBy, reason) {
+        const state = {
             active: true,
             activatedAt: Date.now(),
             activatedBy,
             reason
-        });
+        };
+        await CacheService_js_1.default.set(CACHE_NAMESPACE, this._raidModeKey(guildId), state, RAID_MODE_TTL);
+        console.log(`[AntiRaidService] Raid mode activated for guild ${guildId}: ${reason}`);
     }
     /**
      * Deactivate raid mode
      */
-    deactivateRaidMode(guildId) {
-        this.raidModeState.delete(guildId);
-        this.flaggedAccounts.delete(guildId);
+    async deactivateRaidMode(guildId) {
+        await CacheService_js_1.default.delete(CACHE_NAMESPACE, this._raidModeKey(guildId));
+        await CacheService_js_1.default.delete(CACHE_NAMESPACE, this._flaggedKey(guildId));
+        console.log(`[AntiRaidService] Raid mode deactivated for guild ${guildId}`);
     }
     /**
      * Check if raid mode is active
      */
-    isRaidModeActive(guildId) {
-        return this.raidModeState.get(guildId)?.active || false;
+    async isRaidModeActive(guildId) {
+        const state = await CacheService_js_1.default.get(CACHE_NAMESPACE, this._raidModeKey(guildId));
+        return state?.active || false;
     }
     /**
      * Get raid mode state
      */
-    getRaidModeState(guildId) {
-        return this.raidModeState.get(guildId);
+    async getRaidModeState(guildId) {
+        return CacheService_js_1.default.get(CACHE_NAMESPACE, this._raidModeKey(guildId));
     }
     /**
      * Get flagged accounts
      */
-    getFlaggedAccounts(guildId) {
-        return [...(this.flaggedAccounts.get(guildId) || [])];
+    async getFlaggedAccounts(guildId) {
+        return await CacheService_js_1.default.get(CACHE_NAMESPACE, this._flaggedKey(guildId)) || [];
     }
     /**
      * Clear flagged accounts
      */
-    clearFlaggedAccounts(guildId) {
-        this.flaggedAccounts.delete(guildId);
+    async clearFlaggedAccounts(guildId) {
+        await CacheService_js_1.default.delete(CACHE_NAMESPACE, this._flaggedKey(guildId));
     }
     /**
      * Start cleanup interval
+     * Note: With Redis TTL, this is mainly for monitoring/logging
      */
     _startCleanup() {
-        this.cleanupInterval = setInterval(() => {
-            const now = Date.now();
-            const maxAge = 5 * 60 * 1000; // 5 minutes
-            for (const [guildId, joins] of this.joinTracker) {
-                const recentJoins = joins.filter(j => now - j.timestamp < maxAge);
-                if (recentJoins.length === 0) {
-                    this.joinTracker.delete(guildId);
-                }
-                else {
-                    this.joinTracker.set(guildId, recentJoins);
-                }
-            }
-            // Auto-disable raid mode after 30 minutes
-            for (const [guildId, state] of this.raidModeState) {
-                if (state.active && now - state.activatedAt > 30 * 60 * 1000) {
-                    this.deactivateRaidMode(guildId);
-                    console.log(`[AntiRaidService] Auto-disabled raid mode for guild ${guildId}`);
-                }
-            }
-        }, 60 * 1000);
+        this.cleanupInterval = setInterval(async () => {
+            // Redis handles TTL automatically
+            // This interval is kept for potential monitoring/logging needs
+            console.log('[AntiRaidService] Cleanup cycle (Redis TTL handles expiration)');
+        }, 5 * 60 * 1000); // Every 5 minutes
+        // Allow process to exit even if interval is running
+        this.cleanupInterval.unref();
     }
     /**
      * Shutdown service
@@ -221,9 +243,7 @@ class AntiRaidService {
             clearInterval(this.cleanupInterval);
             this.cleanupInterval = null;
         }
-        this.joinTracker.clear();
-        this.raidModeState.clear();
-        this.flaggedAccounts.clear();
+        console.log('[AntiRaidService] Shutdown complete');
     }
 }
 exports.AntiRaidService = AntiRaidService;

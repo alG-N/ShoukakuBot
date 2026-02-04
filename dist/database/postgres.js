@@ -42,8 +42,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PostgresDatabase = exports.TRANSIENT_ERROR_CODES = exports.ALLOWED_TABLES = void 0;
 exports.validateTable = validateTable;
 exports.validateIdentifier = validateIdentifier;
+exports.initializeDatabase = initializeDatabase;
+exports.isDatabaseReady = isDatabaseReady;
 const pg_1 = require("pg");
 const GracefulDegradation_js_1 = __importStar(require("../core/GracefulDegradation.js"));
+const metrics_js_1 = require("../core/metrics.js");
 // Use require for internal modules to avoid circular dependency
 const logger = require('../core/Logger');
 // TYPES & INTERFACES
@@ -157,6 +160,8 @@ class PostgresDatabase {
             allowExitOnIdle: false,
         };
         this.pool = new pg_1.Pool(config);
+        // Setup pool monitoring
+        this._setupPoolMonitoring(this.pool, 'primary');
         // Initialize read replica if configured
         if (process.env.DB_READ_HOST) {
             await this._initializeReadReplica();
@@ -213,12 +218,60 @@ class PostgresDatabase {
             this.readPool.on('error', (err) => {
                 logger.error('PostgreSQL', `Read pool error: ${err.message}`);
             });
+            // Setup monitoring for read pool
+            this._setupPoolMonitoring(this.readPool, 'replica');
         }
         catch (error) {
             logger.warn('PostgreSQL', `Read replica connection failed, using primary only: ${error.message}`);
             this.readPool = null;
             this.readReplicaEnabled = false;
         }
+    }
+    /**
+     * Setup pool monitoring with Prometheus metrics
+     * Tracks connections acquired, released, and pool utilization
+     */
+    _setupPoolMonitoring(pool, poolName) {
+        // Track connection acquisition
+        pool.on('connect', () => {
+            metrics_js_1.databasePoolSize.labels({ state: `${poolName}_total` }).inc();
+            logger.debug('PostgreSQL', `${poolName} pool: connection created`);
+        });
+        pool.on('acquire', () => {
+            metrics_js_1.databasePoolSize.labels({ state: `${poolName}_active` }).inc();
+        });
+        pool.on('release', () => {
+            metrics_js_1.databasePoolSize.labels({ state: `${poolName}_active` }).dec();
+        });
+        pool.on('remove', () => {
+            metrics_js_1.databasePoolSize.labels({ state: `${poolName}_total` }).dec();
+            logger.debug('PostgreSQL', `${poolName} pool: connection removed`);
+        });
+        // Start periodic pool stats collection
+        const statsInterval = setInterval(() => {
+            if (!pool)
+                return;
+            const total = pool.totalCount;
+            const idle = pool.idleCount;
+            const waiting = pool.waitingCount;
+            const active = total - idle;
+            // Update gauges
+            metrics_js_1.databasePoolSize.labels({ state: `${poolName}_total` }).set(total);
+            metrics_js_1.databasePoolSize.labels({ state: `${poolName}_idle` }).set(idle);
+            metrics_js_1.databasePoolSize.labels({ state: `${poolName}_active` }).set(active);
+            metrics_js_1.databasePoolSize.labels({ state: `${poolName}_waiting` }).set(waiting);
+            // Log warning if pool is near exhaustion
+            const utilization = active / (total || 1);
+            if (utilization > 0.8) {
+                logger.warn('PostgreSQL', `${poolName} pool high utilization: ${(utilization * 100).toFixed(1)}% (${active}/${total} active, ${waiting} waiting)`);
+            }
+            // Critical alert if there are waiting clients
+            if (waiting > 0) {
+                logger.error('PostgreSQL', `${poolName} pool exhaustion: ${waiting} clients waiting for connections`);
+            }
+        }, 10000); // Every 10 seconds
+        // Don't prevent process exit
+        statsInterval.unref();
     }
     /**
      * Check if a query is read-only
@@ -589,6 +642,47 @@ exports.PostgresDatabase = PostgresDatabase;
  * Default database instance
  */
 const defaultInstance = new PostgresDatabase();
+// ============================================================================
+// HIGH-LEVEL INITIALIZATION
+// ============================================================================
+let isDbInitialized = false;
+/**
+ * Initialize database connection with table verification
+ * This is the recommended entry point for application startup
+ * Tables are created by 01-schema.sql when Docker starts
+ */
+async function initializeDatabase() {
+    if (isDbInitialized) {
+        console.log('⚠️ [Database] Already initialized');
+        return;
+    }
+    try {
+        await defaultInstance.initialize();
+        // Verify tables exist
+        const result = await defaultInstance.query(`
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name IN ('guild_settings', 'moderation_logs', 'snipes')
+        `);
+        if (result.rows.length < 3) {
+            console.warn('⚠️ [Database] Some tables missing. Ensure 01-schema.sql has been executed.');
+        }
+        isDbInitialized = true;
+        console.log('✅ [Database] PostgreSQL initialized');
+    }
+    catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        console.error('❌ [Database] PostgreSQL initialization failed:', errMsg);
+        throw error; // Don't fail silently - DB is required
+    }
+}
+/**
+ * Check if database is initialized
+ */
+function isDatabaseReady() {
+    return isDbInitialized;
+}
 // Default export
 exports.default = defaultInstance;
 // CommonJS COMPATIBILITY
@@ -598,5 +692,7 @@ module.exports.validateTable = validateTable;
 module.exports.validateIdentifier = validateIdentifier;
 module.exports.ALLOWED_TABLES = exports.ALLOWED_TABLES;
 module.exports.TRANSIENT_ERROR_CODES = exports.TRANSIENT_ERROR_CODES;
+module.exports.initializeDatabase = initializeDatabase;
+module.exports.isDatabaseReady = isDatabaseReady;
 module.exports.default = defaultInstance;
 //# sourceMappingURL=postgres.js.map

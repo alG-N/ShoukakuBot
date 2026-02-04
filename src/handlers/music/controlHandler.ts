@@ -6,7 +6,7 @@
 
 import { ChatInputCommandInteraction, Guild } from 'discord.js';
 import { trackHandler, LoopMode } from './trackHandler.js';
-import musicCache from '../../repositories/music/MusicCacheFacade.js';
+import musicCache from '../../cache/music/MusicCacheFacade.js';
 import { checkSameVoiceChannel } from '../../middleware/voiceChannelCheck.js';
 import { music } from '../../config/index.js';
 import { musicFacade as musicService } from '../../services/music/MusicFacade.js';
@@ -312,3 +312,4 @@ export const controlHandler = {
 };
 
 export default controlHandler;
+

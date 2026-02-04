@@ -33,7 +33,7 @@ exports.isServerOwner = isServerOwner;
 exports.clearCache = clearCache;
 const CacheService_js_1 = __importDefault(require("../../cache/CacheService.js"));
 // Use require for CommonJS database module
-const adminDB = require('../../database/admin.js');
+const db = require('../../database/postgres.js');
 // DEFAULT SETTINGS
 exports.DEFAULT_GUILD_SETTINGS = {
     guild_id: '0',
@@ -82,7 +82,7 @@ async function getGuildSettings(guildId) {
     }
     try {
         // Get from database using direct query
-        const dbSettings = await adminDB.getOne('SELECT * FROM guild_settings WHERE guild_id = $1', [guildId]);
+        const dbSettings = await db.getOne('SELECT * FROM guild_settings WHERE guild_id = $1', [guildId]);
         if (dbSettings) {
             const settings = { ...exports.DEFAULT_GUILD_SETTINGS, ...dbSettings };
             await CacheService_js_1.default.setGuildSettings(guildId, settings);
@@ -90,7 +90,7 @@ async function getGuildSettings(guildId) {
         }
         // Create default settings if none exist
         const defaultSettings = { ...exports.DEFAULT_GUILD_SETTINGS, guild_id: guildId };
-        await adminDB.upsert('guild_settings', { guild_id: guildId }, 'guild_id');
+        await db.upsert('guild_settings', { guild_id: guildId }, 'guild_id');
         await CacheService_js_1.default.setGuildSettings(guildId, defaultSettings);
         return defaultSettings;
     }
@@ -104,7 +104,7 @@ async function getGuildSettings(guildId) {
  */
 async function updateGuildSettings(guildId, updates) {
     try {
-        await adminDB.update('guild_settings', updates, { guild_id: guildId });
+        await db.update('guild_settings', updates, { guild_id: guildId });
         await CacheService_js_1.default.invalidateGuildSettings(guildId);
         return true;
     }

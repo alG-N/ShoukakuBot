@@ -390,11 +390,12 @@ class GracefulDegradation extends events_1.EventEmitter {
     /**
      * Recover write queue from Redis on startup
      * Call this after Redis is connected
+     * @param redisClient - Optional Redis client to use directly (avoids circular dependency)
      */
-    async recoverWriteQueue() {
+    async recoverWriteQueue(redisClient) {
         try {
-            const cacheService = getCacheService();
-            const redis = cacheService?.getRedis();
+            // Use provided Redis client or fall back to getCacheService()
+            const redis = redisClient ?? getCacheService()?.getRedis();
             if (!redis) {
                 console.log('[GracefulDegradation] Redis not available, skipping queue recovery');
                 return 0;

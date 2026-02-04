@@ -50,8 +50,7 @@ import type { CacheService } from './cache/CacheService.js';
 import { bot, music } from './config/index.js';
 
 // Database (PostgreSQL)
-import { initializeDatabase } from './database/admin.js';
-import postgres from './database/postgres.js';
+import postgres, { initializeDatabase } from './database/postgres.js';
 
 // Services resolved from container (set during start())
 let commandReg: CommandRegistry;
@@ -63,8 +62,7 @@ interface Command {
     data?: { name: string };
     deferReply?: boolean;
     ephemeral?: boolean;
-    run?: (interaction: ChatInputCommandInteraction) => Promise<void>;
-    execute?: (interaction: ChatInputCommandInteraction) => Promise<void>;
+    execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
     autocomplete?: (interaction: AutocompleteInteraction) => Promise<void>;
     handleButton?: (interaction: ButtonInteraction) => Promise<void>;
     handleModal?: (interaction: ModalSubmitInteraction) => Promise<void>;
@@ -228,8 +226,8 @@ class AlterGoldenBot {
      * Load all commands
      */
     private loadCommands(): void {
-        // Load commands from feature modules AND presentation layer
-        commandReg.loadCommands({ useLegacy: false, useModules: true });
+        // Load all commands from commands/ folder
+        commandReg.loadCommands();
         
         // Attach to client for easy access
         this.client.commands = commandReg.commands;
@@ -241,8 +239,8 @@ class AlterGoldenBot {
      * Load all events
      */
     private loadEvents(): void {
-        // Load events (no legacy mode)
-        eventReg.loadEvents({ useLegacy: false });
+        // Load all events
+        eventReg.loadEvents();
         
         // Register with client
         eventReg.registerWithClient(this.client);
@@ -265,14 +263,9 @@ class AlterGoldenBot {
                         return;
                     }
 
-                    // Execute command - always use execute() for metrics tracking
-                    // BaseCommand.execute() handles defer, cooldown, validation, and metrics
-                    if (command.execute) {
-                        await command.execute(interaction);
-                    } else if (command.run) {
-                        // Fallback for legacy commands without execute()
-                        await command.run(interaction);
-                    }
+                    // Execute command via BaseCommand.execute()
+                    // Handles defer, cooldown, validation, and metrics
+                    await command.execute(interaction);
                 }
                 
                 // Handle autocomplete

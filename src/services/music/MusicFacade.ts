@@ -11,7 +11,7 @@ import { playbackService, PlaybackService } from './playback';
 import { voiceConnectionService, VoiceConnectionService } from './voice';
 import { autoPlayService, AutoPlayService } from './autoplay';
 import { musicEventBus, MusicEvents, playbackEventHandler } from './events';
-import musicCache from '../../repositories/music/MusicCacheFacade';
+import musicCache from '../../cache/music/MusicCacheFacade';
 import trackHandler from '../../handlers/music/trackHandler';
 import { TRACK_TRANSITION_DELAY } from '../../config/features/music';
 import { updateMusicMetrics, musicTracksPlayedTotal } from '../../core/metrics';
@@ -913,3 +913,5 @@ export class MusicFacade {
 // Export singleton instance and class
 export const musicFacade = new MusicFacade();
 export default musicFacade;
+
+

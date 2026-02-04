@@ -1,6 +1,7 @@
 "use strict";
 /**
  * Repositories - Data access layer organized by feature
+ * Note: Music caches have been moved to src/cache/music/
  */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -36,14 +37,14 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ModLogRepository = exports.FilterRepository = exports.AutoModRepository = exports.InfractionRepository = exports.MusicCache = exports.MusicCacheFacade = exports.GuildMusicCache = exports.VoteCache = exports.UserMusicCache = exports.QueueCache = exports.rule34Cache = exports.redditCache = exports.pixivCache = exports.nhentaiRepository = exports.cacheManager = exports.animeRepository = exports.moderation = exports.music = exports.api = void 0;
+exports.AfkRepository = exports.afkRepository = exports.ModLogRepository = exports.FilterRepository = exports.AutoModRepository = exports.InfractionRepository = exports.rule34Cache = exports.redditCache = exports.pixivCache = exports.nhentaiRepository = exports.cacheManager = exports.animeRepository = exports.general = exports.moderation = exports.api = void 0;
 // Import all repository modules
 const api = __importStar(require("./api"));
 exports.api = api;
-const music = __importStar(require("./music"));
-exports.music = music;
 const moderation = __importStar(require("./moderation"));
 exports.moderation = moderation;
+const general = __importStar(require("./general"));
+exports.general = general;
 // Re-export individual repositories for convenience
 var api_1 = require("./api");
 Object.defineProperty(exports, "animeRepository", { enumerable: true, get: function () { return api_1.animeRepository; } });
@@ -52,22 +53,20 @@ Object.defineProperty(exports, "nhentaiRepository", { enumerable: true, get: fun
 Object.defineProperty(exports, "pixivCache", { enumerable: true, get: function () { return api_1.pixivCache; } });
 Object.defineProperty(exports, "redditCache", { enumerable: true, get: function () { return api_1.redditCache; } });
 Object.defineProperty(exports, "rule34Cache", { enumerable: true, get: function () { return api_1.rule34Cache; } });
-var music_1 = require("./music");
-Object.defineProperty(exports, "QueueCache", { enumerable: true, get: function () { return music_1.QueueCache; } });
-Object.defineProperty(exports, "UserMusicCache", { enumerable: true, get: function () { return music_1.UserMusicCache; } });
-Object.defineProperty(exports, "VoteCache", { enumerable: true, get: function () { return music_1.VoteCache; } });
-Object.defineProperty(exports, "GuildMusicCache", { enumerable: true, get: function () { return music_1.GuildMusicCache; } });
-Object.defineProperty(exports, "MusicCacheFacade", { enumerable: true, get: function () { return music_1.MusicCacheFacade; } });
-Object.defineProperty(exports, "MusicCache", { enumerable: true, get: function () { return music_1.MusicCache; } });
+// Music caches are now in src/cache/music/
+// Import from there: import { MusicCache } from '../../cache/music';
 var moderation_1 = require("./moderation");
 Object.defineProperty(exports, "InfractionRepository", { enumerable: true, get: function () { return moderation_1.InfractionRepository; } });
 Object.defineProperty(exports, "AutoModRepository", { enumerable: true, get: function () { return moderation_1.AutoModRepository; } });
 Object.defineProperty(exports, "FilterRepository", { enumerable: true, get: function () { return moderation_1.FilterRepository; } });
 Object.defineProperty(exports, "ModLogRepository", { enumerable: true, get: function () { return moderation_1.ModLogRepository; } });
+var general_1 = require("./general");
+Object.defineProperty(exports, "afkRepository", { enumerable: true, get: function () { return general_1.afkRepository; } });
+Object.defineProperty(exports, "AfkRepository", { enumerable: true, get: function () { return general_1.AfkRepository; } });
 // Default export
 exports.default = {
     api,
-    music,
-    moderation
+    moderation,
+    general
 };
 //# sourceMappingURL=index.js.map

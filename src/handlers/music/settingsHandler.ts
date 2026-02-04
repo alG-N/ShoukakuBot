@@ -12,7 +12,7 @@ import {
     StringSelectMenuInteraction 
 } from 'discord.js';
 import { trackHandler } from './trackHandler.js';
-import musicCache, { GuildMusicSettings } from '../../repositories/music/MusicCacheFacade.js';
+import musicCache, { GuildMusicSettings } from '../../cache/music/MusicCacheFacade.js';
 import { music } from '../../config/index.js';
 import { formatTime } from '../../utils/music/index.js';
 import { musicFacade as musicService } from '../../services/music/MusicFacade.js';
@@ -194,3 +194,4 @@ export const settingsHandler = {
 };
 
 export default settingsHandler;
+

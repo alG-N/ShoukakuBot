@@ -11,7 +11,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.buttonHandler = void 0;
 const trackHandler_js_1 = require("./trackHandler.js");
 const playHandler_js_1 = require("./playHandler.js");
-const MusicCacheFacade_js_1 = __importDefault(require("../../repositories/music/MusicCacheFacade.js"));
+const MusicCacheFacade_js_1 = __importDefault(require("../../cache/music/MusicCacheFacade.js"));
 const voiceChannelCheck_js_1 = require("../../middleware/voiceChannelCheck.js");
 const index_js_1 = require("../../config/index.js");
 const Logger_js_1 = require("../../core/Logger.js");

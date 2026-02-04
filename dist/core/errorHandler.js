@@ -8,25 +8,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.registerShutdownHandler = registerShutdownHandler;
 exports.initializeErrorHandlers = initializeErrorHandlers;
-exports.handleShutdown = handleShutdown;
 exports.safeAsync = safeAsync;
 exports.withErrorHandling = withErrorHandling;
 exports.withTimeout = withTimeout;
 exports.interactionErrorBoundary = interactionErrorBoundary;
 const Logger_1 = __importDefault(require("./Logger"));
 const errors_1 = require("../errors");
-// STATE
-const shutdownHandlers = [];
 // FUNCTIONS
-/**
- * Register a shutdown handler
- * @param handler - Async function to call on shutdown
- */
-function registerShutdownHandler(handler) {
-    shutdownHandlers.push(handler);
-}
 /**
  * Initialize global error handlers
  * @param client - Discord client
@@ -60,65 +49,7 @@ function initializeErrorHandlers(client) {
             Logger_1.default.logError('Unhandled Rejection', error).catch(() => { });
         }
     });
-    // Graceful shutdown signals
-    process.on('SIGINT', () => handleShutdown('SIGINT', client));
-    process.on('SIGTERM', () => handleShutdown('SIGTERM', client));
-    // Windows specific
-    if (process.platform === 'win32') {
-        const readline = require('readline');
-        const rl = readline.createInterface({
-            input: process.stdin,
-            output: process.stdout
-        });
-        rl.on('SIGINT', () => process.emit('SIGINT'));
-    }
     Logger_1.default.info('ErrorHandler', 'Global error handlers initialized');
-}
-/**
- * Handle graceful shutdown
- * @param signal - Signal received
- * @param client - Discord client
- */
-async function handleShutdown(signal, client = null) {
-    Logger_1.default.info('Shutdown', `Received ${signal}, shutting down gracefully...`);
-    try {
-        // Run all registered shutdown handlers
-        const timeout = 10000; // 10 second timeout
-        await Promise.race([
-            runShutdownHandlers(client),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Shutdown timeout')), timeout))
-        ]);
-        Logger_1.default.info('Shutdown', 'Graceful shutdown complete');
-        process.exit(0);
-    }
-    catch (error) {
-        Logger_1.default.error('Shutdown', `Error during shutdown: ${error.message}`);
-        process.exit(1);
-    }
-}
-/**
- * Run all shutdown handlers
- */
-async function runShutdownHandlers(client) {
-    // Destroy Discord client
-    if (client) {
-        try {
-            client.destroy();
-            Logger_1.default.info('Shutdown', 'Discord client destroyed');
-        }
-        catch {
-            // Ignore errors
-        }
-    }
-    // Run registered handlers
-    for (const handler of shutdownHandlers) {
-        try {
-            await handler();
-        }
-        catch (error) {
-            Logger_1.default.error('Shutdown', `Handler failed: ${error.message}`);
-        }
-    }
 }
 /**
  * Safe async execution wrapper

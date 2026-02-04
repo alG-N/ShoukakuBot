@@ -8,7 +8,7 @@ import type { GuildMember, Snowflake, Role } from 'discord.js';
 import cacheService from '../../cache/CacheService.js';
 
 // Use require for CommonJS database module
-const adminDB = require('../../database/admin.js') as {
+const db = require('../../database/postgres.js') as {
     query: (sql: string, params?: unknown[]) => Promise<{ rows: unknown[] }>;
     getOne: (sql: string, params?: unknown[]) => Promise<unknown>;
     insert: (table: string, data: Record<string, unknown>) => Promise<unknown>;
@@ -100,7 +100,7 @@ export async function getGuildSettings(guildId: Snowflake): Promise<GuildSetting
 
     try {
         // Get from database using direct query
-        const dbSettings = await adminDB.getOne(
+        const dbSettings = await db.getOne(
             'SELECT * FROM guild_settings WHERE guild_id = $1',
             [guildId]
         ) as Partial<GuildSettings> | null;
@@ -113,7 +113,7 @@ export async function getGuildSettings(guildId: Snowflake): Promise<GuildSetting
 
         // Create default settings if none exist
         const defaultSettings: GuildSettings = { ...DEFAULT_GUILD_SETTINGS, guild_id: guildId };
-        await adminDB.upsert('guild_settings', { guild_id: guildId }, 'guild_id');
+        await db.upsert('guild_settings', { guild_id: guildId }, 'guild_id');
         await cacheService.setGuildSettings(guildId, defaultSettings);
         return defaultSettings;
     } catch (error) {
@@ -130,7 +130,7 @@ export async function updateGuildSettings(
     updates: Partial<GuildSettings>
 ): Promise<boolean> {
     try {
-        await adminDB.update('guild_settings', updates as Record<string, unknown>, { guild_id: guildId });
+        await db.update('guild_settings', updates as Record<string, unknown>, { guild_id: guildId });
         await cacheService.invalidateGuildSettings(guildId);
         return true;
     } catch (error) {

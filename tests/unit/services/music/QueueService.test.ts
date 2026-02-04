@@ -41,7 +41,7 @@ const mockMusicCache = {
     moveTrack: jest.fn(),
 };
 
-jest.mock('../../../../src/repositories/music/MusicCacheFacade', () => ({
+jest.mock('../../../../src/cache/music/MusicCacheFacade', () => ({
     default: mockMusicCache,
     __esModule: true,
 }));

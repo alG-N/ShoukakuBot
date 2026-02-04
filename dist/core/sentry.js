@@ -42,6 +42,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.initialize = initialize;
+exports.isEnabled = isEnabled;
+exports.hasFailed = hasFailed;
 exports.captureException = captureException;
 exports.captureMessage = captureMessage;
 exports.setUser = setUser;
@@ -50,11 +52,11 @@ exports.addBreadcrumb = addBreadcrumb;
 exports.startTransaction = startTransaction;
 exports.flush = flush;
 exports.close = close;
-exports.isEnabled = isEnabled;
 const Sentry = __importStar(require("@sentry/node"));
 const Logger_1 = __importDefault(require("./Logger"));
 // STATE
 let isInitialized = false;
+let initializationFailed = false;
 // FUNCTIONS
 /**
  * Initialize Sentry error tracking
@@ -64,7 +66,9 @@ let isInitialized = false;
 function initialize(options = {}) {
     const dsn = process.env.SENTRY_DSN;
     if (!dsn) {
-        Logger_1.default.warn('Sentry', 'SENTRY_DSN not set, error tracking disabled');
+        Logger_1.default.warn('Sentry', '⚠️ SENTRY_DSN not set - ERROR TRACKING DISABLED');
+        Logger_1.default.warn('Sentry', 'Production errors will NOT be tracked remotely!');
+        console.warn('\n⚠️  WARNING: Sentry error tracking is DISABLED (no SENTRY_DSN)\n');
         return false;
     }
     try {
@@ -99,13 +103,32 @@ function initialize(options = {}) {
             ...options
         });
         isInitialized = true;
-        Logger_1.default.info('Sentry', 'Error tracking initialized');
+        Logger_1.default.info('Sentry', '✅ Error tracking initialized');
         return true;
     }
     catch (error) {
-        Logger_1.default.error('Sentry', `Failed to initialize: ${error.message}`);
+        initializationFailed = true;
+        Logger_1.default.error('Sentry', `❌ CRITICAL: Failed to initialize error tracking: ${error.message}`);
+        Logger_1.default.error('Sentry', 'Production errors will NOT be tracked remotely!');
+        console.error('\n❌ CRITICAL: Sentry initialization failed!\n');
+        console.error('   Error:', error.message);
+        console.error('   Production errors will go untracked.\n');
         return false;
     }
+}
+/**
+ * Check if Sentry is properly initialized
+ * @returns Initialization status
+ */
+function isEnabled() {
+    return isInitialized;
+}
+/**
+ * Check if Sentry initialization failed (vs just not configured)
+ * @returns Whether initialization explicitly failed
+ */
+function hasFailed() {
+    return initializationFailed;
 }
 /**
  * Check if error is operational (expected) vs programmer error
@@ -266,12 +289,5 @@ async function close() {
     catch (error) {
         Logger_1.default.error('Sentry', `Close failed: ${error.message}`);
     }
-}
-/**
- * Check if Sentry is initialized
- * @returns Whether Sentry is enabled
- */
-function isEnabled() {
-    return isInitialized;
 }
 //# sourceMappingURL=sentry.js.map

@@ -8,7 +8,7 @@
 import type { Message, ActionRowData, MessageActionRowComponentData } from 'discord.js';
 import musicEventBus from './MusicEventBus.js';
 import { MusicEvents, type MusicTrack } from './MusicEvents.js';
-import musicCache from '../../../repositories/music/MusicCacheFacade.js';
+import musicCache from '../../../cache/music/MusicCacheFacade.js';
 import trackHandler, { type Track, type LoopMode } from '../../../handlers/music/trackHandler.js';
 import { TRACK_TRANSITION_DELAY } from '../../../config/features/music.js';
 // TYPES
@@ -557,3 +557,4 @@ const playbackEventHandler = new PlaybackEventHandler();
 
 export { PlaybackEventHandler };
 export default playbackEventHandler;
+

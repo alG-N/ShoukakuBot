@@ -31,6 +31,7 @@ interface BreadcrumbData {
 }
 // STATE
 let isInitialized = false;
+let initializationFailed = false;
 // FUNCTIONS
 /**
  * Initialize Sentry error tracking
@@ -41,7 +42,9 @@ export function initialize(options: SentryInitOptions = {}): boolean {
     const dsn = process.env.SENTRY_DSN;
     
     if (!dsn) {
-        logger.warn('Sentry', 'SENTRY_DSN not set, error tracking disabled');
+        logger.warn('Sentry', '⚠️ SENTRY_DSN not set - ERROR TRACKING DISABLED');
+        logger.warn('Sentry', 'Production errors will NOT be tracked remotely!');
+        console.warn('\n⚠️  WARNING: Sentry error tracking is DISABLED (no SENTRY_DSN)\n');
         return false;
     }
 
@@ -84,12 +87,33 @@ export function initialize(options: SentryInitOptions = {}): boolean {
         });
 
         isInitialized = true;
-        logger.info('Sentry', 'Error tracking initialized');
+        logger.info('Sentry', '✅ Error tracking initialized');
         return true;
     } catch (error) {
-        logger.error('Sentry', `Failed to initialize: ${(error as Error).message}`);
+        initializationFailed = true;
+        logger.error('Sentry', `❌ CRITICAL: Failed to initialize error tracking: ${(error as Error).message}`);
+        logger.error('Sentry', 'Production errors will NOT be tracked remotely!');
+        console.error('\n❌ CRITICAL: Sentry initialization failed!\n');
+        console.error('   Error:', (error as Error).message);
+        console.error('   Production errors will go untracked.\n');
         return false;
     }
+}
+
+/**
+ * Check if Sentry is properly initialized
+ * @returns Initialization status
+ */
+export function isEnabled(): boolean {
+    return isInitialized;
+}
+
+/**
+ * Check if Sentry initialization failed (vs just not configured)
+ * @returns Whether initialization explicitly failed
+ */
+export function hasFailed(): boolean {
+    return initializationFailed;
 }
 
 /**
@@ -274,12 +298,4 @@ export async function close(): Promise<void> {
     } catch (error) {
         logger.error('Sentry', `Close failed: ${(error as Error).message}`);
     }
-}
-
-/**
- * Check if Sentry is initialized
- * @returns Whether Sentry is enabled
- */
-export function isEnabled(): boolean {
-    return isInitialized;
 }

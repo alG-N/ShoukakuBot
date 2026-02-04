@@ -16,6 +16,17 @@ export type { MemoryStats, AllCacheStats } from './CacheManager';
 export { CacheService, DEFAULT_NAMESPACES } from './CacheService';
 export type { NamespaceConfig, CacheMetrics, CacheServiceStats, CacheServiceOptions } from './CacheService';
 
+// Music Caches (moved from repositories/music)
+export * as music from './music';
+export {
+    MusicCache,
+    MusicCacheFacade,
+    QueueCache,
+    UserMusicCache,
+    GuildMusicCache,
+    VoteCache
+} from './music';
+
 // Default export is the unified cache service singleton
 import cacheService from './CacheService';
 export default cacheService;

@@ -12,7 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PlaybackEventHandler = void 0;
 const MusicEventBus_js_1 = __importDefault(require("./MusicEventBus.js"));
 const MusicEvents_js_1 = require("./MusicEvents.js");
-const MusicCacheFacade_js_1 = __importDefault(require("../../../repositories/music/MusicCacheFacade.js"));
+const MusicCacheFacade_js_1 = __importDefault(require("../../../cache/music/MusicCacheFacade.js"));
 const trackHandler_js_1 = __importDefault(require("../../../handlers/music/trackHandler.js"));
 const music_js_1 = require("../../../config/features/music.js");
 // PLAYBACK EVENT HANDLER CLASS

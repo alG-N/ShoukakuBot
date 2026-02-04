@@ -27,15 +27,15 @@ export {
 
 // Named imports for direct access
 import { CommandRegistry, EventRegistry } from './registry/index.js';
-import { GuildSettingsService, RedisCache } from './guild/index.js';
+import { GuildSettingsService } from './guild/index.js';
 import { moderationService, snipeService } from './moderation/index.js';
 
 // Re-export for backward compatibility
+// Note: RedisCache is internal - use CacheService for caching
 export {
     CommandRegistry,
     EventRegistry,
     GuildSettingsService,
-    RedisCache,
     moderationService,
     snipeService
 };
