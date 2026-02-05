@@ -3,10 +3,7 @@
     "list": [
       {
         "builtIn": 1,
-        "datasource": {
-          "type": "grafana",
-          "uid": "-- Grafana --"
-        },
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
         "enable": true,
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
@@ -24,52 +21,38 @@
   "panels": [
     {
       "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
       "id": 1,
       "panels": [],
       "title": "📊 Overview",
       "type": "row"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
+          "color": { "mode": "thresholds" },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               { "color": "green", "value": null },
-              { "color": "yellow", "value": 100 },
-              { "color": "red", "value": 500 }
+              { "color": "yellow", "value": 150 },
+              { "color": "red", "value": 300 }
             ]
           },
           "unit": "ms"
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "gridPos": { "h": 4, "w": 3, "x": 0, "y": 1 },
       "id": 2,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "textMode": "auto"
       },
       "pluginVersion": "10.2.2",
@@ -80,28 +63,23 @@
           "refId": "A"
         }
       ],
-      "title": "Gateway Latency",
+      "title": "Gateway Ping",
       "type": "stat"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null }
-            ]
+            "steps": [{ "color": "green", "value": null }]
           }
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "gridPos": { "h": 4, "w": 3, "x": 3, "y": 1 },
       "id": 3,
       "options": {
         "colorMode": "value",
@@ -114,32 +92,27 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(altergolden_discord_guilds_total)",
+          "expr": "sum(altergolden_discord_guilds_total) or vector(0)",
           "refId": "A"
         }
       ],
-      "title": "Total Guilds",
+      "title": "Guilds",
       "type": "stat"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null }
-            ]
+            "steps": [{ "color": "green", "value": null }]
           }
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "gridPos": { "h": 4, "w": 3, "x": 6, "y": 1 },
       "id": 4,
       "options": {
         "colorMode": "value",
@@ -152,33 +125,29 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(altergolden_discord_users_total)",
+          "expr": "sum(altergolden_discord_users_total) or vector(0)",
           "refId": "A"
         }
       ],
-      "title": "Total Users",
+      "title": "Users",
       "type": "stat"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
+          "decimals": 1,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null }
-            ]
+            "steps": [{ "color": "green", "value": null }]
           },
-          "unit": "s"
+          "unit": "m"
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+      "gridPos": { "h": 4, "w": 3, "x": 9, "y": 1 },
       "id": 5,
       "options": {
         "colorMode": "value",
@@ -191,7 +160,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "altergolden_discord_uptime_seconds",
+          "expr": "altergolden_discord_uptime_seconds / 60",
           "refId": "A"
         }
       ],
@@ -199,24 +168,19 @@
       "type": "stat"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null }
-            ]
+            "steps": [{ "color": "blue", "value": null }]
           }
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+      "gridPos": { "h": 4, "w": 3, "x": 12, "y": 1 },
       "id": 6,
       "options": {
         "colorMode": "value",
@@ -229,23 +193,59 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "altergolden_music_players_active",
+          "expr": "altergolden_music_players_active or vector(0)",
           "refId": "A"
         }
       ],
-      "title": "Active Players",
+      "title": "Music Players",
       "type": "stat"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "purple", "value": null }]
+          }
+        },
+        "overrides": []
       },
+      "gridPos": { "h": 4, "w": 3, "x": 15, "y": 1 },
+      "id": 16,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(increase(altergolden_commands_executed_total[1h])) or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "title": "Commands (1h)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
           "mappings": [
-            { "options": { "0": { "color": "red", "index": 1, "text": "Disconnected" }, "1": { "color": "green", "index": 0, "text": "Connected" } }, "type": "value" }
+            { 
+              "options": { 
+                "0": { "color": "red", "index": 1, "text": "Disconnected" }, 
+                "1": { "color": "green", "index": 0, "text": "Connected" } 
+              }, 
+              "type": "value" 
+            }
           ],
           "thresholds": {
             "mode": "absolute",
@@ -257,7 +257,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+      "gridPos": { "h": 4, "w": 3, "x": 18, "y": 1 },
       "id": 7,
       "options": {
         "colorMode": "background",
@@ -270,11 +270,55 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "altergolden_redis_connection_status",
+          "expr": "altergolden_redis_connection_status or vector(0)",
           "refId": "A"
         }
       ],
-      "title": "Redis Status",
+      "title": "Redis",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { 
+              "options": { 
+                "0": { "color": "red", "index": 1, "text": "Disconnected" }, 
+                "1": { "color": "green", "index": 0, "text": "Connected" } 
+              }, 
+              "type": "value" 
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 3, "x": 21, "y": 1 },
+      "id": 17,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "altergolden_lavalink_node_status or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "title": "Lavalink",
       "type": "stat"
     },
     {
@@ -286,10 +330,7 @@
       "type": "row"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -308,7 +349,7 @@
             "pointSize": 5,
             "scaleDistribution": { "type": "linear" },
             "showPoints": "never",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": { "group": "A", "mode": "none" },
             "thresholdsStyle": { "mode": "off" }
           },
@@ -327,19 +368,16 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(altergolden_commands_executed_total[5m])) by (category)",
-          "legendFormat": "{{category}}",
+          "expr": "sum by (command) (rate(altergolden_commands_executed_total[5m]))",
+          "legendFormat": "{{command}}",
           "refId": "A"
         }
       ],
-      "title": "Commands per Second (by Category)",
+      "title": "Commands/sec (by Command)",
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -358,7 +396,7 @@
             "pointSize": 5,
             "scaleDistribution": { "type": "linear" },
             "showPoints": "never",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": { "group": "A", "mode": "none" },
             "thresholdsStyle": { "mode": "off" }
           },
@@ -377,25 +415,22 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.95, sum(rate(altergolden_command_execution_duration_seconds_bucket[5m])) by (le, category))",
-          "legendFormat": "p95 {{category}}",
+          "expr": "histogram_quantile(0.95, sum by (le, command) (rate(altergolden_command_execution_duration_seconds_bucket[5m])))",
+          "legendFormat": "p95 {{command}}",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.50, sum(rate(altergolden_command_execution_duration_seconds_bucket[5m])) by (le, category))",
-          "legendFormat": "p50 {{category}}",
+          "expr": "histogram_quantile(0.50, sum by (le, command) (rate(altergolden_command_execution_duration_seconds_bucket[5m])))",
+          "legendFormat": "p50 {{command}}",
           "refId": "B"
         }
       ],
-      "title": "Command Latency",
+      "title": "Command Latency (p50/p95)",
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -408,26 +443,23 @@
       "id": 13,
       "options": {
         "legend": { "displayMode": "list", "placement": "right", "showLegend": true },
-        "pieType": "pie",
+        "pieType": "donut",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "tooltip": { "mode": "single", "sort": "none" }
       },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(increase(altergolden_commands_executed_total[24h])) by (command)",
+          "expr": "topk(10, sum by (command) (increase(altergolden_commands_executed_total[24h])))",
           "legendFormat": "{{command}}",
           "refId": "A"
         }
       ],
-      "title": "Commands Used (24h)",
+      "title": "Top 10 Commands (24h)",
       "type": "piechart"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -451,7 +483,7 @@
             "thresholdsStyle": { "mode": "off" }
           },
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }] }
         },
         "overrides": []
       },
@@ -464,19 +496,16 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(altergolden_command_errors_total[5m])) by (error_type)",
+          "expr": "sum by (error_type) (rate(altergolden_command_errors_total[5m]))",
           "legendFormat": "{{error_type}}",
           "refId": "A"
         }
       ],
-      "title": "Command Errors (by Type)",
+      "title": "Command Errors",
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -485,8 +514,8 @@
             "mode": "absolute",
             "steps": [
               { "color": "green", "value": null },
-              { "color": "yellow", "value": 5 },
-              { "color": "red", "value": 10 }
+              { "color": "yellow", "value": 3 },
+              { "color": "red", "value": 5 }
             ]
           }
         },
@@ -505,8 +534,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "altergolden_commands_active",
-          "legendFormat": "{{command}}",
+          "expr": "sum(altergolden_commands_active) or vector(0)",
+          "legendFormat": "Running",
           "refId": "A"
         }
       ],
@@ -522,10 +551,7 @@
       "type": "row"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -544,7 +570,7 @@
             "pointSize": 5,
             "scaleDistribution": { "type": "linear" },
             "showPoints": "never",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": { "group": "A", "mode": "none" },
             "thresholdsStyle": { "mode": "off" }
           },
@@ -562,13 +588,13 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "altergolden_music_players_active",
+          "expr": "altergolden_music_players_active or vector(0)",
           "legendFormat": "Active Players",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "altergolden_music_voice_connections",
+          "expr": "altergolden_music_voice_connections or vector(0)",
           "legendFormat": "Voice Connections",
           "refId": "B"
         }
@@ -577,10 +603,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -599,7 +622,7 @@
             "pointSize": 5,
             "scaleDistribution": { "type": "linear" },
             "showPoints": "never",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": { "group": "A", "mode": "none" },
             "thresholdsStyle": { "mode": "off" }
           },
@@ -617,12 +640,18 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "altergolden_music_queue_size_total",
+          "expr": "altergolden_music_queue_size_total or vector(0)",
           "legendFormat": "Queue Size",
           "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(altergolden_music_tracks_played_total[5m])) * 60 or vector(0)",
+          "legendFormat": "Tracks/min",
+          "refId": "B"
         }
       ],
-      "title": "Total Queue Size",
+      "title": "Queue & Playback",
       "type": "timeseries"
     },
     {
@@ -634,10 +663,7 @@
       "type": "row"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -688,7 +714,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "altergolden_nodejs_external_memory_bytes",
-          "legendFormat": "External",
+          "legendFormat": "External Memory",
           "refId": "C"
         }
       ],
@@ -696,10 +722,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -738,7 +761,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "rate(altergolden_process_cpu_seconds_total[1m]) * 100",
-          "legendFormat": "CPU Usage",
+          "legendFormat": "CPU %",
           "refId": "A"
         }
       ],
@@ -750,14 +773,11 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 40 },
       "id": 40,
       "panels": [],
-      "title": "🔒 AutoMod",
+      "title": "🔒 AutoMod & Cache",
       "type": "row"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -781,11 +801,11 @@
             "thresholdsStyle": { "mode": "off" }
           },
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }] }
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 41 },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 41 },
       "id": 41,
       "options": {
         "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "bottom", "showLegend": true },
@@ -794,7 +814,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(altergolden_automod_violations_total[5m])) by (type)",
+          "expr": "sum by (type) (rate(altergolden_automod_violations_total[5m]))",
           "legendFormat": "{{type}}",
           "refId": "A"
         }
@@ -803,10 +823,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -834,7 +851,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 41 },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 41 },
       "id": 42,
       "options": {
         "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "bottom", "showLegend": true },
@@ -843,30 +860,72 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(altergolden_automod_actions_total[5m])) by (action)",
+          "expr": "sum by (action) (rate(altergolden_automod_actions_total[5m]))",
           "legendFormat": "{{action}}",
           "refId": "A"
         }
       ],
       "title": "AutoMod Actions",
       "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 41 },
+      "id": 43,
+      "options": {
+        "legend": { "calcs": ["mean"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(altergolden_cache_operations_total{result=\"hit\"}[5m])) / (sum(rate(altergolden_cache_operations_total{result=\"hit\"}[5m])) + sum(rate(altergolden_cache_operations_total{result=\"miss\"}[5m])))",
+          "legendFormat": "Hit Ratio",
+          "refId": "A"
+        }
+      ],
+      "title": "Cache Hit Ratio",
+      "type": "timeseries"
     }
   ],
-  "refresh": "30s",
+  "refresh": "10s",
   "schemaVersion": 38,
   "style": "dark",
   "tags": ["altergolden", "discord", "bot"],
-  "templating": {
-    "list": []
-  },
-  "time": {
-    "from": "now-1h",
-    "to": "now"
-  },
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "",
   "title": "alterGolden Bot Overview",
   "uid": "altergolden-overview",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }

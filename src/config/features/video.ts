@@ -30,13 +30,39 @@ export const mobile = {
 // Limits
 export const MAX_FILE_SIZE_MB = 100;
 export const MAX_VIDEO_DURATION_SECONDS = 600;
-export const MAX_CONCURRENT_DOWNLOADS = 3;
+export const MAX_CONCURRENT_DOWNLOADS = 5;
 export const USER_COOLDOWN_SECONDS = 30;
 export const limits = {
     maxFileSizeMB: 100,
     maxDurationSeconds: 600,
-    maxConcurrentDownloads: 3,
+    maxConcurrentDownloads: 5,
     userCooldownSeconds: 30
+};
+
+// Smart Rate Limiting
+export const smartRateLimiting = {
+    enabled: true,
+    // Global limits
+    globalMaxConcurrent: 10,
+    // Per-guild limits
+    perGuildMaxConcurrent: 3,
+    perGuildCooldownSeconds: 10,
+    // Peak hours detection (UTC)
+    peakHours: {
+        enabled: true,
+        start: 12, // 12:00 UTC (evening in Asia)
+        end: 22,   // 22:00 UTC
+        // During peak hours, reduce limits
+        peakMaxConcurrent: 8,
+        peakPerGuildMax: 2,
+        peakUserCooldownSeconds: 45
+    },
+    // Burst protection
+    burstProtection: {
+        enabled: true,
+        windowSeconds: 60,
+        maxRequestsPerWindow: 3
+    }
 };
 
 // Cleanup
@@ -81,6 +107,18 @@ export const messages = {
 // User Agent
 export const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
+// Cobalt instances for scaling
+// Can be set via environment variable COBALT_INSTANCES (comma-separated)
+// Or use default Docker Compose instances
+// Note: Use localhost ports (9001, 9002, 9003) when running bot outside Docker
+export const COBALT_INSTANCES = process.env.COBALT_INSTANCES 
+    ? process.env.COBALT_INSTANCES.split(',').map(url => url.trim())
+    : [
+        'http://localhost:9001',
+        'http://localhost:9002',
+        'http://localhost:9003'
+    ];
+
 export default {
     COBALT_VIDEO_QUALITY,
     YTDLP_VIDEO_QUALITY,
@@ -96,6 +134,7 @@ export default {
     MAX_CONCURRENT_DOWNLOADS,
     USER_COOLDOWN_SECONDS,
     limits,
+    smartRateLimiting,
     TEMP_FILE_CLEANUP_INTERVAL,
     TEMP_FILE_MAX_AGE,
     FILE_DELETE_DELAY,
@@ -106,5 +145,6 @@ export default {
     network,
     ui,
     messages,
-    userAgent
+    userAgent,
+    COBALT_INSTANCES
 };

@@ -27,6 +27,25 @@ interface VideoConfig {
     limits?: {
         maxFileSizeMB?: number;
     };
+    smartRateLimiting?: {
+        enabled: boolean;
+        globalMaxConcurrent: number;
+        perGuildMaxConcurrent: number;
+        perGuildCooldownSeconds: number;
+        peakHours: {
+            enabled: boolean;
+            start: number;
+            end: number;
+            peakMaxConcurrent: number;
+            peakPerGuildMax: number;
+            peakUserCooldownSeconds: number;
+        };
+        burstProtection: {
+            enabled: boolean;
+            windowSeconds: number;
+            maxRequestsPerWindow: number;
+        };
+    };
 }
 
 interface Platform {
@@ -53,6 +72,7 @@ interface ProgressData {
 
 interface VideoDownloadService {
     downloadVideo: (url: string, options: { quality: string }) => Promise<DownloadResult>;
+    getVideoUrl?: (url: string, options: { quality: string }) => Promise<{ url: string; filename?: string; size?: number } | null>;
     on?: (event: string, handler: (data: ProgressData) => void) => void;
     off?: (event: string, handler: (data: ProgressData) => void) => void;
 }
@@ -93,6 +113,95 @@ try {
 const userCooldowns = new Map<string, number>();
 const activeDownloads = new Set<string>();
 
+// Smart Rate Limiting
+const guildActiveDownloads = new Map<string, Set<string>>(); // guildId -> Set<userId>
+const guildCooldowns = new Map<string, number>();
+const userBurstTracking = new Map<string, number[]>(); // userId -> timestamps
+
+function isPeakHours(): boolean {
+    const smartConfig = videoConfig?.smartRateLimiting;
+    if (!smartConfig?.enabled || !smartConfig.peakHours?.enabled) return false;
+    
+    const now = new Date();
+    const currentHour = now.getUTCHours();
+    return currentHour >= smartConfig.peakHours.start && currentHour < smartConfig.peakHours.end;
+}
+
+function getEffectiveLimits() {
+    const smartConfig = videoConfig?.smartRateLimiting;
+    const isPeak = isPeakHours();
+    
+    if (!smartConfig?.enabled) {
+        return {
+            maxConcurrent: videoConfig?.MAX_CONCURRENT_DOWNLOADS || 5,
+            perGuildMax: 999,
+            userCooldown: videoConfig?.USER_COOLDOWN_SECONDS || 30
+        };
+    }
+    
+    if (isPeak && smartConfig.peakHours?.enabled) {
+        return {
+            maxConcurrent: smartConfig.peakHours.peakMaxConcurrent,
+            perGuildMax: smartConfig.peakHours.peakPerGuildMax,
+            userCooldown: smartConfig.peakHours.peakUserCooldownSeconds
+        };
+    }
+    
+    return {
+        maxConcurrent: smartConfig.globalMaxConcurrent,
+        perGuildMax: smartConfig.perGuildMaxConcurrent,
+        userCooldown: videoConfig?.USER_COOLDOWN_SECONDS || 30
+    };
+}
+
+function checkBurstLimit(userId: string): boolean {
+    const smartConfig = videoConfig?.smartRateLimiting;
+    if (!smartConfig?.enabled || !smartConfig.burstProtection?.enabled) return true;
+    
+    const now = Date.now();
+    const windowMs = smartConfig.burstProtection.windowSeconds * 1000;
+    const maxRequests = smartConfig.burstProtection.maxRequestsPerWindow;
+    
+    // Get user's request timestamps
+    const timestamps = userBurstTracking.get(userId) || [];
+    
+    // Filter to only requests within the window
+    const recentTimestamps = timestamps.filter(t => now - t < windowMs);
+    
+    if (recentTimestamps.length >= maxRequests) {
+        return false; // Burst limit exceeded
+    }
+    
+    // Add current request
+    recentTimestamps.push(now);
+    userBurstTracking.set(userId, recentTimestamps);
+    return true;
+}
+
+function checkGuildLimit(guildId: string): boolean {
+    const limits = getEffectiveLimits();
+    const guildDownloads = guildActiveDownloads.get(guildId);
+    if (!guildDownloads) return true;
+    return guildDownloads.size < limits.perGuildMax;
+}
+
+function addGuildDownload(guildId: string, userId: string): void {
+    if (!guildActiveDownloads.has(guildId)) {
+        guildActiveDownloads.set(guildId, new Set());
+    }
+    guildActiveDownloads.get(guildId)!.add(userId);
+}
+
+function removeGuildDownload(guildId: string, userId: string): void {
+    const guildDownloads = guildActiveDownloads.get(guildId);
+    if (guildDownloads) {
+        guildDownloads.delete(userId);
+        if (guildDownloads.size === 0) {
+            guildActiveDownloads.delete(guildId);
+        }
+    }
+}
+
 function checkCooldown(userId: string): number {
     const cooldown = userCooldowns.get(userId);
     if (cooldown && Date.now() < cooldown) {
@@ -102,13 +211,13 @@ function checkCooldown(userId: string): number {
 }
 
 function setCooldown(userId: string): void {
-    const cooldownSeconds = videoConfig?.USER_COOLDOWN_SECONDS || 30;
-    userCooldowns.set(userId, Date.now() + (cooldownSeconds * 1000));
+    const limits = getEffectiveLimits();
+    userCooldowns.set(userId, Date.now() + (limits.userCooldown * 1000));
 }
 
 function checkConcurrentLimit(): boolean {
-    const maxConcurrent = videoConfig?.MAX_CONCURRENT_DOWNLOADS || 5;
-    return activeDownloads.size >= maxConcurrent;
+    const limits = getEffectiveLimits();
+    return activeDownloads.size >= limits.maxConcurrent;
 }
 
 // Cleanup old cooldowns periodically
@@ -138,6 +247,15 @@ class VideoCommand extends BaseCommand {
                     .setRequired(true)
             )
             .addStringOption(option =>
+                option.setName('mode')
+                    .setDescription('Download mode')
+                    .addChoices(
+                        { name: '📥 Download - Bot downloads and sends video', value: 'download' },
+                        { name: '🔗 Link - Get direct download link', value: 'link' }
+                    )
+                    .setRequired(false)
+            )
+            .addStringOption(option =>
                 option.setName('quality')
                     .setDescription('Video quality preference')
                     .addChoices(
@@ -158,6 +276,8 @@ class VideoCommand extends BaseCommand {
         }
 
         const userId = interaction.user.id;
+        const guildId = interaction.guildId || 'dm';
+        const mode = interaction.options.getString('mode') || 'download';
 
         // Check user cooldown
         const remainingCooldown = checkCooldown(userId);
@@ -166,19 +286,43 @@ class VideoCommand extends BaseCommand {
                 .setColor(COLORS.ERROR)
                 .setTitle('⏳ Cooldown Active')
                 .setDescription(`Please wait **${remainingCooldown} seconds** before downloading another video.`)
-                .setFooter({ text: 'This helps prevent server overload' });
+                .setFooter({ text: isPeakHours() ? '🔥 Peak hours - Longer cooldowns' : 'This helps prevent server overload' });
             await interaction.editReply({ embeds: [cooldownEmbed] });
             return;
         }
 
-        // Check concurrent download limit
+        // Burst protection check
+        if (!checkBurstLimit(userId)) {
+            const smartConfig = videoConfig?.smartRateLimiting;
+            const burstEmbed = new EmbedBuilder()
+                .setColor(COLORS.ERROR)
+                .setTitle('⚡ Too Many Requests')
+                .setDescription(`You're requesting too quickly. Max **${smartConfig?.burstProtection?.maxRequestsPerWindow || 3}** requests per **${smartConfig?.burstProtection?.windowSeconds || 60}** seconds.\n\nPlease wait a moment before trying again.`)
+                .setFooter({ text: 'Burst protection active' });
+            await interaction.editReply({ embeds: [burstEmbed] });
+            return;
+        }
+
+        // Check per-guild limit
+        if (!checkGuildLimit(guildId)) {
+            const limits = getEffectiveLimits();
+            const guildLimitEmbed = new EmbedBuilder()
+                .setColor(COLORS.ERROR)
+                .setTitle('🏠 Server Limit Reached')
+                .setDescription(`This server has reached max concurrent downloads (**${limits.perGuildMax}**).\nPlease wait for other downloads to finish.`)
+                .setFooter({ text: isPeakHours() ? '🔥 Peak hours - Reduced limits' : 'Per-server rate limiting' });
+            await interaction.editReply({ embeds: [guildLimitEmbed] });
+            return;
+        }
+
+        // Check global concurrent download limit
         if (checkConcurrentLimit()) {
-            const maxConcurrent = videoConfig?.MAX_CONCURRENT_DOWNLOADS || 5;
+            const limits = getEffectiveLimits();
             const busyEmbed = new EmbedBuilder()
                 .setColor(COLORS.ERROR)
                 .setTitle('🚦 Server Busy')
-                .setDescription(`Too many downloads in progress. Please wait a moment and try again.\n\n*Max concurrent downloads: ${maxConcurrent}*`)
-                .setFooter({ text: 'This helps keep the bot responsive' });
+                .setDescription(`Too many downloads in progress globally. Please wait a moment and try again.\n\n*Max concurrent: ${limits.maxConcurrent}*`)
+                .setFooter({ text: isPeakHours() ? '🔥 Peak hours - Reduced capacity' : 'This helps keep the bot responsive' });
             await interaction.editReply({ embeds: [busyEmbed] });
             return;
         }
@@ -189,6 +333,59 @@ class VideoCommand extends BaseCommand {
         const platformName = typeof platform === 'string' ? platform : (platform?.name || 'Unknown');
         const platformId = typeof platform === 'string' ? 'web' : (platform?.id || 'web');
 
+        // === LINK MODE: Get direct URL without downloading ===
+        if (mode === 'link') {
+            try {
+                const linkEmbed = new EmbedBuilder()
+                    .setColor(COLORS.PRIMARY)
+                    .setTitle('🔗 Getting Direct Link')
+                    .setDescription(`**Platform:** ${platformName}\n\nFetching download link...`)
+                    .setFooter({ text: '🔗 Link Mode • Faster, no file size limit' });
+                await interaction.editReply({ embeds: [linkEmbed] });
+
+                // Get video URL without downloading
+                const videoInfo = await videoDownloadService?.getVideoUrl?.(url, { quality });
+                
+                if (!videoInfo?.url) {
+                    throw new Error('Could not get direct download link');
+                }
+
+                // Set cooldown (shorter for link mode)
+                const linkCooldownSeconds = Math.floor((videoConfig?.USER_COOLDOWN_SECONDS || 30) / 2);
+                userCooldowns.set(userId, Date.now() + (linkCooldownSeconds * 1000));
+
+                const successEmbed = new EmbedBuilder()
+                    .setColor(COLORS.SUCCESS)
+                    .setTitle('🔗 Direct Download Link')
+                    .setDescription(
+                        `**Platform:** ${platformName}\n` +
+                        `**Quality:** ${quality}p\n\n` +
+                        `**Download Link:**\n${videoInfo.url}\n\n` +
+                        `*Link will expire in a few minutes*`
+                    )
+                    .setFooter({ text: '💡 Right-click and "Save link as..." to download' });
+
+                const downloadButton = new ButtonBuilder()
+                    .setLabel('📥 Open Download Link')
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(videoInfo.url);
+
+                const row = new ActionRowBuilder<ButtonBuilder>().addComponents(downloadButton);
+                
+                await interaction.editReply({ embeds: [successEmbed], components: [row] });
+                return;
+            } catch (error) {
+                const errorEmbed = new EmbedBuilder()
+                    .setColor(COLORS.ERROR)
+                    .setTitle('❌ Link Failed')
+                    .setDescription(`Could not get direct link.\n\n**Error:** ${(error as Error).message}\n\n*Try using Download mode instead.*`)
+                    .setFooter({ text: 'Link mode error' });
+                await interaction.editReply({ embeds: [errorEmbed] });
+                return;
+            }
+        }
+
+        // === DOWNLOAD MODE ===
         // Show loading embed immediately (replace "thinking")
         try {
             const loadingEmbed = videoEmbedBuilder?.buildLoadingEmbed?.(platformName, platformId, 'initializing') ||
@@ -208,6 +405,7 @@ class VideoCommand extends BaseCommand {
         }
 
         activeDownloads.add(userId);
+        addGuildDownload(guildId, userId);
         let downloadedFilePath: string | null = null;
 
         try {
@@ -409,6 +607,7 @@ class VideoCommand extends BaseCommand {
             await interaction.editReply({ embeds: [errorEmbed], files: [], components: [] }).catch(() => {});
         } finally {
             activeDownloads.delete(userId);
+            removeGuildDownload(guildId, userId);
         }
     }
 }

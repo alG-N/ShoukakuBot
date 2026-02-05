@@ -1,7 +1,23 @@
+# ═══════════════════════════════════════════════════════════════
+# ALTERGOLDEN BACKEND - Memory Management
+# ═══════════════════════════════════════════════════════════════
+# 
+# Memory Bloat Prevention:
+# - Log rotation: Giới hạn log size (max-size: 10m, max-file: 3)
+# - Memory limits: Giới hạn RAM cho mỗi service
+# - Health checks: Auto-restart unhealthy containers
+# - Restart policy: on-failure với max 5 retries
+#
+# Prune cron job (thêm vào crontab):
+# 0 4 * * * docker system prune -f >> /var/log/docker-prune.log 2>&1
+# ═══════════════════════════════════════════════════════════════
+
 version: '3.8'
 
 services:
+  # ───────────────────────────────────────────────────────────────
   # PostgreSQL Database
+  # ───────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     container_name: altergolden-postgres
@@ -15,13 +31,27 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/init:/docker-entrypoint-initdb.d
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+        reservations:
+          memory: 192M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-altergolden} -d ${DB_NAME:-altergolden_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
 
+  # ───────────────────────────────────────────────────────────────
   # Redis Cache
+  # ───────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: altergolden-redis
@@ -31,17 +61,31 @@ services:
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+        reservations:
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 5s
 
   # ═══════════════════════════════════════════════════════════════
   # MONITORING STACK
   # ═══════════════════════════════════════════════════════════════
   
+  # ───────────────────────────────────────────────────────────────
   # Prometheus - Metrics Collection
+  # ───────────────────────────────────────────────────────────────
   prometheus:
     image: prom/prometheus:v2.48.0
     container_name: altergolden-prometheus
@@ -59,13 +103,27 @@ services:
       - "9090:9090"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 15s
 
+  # ───────────────────────────────────────────────────────────────
   # Grafana - Visualization & Dashboards
+  # ───────────────────────────────────────────────────────────────
   grafana:
     image: grafana/grafana:10.2.2
     container_name: altergolden-grafana
@@ -84,11 +142,23 @@ services:
       - "3030:3000"
     depends_on:
       - prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
 
 volumes:
   postgres_data:
@@ -102,7 +172,7 @@ volumes:
 
 # Note: Using existing services from your Docker setup:
 # - lavalinklocalserver (Lavalink music)
-# - cobaltlocalserver (Video downloads)
+# - cobaltlocalserver (Video downloads - scaled instances in CobaltLocalServer)
 # - invidiouscompa (YouTube)
 # - ytdlplocalserver (yt-dlp)
 # - yt-cipher (YouTube cipher)

@@ -315,6 +315,21 @@ class VideoDownloadService extends EventEmitter {
         return null;
     }
 
+    /**
+     * Get video URL without downloading (alias for slash command compatibility)
+     * Returns direct download link for "Link mode"
+     */
+    async getVideoUrl(url: string, options: { quality?: string } = {}): Promise<{ url: string; filename?: string; size?: number } | null> {
+        const result = await this.getDirectUrl(url, options);
+        if (result?.directUrl) {
+            return {
+                url: result.directUrl,
+                filename: result.title || 'video'
+            };
+        }
+        return null;
+    }
+
     cleanupTempFiles(): void {
         if (!fs.existsSync(this.tempDir)) return;
 

@@ -4,7 +4,7 @@
  * @module config/features/video
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.userAgent = exports.messages = exports.ui = exports.network = exports.FRAGMENT_RETRIES = exports.MAX_RETRIES = exports.DOWNLOAD_TIMEOUT = exports.cleanup = exports.FILE_DELETE_DELAY = exports.TEMP_FILE_MAX_AGE = exports.TEMP_FILE_CLEANUP_INTERVAL = exports.limits = exports.USER_COOLDOWN_SECONDS = exports.MAX_CONCURRENT_DOWNLOADS = exports.MAX_VIDEO_DURATION_SECONDS = exports.MAX_FILE_SIZE_MB = exports.mobile = exports.MOBILE_PRESET = exports.MOBILE_CRF = exports.MOBILE_AUDIO_CODEC = exports.MOBILE_VIDEO_CODEC = exports.ENABLE_MOBILE_PROCESSING = exports.quality = exports.YTDLP_VIDEO_QUALITY = exports.COBALT_VIDEO_QUALITY = void 0;
+exports.COBALT_INSTANCES = exports.userAgent = exports.messages = exports.ui = exports.network = exports.FRAGMENT_RETRIES = exports.MAX_RETRIES = exports.DOWNLOAD_TIMEOUT = exports.cleanup = exports.FILE_DELETE_DELAY = exports.TEMP_FILE_MAX_AGE = exports.TEMP_FILE_CLEANUP_INTERVAL = exports.smartRateLimiting = exports.limits = exports.USER_COOLDOWN_SECONDS = exports.MAX_CONCURRENT_DOWNLOADS = exports.MAX_VIDEO_DURATION_SECONDS = exports.MAX_FILE_SIZE_MB = exports.mobile = exports.MOBILE_PRESET = exports.MOBILE_CRF = exports.MOBILE_AUDIO_CODEC = exports.MOBILE_VIDEO_CODEC = exports.ENABLE_MOBILE_PROCESSING = exports.quality = exports.YTDLP_VIDEO_QUALITY = exports.COBALT_VIDEO_QUALITY = void 0;
 // Quality settings
 exports.COBALT_VIDEO_QUALITY = '720';
 exports.YTDLP_VIDEO_QUALITY = '720';
@@ -30,13 +30,38 @@ exports.mobile = {
 // Limits
 exports.MAX_FILE_SIZE_MB = 100;
 exports.MAX_VIDEO_DURATION_SECONDS = 600;
-exports.MAX_CONCURRENT_DOWNLOADS = 3;
+exports.MAX_CONCURRENT_DOWNLOADS = 5;
 exports.USER_COOLDOWN_SECONDS = 30;
 exports.limits = {
     maxFileSizeMB: 100,
     maxDurationSeconds: 600,
-    maxConcurrentDownloads: 3,
+    maxConcurrentDownloads: 5,
     userCooldownSeconds: 30
+};
+// Smart Rate Limiting
+exports.smartRateLimiting = {
+    enabled: true,
+    // Global limits
+    globalMaxConcurrent: 10,
+    // Per-guild limits
+    perGuildMaxConcurrent: 3,
+    perGuildCooldownSeconds: 10,
+    // Peak hours detection (UTC)
+    peakHours: {
+        enabled: true,
+        start: 12, // 12:00 UTC (evening in Asia)
+        end: 22, // 22:00 UTC
+        // During peak hours, reduce limits
+        peakMaxConcurrent: 8,
+        peakPerGuildMax: 2,
+        peakUserCooldownSeconds: 45
+    },
+    // Burst protection
+    burstProtection: {
+        enabled: true,
+        windowSeconds: 60,
+        maxRequestsPerWindow: 3
+    }
 };
 // Cleanup
 exports.TEMP_FILE_CLEANUP_INTERVAL = 5 * 60 * 1000;
@@ -75,6 +100,17 @@ exports.messages = {
 };
 // User Agent
 exports.userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+// Cobalt instances for scaling
+// Can be set via environment variable COBALT_INSTANCES (comma-separated)
+// Or use default Docker Compose instances
+// Note: Use localhost ports (9001, 9002, 9003) when running bot outside Docker
+exports.COBALT_INSTANCES = process.env.COBALT_INSTANCES
+    ? process.env.COBALT_INSTANCES.split(',').map(url => url.trim())
+    : [
+        'http://localhost:9001',
+        'http://localhost:9002',
+        'http://localhost:9003'
+    ];
 exports.default = {
     COBALT_VIDEO_QUALITY: exports.COBALT_VIDEO_QUALITY,
     YTDLP_VIDEO_QUALITY: exports.YTDLP_VIDEO_QUALITY,
@@ -90,6 +126,7 @@ exports.default = {
     MAX_CONCURRENT_DOWNLOADS: exports.MAX_CONCURRENT_DOWNLOADS,
     USER_COOLDOWN_SECONDS: exports.USER_COOLDOWN_SECONDS,
     limits: exports.limits,
+    smartRateLimiting: exports.smartRateLimiting,
     TEMP_FILE_CLEANUP_INTERVAL: exports.TEMP_FILE_CLEANUP_INTERVAL,
     TEMP_FILE_MAX_AGE: exports.TEMP_FILE_MAX_AGE,
     FILE_DELETE_DELAY: exports.FILE_DELETE_DELAY,
@@ -100,6 +137,7 @@ exports.default = {
     network: exports.network,
     ui: exports.ui,
     messages: exports.messages,
-    userAgent: exports.userAgent
+    userAgent: exports.userAgent,
+    COBALT_INSTANCES: exports.COBALT_INSTANCES
 };
 //# sourceMappingURL=video.js.map

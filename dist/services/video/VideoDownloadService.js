@@ -280,6 +280,20 @@ class VideoDownloadService extends events_1.EventEmitter {
         }
         return null;
     }
+    /**
+     * Get video URL without downloading (alias for slash command compatibility)
+     * Returns direct download link for "Link mode"
+     */
+    async getVideoUrl(url, options = {}) {
+        const result = await this.getDirectUrl(url, options);
+        if (result?.directUrl) {
+            return {
+                url: result.directUrl,
+                filename: result.title || 'video'
+            };
+        }
+        return null;
+    }
     cleanupTempFiles() {
         if (!fs.existsSync(this.tempDir))
             return;

@@ -5,6 +5,17 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ==========================================
+-- UPDATE TIMESTAMP FUNCTION (must be first!)
+-- ==========================================
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ==========================================
 -- GUILD SETTINGS TABLE
 -- ==========================================
 CREATE TABLE IF NOT EXISTS guild_settings (
@@ -24,6 +35,45 @@ CREATE TABLE IF NOT EXISTS guild_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TRIGGER update_guild_settings_timestamp
+    BEFORE UPDATE ON guild_settings
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- ==========================================
+-- AUTOMOD SETTINGS TABLE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS automod_settings (
+    guild_id VARCHAR(20) PRIMARY KEY,
+    enabled BOOLEAN DEFAULT false,
+    anti_spam BOOLEAN DEFAULT false,
+    anti_spam_threshold INTEGER DEFAULT 5,
+    anti_spam_interval INTEGER DEFAULT 5000,
+    anti_spam_action VARCHAR(20) DEFAULT 'warn',
+    anti_links BOOLEAN DEFAULT false,
+    anti_links_whitelist TEXT[] DEFAULT '{}',
+    anti_links_action VARCHAR(20) DEFAULT 'delete',
+    anti_invites BOOLEAN DEFAULT false,
+    anti_invites_action VARCHAR(20) DEFAULT 'delete',
+    anti_caps BOOLEAN DEFAULT false,
+    anti_caps_threshold INTEGER DEFAULT 70,
+    anti_caps_min_length INTEGER DEFAULT 10,
+    anti_caps_action VARCHAR(20) DEFAULT 'warn',
+    anti_mentions BOOLEAN DEFAULT false,
+    anti_mentions_threshold INTEGER DEFAULT 5,
+    anti_mentions_action VARCHAR(20) DEFAULT 'warn',
+    bad_words TEXT[] DEFAULT '{}',
+    bad_words_action VARCHAR(20) DEFAULT 'delete',
+    exempt_roles TEXT[] DEFAULT '{}',
+    exempt_channels TEXT[] DEFAULT '{}',
+    log_channel VARCHAR(20),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TRIGGER update_automod_settings_timestamp
+    BEFORE UPDATE ON automod_settings
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
 -- ==========================================
 -- MODERATION LOGS TABLE
 -- ==========================================
@@ -32,9 +82,9 @@ CREATE TABLE IF NOT EXISTS moderation_logs (
     guild_id VARCHAR(20) NOT NULL,
     user_id VARCHAR(20) NOT NULL,
     moderator_id VARCHAR(20) NOT NULL,
-    action VARCHAR(20) NOT NULL, -- kick, ban, mute, warn, timeout
+    action VARCHAR(20) NOT NULL,
     reason TEXT,
-    duration INTEGER, -- in seconds, for timeouts/mutes
+    duration INTEGER,
     expires_at TIMESTAMP WITH TIME ZONE,
     active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -60,6 +110,10 @@ CREATE TABLE IF NOT EXISTS user_data (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TRIGGER update_user_data_timestamp
+    BEFORE UPDATE ON user_data
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
 -- ==========================================
 -- GUILD USER DATA TABLE (Per-server stats)
 -- ==========================================
@@ -69,7 +123,7 @@ CREATE TABLE IF NOT EXISTS guild_user_data (
     xp INTEGER DEFAULT 0,
     level INTEGER DEFAULT 1,
     messages INTEGER DEFAULT 0,
-    voice_time INTEGER DEFAULT 0, -- in seconds
+    voice_time INTEGER DEFAULT 0,
     warns INTEGER DEFAULT 0,
     last_message_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -80,17 +134,20 @@ CREATE TABLE IF NOT EXISTS guild_user_data (
 CREATE INDEX idx_guild_user_level ON guild_user_data(guild_id, level DESC);
 CREATE INDEX idx_guild_user_xp ON guild_user_data(guild_id, xp DESC);
 
+CREATE TRIGGER update_guild_user_data_timestamp
+    BEFORE UPDATE ON guild_user_data
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
 -- ==========================================
 -- AFK TABLE
 -- ==========================================
--- Note: user_afk supports both global AFK (guild_id IS NULL) and guild-specific AFK
 CREATE TABLE IF NOT EXISTS user_afk (
     id SERIAL PRIMARY KEY,
     user_id VARCHAR(20) NOT NULL,
-    guild_id VARCHAR(20), -- NULL for global AFK
+    guild_id VARCHAR(20),
     reason TEXT DEFAULT 'AFK',
-    timestamp BIGINT NOT NULL, -- Unix timestamp in milliseconds
-    type VARCHAR(10) NOT NULL DEFAULT 'guild', -- 'global' or 'guild'
+    timestamp BIGINT NOT NULL,
+    type VARCHAR(10) NOT NULL DEFAULT 'guild',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (user_id, guild_id)
@@ -100,7 +157,6 @@ CREATE INDEX IF NOT EXISTS idx_user_afk_guild ON user_afk(guild_id) WHERE guild_
 CREATE INDEX IF NOT EXISTS idx_user_afk_global ON user_afk(user_id) WHERE guild_id IS NULL;
 CREATE INDEX IF NOT EXISTS idx_user_afk_user ON user_afk(user_id);
 
--- Update timestamp trigger for user_afk
 CREATE TRIGGER update_user_afk_timestamp
     BEFORE UPDATE ON user_afk
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -160,6 +216,10 @@ CREATE TABLE IF NOT EXISTS playlists (
 CREATE INDEX idx_playlists_user ON playlists(user_id);
 CREATE INDEX idx_playlists_public ON playlists(is_public) WHERE is_public = true;
 
+CREATE TRIGGER update_playlists_timestamp
+    BEFORE UPDATE ON playlists
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
 -- ==========================================
 -- BOT STATISTICS TABLE
 -- ==========================================
@@ -184,51 +244,13 @@ CREATE TABLE IF NOT EXISTS command_analytics (
     guild_id VARCHAR(20),
     user_id VARCHAR(20) NOT NULL,
     success BOOLEAN DEFAULT true,
-    execution_time INTEGER, -- in milliseconds
+    execution_time INTEGER,
     error_message TEXT,
     used_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_cmd_analytics_name ON command_analytics(command_name);
 CREATE INDEX idx_cmd_analytics_date ON command_analytics(used_at);
-
--- ==========================================
--- UPDATE TIMESTAMP FUNCTION
--- ==========================================
-CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Apply update trigger to relevant tables
-CREATE TRIGGER update_guild_settings_timestamp
-    BEFORE UPDATE ON guild_settings
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
-CREATE TRIGGER update_user_data_timestamp
-    BEFORE UPDATE ON user_data
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
-CREATE TRIGGER update_guild_user_data_timestamp
-    BEFORE UPDATE ON guild_user_data
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
-CREATE TRIGGER update_playlists_timestamp
-    BEFORE UPDATE ON playlists
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
--- ==========================================
--- INITIAL DATA
--- ==========================================
-INSERT INTO bot_stats (date, commands_used) VALUES (CURRENT_DATE, 0)
-ON CONFLICT (date) DO NOTHING;
-
--- Grant permissions
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO altergolden;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO altergolden;
 
 -- ==========================================
 -- ANIME FAVOURITES TABLE
@@ -255,4 +277,16 @@ CREATE TABLE IF NOT EXISTS anime_notifications (
     PRIMARY KEY (user_id, anime_id)
 );
 
-CREATE INDEX idx_anime_notif_enabled ON anime_notifications(notify) WHERE notify = true;
+CREATE TRIGGER update_anime_notifications_timestamp
+    BEFORE UPDATE ON anime_notifications
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- ==========================================
+-- INITIAL DATA
+-- ==========================================
+INSERT INTO bot_stats (date, commands_used) VALUES (CURRENT_DATE, 0)
+ON CONFLICT (date) DO NOTHING;
+
+-- Grant permissions
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO altergolden;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO altergolden;
