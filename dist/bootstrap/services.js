@@ -15,7 +15,7 @@ const Logger_js_1 = require("../core/Logger.js");
 // Pre-import modules to avoid require() - loaded at registration time
 const postgres_js_1 = require("../database/postgres.js");
 const RedisCache_js_1 = require("../services/guild/RedisCache.js");
-const CacheService_js_1 = require("../cache/CacheService.js");
+const CacheService_js_1 = __importDefault(require("../cache/CacheService.js"));
 const CommandRegistry_js_1 = require("../services/registry/CommandRegistry.js");
 const EventRegistry_js_1 = require("../services/registry/EventRegistry.js");
 const LavalinkService_js_1 = require("../services/music/LavalinkService.js");
@@ -39,8 +39,9 @@ function registerServices() {
         return new RedisCache_js_1.RedisCache();
     }, { tags: ['core', 'cache'] });
     // Unified Cache Service (recommended for all caching)
+    // Use singleton to ensure Redis connection is shared across all imports
     container_js_1.default.register('cacheService', () => {
-        return new CacheService_js_1.CacheService();
+        return CacheService_js_1.default;
     }, { tags: ['core', 'cache'] });
     // REGISTRY SERVICES
     container_js_1.default.register('commandRegistry', () => {

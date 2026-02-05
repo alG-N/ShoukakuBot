@@ -29,6 +29,12 @@ interface InteractionErrorBoundaryOptions {
 export function initializeErrorHandlers(client: Client): void {
     // Uncaught exceptions
     process.on('uncaughtException', (error: Error) => {
+        // Parse stack trace for file/line info
+        const stackMatch = error.stack?.match(/at\s+(.+?)\s+\((.+?):(\d+):(\d+)\)/);
+        const file = stackMatch ? stackMatch[2] : undefined;
+        const line = stackMatch ? stackMatch[3] : undefined;
+        const fn = stackMatch ? stackMatch[1] : undefined;
+
         // Check if operational error
         if (AppError.isOperationalError(error)) {
             logger.error('ErrorHandler', `Operational Error: ${error.message}`);
@@ -36,8 +42,18 @@ export function initializeErrorHandlers(client: Client): void {
             logger.critical('ErrorHandler', `Uncaught Exception: ${error.message}`);
             console.error('Stack:', error.stack);
             
-            // Log to Discord if possible
-            logger.logError('Uncaught Exception', error).catch(() => {});
+            // Log detailed error to Discord
+            logger.logErrorDetailed({
+                title: 'Uncaught Exception',
+                error,
+                file,
+                line,
+                function: fn,
+                context: {
+                    'Type': error.name,
+                    'Operational': 'false'
+                }
+            }).catch(() => {});
             
             // For programmer errors, exit after logging
             // (in production, process manager should restart)
@@ -46,15 +62,33 @@ export function initializeErrorHandlers(client: Client): void {
     });
 
     // Unhandled promise rejections
-    process.on('unhandledRejection', (reason: unknown) => {
+    process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
         const error = reason instanceof Error ? reason : new Error(String(reason));
+        
+        // Parse stack trace for file/line info
+        const stackMatch = error.stack?.match(/at\s+(.+?)\s+\((.+?):(\d+):(\d+)\)/);
+        const file = stackMatch ? stackMatch[2] : undefined;
+        const line = stackMatch ? stackMatch[3] : undefined;
+        const fn = stackMatch ? stackMatch[1] : undefined;
         
         if (AppError.isOperationalError(error)) {
             logger.error('ErrorHandler', `Unhandled Rejection (Operational): ${error.message}`);
         } else {
             logger.critical('ErrorHandler', `Unhandled Rejection: ${error.message}`);
             console.error('Stack:', error.stack);
-            logger.logError('Unhandled Rejection', error).catch(() => {});
+            
+            // Log detailed error to Discord
+            logger.logErrorDetailed({
+                title: 'Unhandled Promise Rejection',
+                error,
+                file,
+                line,
+                function: fn,
+                context: {
+                    'Type': error.name,
+                    'Promise': '[object Promise]'
+                }
+            }).catch(() => {});
         }
     });
 

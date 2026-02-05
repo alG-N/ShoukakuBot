@@ -45,27 +45,72 @@ CREATE TRIGGER update_guild_settings_timestamp
 CREATE TABLE IF NOT EXISTS automod_settings (
     guild_id VARCHAR(20) PRIMARY KEY,
     enabled BOOLEAN DEFAULT false,
-    anti_spam BOOLEAN DEFAULT false,
-    anti_spam_threshold INTEGER DEFAULT 5,
-    anti_spam_interval INTEGER DEFAULT 5000,
-    anti_spam_action VARCHAR(20) DEFAULT 'warn',
-    anti_links BOOLEAN DEFAULT false,
-    anti_links_whitelist TEXT[] DEFAULT '{}',
-    anti_links_action VARCHAR(20) DEFAULT 'delete',
-    anti_invites BOOLEAN DEFAULT false,
-    anti_invites_action VARCHAR(20) DEFAULT 'delete',
-    anti_caps BOOLEAN DEFAULT false,
-    anti_caps_threshold INTEGER DEFAULT 70,
-    anti_caps_min_length INTEGER DEFAULT 10,
-    anti_caps_action VARCHAR(20) DEFAULT 'warn',
-    anti_mentions BOOLEAN DEFAULT false,
-    anti_mentions_threshold INTEGER DEFAULT 5,
-    anti_mentions_action VARCHAR(20) DEFAULT 'warn',
-    bad_words TEXT[] DEFAULT '{}',
-    bad_words_action VARCHAR(20) DEFAULT 'delete',
-    exempt_roles TEXT[] DEFAULT '{}',
-    exempt_channels TEXT[] DEFAULT '{}',
-    log_channel VARCHAR(20),
+    
+    -- Filter/Bad Words
+    filter_enabled BOOLEAN DEFAULT false,
+    filtered_words TEXT[] DEFAULT '{}',
+    
+    -- Spam Protection
+    spam_enabled BOOLEAN DEFAULT false,
+    spam_threshold INTEGER DEFAULT 5,
+    spam_interval INTEGER DEFAULT 5000,
+    spam_window_ms INTEGER DEFAULT 5000,
+    spam_action VARCHAR(20) DEFAULT 'warn',
+    spam_mute_duration_ms INTEGER DEFAULT 300000,
+    
+    -- Duplicate Messages
+    duplicate_enabled BOOLEAN DEFAULT false,
+    duplicate_threshold INTEGER DEFAULT 3,
+    duplicate_window_ms INTEGER DEFAULT 60000,
+    duplicate_action VARCHAR(20) DEFAULT 'warn',
+    
+    -- Links Protection
+    links_enabled BOOLEAN DEFAULT false,
+    links_whitelist TEXT[] DEFAULT '{}',
+    links_action VARCHAR(20) DEFAULT 'delete',
+    
+    -- Mention Spam
+    mention_enabled BOOLEAN DEFAULT false,
+    mention_limit INTEGER DEFAULT 5,
+    mention_action VARCHAR(20) DEFAULT 'warn',
+    
+    -- Caps Lock
+    caps_enabled BOOLEAN DEFAULT false,
+    caps_percent INTEGER DEFAULT 70,
+    caps_percentage INTEGER DEFAULT 70,
+    caps_min_length INTEGER DEFAULT 10,
+    caps_action VARCHAR(20) DEFAULT 'warn',
+    
+    -- Discord Invites
+    invites_enabled BOOLEAN DEFAULT false,
+    invites_whitelist TEXT[] DEFAULT '{}',
+    invites_action VARCHAR(20) DEFAULT 'delete',
+    
+    -- New Account Protection
+    new_account_enabled BOOLEAN DEFAULT false,
+    new_account_age_hours INTEGER DEFAULT 24,
+    new_account_action VARCHAR(20) DEFAULT 'kick',
+    
+    -- Raid Protection
+    raid_enabled BOOLEAN DEFAULT false,
+    raid_join_threshold INTEGER DEFAULT 10,
+    raid_window_ms INTEGER DEFAULT 10000,
+    raid_action VARCHAR(20) DEFAULT 'kick',
+    raid_auto_unlock_ms INTEGER DEFAULT 300000,
+    
+    -- Ignored Channels/Roles
+    ignored_channels TEXT[] DEFAULT '{}',
+    ignored_roles TEXT[] DEFAULT '{}',
+    log_channel_id VARCHAR(20),
+    
+    -- Warn Settings
+    auto_warn BOOLEAN DEFAULT false,
+    mute_duration INTEGER DEFAULT 300000,
+    default_action VARCHAR(20) DEFAULT 'warn',
+    warn_threshold INTEGER DEFAULT 3,
+    warn_action VARCHAR(20) DEFAULT 'mute',
+    warn_reset_hours INTEGER DEFAULT 24,
+    
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

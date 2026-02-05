@@ -1,17 +1,39 @@
 /**
  * Help Command - Presentation Layer
- * Shows list of available commands
+ * Shows list of available commands with button navigation
  * @module commands/general/help
  */
 
-import { SlashCommandBuilder, EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
+import { 
+    SlashCommandBuilder, 
+    EmbedBuilder, 
+    ChatInputCommandInteraction,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    ComponentType,
+    ButtonInteraction
+} from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand';
 import { COLORS } from '../../constants';
 
 /**
- * Help category filter values
+ * Help category types
  */
-type HelpCategory = 'media' | 'music' | 'fun' | 'utility' | 'admin' | null;
+type HelpCategory = 'home' | 'media' | 'music' | 'fun' | 'utility' | 'admin' | 'moderation';
+
+/**
+ * Category configuration
+ */
+const CATEGORIES: Record<HelpCategory, { emoji: string; name: string; description: string }> = {
+    home: { emoji: '🏠', name: 'Home', description: 'Overview' },
+    media: { emoji: '🎬', name: 'Media', description: 'Video & Image commands' },
+    music: { emoji: '🎵', name: 'Music', description: 'Music playback' },
+    fun: { emoji: '⚔️', name: 'Fun', description: 'Interactive games' },
+    utility: { emoji: '📋', name: 'Utility', description: 'Useful tools' },
+    admin: { emoji: '🛡️', name: 'Admin', description: 'Server management' },
+    moderation: { emoji: '⚙️', name: 'Moderation', description: 'Auto-mod & filters' }
+};
 
 class HelpCommand extends BaseCommand {
     constructor() {
@@ -25,107 +47,342 @@ class HelpCommand extends BaseCommand {
     get data(): CommandData {
         return new SlashCommandBuilder()
             .setName('help')
-            .setDescription('Shows a list of all available commands')
-            .addStringOption(option =>
-                option.setName('category')
-                    .setDescription('Filter commands by category')
-                    .setRequired(false)
-                    .addChoices(
-                        { name: '🎬 Media', value: 'media' },
-                        { name: '🎵 Music', value: 'music' },
-                        { name: '⚔️ Fun', value: 'fun' },
-                        { name: '📋 Utility', value: 'utility' },
-                        { name: '🛡️ Admin', value: 'admin' }
-                    )
-            );
+            .setDescription('Shows a list of all available commands');
     }
 
-    async run(interaction: ChatInputCommandInteraction): Promise<void> {
-        const category = interaction.options.getString('category') as HelpCategory;
-
+    /**
+     * Build embed for a specific category
+     */
+    private buildCategoryEmbed(category: HelpCategory, user: { tag: string; displayAvatarURL: () => string }): EmbedBuilder {
         const embed = new EmbedBuilder()
-            .setTitle('📚 alterGolden - Command List')
             .setColor(COLORS.INFO)
             .setTimestamp()
             .setFooter({ 
-                text: `Requested by ${interaction.user.tag}`, 
-                iconURL: interaction.user.displayAvatarURL() 
+                text: `Requested by ${user.tag} • Use buttons to navigate`, 
+                iconURL: user.displayAvatarURL() 
             });
 
-        if (!category || category === 'media') {
-            embed.addFields({
-                name: '🎬 Media Commands', 
-                value: [
-                    '`/video [url]` - Download videos from TikTok, YouTube, Twitter, etc.',
-                    '`/pixiv [query]` - Search Pixiv artwork',
-                    '`/reddit [subreddit]` - Fetch posts from Reddit',
-                    '`/anime [name]` - Search anime information',
-                    '`/steam` - Check Steam sales',
-                    '`/rule34 search [tag]` - Search Rule34 images'
-                ].join('\n'),
-                inline: false 
-            });
+        switch (category) {
+            case 'home':
+                embed
+                    .setTitle('📚 alterGolden - Help Menu')
+                    .setDescription(
+                        '**Welcome to alterGolden!** 🎉\n\n' +
+                        'Use the buttons below to browse commands by category.\n\n' +
+                        '**Quick Start:**\n' +
+                        '> 🎬 `/video` - Download videos from social media\n' +
+                        '> 🎵 `/music play` - Play music in voice channel\n' +
+                        '> ⚔️ `/deathbattle` - Battle with anime skillsets\n' +
+                        '> 🛡️ `/automod` - Configure auto-moderation\n\n' +
+                        '**Categories:**'
+                    )
+                    .addFields(
+                        { name: '🎬 Media', value: 'Video downloads, Reddit, Pixiv', inline: true },
+                        { name: '🎵 Music', value: 'Play, queue, controls', inline: true },
+                        { name: '⚔️ Fun', value: 'Games & interactions', inline: true },
+                        { name: '📋 Utility', value: 'Avatar, info, AFK', inline: true },
+                        { name: '🛡️ Admin', value: 'Kick, ban, mute', inline: true },
+                        { name: '⚙️ Moderation', value: 'AutoMod, filters', inline: true }
+                    );
+                break;
+
+            case 'media':
+                embed
+                    .setTitle('🎬 Media Commands')
+                    .setDescription('Download videos and browse content from various platforms.')
+                    .addFields(
+                        { 
+                            name: '📥 Video Download', 
+                            value: [
+                                '`/video [url]` - Download from TikTok, YouTube, Twitter, etc.',
+                                '`/video [url] mode:link` - Get direct download link',
+                                '`/video [url] quality:480` - Lower quality, smaller file'
+                            ].join('\n'),
+                            inline: false 
+                        },
+                        { 
+                            name: '🎨 Image & Content', 
+                            value: [
+                                '`/pixiv [query]` - Search Pixiv artwork',
+                                '`/reddit [subreddit]` - Fetch posts from Reddit',
+                                '`/rule34 search [tag]` - Search R34 images'
+                            ].join('\n'),
+                            inline: false 
+                        },
+                        { 
+                            name: '📺 Info', 
+                            value: [
+                                '`/anime [name]` - Search anime information',
+                                '`/steam` - Check Steam sales'
+                            ].join('\n'),
+                            inline: false 
+                        }
+                    );
+                break;
+
+            case 'music':
+                embed
+                    .setTitle('🎵 Music Commands')
+                    .setDescription('Play music in voice channels with full queue control.')
+                    .addFields(
+                        { 
+                            name: '▶️ Playback', 
+                            value: [
+                                '`/music play [query/url]` - Play a song or playlist',
+                                '`/music pause` - Pause/resume playback',
+                                '`/music skip` - Skip current track',
+                                '`/music stop` - Stop and disconnect'
+                            ].join('\n'),
+                            inline: false 
+                        },
+                        { 
+                            name: '📋 Queue', 
+                            value: [
+                                '`/music queue` - View the current queue',
+                                '`/music nowplaying` - Show current track',
+                                '`/music shuffle` - Shuffle the queue',
+                                '`/music remove [position]` - Remove a track'
+                            ].join('\n'),
+                            inline: false 
+                        },
+                        { 
+                            name: '🎛️ Controls', 
+                            value: [
+                                '`/music volume [0-100]` - Adjust volume',
+                                '`/music loop [off/track/queue]` - Toggle loop mode',
+                                '`/music seek [time]` - Seek to position',
+                                '`/music lyrics` - Get song lyrics'
+                            ].join('\n'),
+                            inline: false 
+                        }
+                    );
+                break;
+
+            case 'fun':
+                embed
+                    .setTitle('⚔️ Fun & Interactive')
+                    .setDescription('Games and fun interactions with other users.')
+                    .addFields(
+                        { 
+                            name: '🎮 Games', 
+                            value: [
+                                '`/deathbattle [@user] [skillset]` - Anime battle!',
+                                '> Choose from various anime skillsets',
+                                '> Battle other users or AI',
+                                '> Earn victories and stats'
+                            ].join('\n'),
+                            inline: false 
+                        },
+                        { 
+                            name: '💬 Interactions', 
+                            value: [
+                                '`/say [message]` - Make the bot speak',
+                                '`/8ball [question]` - Ask the magic 8-ball'
+                            ].join('\n'),
+                            inline: false 
+                        }
+                    );
+                break;
+
+            case 'utility':
+                embed
+                    .setTitle('📋 Utility Commands')
+                    .setDescription('Useful tools and information commands.')
+                    .addFields(
+                        { 
+                            name: '👤 User Info', 
+                            value: [
+                                '`/avatar [user]` - View user avatar (full size)',
+                                '`/userinfo [@user]` - Detailed user information',
+                                '`/afk [reason]` - Set AFK status'
+                            ].join('\n'),
+                            inline: false 
+                        },
+                        { 
+                            name: '🏠 Server Info', 
+                            value: [
+                                '`/serverinfo` - Server information & stats',
+                                '`/roleinfo [@role]` - Role information',
+                                '`/invite` - Get bot invite link'
+                            ].join('\n'),
+                            inline: false 
+                        },
+                        { 
+                            name: '🔧 Tools', 
+                            value: [
+                                '`/ping` - Check bot latency',
+                                '`/report` - Report an issue'
+                            ].join('\n'),
+                            inline: false 
+                        }
+                    );
+                break;
+
+            case 'admin':
+                embed
+                    .setTitle('🛡️ Admin Commands')
+                    .setDescription('Server management and moderation. Requires permissions.')
+                    .addFields(
+                        { 
+                            name: '👢 Punishments', 
+                            value: [
+                                '`/kick [@user] [reason]` - Kick a user',
+                                '`/ban [@user] [reason]` - Ban a user',
+                                '`/mute [@user] [duration]` - Timeout a user',
+                                '`/warn [@user] [reason]` - Warn a user'
+                            ].join('\n'),
+                            inline: false 
+                        },
+                        { 
+                            name: '🗑️ Messages', 
+                            value: [
+                                '`/delete [amount]` - Bulk delete messages',
+                                '`/snipe` - View last deleted message'
+                            ].join('\n'),
+                            inline: false 
+                        },
+                        { 
+                            name: '⚙️ Settings', 
+                            value: [
+                                '`/setting` - Configure server settings',
+                                '`/setup` - Setup wizard for new servers'
+                            ].join('\n'),
+                            inline: false 
+                        }
+                    );
+                break;
+
+            case 'moderation':
+                embed
+                    .setTitle('⚙️ Auto-Moderation')
+                    .setDescription('Automatic moderation to keep your server safe.')
+                    .addFields(
+                        { 
+                            name: '🤖 AutoMod', 
+                            value: [
+                                '`/automod` - Configure auto-moderation',
+                                '> Anti-spam protection',
+                                '> Anti-invite links',
+                                '> Bad word filters',
+                                '> Caps lock detection',
+                                '> Mass mention protection'
+                            ].join('\n'),
+                            inline: false 
+                        },
+                        { 
+                            name: '🚫 Filters', 
+                            value: [
+                                '`/filter add [word]` - Add word to filter',
+                                '`/filter remove [word]` - Remove from filter',
+                                '`/filter list` - View filtered words'
+                            ].join('\n'),
+                            inline: false 
+                        },
+                        { 
+                            name: '📝 Logs', 
+                            value: [
+                                '`/modlog channel [#channel]` - Set mod log channel',
+                                '`/modlog view [@user]` - View user infractions'
+                            ].join('\n'),
+                            inline: false 
+                        }
+                    );
+                break;
         }
 
-        if (!category || category === 'music') {
-            embed.addFields({
-                name: '🎵 Music Commands', 
-                value: [
-                    '`/music play [query]` - Play music in voice channel',
-                    '`/music queue` - View the queue',
-                    '`/music skip` - Skip current track',
-                    '`/music pause` - Pause/resume playback',
-                    '`/music volume [level]` - Adjust volume',
-                    '`/music loop [mode]` - Toggle loop mode',
-                    '`/music stop` - Stop and disconnect'
-                ].join('\n'),
-                inline: false 
-            });
-        }
+        return embed;
+    }
 
-        if (!category || category === 'fun') {
-            embed.addFields({
-                name: '⚔️ Interactive Commands', 
-                value: [
-                    '`/deathbattle [@user] [skillset]` - Battle with anime skillsets',
-                    '`/say [message]` - Make the bot speak'
-                ].join('\n'),
-                inline: false 
-            });
-        }
+    /**
+     * Build navigation buttons
+     */
+    private buildButtons(currentCategory: HelpCategory): ActionRowBuilder<ButtonBuilder>[] {
+        const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+                .setCustomId('help_home')
+                .setEmoji('🏠')
+                .setStyle(currentCategory === 'home' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+                .setDisabled(currentCategory === 'home'),
+            new ButtonBuilder()
+                .setCustomId('help_media')
+                .setEmoji('🎬')
+                .setLabel('Media')
+                .setStyle(currentCategory === 'media' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+            new ButtonBuilder()
+                .setCustomId('help_music')
+                .setEmoji('🎵')
+                .setLabel('Music')
+                .setStyle(currentCategory === 'music' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+            new ButtonBuilder()
+                .setCustomId('help_fun')
+                .setEmoji('⚔️')
+                .setLabel('Fun')
+                .setStyle(currentCategory === 'fun' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+        );
 
-        if (!category || category === 'utility') {
-            embed.addFields({
-                name: '📋 Utility Commands', 
-                value: [
-                    '`/avatar [user]` - View user avatar',
-                    '`/ping` - Check bot latency',
-                    '`/serverinfo` - Server information',
-                    '`/roleinfo [@role]` - Role information',
-                    '`/afk [reason]` - Set AFK status',
-                    '`/invite` - Invite the bot',
-                    '`/report` - Report an issue'
-                ].join('\n'),
-                inline: false 
-            });
-        }
+        const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+                .setCustomId('help_utility')
+                .setEmoji('📋')
+                .setLabel('Utility')
+                .setStyle(currentCategory === 'utility' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+            new ButtonBuilder()
+                .setCustomId('help_admin')
+                .setEmoji('🛡️')
+                .setLabel('Admin')
+                .setStyle(currentCategory === 'admin' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+            new ButtonBuilder()
+                .setCustomId('help_moderation')
+                .setEmoji('⚙️')
+                .setLabel('Moderation')
+                .setStyle(currentCategory === 'moderation' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+        );
 
-        if (!category || category === 'admin') {
-            embed.addFields({
-                name: '🛡️ Admin Commands', 
-                value: [
-                    '`/setting` - Server settings',
-                    '`/snipe` - View deleted messages',
-                    '`/kick [@user]` - Kick a user',
-                    '`/ban [@user]` - Ban a user',
-                    '`/mute [@user]` - Mute a user',
-                    '`/delete [amount]` - Bulk delete messages'
-                ].join('\n'),
-                inline: false 
-            });
-        }
+        return [row1, row2];
+    }
 
-        await interaction.reply({ embeds: [embed] });
+    async run(interaction: ChatInputCommandInteraction): Promise<void> {
+        let currentCategory: HelpCategory = 'home';
+
+        const embed = this.buildCategoryEmbed(currentCategory, interaction.user);
+        const buttons = this.buildButtons(currentCategory);
+
+        const response = await interaction.reply({ 
+            embeds: [embed], 
+            components: buttons,
+            fetchReply: true 
+        });
+
+        // Create collector for button interactions
+        const collector = response.createMessageComponentCollector({
+            componentType: ComponentType.Button,
+            filter: (i) => i.user.id === interaction.user.id,
+            time: 300000 // 5 minutes
+        });
+
+        collector.on('collect', async (buttonInteraction: ButtonInteraction) => {
+            // Extract category from button ID
+            const newCategory = buttonInteraction.customId.replace('help_', '') as HelpCategory;
+            currentCategory = newCategory;
+
+            const newEmbed = this.buildCategoryEmbed(currentCategory, interaction.user);
+            const newButtons = this.buildButtons(currentCategory);
+
+            await buttonInteraction.update({ 
+                embeds: [newEmbed], 
+                components: newButtons 
+            });
+        });
+
+        collector.on('end', async () => {
+            // Disable all buttons when collector ends
+            const disabledButtons = this.buildButtons(currentCategory).map(row => {
+                row.components.forEach(button => button.setDisabled(true));
+                return row;
+            });
+
+            await interaction.editReply({ components: disabledButtons }).catch(() => {});
+        });
     }
 }
 

@@ -23,6 +23,11 @@ const errors_1 = require("../errors");
 function initializeErrorHandlers(client) {
     // Uncaught exceptions
     process.on('uncaughtException', (error) => {
+        // Parse stack trace for file/line info
+        const stackMatch = error.stack?.match(/at\s+(.+?)\s+\((.+?):(\d+):(\d+)\)/);
+        const file = stackMatch ? stackMatch[2] : undefined;
+        const line = stackMatch ? stackMatch[3] : undefined;
+        const fn = stackMatch ? stackMatch[1] : undefined;
         // Check if operational error
         if (errors_1.AppError.isOperationalError(error)) {
             Logger_1.default.error('ErrorHandler', `Operational Error: ${error.message}`);
@@ -30,23 +35,49 @@ function initializeErrorHandlers(client) {
         else {
             Logger_1.default.critical('ErrorHandler', `Uncaught Exception: ${error.message}`);
             console.error('Stack:', error.stack);
-            // Log to Discord if possible
-            Logger_1.default.logError('Uncaught Exception', error).catch(() => { });
+            // Log detailed error to Discord
+            Logger_1.default.logErrorDetailed({
+                title: 'Uncaught Exception',
+                error,
+                file,
+                line,
+                function: fn,
+                context: {
+                    'Type': error.name,
+                    'Operational': 'false'
+                }
+            }).catch(() => { });
             // For programmer errors, exit after logging
             // (in production, process manager should restart)
             setTimeout(() => process.exit(1), 1000);
         }
     });
     // Unhandled promise rejections
-    process.on('unhandledRejection', (reason) => {
+    process.on('unhandledRejection', (reason, promise) => {
         const error = reason instanceof Error ? reason : new Error(String(reason));
+        // Parse stack trace for file/line info
+        const stackMatch = error.stack?.match(/at\s+(.+?)\s+\((.+?):(\d+):(\d+)\)/);
+        const file = stackMatch ? stackMatch[2] : undefined;
+        const line = stackMatch ? stackMatch[3] : undefined;
+        const fn = stackMatch ? stackMatch[1] : undefined;
         if (errors_1.AppError.isOperationalError(error)) {
             Logger_1.default.error('ErrorHandler', `Unhandled Rejection (Operational): ${error.message}`);
         }
         else {
             Logger_1.default.critical('ErrorHandler', `Unhandled Rejection: ${error.message}`);
             console.error('Stack:', error.stack);
-            Logger_1.default.logError('Unhandled Rejection', error).catch(() => { });
+            // Log detailed error to Discord
+            Logger_1.default.logErrorDetailed({
+                title: 'Unhandled Promise Rejection',
+                error,
+                file,
+                line,
+                function: fn,
+                context: {
+                    'Type': error.name,
+                    'Promise': '[object Promise]'
+                }
+            }).catch(() => { });
         }
     });
     Logger_1.default.info('ErrorHandler', 'Global error handlers initialized');

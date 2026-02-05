@@ -11,11 +11,9 @@ const constants_js_1 = require("../../constants.js");
 const index_js_1 = require("../../services/index.js");
 // Import services
 let sayService;
-let logger;
 const getDefault = (mod) => mod.default || mod;
 try {
     sayService = getDefault(require('../../services/fun/say/SayService'));
-    logger = getDefault(require('../../utils/say/logger'));
 }
 catch (e) {
     console.warn('[Say] Could not load services:', e.message);
@@ -103,24 +101,25 @@ class SayCommand extends BaseCommand_js_1.BaseCommand {
             const creditText = showCredit
                 ? `\n\n*— Requested by <@${interaction.user.id}>*`
                 : '';
+            // Build "I am the bot" button linking to user profile
+            const userProfileButton = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder()
+                .setLabel(`Sent by ${interaction.user.displayName}`)
+                .setStyle(discord_js_1.ButtonStyle.Link)
+                .setURL(`https://discord.com/users/${interaction.user.id}`)
+                .setEmoji('👤'));
             if (useEmbed) {
                 const embed = new discord_js_1.EmbedBuilder()
                     .setColor(TYPE_COLORS[type] || constants_js_1.COLORS.PRIMARY)
                     .setDescription(safeMessage + creditText);
-                await channel.send({ embeds: [embed] });
+                await channel.send({ embeds: [embed], components: [userProfileButton] });
             }
             else {
-                await channel.send(safeMessage + creditText);
+                await channel.send({ content: safeMessage + creditText, components: [userProfileButton] });
             }
             await interaction.reply({
                 content: `✅ Message sent to ${channel}`,
                 ephemeral: true
             });
-            // Log
-            if (logger) {
-                logger.log(interaction.user.tag, interaction.user.id, channel.name, channel.id, type, safeMessage);
-                await logger.logToChannel(interaction.client, interaction.user.tag, interaction.user.id, channel.name, channel.id, type, safeMessage);
-            }
         }
         catch (error) {
             console.error('[Say]', error);

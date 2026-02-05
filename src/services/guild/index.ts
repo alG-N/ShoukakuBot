@@ -34,3 +34,6 @@ export {
     default as GuildSettingsService,
 } from './GuildSettingsService.js';
 export type { GuildSettings } from './GuildSettingsService.js';
+
+// Setup Wizard Service
+export { SetupWizardService, setupWizardService } from './SetupWizardService.js';

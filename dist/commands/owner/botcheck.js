@@ -121,18 +121,49 @@ class BotCheckCommand extends BaseCommand_js_1.BaseCommand {
         catch (e) {
             services.push({ name: 'PostgreSQL', healthy: false, error: e.message });
         }
-        // Redis
+        // Redis - Check actual Redis connection by pinging via CacheService
         try {
-            const cache = require('../../cache/CacheService.js');
-            const cacheService = cache.default || cache;
-            const stats = cacheService.getStats?.();
-            services.push({
-                name: 'Redis',
-                healthy: stats?.redisConnected ?? false,
-                details: stats?.redisConnected ? 'Connected' : 'Fallback mode'
-            });
+            const cacheModule = await import('../../cache/CacheService.js');
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const cacheServiceInstance = (cacheModule.default || cacheModule);
+            // Debug logging
+            console.log('[BotCheck] CacheService instance type:', typeof cacheServiceInstance);
+            console.log('[BotCheck] Has getRedis:', typeof cacheServiceInstance.getRedis);
+            console.log('[BotCheck] Has isRedisAvailable:', typeof cacheServiceInstance.isRedisAvailable);
+            console.log('[BotCheck] isRedisAvailable result:', cacheServiceInstance.isRedisAvailable?.());
+            const redisClient = cacheServiceInstance.getRedis?.();
+            console.log('[BotCheck] Redis client from getRedis:', !!redisClient);
+            if (redisClient) {
+                // Actually ping Redis to verify connection
+                const pong = await redisClient.ping();
+                console.log('[BotCheck] Redis ping result:', pong);
+                if (pong === 'PONG') {
+                    services.push({
+                        name: 'Redis',
+                        healthy: true,
+                        details: 'Connected'
+                    });
+                }
+                else {
+                    services.push({
+                        name: 'Redis',
+                        healthy: true,
+                        details: 'Fallback (in-memory)'
+                    });
+                }
+            }
+            else {
+                // Check if Redis is available via the flag
+                const isAvailable = cacheServiceInstance.isRedisAvailable?.();
+                services.push({
+                    name: 'Redis',
+                    healthy: true,
+                    details: isAvailable ? 'Connected' : 'Fallback (in-memory)'
+                });
+            }
         }
         catch (e) {
+            console.log('[BotCheck] Redis check error:', e.message);
             services.push({ name: 'Redis', healthy: false, error: e.message });
         }
         // Lavalink
@@ -190,14 +221,92 @@ class BotCheckCommand extends BaseCommand_js_1.BaseCommand {
             .setTitle('🔌 Services Status')
             .setColor(services.every(s => s.healthy) ? constants_js_1.COLORS.SUCCESS : constants_js_1.COLORS.ERROR)
             .setDescription(serviceLines.join('\n'));
+        // Database & Cache details embed
+        let dbPoolInfo = 'N/A';
+        let cacheInfo = 'N/A';
+        let redisInfo = 'N/A';
+        try {
+            const pg = require('../../database/postgres.js');
+            const postgres = pg.default || pg;
+            const dbStatus = postgres.getStatus?.();
+            if (dbStatus) {
+                dbPoolInfo = [
+                    `**Connection Pooling:** ✅ Enabled`,
+                    `**Status:** ${dbStatus.isConnected ? '🟢 Connected' : '🔴 Disconnected'}`,
+                    `**State:** ${dbStatus.state}`,
+                    `**Max Pool:** \`${process.env.DB_POOL_MAX || '15'}\``,
+                    `**Min Pool:** \`${process.env.DB_POOL_MIN || '2'}\``,
+                    `**Pending Writes:** \`${dbStatus.pendingWrites}\``,
+                    `**Read Replica:** ${dbStatus.readReplica?.enabled ? `✅ ${dbStatus.readReplica.host}` : '❌ Disabled'}`
+                ].join('\n');
+            }
+        }
+        catch {
+            dbPoolInfo = 'Unable to fetch';
+        }
+        try {
+            const cache = require('../../cache/CacheService.js');
+            const cacheService = cache.default || cache;
+            const stats = cacheService.getStats?.();
+            if (stats) {
+                const hitRate = (stats.hitRate * 100).toFixed(1);
+                cacheInfo = [
+                    `**Hit Rate:** \`${hitRate}%\``,
+                    `**Hits:** \`${stats.hits.toLocaleString()}\``,
+                    `**Misses:** \`${stats.misses.toLocaleString()}\``,
+                    `**Memory Entries:** \`${stats.memoryEntries.toLocaleString()}\``,
+                    `**Namespaces:** \`${stats.namespaces?.length || 0}\``
+                ].join('\n');
+            }
+        }
+        catch {
+            cacheInfo = 'Unable to fetch';
+        }
+        try {
+            const cacheModule = await import('../../cache/CacheService.js');
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const cacheServiceInstance = (cacheModule.default || cacheModule);
+            const redisClient = cacheServiceInstance.getRedis?.();
+            if (redisClient) {
+                try {
+                    const info = await redisClient.info('memory');
+                    const usedMemoryMatch = info.match(/used_memory_human:(\S+)/);
+                    const usedMemory = usedMemoryMatch?.[1] || 'N/A';
+                    const connectedMatch = info.match(/connected_clients:(\d+)/);
+                    const clients = connectedMatch?.[1] || 'N/A';
+                    redisInfo = [
+                        `**Status:** 🟢 Connected`,
+                        `**Memory Used:** \`${usedMemory}\``,
+                        `**Connected Clients:** \`${clients}\``,
+                        `**Host:** \`${process.env.REDIS_HOST || 'localhost'}\``
+                    ].join('\n');
+                }
+                catch {
+                    redisInfo = '**Status:** 🟡 Fallback Mode (in-memory)';
+                }
+            }
+            else {
+                const isAvailable = cacheServiceInstance.isRedisAvailable?.();
+                redisInfo = isAvailable
+                    ? '**Status:** 🟢 Connected (via CacheService)'
+                    : '**Status:** 🟡 Fallback Mode (in-memory)';
+            }
+        }
+        catch {
+            redisInfo = '**Status:** 🔴 Error fetching info';
+        }
+        const dataEmbed = new discord_js_1.EmbedBuilder()
+            .setTitle('🗄️ Database & Cache')
+            .setColor(constants_js_1.COLORS.INFO)
+            .addFields({ name: '🐘 PostgreSQL', value: dbPoolInfo, inline: false }, { name: '📦 Cache Service', value: cacheInfo, inline: true }, { name: '🔴 Redis', value: redisInfo, inline: true });
         // Environment info
         const envEmbed = new discord_js_1.EmbedBuilder()
             .setTitle('🌍 Environment')
             .setColor(constants_js_1.COLORS.INFO)
             .addFields({ name: '📂 Working Dir', value: `\`${process.cwd().slice(-40)}\``, inline: false }, { name: '🌐 Node Env', value: `\`${process.env.NODE_ENV || 'development'}\``, inline: true }, { name: '🔐 Sentry', value: `\`${process.env.SENTRY_DSN ? 'Enabled' : 'Disabled'}\``, inline: true }, { name: '📊 Health Port', value: `\`${process.env.HEALTH_PORT || '3000'}\``, inline: true });
         // All embeds for pagination
-        const embeds = [mainEmbed, servicesEmbed, memEmbed, envEmbed];
-        const embedNames = ['📊 Overview', '🔌 Services', '💾 Memory', '🌍 Environment'];
+        const embeds = [mainEmbed, servicesEmbed, dataEmbed, memEmbed, envEmbed];
+        const embedNames = ['📊 Overview', '🔌 Services', '🗄️ Data', '💾 Memory', '🌍 Environment'];
         let currentPage = 0;
         // Build buttons
         const getButtons = (page) => {

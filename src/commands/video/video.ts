@@ -491,8 +491,15 @@ class VideoCommand extends BaseCommand {
                     // Ignore update errors
                 }
 
+                // Detect if file is GIF
+                const isGif = result.format.toLowerCase() === 'gif' || 
+                              result.path.toLowerCase().endsWith('.gif') ||
+                              url.toLowerCase().includes('.gif') ||
+                              url.toLowerCase().includes('/gif');
+
                 // Build success message with Original button
-                const successMessage = `✅ **${platformName}** • ${result.size.toFixed(2)} MB • ${result.format}`;
+                const fileType = isGif ? 'GIF' : result.format;
+                const successMessage = `✅ **${platformName}** • ${result.size.toFixed(2)} MB • ${fileType}`;
                 
                 const originalButton = new ActionRowBuilder<ButtonBuilder>().addComponents(
                     new ButtonBuilder()
@@ -502,9 +509,10 @@ class VideoCommand extends BaseCommand {
                         .setEmoji('🔗')
                 );
 
-                // Upload video
+                // Upload file with correct extension
+                const fileExtension = isGif ? 'gif' : result.format.toLowerCase();
                 const attachment = new AttachmentBuilder(result.path, { 
-                    name: `${platformId}_video.${result.format.toLowerCase()}` 
+                    name: `${platformId}_${isGif ? 'gif' : 'video'}.${fileExtension}` 
                 });
                 
                 await interaction.editReply({ 

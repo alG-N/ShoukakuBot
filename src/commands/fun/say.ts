@@ -8,8 +8,10 @@ import {
     SlashCommandBuilder, 
     EmbedBuilder,
     ChatInputCommandInteraction,
-    TextChannel,
-    GuildTextBasedChannel
+    GuildTextBasedChannel,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
@@ -17,13 +19,11 @@ import { checkAccess, AccessType } from '../../services/index.js';
 
 // Import services
 let sayService: { validateChannel: (ch: unknown) => boolean; sanitizeMessage: (msg: string) => string } | undefined;
-let logger: { log: (...args: unknown[]) => void; logToChannel: (...args: unknown[]) => Promise<void> } | undefined;
 
 const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
 try {
     sayService = getDefault(require('../../services/fun/say/SayService'));
-    logger = getDefault(require('../../utils/say/logger'));
 } catch (e) {
     console.warn('[Say] Could not load services:', (e as Error).message);
 }
@@ -135,26 +135,29 @@ class SayCommand extends BaseCommand {
                 ? `\n\n*— Requested by <@${interaction.user.id}>*`
                 : '';
 
+            // Build "I am the bot" button linking to user profile
+            const userProfileButton = new ActionRowBuilder<ButtonBuilder>().addComponents(
+                new ButtonBuilder()
+                    .setLabel(`Sent by ${interaction.user.displayName}`)
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(`https://discord.com/users/${interaction.user.id}`)
+                    .setEmoji('👤')
+            );
+
             if (useEmbed) {
                 const embed = new EmbedBuilder()
                     .setColor(TYPE_COLORS[type] || COLORS.PRIMARY)
                     .setDescription(safeMessage + creditText);
 
-                await channel.send({ embeds: [embed] });
+                await channel.send({ embeds: [embed], components: [userProfileButton] });
             } else {
-                await channel.send(safeMessage + creditText);
+                await channel.send({ content: safeMessage + creditText, components: [userProfileButton] });
             }
 
             await interaction.reply({ 
                 content: `✅ Message sent to ${channel}`, 
                 ephemeral: true 
             });
-
-            // Log
-            if (logger) {
-                logger.log(interaction.user.tag, interaction.user.id, channel.name, channel.id, type, safeMessage);
-                await logger.logToChannel(interaction.client, interaction.user.tag, interaction.user.id, channel.name, channel.id, type, safeMessage);
-            }
 
         } catch (error) {
             console.error('[Say]', error);

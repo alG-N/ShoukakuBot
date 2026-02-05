@@ -20,8 +20,9 @@ class GuildDeleteEvent extends BaseEvent_js_1.BaseEvent {
         });
     }
     async execute(_client, guild) {
-        Logger_js_1.default.info('GuildDelete', `Left server: ${guild.name} (${guild.id})`);
-        await Logger_js_1.default.logGuildEvent('leave', guild);
+        Logger_js_1.default.info('GuildDelete', `Left server: ${guild.name} (${guild.id}) - Had ${guild.memberCount} members`);
+        // Log detailed embed
+        await Logger_js_1.default.logGuildEventDetailed('leave', guild);
     }
 }
 exports.default = new GuildDeleteEvent();

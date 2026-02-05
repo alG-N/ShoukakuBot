@@ -29,7 +29,9 @@ export const ALLOWED_TABLES = [
     'anime_watchlist',
     'anime_history',
     'anime_favourites',
-    'anime_notifications'
+    'anime_notifications',
+    'automod_settings',
+    'mod_log_settings'
 ] as const;
 
 export type AllowedTable = typeof ALLOWED_TABLES[number];
@@ -564,12 +566,31 @@ export class PostgresDatabase {
         validateIdentifier(conflictKey);
         
         const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
-        const updateClause = keys
-            .filter(k => k !== conflictKey)
+        const updateKeys = keys.filter(k => k !== conflictKey);
+        
+        let text: string;
+        
+        // If only conflict key provided, use DO NOTHING
+        if (updateKeys.length === 0) {
+            text = `
+                INSERT INTO ${table} (${keys.join(', ')}) 
+                VALUES (${placeholders}) 
+                ON CONFLICT (${conflictKey}) DO NOTHING
+            `;
+            await this.query(text, values);
+            // Return the existing row
+            const existing = await this.getOne<T>(
+                `SELECT * FROM ${table} WHERE ${conflictKey} = $1`,
+                [data[conflictKey]]
+            );
+            return existing as T;
+        }
+        
+        const updateClause = updateKeys
             .map(k => `${k} = EXCLUDED.${k}`)
             .join(', ');
         
-        const text = `
+        text = `
             INSERT INTO ${table} (${keys.join(', ')}) 
             VALUES (${placeholders}) 
             ON CONFLICT (${conflictKey}) 

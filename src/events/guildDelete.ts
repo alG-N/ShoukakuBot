@@ -17,8 +17,10 @@ class GuildDeleteEvent extends BaseEvent {
     }
 
     async execute(_client: Client, guild: Guild): Promise<void> {
-        logger.info('GuildDelete', `Left server: ${guild.name} (${guild.id})`);
-        await logger.logGuildEvent('leave', guild);
+        logger.info('GuildDelete', `Left server: ${guild.name} (${guild.id}) - Had ${guild.memberCount} members`);
+        
+        // Log detailed embed
+        await logger.logGuildEventDetailed('leave', guild);
     }
 }
 

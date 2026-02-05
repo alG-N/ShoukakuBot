@@ -323,11 +323,92 @@ export async function setLogChannel(guildId: string, channelId: Snowflake | null
     const result = await ModLogRepository.update(guildId, { log_channel_id: channelId });
     return result as ModLogSettings;
 }
+
+/**
+ * Log a member join
+ */
+export async function logMemberJoin(member: import('discord.js').GuildMember): Promise<void> {
+    try {
+        const rawSettings = await ModLogRepository.get(member.guild.id);
+        if (!rawSettings?.log_channel_id) return;
+        const settings = rawSettings as unknown as ModLogSettings;
+
+        const channel = await member.guild.channels.fetch(settings.log_channel_id as string).catch(() => null);
+        if (!channel || !('send' in channel)) return;
+
+        const accountAge = Date.now() - member.user.createdTimestamp;
+        const accountAgeDays = Math.floor(accountAge / (1000 * 60 * 60 * 24));
+        const isNewAccount = accountAgeDays < 7;
+
+        const embed = new EmbedBuilder()
+            .setColor(0x00FF00)
+            .setAuthor({
+                name: '📥 Member Joined',
+                iconURL: member.user.displayAvatarURL()
+            })
+            .addFields(
+                { name: 'User', value: `<@${member.id}> (${member.user.tag})`, inline: true },
+                { name: 'Account Age', value: `${accountAgeDays} days${isNewAccount ? ' ⚠️' : ''}`, inline: true },
+                { name: 'Member #', value: `${member.guild.memberCount}`, inline: true }
+            )
+            .setFooter({ text: `User ID: ${member.id}` })
+            .setTimestamp();
+
+        await channel.send({ embeds: [embed] });
+    } catch (error) {
+        logger.error('[ModLogService]', `Failed to log member join: ${(error as Error).message}`);
+    }
+}
+
+/**
+ * Log a member leave
+ */
+export async function logMemberLeave(member: import('discord.js').GuildMember): Promise<void> {
+    try {
+        const rawSettings = await ModLogRepository.get(member.guild.id);
+        if (!rawSettings?.log_channel_id) return;
+        const settings = rawSettings as unknown as ModLogSettings;
+
+        const channel = await member.guild.channels.fetch(settings.log_channel_id as string).catch(() => null);
+        if (!channel || !('send' in channel)) return;
+
+        const joinedAt = member.joinedAt;
+        const stayDuration = joinedAt ? Date.now() - joinedAt.getTime() : 0;
+        const stayDurationStr = joinedAt ? formatDuration(stayDuration) : 'Unknown';
+
+        const roles = member.roles.cache
+            .filter(r => r.id !== member.guild.id)
+            .map(r => r.name)
+            .slice(0, 10)
+            .join(', ') || 'None';
+
+        const embed = new EmbedBuilder()
+            .setColor(0xFF0000)
+            .setAuthor({
+                name: '📤 Member Left',
+                iconURL: member.user.displayAvatarURL()
+            })
+            .addFields(
+                { name: 'User', value: `<@${member.id}> (${member.user.tag})`, inline: true },
+                { name: 'Stayed For', value: stayDurationStr, inline: true },
+                { name: 'Roles', value: roles.slice(0, 1024), inline: false }
+            )
+            .setFooter({ text: `User ID: ${member.id}` })
+            .setTimestamp();
+
+        await channel.send({ embeds: [embed] });
+    } catch (error) {
+        logger.error('[ModLogService]', `Failed to log member leave: ${(error as Error).message}`);
+    }
+}
+
 // EXPORTS
 export default {
     logInfraction,
     logMessageDelete,
     logMessageEdit,
+    logMemberJoin,
+    logMemberLeave,
     getSettings,
     updateSettings,
     setLogChannel,

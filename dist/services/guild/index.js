@@ -7,7 +7,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GuildSettingsService = exports.clearCache = exports.isServerOwner = exports.hasModPermission = exports.hasAdminPermission = exports.removeModRole = exports.addModRole = exports.getModRoles = exports.removeAdminRole = exports.addAdminRole = exports.getAdminRoles = exports.setModLogChannel = exports.getModLogChannel = exports.setLogChannel = exports.getLogChannel = exports.setDeleteLimit = exports.getDeleteLimit = exports.setSnipeLimit = exports.getSnipeLimit = exports.updateSetting = exports.getSetting = exports.updateGuildSettings = exports.getGuildSettings = exports.DEFAULT_GUILD_SETTINGS = exports.redisCache = exports.RedisCache = void 0;
+exports.setupWizardService = exports.SetupWizardService = exports.GuildSettingsService = exports.clearCache = exports.isServerOwner = exports.hasModPermission = exports.hasAdminPermission = exports.removeModRole = exports.addModRole = exports.getModRoles = exports.removeAdminRole = exports.addAdminRole = exports.getAdminRoles = exports.setModLogChannel = exports.getModLogChannel = exports.setLogChannel = exports.getLogChannel = exports.setDeleteLimit = exports.getDeleteLimit = exports.setSnipeLimit = exports.getSnipeLimit = exports.updateSetting = exports.getSetting = exports.updateGuildSettings = exports.getGuildSettings = exports.DEFAULT_GUILD_SETTINGS = exports.redisCache = exports.RedisCache = void 0;
 // RedisCache is internal - exported only for bootstrap/container initialization
 // Application code should use CacheService instead
 var RedisCache_js_1 = require("./RedisCache.js");
@@ -38,4 +38,8 @@ Object.defineProperty(exports, "hasModPermission", { enumerable: true, get: func
 Object.defineProperty(exports, "isServerOwner", { enumerable: true, get: function () { return GuildSettingsService_js_1.isServerOwner; } });
 Object.defineProperty(exports, "clearCache", { enumerable: true, get: function () { return GuildSettingsService_js_1.clearCache; } });
 Object.defineProperty(exports, "GuildSettingsService", { enumerable: true, get: function () { return __importDefault(GuildSettingsService_js_1).default; } });
+// Setup Wizard Service
+var SetupWizardService_js_1 = require("./SetupWizardService.js");
+Object.defineProperty(exports, "SetupWizardService", { enumerable: true, get: function () { return SetupWizardService_js_1.SetupWizardService; } });
+Object.defineProperty(exports, "setupWizardService", { enumerable: true, get: function () { return SetupWizardService_js_1.setupWizardService; } });
 //# sourceMappingURL=index.js.map

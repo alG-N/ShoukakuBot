@@ -11,7 +11,7 @@ import { logger } from '../core/Logger.js';
 // Pre-import modules to avoid require() - loaded at registration time
 import { PostgresDatabase } from '../database/postgres.js';
 import { RedisCache } from '../services/guild/RedisCache.js';
-import { CacheService } from '../cache/CacheService.js';
+import cacheServiceSingleton from '../cache/CacheService.js';
 import { CommandRegistry } from '../services/registry/CommandRegistry.js';
 import { EventRegistry } from '../services/registry/EventRegistry.js';
 import { LavalinkService } from '../services/music/LavalinkService.js';
@@ -38,8 +38,9 @@ export function registerServices(): void {
     }, { tags: ['core', 'cache'] });
 
     // Unified Cache Service (recommended for all caching)
+    // Use singleton to ensure Redis connection is shared across all imports
     container.register('cacheService', () => {
-        return new CacheService();
+        return cacheServiceSingleton;
     }, { tags: ['core', 'cache'] });
     // REGISTRY SERVICES
     container.register('commandRegistry', () => {

@@ -356,16 +356,23 @@ class VideoCommand extends BaseCommand_js_1.BaseCommand {
                 catch (e) {
                     // Ignore update errors
                 }
+                // Detect if file is GIF
+                const isGif = result.format.toLowerCase() === 'gif' ||
+                    result.path.toLowerCase().endsWith('.gif') ||
+                    url.toLowerCase().includes('.gif') ||
+                    url.toLowerCase().includes('/gif');
                 // Build success message with Original button
-                const successMessage = `✅ **${platformName}** • ${result.size.toFixed(2)} MB • ${result.format}`;
+                const fileType = isGif ? 'GIF' : result.format;
+                const successMessage = `✅ **${platformName}** • ${result.size.toFixed(2)} MB • ${fileType}`;
                 const originalButton = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder()
                     .setLabel('Original')
                     .setStyle(discord_js_1.ButtonStyle.Link)
                     .setURL(url)
                     .setEmoji('🔗'));
-                // Upload video
+                // Upload file with correct extension
+                const fileExtension = isGif ? 'gif' : result.format.toLowerCase();
                 const attachment = new discord_js_1.AttachmentBuilder(result.path, {
-                    name: `${platformId}_video.${result.format.toLowerCase()}`
+                    name: `${platformId}_${isGif ? 'gif' : 'video'}.${fileExtension}`
                 });
                 await interaction.editReply({
                     content: successMessage,
