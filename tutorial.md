@@ -18,12 +18,63 @@ Get-Process -Name "node" -ErrorAction SilentlyContinue | Stop-Process -Force; St
 Set-Location "d:\Project\FumoBOT\alterGolden - Backend"; Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue; npx tsc; node dist/sharding.js
 ```
 
+---
+
+## 🔄 PM2 - Process Manager (Auto-restart & Production)
+
+### Cài đặt PM2
+```powershell
+npm install -g pm2
+```
+
+### Chạy với PM2
+```powershell
+# Build trước
+Set-Location "d:\Project\FumoBOT\alterGolden - Backend"; npx tsc
+
+# Start single shard (dev/small production)
+pm2 start dist/index.js --name "altergolden"
+
+# Start multi-shard (large production)
+pm2 start dist/sharding.js --name "altergolden-sharding"
+```
+
+### PM2 Commands thường dùng
+```powershell
+pm2 list                    # Xem tất cả processes
+pm2 logs altergolden        # Xem logs realtime
+pm2 logs altergolden --lines 100  # Xem 100 dòng log gần nhất
+pm2 restart altergolden     # Restart bot
+pm2 stop altergolden        # Stop bot
+pm2 delete altergolden      # Xóa khỏi PM2
+pm2 monit                   # Dashboard monitor CPU/RAM
+```
+
+### Auto-start khi Windows boot
+```powershell
+# Lưu current processes
+pm2 save
+
+# Tạo startup script (chạy PowerShell as Admin)
+pm2-startup install
+```
+
+### Rebuild & Restart
+```powershell
+# Clean build và restart PM2
+Set-Location "d:\Project\FumoBOT\alterGolden - Backend"; Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue; npx tsc; pm2 restart altergolden
+```
+
+---
+
 ## 🔧 Khi nào dùng gì?
 
 | Lệnh | Khi nào dùng |
 |------|--------------|
 | `node dist/index.js` | Dev local, test features, < 2500 servers |
 | `node dist/sharding.js` | Production, 1000+ servers, cần scale |
+| `pm2 start dist/index.js` | Production với auto-restart, monitoring |
+| `pm2 start dist/sharding.js` | Production lớn, multi-shard + auto-restart |
 
 ## ⚙️ Environment Variables (Sharding)
 ```env

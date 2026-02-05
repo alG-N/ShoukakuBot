@@ -126,17 +126,10 @@ class BotCheckCommand extends BaseCommand_js_1.BaseCommand {
             const cacheModule = await import('../../cache/CacheService.js');
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const cacheServiceInstance = (cacheModule.default || cacheModule);
-            // Debug logging
-            console.log('[BotCheck] CacheService instance type:', typeof cacheServiceInstance);
-            console.log('[BotCheck] Has getRedis:', typeof cacheServiceInstance.getRedis);
-            console.log('[BotCheck] Has isRedisAvailable:', typeof cacheServiceInstance.isRedisAvailable);
-            console.log('[BotCheck] isRedisAvailable result:', cacheServiceInstance.isRedisAvailable?.());
             const redisClient = cacheServiceInstance.getRedis?.();
-            console.log('[BotCheck] Redis client from getRedis:', !!redisClient);
             if (redisClient) {
                 // Actually ping Redis to verify connection
                 const pong = await redisClient.ping();
-                console.log('[BotCheck] Redis ping result:', pong);
                 if (pong === 'PONG') {
                     services.push({
                         name: 'Redis',
@@ -163,7 +156,6 @@ class BotCheckCommand extends BaseCommand_js_1.BaseCommand {
             }
         }
         catch (e) {
-            console.log('[BotCheck] Redis check error:', e.message);
             services.push({ name: 'Redis', healthy: false, error: e.message });
         }
         // Lavalink
@@ -269,10 +261,13 @@ class BotCheckCommand extends BaseCommand_js_1.BaseCommand {
             const redisClient = cacheServiceInstance.getRedis?.();
             if (redisClient) {
                 try {
-                    const info = await redisClient.info('memory');
-                    const usedMemoryMatch = info.match(/used_memory_human:(\S+)/);
+                    const [memoryInfo, clientsInfo] = await Promise.all([
+                        redisClient.info('memory'),
+                        redisClient.info('clients')
+                    ]);
+                    const usedMemoryMatch = memoryInfo.match(/used_memory_human:(\S+)/);
                     const usedMemory = usedMemoryMatch?.[1] || 'N/A';
-                    const connectedMatch = info.match(/connected_clients:(\d+)/);
+                    const connectedMatch = clientsInfo.match(/connected_clients:(\d+)/);
                     const clients = connectedMatch?.[1] || 'N/A';
                     redisInfo = [
                         `**Status:** 🟢 Connected`,

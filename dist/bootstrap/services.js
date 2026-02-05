@@ -14,7 +14,7 @@ const container_js_1 = __importDefault(require("../container.js"));
 const Logger_js_1 = require("../core/Logger.js");
 // Pre-import modules to avoid require() - loaded at registration time
 const postgres_js_1 = require("../database/postgres.js");
-const RedisCache_js_1 = require("../services/guild/RedisCache.js");
+const RedisCache_js_1 = __importDefault(require("../services/guild/RedisCache.js"));
 const CacheService_js_1 = __importDefault(require("../cache/CacheService.js"));
 const CommandRegistry_js_1 = require("../services/registry/CommandRegistry.js");
 const EventRegistry_js_1 = require("../services/registry/EventRegistry.js");
@@ -22,6 +22,7 @@ const LavalinkService_js_1 = require("../services/music/LavalinkService.js");
 const wikipediaService_js_1 = require("../services/api/wikipediaService.js");
 const googleService_js_1 = require("../services/api/googleService.js");
 const fandomService_js_1 = require("../services/api/fandomService.js");
+const nhentaiService_js_1 = require("../services/api/nhentaiService.js");
 // Service Registration
 /**
  * Register all application services
@@ -35,8 +36,9 @@ function registerServices() {
         return new postgres_js_1.PostgresDatabase();
     }, { tags: ['core', 'database'] });
     // Redis Cache (low-level - internal use only)
+    // Use singleton to ensure connection is shared across all imports
     container_js_1.default.register('redisCache', () => {
-        return new RedisCache_js_1.RedisCache();
+        return RedisCache_js_1.default;
     }, { tags: ['core', 'cache'] });
     // Unified Cache Service (recommended for all caching)
     // Use singleton to ensure Redis connection is shared across all imports
@@ -63,6 +65,10 @@ function registerServices() {
     }, { tags: ['api'] });
     container_js_1.default.register('fandomService', () => {
         return new fandomService_js_1.FandomService();
+    }, { tags: ['api'] });
+    // NHentai uses singleton with cleanup interval
+    container_js_1.default.register('nhentaiService', () => {
+        return nhentaiService_js_1.nhentaiService;
     }, { tags: ['api'] });
     Logger_js_1.logger.info('Container', 'All services registered');
 }

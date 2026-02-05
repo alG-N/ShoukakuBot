@@ -10,7 +10,7 @@ import { logger } from '../core/Logger.js';
 
 // Pre-import modules to avoid require() - loaded at registration time
 import { PostgresDatabase } from '../database/postgres.js';
-import { RedisCache } from '../services/guild/RedisCache.js';
+import redisCacheSingleton from '../services/guild/RedisCache.js';
 import cacheServiceSingleton from '../cache/CacheService.js';
 import { CommandRegistry } from '../services/registry/CommandRegistry.js';
 import { EventRegistry } from '../services/registry/EventRegistry.js';
@@ -18,6 +18,7 @@ import { LavalinkService } from '../services/music/LavalinkService.js';
 import { WikipediaService } from '../services/api/wikipediaService.js';
 import { GoogleService } from '../services/api/googleService.js';
 import { FandomService } from '../services/api/fandomService.js';
+import { nhentaiService } from '../services/api/nhentaiService.js';
 
 // Service Registration
 /**
@@ -33,8 +34,9 @@ export function registerServices(): void {
     }, { tags: ['core', 'database'] });
 
     // Redis Cache (low-level - internal use only)
+    // Use singleton to ensure connection is shared across all imports
     container.register('redisCache', () => {
-        return new RedisCache();
+        return redisCacheSingleton;
     }, { tags: ['core', 'cache'] });
 
     // Unified Cache Service (recommended for all caching)
@@ -66,6 +68,11 @@ export function registerServices(): void {
 
     container.register('fandomService', () => {
         return new FandomService();
+    }, { tags: ['api'] });
+
+    // NHentai uses singleton with cleanup interval
+    container.register('nhentaiService', () => {
+        return nhentaiService;
     }, { tags: ['api'] });
 
     logger.info('Container', 'All services registered');
