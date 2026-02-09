@@ -491,17 +491,14 @@ class VideoCommand extends BaseCommand {
                     // Ignore update errors
                 }
 
-                // Check file size against Discord's guild upload limit BEFORE uploading
-                const guildUploadLimitMB = (() => {
-                    const tier = interaction.guild?.premiumTier;
-                    switch (tier) {
-                        case 2: return 50;   // Level 2 boost: 50MB
-                        case 3: return 100;  // Level 3 boost: 100MB
-                        default: return 25;  // No boost / Level 1: 25MB
-                    }
-                })();
+                // Check file size against Discord's upload limit (based on user's Nitro status)
+                // Nitro users: up to 500MB (capped at our 100MB config limit)
+                // Non-Nitro users: 10MB max
+                const member = interaction.member as any;
+                const hasNitro = member?.premiumSince != null;
+                const userUploadLimitMB = hasNitro ? maxFileSizeMB : 10; // Nitro: config cap (100MB), Non-Nitro: 10MB
 
-                if (result.size && result.size > guildUploadLimitMB) {
+                if (result.size && result.size > userUploadLimitMB) {
                     // Clean up oversized file
                     if (downloadedFilePath && fs.existsSync(downloadedFilePath)) {
                         try { fs.unlinkSync(downloadedFilePath); } catch (e) { /* ignore */ }
@@ -511,13 +508,18 @@ class VideoCommand extends BaseCommand {
                         .setColor(COLORS.ERROR)
                         .setTitle('❌ File Exceeds Discord Upload Limit')
                         .setDescription(
-                            `Video **${result.size.toFixed(2)} MB** vượt quá giới hạn upload của server (**${guildUploadLimitMB} MB**).\n\n` +
-                            `💡 **Thử lại với:**\n` +
-                            `• Chất lượng thấp hơn (480p)\n` +
-                            `• 🔗 **Link mode** để lấy link tải trực tiếp\n\n` +
-                            `📈 Server có thể nâng limit bằng cách boost lên Level 2 (50MB) hoặc Level 3 (100MB).`
+                            hasNitro
+                                ? `Video **${result.size.toFixed(2)} MB** exceeds our max capacity (**${maxFileSizeMB} MB**).\n\n` +
+                                  `💡 **Try instead:**\n` +
+                                  `• Use a lower quality (480p)\n` +
+                                  `• Use 🔗 **Link mode** for a direct download link`
+                                : `Video **${result.size.toFixed(2)} MB** exceeds Discord's upload limit for non-Nitro users (**10 MB**).\n\n` +
+                                  `💡 **Options:**\n` +
+                                  `• Use 🔗 **Link mode** for a direct download link\n` +
+                                  `• Use a lower quality (480p)\n` +
+                                  `• Subscribe to **Discord Nitro** to upload files up to 500 MB`
                         )
-                        .setFooter({ text: `Server boost tier: ${interaction.guild?.premiumTier || 0} • Limit: ${guildUploadLimitMB} MB` });
+                        .setFooter({ text: hasNitro ? `Max capacity: ${maxFileSizeMB} MB` : 'Non-Nitro limit: 10 MB • Get Nitro for up to 500 MB' });
                     
                     activeDownloads.delete(userId);
                     await interaction.editReply({ embeds: [discordLimitEmbed], components: [] });
@@ -614,15 +616,18 @@ class VideoCommand extends BaseCommand {
                     )
                     .setFooter({ text: 'Maximum video duration: 10 minutes' });
             } else if (isDiscordUploadLimit && !err.message?.startsWith('FILE_TOO_LARGE')) {
-                // Discord rejected the upload - user doesn't have Nitro for large files
+                // Discord rejected the upload - file too large for user's account
                 errorEmbed = new EmbedBuilder()
                     .setColor(COLORS.ERROR)
                     .setTitle('❌ Upload Failed')
                     .setDescription(
-                        `This video couldn't be downloaded because you don't have Nitro to send files over **10 MB**.\n\n` +
-                        `We are working on an embed solution. Please use the **🔗 direct download** option instead!`
+                        `This video couldn't be uploaded because it exceeds your Discord upload limit (**10 MB** for non-Nitro users).\n\n` +
+                        `💡 **Options:**\n` +
+                        `• Use 🔗 **Link mode** for a direct download link\n` +
+                        `• Use a lower quality (480p)\n` +
+                        `• Subscribe to **Discord Nitro** to upload files up to 500 MB`
                     )
-                    .setFooter({ text: 'Use /video [url] mode:Link for direct download' });
+                    .setFooter({ text: 'Non-Nitro limit: 10 MB • Use /video [url] mode:Link' });
             } else if (isFileTooLarge) {
                 const sizeMatch = err.message.match(/FILE_TOO_LARGE:([\d.]+)MB/);
                 const fileSize = sizeMatch ? sizeMatch[1] : 'over 100';
