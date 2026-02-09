@@ -464,15 +464,15 @@ class VideoCommand extends BaseCommand {
                     
                     const sizeErrorEmbed = new EmbedBuilder()
                         .setColor(COLORS.ERROR)
-                        .setTitle('📁 File Too Large')
+                        .setTitle('❌ Video Too Large')
                         .setDescription(
-                            `The downloaded video is **${result.size.toFixed(2)} MB**, which exceeds the **${maxFileSizeMB} MB** limit.\n\n` +
-                            `**Suggestions:**\n` +
-                            `• Try a lower quality setting (480p)\n` +
-                            `• Download a shorter clip\n` +
-                            `• Use the original link directly`
+                            `This video couldn't be downloaded because it exceeds our max capacity (**${maxFileSizeMB} MB**).\n\n` +
+                            `The video is **${result.size.toFixed(2)} MB**.\n\n` +
+                            `💡 **Try instead:**\n` +
+                            `• Use a lower quality (480p)\n` +
+                            `• Use 🔗 **Link mode** for a direct download link`
                         )
-                        .setFooter({ text: 'Discord file size limit' });
+                        .setFooter({ text: `Max capacity: ${maxFileSizeMB} MB` });
                     
                     activeDownloads.delete(userId);
                     await interaction.editReply({ embeds: [sizeErrorEmbed], components: [] });
@@ -555,6 +555,9 @@ class VideoCommand extends BaseCommand {
                                    err.message?.toLowerCase().includes('entity') ||
                                    err.message?.startsWith('FILE_TOO_LARGE') ||
                                    err.code === 40005;
+            const isDiscordUploadLimit = err.code === 40005 || 
+                                        err.message?.includes('Request entity too large') ||
+                                        (err.message?.toLowerCase().includes('payload') && err.message?.toLowerCase().includes('large'));
             const isTimeout = err.message?.toLowerCase().includes('abort') ||
                               err.message === 'This operation was aborted' ||
                               err.name === 'AbortError';
@@ -577,21 +580,30 @@ class VideoCommand extends BaseCommand {
                         `• Trim the video before downloading`
                     )
                     .setFooter({ text: 'Maximum video duration: 10 minutes' });
+            } else if (isDiscordUploadLimit && !err.message?.startsWith('FILE_TOO_LARGE')) {
+                // Discord rejected the upload - user doesn't have Nitro for large files
+                errorEmbed = new EmbedBuilder()
+                    .setColor(COLORS.ERROR)
+                    .setTitle('❌ Upload Failed')
+                    .setDescription(
+                        `This video couldn't be downloaded because you don't have Nitro to send files over **10 MB**.\n\n` +
+                        `We are working on an embed solution. Please use the **🔗 direct download** option instead!`
+                    )
+                    .setFooter({ text: 'Use /video [url] mode:Link for direct download' });
             } else if (isFileTooLarge) {
                 const sizeMatch = err.message.match(/FILE_TOO_LARGE:([\d.]+)MB/);
                 const fileSize = sizeMatch ? sizeMatch[1] : 'over 100';
                 errorEmbed = new EmbedBuilder()
                     .setColor(COLORS.ERROR)
-                    .setTitle('📦 Video Too Large')
+                    .setTitle('❌ Video Too Large')
                     .setDescription(
-                        `⚠️ This video is **${fileSize} MB** - max allowed is **100 MB**.\n\n` +
-                        `📏 **Discord Limits:**\n` +
-                        `• Free: 10 MB • Nitro Basic: 50 MB • Nitro: 500 MB\n\n` +
-                        `💡 **Alternatives:**\n` +
-                        `• Try lower quality (480p) for smaller file\n` +
-                        `• Use a shorter video clip`
+                        `This video couldn't be downloaded because it exceeds our max capacity (**100 MB**).\n\n` +
+                        `The video is approximately **${fileSize} MB**.\n\n` +
+                        `💡 **Try instead:**\n` +
+                        `• Use a lower quality (480p)\n` +
+                        `• Use 🔗 **Link mode** for a direct download link`
                     )
-                    .setFooter({ text: 'Maximum file size: 100MB (Discord Nitro limit)' });
+                    .setFooter({ text: 'Max capacity: 100 MB' });
             } else if (isTimeout) {
                 errorEmbed = new EmbedBuilder()
                     .setColor(COLORS.ERROR)

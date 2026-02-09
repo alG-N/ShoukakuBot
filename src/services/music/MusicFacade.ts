@@ -295,14 +295,21 @@ export class MusicFacade {
         const currentTrack = queueService.getCurrentTrack(guildId) as Track | null;
         queueService.endSkipVote(guildId);
 
-        // Skip multiple
+        // Skip multiple tracks by consuming them from the queue
         if (count > 1) {
             for (let i = 0; i < count - 1; i++) {
                 musicCache.getNextTrack(guildId);
             }
         }
 
+        // Stop the current track first to ensure it actually stops
         await player.stopTrack();
+
+        // Play the next track
+        const result = await this.playNext(guildId);
+
+        // If no next track (queue ended), playNext already handled cleanup
+
         musicEventBus.emitEvent(MusicEvents.TRACK_SKIP, { guildId, count, previousTrack: currentTrack });
         return { skipped: count, previousTrack: currentTrack };
     }
@@ -590,6 +597,12 @@ export class MusicFacade {
         musicCache.setCurrentTrack(guildId, null);
         await this.disableNowPlayingControls(guildId);
 
+        // Stop the player to ensure music actually stops
+        const player = playbackService.getPlayer(guildId);
+        if (player) {
+            try { await player.stopTrack(); } catch (e) { /* already stopped */ }
+        }
+
         if (queue?.textChannel) {
             // Cast: trackHandler methods not in TS interface (createQueueFinishedEmbed, createInfoEmbed)
             const finishedEmbed = (trackHandler as any).createQueueFinishedEmbed?.(lastTrack) ||
@@ -859,8 +872,12 @@ export class MusicFacade {
         return playbackService.search(query);
     }
 
-    searchPlaylist(url: string): Promise<any> {
-        return playbackService.searchPlaylist(url);
+    async searchPlaylist(url: string): Promise<{ playlistName: string; tracks: any[] } | null> {
+        const result = await playbackService.searchPlaylist(url);
+        if (result.isOk() && result.data) {
+            return result.data;
+        }
+        return null;
     }
     // EVENT BUS ACCESS
     /**

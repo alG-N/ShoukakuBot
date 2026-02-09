@@ -203,7 +203,7 @@ export class PostgresDatabase {
             
             // Connection pool settings
             max: parseInt(process.env.DB_POOL_MAX || '15'),
-            min: parseInt(process.env.DB_POOL_MIN || '2'),
+            min: parseInt(process.env.DB_POOL_MIN || '3'),
             idleTimeoutMillis: 30000,
             connectionTimeoutMillis: 10000,
             
@@ -335,9 +335,9 @@ export class PostgresDatabase {
             databasePoolSize.labels({ state: `${poolName}_active` }).set(active);
             databasePoolSize.labels({ state: `${poolName}_waiting` }).set(waiting);
             
-            // Log warning if pool is near exhaustion
+            // Log warning if pool is near exhaustion (only for pools with 3+ connections to avoid noise)
             const utilization = active / (total || 1);
-            if (utilization > 0.8) {
+            if (utilization > 0.8 && total >= 3) {
                 logger.warn('PostgreSQL', `${poolName} pool high utilization: ${(utilization * 100).toFixed(1)}% (${active}/${total} active, ${waiting} waiting)`);
             }
             

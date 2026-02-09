@@ -28,7 +28,7 @@ interface RedditPost {
     nsfw?: boolean;
     over_18?: boolean;
     created?: number;
-    contentType?: 'video' | 'gallery' | 'image' | 'text';
+    contentType?: 'video' | 'gallery' | 'image' | 'text' | 'gif';
     selftext?: string;
     image?: string;
     thumbnail?: string;
@@ -57,6 +57,7 @@ const CONTENT_ICONS: Record<string, string> = {
     video: '🎥',
     gallery: '🖼️',
     image: '📷',
+    gif: '🎬',
     text: '📝'
 };
 // EMBED CREATORS
@@ -278,6 +279,20 @@ async function showPostDetails(
                 }
             );
             if (post.image) embed.setImage(post.image);
+            break;
+
+        case 'gif':
+            if (post.image) {
+                embed.setImage(post.image);
+            }
+            embed.addFields(
+                statsField,
+                {
+                    name: '🎬 GIF',
+                    value: post.url && post.url !== post.permalink ? `[🔗 View Original](${post.url})` : 'Animated GIF',
+                    inline: true
+                }
+            );
             break;
 
         case 'gallery':

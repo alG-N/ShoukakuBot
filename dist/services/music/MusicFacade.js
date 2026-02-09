@@ -182,13 +182,18 @@ class MusicFacade {
             throw new Error('NO_PLAYER');
         const currentTrack = index_js_1.queueService.getCurrentTrack(guildId);
         index_js_1.queueService.endSkipVote(guildId);
-        // Skip multiple
+        // Skip multiple tracks by consuming them from the queue
         if (count > 1) {
             for (let i = 0; i < count - 1; i++) {
                 MusicCacheFacade_js_1.default.getNextTrack(guildId);
             }
         }
-        await player.stopTrack();
+        // Play the next track directly instead of just stopping
+        // stopTrack() emits 'stopped' reason which the onEnd handler ignores,
+        // so we need to advance the queue ourselves
+        const result = await this.playNext(guildId);
+        // If no next track (queue ended), playNext already handled cleanup
+        // If playNext returned a result, the next track is now playing
         index_js_5.musicEventBus.emitEvent(index_js_5.MusicEvents.TRACK_SKIP, { guildId, count, previousTrack: currentTrack });
         return { skipped: count, previousTrack: currentTrack };
     }
@@ -685,8 +690,12 @@ class MusicFacade {
     search(query) {
         return index_js_2.playbackService.search(query);
     }
-    searchPlaylist(url) {
-        return index_js_2.playbackService.searchPlaylist(url);
+    async searchPlaylist(url) {
+        const result = await index_js_2.playbackService.searchPlaylist(url);
+        if (result.isOk() && result.data) {
+            return result.data;
+        }
+        return null;
     }
     // EVENT BUS ACCESS
     /**

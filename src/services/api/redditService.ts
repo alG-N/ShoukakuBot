@@ -35,7 +35,7 @@ export interface RedditPost {
     gallery: string[];
     video: string | null;
     isVideo: boolean;
-    contentType: 'text' | 'image' | 'video' | 'gallery';
+    contentType: 'text' | 'image' | 'video' | 'gallery' | 'gif';
     selftext: string;
     permalink: string;
     upvotes: number;
@@ -61,12 +61,30 @@ export interface RedditPostsResult {
 interface RawRedditPostData {
     title?: string;
     url?: string;
+    url_overridden_by_dest?: string;
+    post_hint?: string;
     preview?: {
         images?: Array<{
             source?: {
                 url: string;
             };
+            variants?: {
+                gif?: {
+                    source?: {
+                        url: string;
+                    };
+                };
+                mp4?: {
+                    source?: {
+                        url: string;
+                    };
+                };
+            };
         }>;
+        reddit_video_preview?: {
+            fallback_url: string;
+            is_gif?: boolean;
+        };
     };
     gallery_data?: {
         items: Array<{
@@ -76,12 +94,16 @@ interface RawRedditPostData {
     media_metadata?: Record<string, {
         s?: {
             u?: string;
+            gif?: string;
+            mp4?: string;
         };
+        e?: string;
     }>;
     is_video?: boolean;
     media?: {
         reddit_video?: {
             fallback_url: string;
+            is_gif?: boolean;
         };
     };
     selftext?: string;
@@ -93,6 +115,7 @@ interface RawRedditPostData {
     author?: string;
     over_18?: boolean;
     created_utc?: number;
+    domain?: string;
 }
 
 /**
@@ -470,8 +493,56 @@ export class RedditService {
      */
     private _parsePost(postData: RawRedditPostData): RedditPost {
         let fullSizeImage: string | null = null;
+        let gifUrl: string | null = null;
+
+        // Check for GIF variants in preview
+        if (postData.preview?.images?.[0]?.variants?.gif?.source) {
+            gifUrl = postData.preview.images[0].variants.gif.source.url.replace(/&amp;/g, '&');
+        } else if (postData.preview?.images?.[0]?.variants?.mp4?.source) {
+            gifUrl = postData.preview.images[0].variants.mp4.source.url.replace(/&amp;/g, '&');
+        }
+
         if (postData.preview?.images?.[0]?.source) {
             fullSizeImage = postData.preview.images[0].source.url.replace(/&amp;/g, '&');
+        }
+
+        // Check if URL itself is a GIF
+        const postUrl = postData.url_overridden_by_dest || postData.url || '';
+        const isGifUrl = /\.(gif|gifv)$/i.test(postUrl) || 
+                         postUrl.includes('giphy.com') || 
+                         postUrl.includes('tenor.com') ||
+                         postUrl.includes('i.imgur.com') && postUrl.endsWith('.gif') ||
+                         postData.post_hint === 'link' && /gif/i.test(postUrl);
+
+        // Check reddit_video_preview for GIFs (Reddit-hosted animated content)
+        const redditVideoPreview = postData.preview?.reddit_video_preview;
+        const isRedditGif = redditVideoPreview?.is_gif || 
+                           (postData.media?.reddit_video?.is_gif);
+
+        if (isGifUrl && !gifUrl) {
+            // For Giphy/Tenor, use the URL directly
+            if (postUrl.includes('giphy.com')) {
+                // Convert giphy page URL to direct GIF URL
+                const giphyMatch = postUrl.match(/giphy\.com\/(?:gifs|media)\/(?:.*-)?([a-zA-Z0-9]+)/);
+                if (giphyMatch) {
+                    gifUrl = `https://media.giphy.com/media/${giphyMatch[1]}/giphy.gif`;
+                } else {
+                    gifUrl = postUrl;
+                }
+            } else if (postUrl.includes('tenor.com')) {
+                // For tenor, the URL field usually has the direct GIF
+                gifUrl = postUrl;
+            } else if (postUrl.endsWith('.gifv')) {
+                // Imgur .gifv -> .gif
+                gifUrl = postUrl.replace('.gifv', '.gif');
+            } else {
+                gifUrl = postUrl;
+            }
+        }
+
+        if (isRedditGif && !gifUrl) {
+            gifUrl = redditVideoPreview?.fallback_url || 
+                     postData.media?.reddit_video?.fallback_url || null;
         }
 
         let galleryImages: string[] = [];
@@ -486,20 +557,21 @@ export class RedditService {
 
         let videoUrl: string | null = null;
         let isVideo = false;
-        if (postData.is_video && postData.media?.reddit_video) {
+        if (postData.is_video && postData.media?.reddit_video && !isRedditGif) {
             videoUrl = postData.media.reddit_video.fallback_url;
             isVideo = true;
         }
 
-        let contentType: 'text' | 'image' | 'video' | 'gallery' = 'text';
-        if (isVideo) contentType = 'video';
+        let contentType: 'text' | 'image' | 'video' | 'gallery' | 'gif' = 'text';
+        if (gifUrl || isGifUrl || isRedditGif) contentType = 'gif';
+        else if (isVideo) contentType = 'video';
         else if (galleryImages.length > 0) contentType = 'gallery';
         else if (fullSizeImage) contentType = 'image';
 
         return {
             title: postData.title || '[No Title]',
             url: postData.url || '[No URL]',
-            image: fullSizeImage,
+            image: gifUrl || fullSizeImage,
             gallery: galleryImages,
             video: videoUrl,
             isVideo,

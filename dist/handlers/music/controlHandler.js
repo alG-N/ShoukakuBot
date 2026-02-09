@@ -54,14 +54,15 @@ exports.controlHandler = {
         }
         // Disable old now playing buttons first
         await MusicFacade_js_1.musicFacade.disableNowPlayingControls(guildId);
-        // Skip returns the next track that's now playing
-        const nextTrack = await MusicFacade_js_1.musicFacade.skip(guildId);
+        // Skip advances to the next track automatically
+        await MusicFacade_js_1.musicFacade.skip(guildId);
         // Reply first to acknowledge the skip
         await interaction.reply({
             embeds: [trackHandler_js_1.trackHandler.createInfoEmbed('⏭️ Skipped', `Skipped: **${currentTrack.title}**`, 'success')]
         });
-        // Send new now playing embed for the next track
-        if (nextTrack) {
+        // Send new now playing embed if a new track is now playing
+        const newCurrentTrack = MusicFacade_js_1.musicFacade.getCurrentTrack(guildId);
+        if (newCurrentTrack) {
             await new Promise(resolve => setTimeout(resolve, 200));
             await MusicFacade_js_1.musicFacade.sendNowPlayingEmbed(guildId);
         }

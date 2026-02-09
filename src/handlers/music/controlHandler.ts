@@ -66,16 +66,17 @@ export const controlHandler = {
         // Disable old now playing buttons first
         await musicService.disableNowPlayingControls(guildId);
         
-        // Skip returns the next track that's now playing
-        const nextTrack = await musicService.skip(guildId);
+        // Skip advances to the next track automatically
+        await musicService.skip(guildId);
         
         // Reply first to acknowledge the skip
         await interaction.reply({
             embeds: [trackHandler.createInfoEmbed('⏭️ Skipped', `Skipped: **${currentTrack.title}**`, 'success')]
         });
         
-        // Send new now playing embed for the next track
-        if (nextTrack) {
+        // Send new now playing embed if a new track is now playing
+        const newCurrentTrack = musicService.getCurrentTrack(guildId);
+        if (newCurrentTrack) {
             await new Promise(resolve => setTimeout(resolve, 200));
             await musicService.sendNowPlayingEmbed(guildId);
         }

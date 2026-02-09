@@ -24,7 +24,7 @@ export const limits = {
 };
 
 export const voting = {
-    minVotesRequired: 5,
+    minVotesRequired: 2,
     votePercentage: 0.5
 };
 

@@ -1,18 +1,13 @@
 # ═══════════════════════════════════════════════════════════════
-# ALTERGOLDEN BACKEND - Memory Management
+# ALTERGOLDEN BACKEND - Ultra-Lean
 # ═══════════════════════════════════════════════════════════════
-# 
-# Memory Bloat Prevention:
-# - Log rotation: Giới hạn log size (max-size: 10m, max-file: 3)
-# - Memory limits: Giới hạn RAM cho mỗi service
-# - Health checks: Auto-restart unhealthy containers
-# - Restart policy: on-failure với max 5 retries
-#
-# Prune cron job (thêm vào crontab):
-# 0 4 * * * docker system prune -f >> /var/log/docker-prune.log 2>&1
+# Tối ưu tổng thể:
+# - Postgres: 384M → 256M + tuned shared_buffers
+# - Redis: 300M → 192M, maxmemory 256mb → 96mb
+# - Bot: 1G → 512M
+# - Prometheus: 512M → 192M, retention 30d → 7d
+# - Grafana: 512M → 192M, no extra plugins
 # ═══════════════════════════════════════════════════════════════
-
-version: '3.8'
 
 services:
   # ───────────────────────────────────────────────────────────────
@@ -21,7 +16,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: altergolden-postgres
-    restart: unless-stopped
+    restart: on-failure:5
     environment:
       POSTGRES_USER: ${DB_USER:-altergolden}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-altergolden_secret}
@@ -30,21 +25,38 @@ services:
       - "${DB_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./docker/init:/docker-entrypoint-initdb.d
+      - ./docker/init:/docker-entrypoint-initdb.d:ro
+    command:
+      - "postgres"
+      - "-c" 
+      - "shared_buffers=64MB"
+      - "-c"
+      - "effective_cache_size=128MB"
+      - "-c"
+      - "work_mem=4MB"
+      - "-c"
+      - "maintenance_work_mem=32MB"
+      - "-c"
+      - "wal_buffers=4MB"
+      - "-c"
+      - "max_connections=30"
+      - "-c"
+      - "logging_collector=off"
+    shm_size: '64mb'
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 256M
         reservations:
-          memory: 192M
+          memory: 96M
     logging:
       driver: "json-file"
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: "5m"
+        max-file: "2"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-altergolden} -d ${DB_NAME:-altergolden_db}"]
-      interval: 10s
+      interval: 30s
       timeout: 5s
       retries: 5
       start_period: 10s
@@ -55,26 +67,35 @@ services:
   redis:
     image: redis:7-alpine
     container_name: altergolden-redis
-    restart: unless-stopped
+    restart: on-failure:5
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 96mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --tcp-keepalive 60
+      --hz 10
+      --activedefrag no
     deploy:
       resources:
         limits:
-          memory: 300M
-        reservations:
           memory: 128M
+        reservations:
+          memory: 48M
     logging:
       driver: "json-file"
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: "3m"
+        max-file: "2"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
+      interval: 30s
       timeout: 5s
       retries: 5
       start_period: 5s
@@ -131,20 +152,22 @@ services:
       COBALT_URL: ${COBALT_URL:-}
       # ── Node.js ──
       NODE_ENV: ${NODE_ENV:-production}
+      # ── Node.js Memory ──
+      NODE_OPTIONS: "--max-old-space-size=384"
     deploy:
       resources:
         limits:
-          memory: 1G
-        reservations:
           memory: 512M
+        reservations:
+          memory: 192M
     logging:
       driver: "json-file"
       options:
-        max-size: "10m"
-        max-file: "5"
+        max-size: "5m"
+        max-file: "3"
     healthcheck:
       test: ["CMD-SHELL", "node -e \"process.exit(0)\""]
-      interval: 30s
+      interval: 60s
       timeout: 10s
       retries: 3
       start_period: 30s
@@ -154,12 +177,12 @@ services:
   # ═══════════════════════════════════════════════════════════════
   
   # ───────────────────────────────────────────────────────────────
-  # Prometheus - Metrics Collection
+  # Prometheus - Metrics Collection (Lean)
   # ───────────────────────────────────────────────────────────────
   prometheus:
     image: prom/prometheus:v2.48.0
     container_name: altergolden-prometheus
-    restart: unless-stopped
+    restart: on-failure:3
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./monitoring/prometheus/alerts:/etc/prometheus/alerts:ro
@@ -167,7 +190,9 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.time=3d'
+      - '--storage.tsdb.retention.size=256MB'
+      - '--storage.tsdb.wal-compression'
       - '--web.enable-lifecycle'
     ports:
       - "9090:9090"
@@ -176,34 +201,36 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 192M
         reservations:
-          memory: 256M
+          memory: 64M
     logging:
       driver: "json-file"
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: "3m"
+        max-file: "2"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
-      interval: 30s
+      interval: 60s
       timeout: 10s
       retries: 3
       start_period: 15s
 
   # ───────────────────────────────────────────────────────────────
-  # Grafana - Visualization & Dashboards
+  # Grafana - Visualization (Lean)
   # ───────────────────────────────────────────────────────────────
   grafana:
     image: grafana/grafana:10.2.2
     container_name: altergolden-grafana
-    restart: unless-stopped
+    restart: on-failure:3
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SERVER_ROOT_URL=http://localhost:3030
-      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-piechart-panel
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      - GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES=false
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
@@ -215,17 +242,17 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 192M
         reservations:
-          memory: 256M
+          memory: 64M
     logging:
       driver: "json-file"
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: "3m"
+        max-file: "2"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
-      interval: 30s
+      interval: 60s
       timeout: 10s
       retries: 3
       start_period: 30s

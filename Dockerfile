@@ -1,6 +1,9 @@
 # Build stage
 FROM node:20-alpine AS builder
 
+# Install python3 for yt-dlp-exec postinstall
+RUN apk add --no-cache python3
+
 WORKDIR /app
 
 # Copy package files
@@ -19,8 +22,8 @@ RUN npx tsc
 # Production stage
 FROM node:20-alpine
 
-# Install ffmpeg for audio processing
-RUN apk add --no-cache ffmpeg
+# Install ffmpeg and python3 for audio processing and yt-dlp-exec
+RUN apk add --no-cache ffmpeg python3
 
 WORKDIR /app
 
