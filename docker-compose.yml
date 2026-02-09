@@ -134,7 +134,7 @@ services:
         max-size: "5m"
         max-file: "2"
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8900/health"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8900/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 5

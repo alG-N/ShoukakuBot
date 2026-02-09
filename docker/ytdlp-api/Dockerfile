@@ -22,6 +22,6 @@ USER ytdlp
 EXPOSE 8900
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget -q --spider http://localhost:8900/health || exit 1
+    CMD wget -q -O /dev/null http://127.0.0.1:8900/health || exit 1
 
 CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8900", "--workers", "1"]

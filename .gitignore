@@ -9,3 +9,7 @@ temp/
 # Docker service data (plugins are binary, cookies are secrets)
 docker/lavalink/plugins/
 docker/cobalt/cookies.json
+
+# Cobalt video temp files
+docker/cobalt/temp/
+
