@@ -142,28 +142,40 @@ class VideoDownloadService extends EventEmitter {
             let videoPath: string;
             let downloadMethod = 'Cobalt';
 
-            // Try Cobalt first
-            this.emit('stage', { stage: 'connecting', message: 'Connecting to Cobalt...', method: 'Cobalt' });
-            try {
-                videoPath = await cobaltService.downloadVideo(url, this.tempDir, { quality: videoQuality });
-            } catch (cobaltError) {
-                const errorMsg = (cobaltError as Error).message;
-                // Don't fallback for size/duration errors - these will be the same for yt-dlp
-                if (errorMsg.startsWith('FILE_TOO_LARGE') || 
-                    errorMsg.startsWith('DURATION_TOO_LONG')) {
-                    throw cobaltError;
-                }
-                
-                console.log(`⚠️ Cobalt failed: ${errorMsg}, trying yt-dlp fallback...`);
-                this.emit('stage', { stage: 'fallback', message: 'Cobalt failed, trying yt-dlp...', method: 'yt-dlp' });
-                
-                // Fallback to yt-dlp
+            // Check if URL is YouTube - skip Cobalt, go straight to yt-dlp
+            // Cobalt doesn't support YouTube well, wastes time trying 3 instances before failing
+            const isYouTube = this._isYouTubeUrl(url);
+
+            if (isYouTube) {
+                // YouTube → use yt-dlp directly (bypass Cobalt)
+                console.log('🎯 YouTube URL detected, using yt-dlp directly (skipping Cobalt)');
+                this.emit('stage', { stage: 'connecting', message: 'Downloading with yt-dlp...', method: 'yt-dlp' });
+                downloadMethod = 'yt-dlp';
+                videoPath = await ytDlpService.downloadVideo(url, this.tempDir, { quality: videoQuality });
+            } else {
+                // Non-YouTube → try Cobalt first, fallback to yt-dlp
+                this.emit('stage', { stage: 'connecting', message: 'Connecting to Cobalt...', method: 'Cobalt' });
                 try {
-                    videoPath = await ytDlpService.downloadVideo(url, this.tempDir, { quality: videoQuality });
-                    downloadMethod = 'yt-dlp';
-                } catch (ytdlpError) {
-                    // Both failed, throw combined error
-                    throw new Error(`Cobalt: ${errorMsg} | yt-dlp: ${(ytdlpError as Error).message}`);
+                    videoPath = await cobaltService.downloadVideo(url, this.tempDir, { quality: videoQuality });
+                } catch (cobaltError) {
+                    const errorMsg = (cobaltError as Error).message;
+                    // Don't fallback for size/duration errors - these will be the same for yt-dlp
+                    if (errorMsg.startsWith('FILE_TOO_LARGE') || 
+                        errorMsg.startsWith('DURATION_TOO_LONG')) {
+                        throw cobaltError;
+                    }
+                    
+                    console.log(`⚠️ Cobalt failed: ${errorMsg}, trying yt-dlp fallback...`);
+                    this.emit('stage', { stage: 'fallback', message: 'Cobalt failed, trying yt-dlp...', method: 'yt-dlp' });
+                    
+                    // Fallback to yt-dlp
+                    try {
+                        videoPath = await ytDlpService.downloadVideo(url, this.tempDir, { quality: videoQuality });
+                        downloadMethod = 'yt-dlp';
+                    } catch (ytdlpError) {
+                        // Both failed, throw combined error
+                        throw new Error(`Cobalt: ${errorMsg} | yt-dlp: ${(ytdlpError as Error).message}`);
+                    }
                 }
             }
             
@@ -192,9 +204,17 @@ class VideoDownloadService extends EventEmitter {
             // Process video for mobile compatibility (converts WebM/VP9/AV1 to H.264+AAC)
             this.emit('stage', { stage: 'processing', message: 'Optimizing for mobile...', method: 'Processing' });
             try {
+                const originalPath = videoPath;
                 const processedPath = await videoProcessingService.processForMobile(videoPath);
                 if (processedPath !== videoPath) {
                     videoPath = processedPath;
+                    // Delete original file to prevent disk leak
+                    try {
+                        if (fs.existsSync(originalPath)) {
+                            fs.unlinkSync(originalPath);
+                            console.log(`🗑️ Deleted original file after conversion: ${path.basename(originalPath)}`);
+                        }
+                    } catch { /* ignore */ }
                     // Update file size after processing
                     stats = fs.statSync(videoPath);
                     fileSizeMB = stats.size / (1024 * 1024);
@@ -253,19 +273,23 @@ class VideoDownloadService extends EventEmitter {
             
             const files = fs.readdirSync(this.tempDir);
             files.forEach(file => {
-                // Clean up files starting with video_ or that match the timestamp
-                if (file.startsWith('video_') || file.includes(String(timestamp))) {
-                    try {
-                        const filePath = path.join(this.tempDir, file);
-                        const stats = fs.statSync(filePath);
-                        // Delete if older than 5 minutes or matches timestamp
-                        if (Date.now() - stats.mtimeMs > 5 * 60 * 1000 || file.includes(String(timestamp))) {
-                            fs.unlinkSync(filePath);
-                            console.log(`🗑️ Cleaned up partial file: ${file}`);
-                        }
-                    } catch {
-                        // Ignore individual file errors
+                try {
+                    const filePath = path.join(this.tempDir, file);
+                    const stats = fs.statSync(filePath);
+                    const ageMs = Date.now() - stats.mtimeMs;
+                    
+                    // Delete if:
+                    // 1. Matches our download timestamp
+                    // 2. Any video_* file older than 5 minutes (leaked from previous downloads)
+                    // 3. Any file older than 30 minutes (catch-all safety net)
+                    if (file.includes(String(timestamp)) ||
+                        (file.startsWith('video_') && ageMs > 5 * 60 * 1000) ||
+                        ageMs > 30 * 60 * 1000) {
+                        fs.unlinkSync(filePath);
+                        console.log(`🗑️ Cleaned up file: ${file} (age: ${Math.round(ageMs / 1000)}s)`);
                     }
+                } catch {
+                    // Ignore individual file errors
                 }
             });
         } catch (e) {
@@ -275,7 +299,28 @@ class VideoDownloadService extends EventEmitter {
 
     async getDirectUrl(url: string, options: { quality?: string } = {}): Promise<DirectUrlResult | null> {
         const quality = options.quality || config.COBALT_VIDEO_QUALITY || '720';
-        
+        const isYouTube = this._isYouTubeUrl(url);
+
+        // YouTube → use yt-dlp directly (Cobalt doesn't support YouTube well)
+        if (isYouTube) {
+            try {
+                const info = await ytDlpService.getVideoInfo(url);
+                if (info.url) {
+                    return {
+                        directUrl: info.url,
+                        size: 'Unknown',
+                        title: info.title || 'Video',
+                        thumbnail: info.thumbnail || null,
+                        method: 'yt-dlp'
+                    };
+                }
+            } catch (ytdlpError) {
+                console.error('❌ yt-dlp URL extraction failed:', (ytdlpError as Error).message);
+            }
+            return null;
+        }
+
+        // Non-YouTube → try Cobalt first
         try {
             // Set quality for Cobalt before requesting
             (cobaltService as unknown as { currentQuality?: string }).currentQuality = quality;
@@ -336,20 +381,27 @@ class VideoDownloadService extends EventEmitter {
         try {
             const files = fs.readdirSync(this.tempDir);
             const now = Date.now();
+            let cleanedCount = 0;
 
             files.forEach(file => {
                 try {
                     const filePath = path.join(this.tempDir, file);
                     const stats = fs.statSync(filePath);
+                    const ageMs = now - stats.mtimeMs;
                     
-                    if (now - stats.mtimeMs > (config.TEMP_FILE_MAX_AGE || 3600000)) {
+                    // Delete files older than 10 minutes (default) to prevent disk fill
+                    if (ageMs > (config.TEMP_FILE_MAX_AGE || 600000)) {
                         fs.unlinkSync(filePath);
-                        console.log(`🗑️ Cleaned up old temp file: ${file}`);
+                        cleanedCount++;
                     }
                 } catch {
                     // Ignore individual file errors
                 }
             });
+            
+            if (cleanedCount > 0) {
+                console.log(`🗑️ Periodic cleanup: removed ${cleanedCount} temp file(s)`);
+            }
         } catch (error) {
             console.error('Cleanup error:', (error as Error).message);
         }
@@ -386,6 +438,17 @@ class VideoDownloadService extends EventEmitter {
                 console.error(`Failed to delete file ${filePath}:`, (err as Error).message);
             }
         }, delay);
+    }
+
+    /**
+     * Check if URL is a YouTube URL
+     * YouTube URLs should bypass Cobalt and use yt-dlp directly
+     */
+    private _isYouTubeUrl(url: string): boolean {
+        const lowerUrl = url.toLowerCase();
+        return lowerUrl.includes('youtube.com') || 
+               lowerUrl.includes('youtu.be') || 
+               lowerUrl.includes('youtube-nocookie.com');
     }
 }
 

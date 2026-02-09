@@ -88,10 +88,8 @@ export const ytdlp = {
     timeout: 120000
 };
 
-export const invidious = {
-    url: process.env.INVIDIOUS_URL || 'http://localhost:3001',
-    timeout: 30000
-};
+// REMOVED: invidious - không cần thiết, tốn tài nguyên
+// Lavalink hoạt động bình thường với OAuth và YouTube plugin clients
 
 export default {
     steam,
@@ -105,6 +103,5 @@ export default {
     wikipedia,
     fandom,
     cobalt,
-    ytdlp,
-    invidious
+    ytdlp
 };

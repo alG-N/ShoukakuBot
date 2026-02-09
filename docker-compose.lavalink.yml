@@ -1,0 +1,98 @@
+# ═══════════════════════════════════════════════════════════════
+# LAVALINK - 3 Nodes (Load Balancing + Failover)
+# Docker Desktop folder: altergolden-lavalink
+# ═══════════════════════════════════════════════════════════════
+
+name: altergolden-lavalink
+
+networks:
+  altergolden-net:
+    external: true
+
+services:
+  lavalink-1:
+    image: ghcr.io/lavalink-devs/lavalink:latest
+    container_name: lavalink-1
+    restart: on-failure:3
+    networks:
+      - altergolden-net
+    volumes:
+      - ./docker/lavalink/application.yml:/opt/Lavalink/application.yml:ro
+      - ./docker/lavalink/plugins:/opt/Lavalink/plugins
+    ports:
+      - "2333:2333"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    environment:
+      - _JAVA_OPTIONS=-Xmx192m -Xms64m -XX:+UseG1GC -XX:MaxGCPauseMillis=50 -XX:+UseStringDeduplication
+      - YOUTUBE_OAUTH_REFRESH_TOKEN=${YOUTUBE_OAUTH_REFRESH_TOKEN}
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 96M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "3m"
+        max-file: "2"
+
+  lavalink-2:
+    image: ghcr.io/lavalink-devs/lavalink:latest
+    container_name: lavalink-2
+    restart: on-failure:3
+    networks:
+      - altergolden-net
+    volumes:
+      - ./docker/lavalink/application.yml:/opt/Lavalink/application.yml:ro
+      - ./docker/lavalink/plugins:/opt/Lavalink/plugins
+    ports:
+      - "2334:2333"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    environment:
+      - _JAVA_OPTIONS=-Xmx192m -Xms64m -XX:+UseG1GC -XX:MaxGCPauseMillis=50 -XX:+UseStringDeduplication
+      - YOUTUBE_OAUTH_REFRESH_TOKEN=${YOUTUBE_OAUTH_REFRESH_TOKEN}
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 96M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "3m"
+        max-file: "2"
+
+  lavalink-3:
+    image: ghcr.io/lavalink-devs/lavalink:latest
+    container_name: lavalink-3
+    restart: on-failure:3
+    networks:
+      - altergolden-net
+    volumes:
+      - ./docker/lavalink/application.yml:/opt/Lavalink/application.yml:ro
+      - ./docker/lavalink/plugins:/opt/Lavalink/plugins
+    ports:
+      - "2335:2333"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    environment:
+      - _JAVA_OPTIONS=-Xmx192m -Xms64m -XX:+UseG1GC -XX:MaxGCPauseMillis=50 -XX:+UseStringDeduplication
+      - YOUTUBE_OAUTH_REFRESH_TOKEN=${YOUTUBE_OAUTH_REFRESH_TOKEN}
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 96M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "3m"
+        max-file: "2"

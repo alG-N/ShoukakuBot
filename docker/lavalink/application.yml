@@ -1,0 +1,88 @@
+server:
+  port: 2333
+  address: 0.0.0.0
+
+lavalink:
+  server:
+    password: "youshallnotpass"
+
+    sources:
+      # DISABLE built-in YouTube, use the plugin instead
+      youtube: false
+      bandcamp: true
+      soundcloud: true
+      twitch: true
+      vimeo: true
+      http: true
+      local: false
+
+    bufferDurationMs: 400
+    frameBufferDurationMs: 5000
+    opusEncodingQuality: 10
+    resamplingQuality: HIGH
+    trackStuckThresholdMs: 10000
+
+    # IMPORTANT: Disable built-in YouTube search
+    youtubeSearchEnabled: false
+    soundcloudSearchEnabled: true
+    gc-warnings: true
+
+metrics:
+  prometheus:
+    enabled: false
+    endpoint: /metrics
+
+sentry:
+  dsn: ""
+  environment: ""
+
+logging:
+  file:
+    path: ./logs/
+
+  level:
+    root: INFO
+    lavalink: INFO
+    dev.lavalink.youtube: DEBUG
+    com.sedmelluq.discord.lavaplayer: DEBUG
+
+  logback:
+    rollingpolicy:
+      max-file-size: 1GB
+      max-history: 30
+
+plugins:
+  lavasrc:
+    providers:
+      - "ytsearch:\"%ISRC%\""
+      - "ytsearch:%QUERY%"
+    sources:
+      spotify: true
+      applemusic: false
+      deezer: false
+      yandexmusic: false
+      flowerytts: false
+      youtube: true
+    spotify:
+      clientId: "YOUR_SPOTIFY_CLIENT_ID"
+      clientSecret: "YOUR_SPOTIFY_CLIENT_SECRET"
+      countryCode: "US"
+      playlistLoadLimit: 6
+      albumLoadLimit: 6
+
+  youtube:
+    enabled: true
+    allowSearch: true
+    allowDirectVideoIds: true
+    allowDirectPlaylistIds: true
+    # Client order matters - first client is tried first, fallback to next on failure
+    clients:
+      - ANDROID_VR
+      - MUSIC
+      - TV_EMBEDDED
+    # REMOVED: invidious-companion pot provider (không cần thiết, tốn tài nguyên)
+    # Lavalink vẫn hoạt động bình thường với OAuth và các client trên
+    # OAuth - fallback for TV client and age-restricted content
+    oauth:
+      enabled: true
+      refreshToken: ${YOUTUBE_OAUTH_REFRESH_TOKEN}

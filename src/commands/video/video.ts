@@ -491,6 +491,39 @@ class VideoCommand extends BaseCommand {
                     // Ignore update errors
                 }
 
+                // Check file size against Discord's guild upload limit BEFORE uploading
+                const guildUploadLimitMB = (() => {
+                    const tier = interaction.guild?.premiumTier;
+                    switch (tier) {
+                        case 2: return 50;   // Level 2 boost: 50MB
+                        case 3: return 100;  // Level 3 boost: 100MB
+                        default: return 25;  // No boost / Level 1: 25MB
+                    }
+                })();
+
+                if (result.size && result.size > guildUploadLimitMB) {
+                    // Clean up oversized file
+                    if (downloadedFilePath && fs.existsSync(downloadedFilePath)) {
+                        try { fs.unlinkSync(downloadedFilePath); } catch (e) { /* ignore */ }
+                    }
+                    
+                    const discordLimitEmbed = new EmbedBuilder()
+                        .setColor(COLORS.ERROR)
+                        .setTitle('❌ File Exceeds Discord Upload Limit')
+                        .setDescription(
+                            `Video **${result.size.toFixed(2)} MB** vượt quá giới hạn upload của server (**${guildUploadLimitMB} MB**).\n\n` +
+                            `💡 **Thử lại với:**\n` +
+                            `• Chất lượng thấp hơn (480p)\n` +
+                            `• 🔗 **Link mode** để lấy link tải trực tiếp\n\n` +
+                            `📈 Server có thể nâng limit bằng cách boost lên Level 2 (50MB) hoặc Level 3 (100MB).`
+                        )
+                        .setFooter({ text: `Server boost tier: ${interaction.guild?.premiumTier || 0} • Limit: ${guildUploadLimitMB} MB` });
+                    
+                    activeDownloads.delete(userId);
+                    await interaction.editReply({ embeds: [discordLimitEmbed], components: [] });
+                    return;
+                }
+
                 // Detect if file is GIF
                 const isGif = result.format.toLowerCase() === 'gif' || 
                               result.path.toLowerCase().endsWith('.gif') ||
@@ -628,6 +661,14 @@ class VideoCommand extends BaseCommand {
         } finally {
             activeDownloads.delete(userId);
             removeGuildDownload(guildId, userId);
+            
+            // Safety net: clean up any leftover downloaded file
+            if (downloadedFilePath && fs.existsSync(downloadedFilePath)) {
+                try {
+                    fs.unlinkSync(downloadedFilePath);
+                    console.log(`🗑️ [Finally] Cleaned up leftover file: ${downloadedFilePath}`);
+                } catch { /* ignore */ }
+            }
         }
     }
 }

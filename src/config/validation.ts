@@ -54,12 +54,11 @@ const ENV_RULES: EnvRule[] = [
     { name: 'SUPPORT_GUILD_ID', required: false, description: 'Support server guild ID', category: 'core' },
 
     // ── Music (optional — disabled if not configured) ──
-    { name: 'LAVALINK_HOST', required: false, description: 'Lavalink server host', category: 'music' },
-    { name: 'LAVALINK_PORT', required: false, description: 'Lavalink server port', category: 'music' },
+    { name: 'LAVALINK_HOST_1', required: false, description: 'Lavalink node-1 host', category: 'music' },
     { name: 'LAVALINK_PASSWORD', required: false, description: 'Lavalink server password', category: 'music' },
 
     // ── Video (optional) ──
-    { name: 'COBALT_URL', required: false, description: 'Cobalt API instance URL', category: 'video' },
+    { name: 'COBALT_INSTANCES', required: false, description: 'Cobalt API instance URLs (comma-separated)', category: 'video' },
 ];
 
 /**

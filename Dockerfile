@@ -22,8 +22,8 @@ RUN npx tsc
 # Production stage
 FROM node:20-alpine
 
-# Install ffmpeg and python3 for audio processing and yt-dlp-exec
-RUN apk add --no-cache ffmpeg python3
+# Install ffmpeg for mobile video processing (yt-dlp is in separate API container)
+RUN apk add --no-cache ffmpeg
 
 WORKDIR /app
 
@@ -38,8 +38,9 @@ COPY --from=builder /app/dist ./dist
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S altergolden -u 1001 -G nodejs
 
-# Create logs directory
-RUN mkdir -p /app/logs && chown -R altergolden:nodejs /app/logs
+# Create logs and temp directories
+RUN mkdir -p /app/logs /app/dist/services/video/temp && \
+    chown -R altergolden:nodejs /app/logs /app/dist/services/video/temp
 
 # Switch to non-root user
 USER altergolden

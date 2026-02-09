@@ -5,3 +5,7 @@ node_modules/
 .commands-hash.json
 *.db
 temp/
+
+# Docker service data (plugins are binary, cookies are secrets)
+docker/lavalink/plugins/
+docker/cobalt/cookies.json

@@ -1,13 +1,16 @@
 # ═══════════════════════════════════════════════════════════════
-# ALTERGOLDEN BACKEND - Ultra-Lean
+# ALTERGOLDEN BOT - Core Services
+# Docker Desktop folder: altergolden-bot
 # ═══════════════════════════════════════════════════════════════
-# Tối ưu tổng thể:
-# - Postgres: 384M → 256M + tuned shared_buffers
-# - Redis: 300M → 192M, maxmemory 256mb → 96mb
-# - Bot: 1G → 512M
-# - Prometheus: 512M → 192M, retention 30d → 7d
-# - Grafana: 512M → 192M, no extra plugins
+# Sử dụng start.ps1 / stop.ps1 để quản lý toàn bộ stack
+# Hoặc: docker compose up -d (chỉ bot + DB + cache)
 # ═══════════════════════════════════════════════════════════════
+
+name: altergolden-bot
+
+networks:
+  altergolden-net:
+    external: true
 
 services:
   # ───────────────────────────────────────────────────────────────
@@ -17,6 +20,8 @@ services:
     image: postgres:16-alpine
     container_name: altergolden-postgres
     restart: on-failure:5
+    networks:
+      - altergolden-net
     environment:
       POSTGRES_USER: ${DB_USER:-altergolden}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-altergolden_secret}
@@ -68,6 +73,8 @@ services:
     image: redis:7-alpine
     container_name: altergolden-redis
     restart: on-failure:5
+    networks:
+      - altergolden-net
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
@@ -101,6 +108,39 @@ services:
       start_period: 5s
 
   # ───────────────────────────────────────────────────────────────
+  # yt-dlp HTTP API (video download microservice)
+  # ───────────────────────────────────────────────────────────────
+  ytdlp-api:
+    build: ./docker/ytdlp-api
+    container_name: altergolden-ytdlp-api
+    restart: on-failure:5
+    networks:
+      - altergolden-net
+    volumes:
+      - video_temp:/downloads
+    environment:
+      MAX_CONCURRENT_DOWNLOADS: "5"
+      MAX_DURATION_SECONDS: "600"
+      MAX_FILE_SIZE_MB: "100"
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+        reservations:
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8900/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ───────────────────────────────────────────────────────────────
   # alterGolden Bot Application
   # ───────────────────────────────────────────────────────────────
   bot:
@@ -109,11 +149,18 @@ services:
       dockerfile: Dockerfile
     container_name: altergolden-bot
     restart: on-failure:5
+    networks:
+      - altergolden-net
+    volumes:
+      - video_temp:/app/dist/services/video/temp
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      ytdlp-api:
+        condition: service_healthy
+      # Lavalink nodes are in separate compose - bot auto-reconnects (30 retries)
     environment:
       # ── Core (required) ──
       BOT_TOKEN: ${BOT_TOKEN}
@@ -144,15 +191,22 @@ services:
       PIXIV_CLIENT_SECRET: ${PIXIV_CLIENT_SECRET:-}
       RULE34_USER_ID: ${RULE34_USER_ID:-}
       RULE34_API_KEY: ${RULE34_API_KEY:-}
-      # ── Music ──
-      LAVALINK_HOST: ${LAVALINK_HOST:-}
-      LAVALINK_PORT: ${LAVALINK_PORT:-}
-      LAVALINK_PASSWORD: ${LAVALINK_PASSWORD:-}
-      # ── Video ──
-      COBALT_URL: ${COBALT_URL:-}
+      # ── Music (Lavalink nodes on shared network) ──
+      LAVALINK_HOST_1: lavalink-1
+      LAVALINK_HOST_2: lavalink-2
+      LAVALINK_HOST_3: lavalink-3
+      LAVALINK_PORT: "2333"
+      LAVALINK_PORT_2: "2333"
+      LAVALINK_PORT_3: "2333"
+      LAVALINK_PASSWORD: ${LAVALINK_PASSWORD:-youshallnotpass}
+      # ── Video (Cobalt instances on shared network) ──
+      COBALT_INSTANCES: "http://cobalt-1:9000,http://cobalt-2:9000,http://cobalt-3:9000"
+      # ── yt-dlp API ──
+      YTDLP_API_URL: "http://ytdlp-api:8900"
+      # ── Sentry (optional) ──
+      SENTRY_DSN: ${SENTRY_DSN:-}
       # ── Node.js ──
       NODE_ENV: ${NODE_ENV:-production}
-      # ── Node.js Memory ──
       NODE_OPTIONS: "--max-old-space-size=384"
     deploy:
       resources:
@@ -172,104 +226,33 @@ services:
       retries: 3
       start_period: 30s
 
-  # ═══════════════════════════════════════════════════════════════
-  # MONITORING STACK
-  # ═══════════════════════════════════════════════════════════════
-  
   # ───────────────────────────────────────────────────────────────
-  # Prometheus - Metrics Collection (Lean)
+  # YT-Cipher (Lavalink YouTube plugin dependency)
   # ───────────────────────────────────────────────────────────────
-  prometheus:
-    image: prom/prometheus:v2.48.0
-    container_name: altergolden-prometheus
+  yt-cipher:
+    image: ghcr.io/kikkia/yt-cipher:master
+    container_name: ejs_signature_api
     restart: on-failure:3
-    volumes:
-      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./monitoring/prometheus/alerts:/etc/prometheus/alerts:ro
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=3d'
-      - '--storage.tsdb.retention.size=256MB'
-      - '--storage.tsdb.wal-compression'
-      - '--web.enable-lifecycle'
+    networks:
+      - altergolden-net
     ports:
-      - "9090:9090"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - "8001:8001"
     deploy:
       resources:
         limits:
-          memory: 192M
+          memory: 256M
         reservations:
-          memory: 64M
+          memory: 96M
     logging:
       driver: "json-file"
       options:
         max-size: "3m"
         max-file: "2"
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
-
-  # ───────────────────────────────────────────────────────────────
-  # Grafana - Visualization (Lean)
-  # ───────────────────────────────────────────────────────────────
-  grafana:
-    image: grafana/grafana:10.2.2
-    container_name: altergolden-grafana
-    restart: on-failure:3
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_SERVER_ROOT_URL=http://localhost:3030
-      - GF_ANALYTICS_REPORTING_ENABLED=false
-      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
-      - GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES=false
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
-    ports:
-      - "3030:3000"
-    depends_on:
-      - prometheus
-    deploy:
-      resources:
-        limits:
-          memory: 192M
-        reservations:
-          memory: 64M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "3m"
-        max-file: "2"
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
 
 volumes:
   postgres_data:
     driver: local
   redis_data:
     driver: local
-  prometheus_data:
+  video_temp:
     driver: local
-  grafana_data:
-    driver: local
-
-# Note: Using existing services from your Docker setup:
-# - lavalinklocalserver (Lavalink music)
-# - cobaltlocalserver (Video downloads - scaled instances in CobaltLocalServer)
-# - invidiouscompa (YouTube)
-# - ytdlplocalserver (yt-dlp)
-# - yt-cipher (YouTube cipher)

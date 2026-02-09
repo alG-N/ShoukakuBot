@@ -1,0 +1,131 @@
+# ═══════════════════════════════════════════════════════════════
+# COBALT - 3 Instances (Load Balancing)
+# Docker Desktop folder: altergolden-cobalt
+# ═══════════════════════════════════════════════════════════════
+
+name: altergolden-cobalt
+
+networks:
+  altergolden-net:
+    external: true
+
+services:
+  cobalt-1:
+    image: ghcr.io/imputnet/cobalt:10
+    container_name: cobalt-1
+    restart: on-failure:3
+    networks:
+      - altergolden-net
+    environment:
+      API_PORT: 9000
+      API_AUTH_REQUIRED: "false"
+      CORS_WILDCARD: 1
+      DURATION_LIMIT: 10800
+      STREAM_LIMIT: 10737418240
+      COOKIE_PATH: "/cookies.json"
+      CUSTOM_INNERTUBE_CLIENT: "IOS"
+      API_URL: "http://cobalt-1:9000"
+      API_NAME: "Cobalt-1"
+    volumes:
+      - ./docker/cobalt/cookies.json:/cookies.json:ro
+    ports:
+      - "9001:9000"
+    tmpfs:
+      - /tmp:size=32M
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+        reservations:
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "3m"
+        max-file: "2"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9000/"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  cobalt-2:
+    image: ghcr.io/imputnet/cobalt:10
+    container_name: cobalt-2
+    restart: on-failure:3
+    networks:
+      - altergolden-net
+    environment:
+      API_PORT: 9000
+      API_AUTH_REQUIRED: "false"
+      CORS_WILDCARD: 1
+      DURATION_LIMIT: 10800
+      STREAM_LIMIT: 10737418240
+      COOKIE_PATH: "/cookies.json"
+      CUSTOM_INNERTUBE_CLIENT: "IOS"
+      API_URL: "http://cobalt-2:9000"
+      API_NAME: "Cobalt-2"
+    volumes:
+      - ./docker/cobalt/cookies.json:/cookies.json:ro
+    ports:
+      - "9002:9000"
+    tmpfs:
+      - /tmp:size=32M
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+        reservations:
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "3m"
+        max-file: "2"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9000/"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  cobalt-3:
+    image: ghcr.io/imputnet/cobalt:10
+    container_name: cobalt-3
+    restart: on-failure:3
+    networks:
+      - altergolden-net
+    environment:
+      API_PORT: 9000
+      API_AUTH_REQUIRED: "false"
+      CORS_WILDCARD: 1
+      DURATION_LIMIT: 10800
+      STREAM_LIMIT: 10737418240
+      COOKIE_PATH: "/cookies.json"
+      CUSTOM_INNERTUBE_CLIENT: "IOS"
+      API_URL: "http://cobalt-3:9000"
+      API_NAME: "Cobalt-3"
+    volumes:
+      - ./docker/cobalt/cookies.json:/cookies.json:ro
+    ports:
+      - "9003:9000"
+    tmpfs:
+      - /tmp:size=32M
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+        reservations:
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "3m"
+        max-file: "2"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9000/"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
