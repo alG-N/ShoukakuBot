@@ -221,6 +221,14 @@ class YtDlpService extends EventEmitter {
 
         const fileSizeInMB = stats.size / (1024 * 1024);
         console.log(`✅ yt-dlp downloaded ${fileSizeInMB.toFixed(2)} MB via API → ${finalPath}`);
+        // NOTE: Pre-download size vs actual download size discrepancy explained:
+        // - Pre-download size is YouTube's reported filesize (videoInfo.filesize)
+        // - Actual size can differ due to:
+        //   1. YouTube may report estimate instead of exact size
+        //   2. Different format selection (best[height<=720] may pick different codec)
+        //   3. Compression variations between reported and actual stream
+        //   4. Audio/video stream merging overhead
+        // This is normal and expected behavior from yt-dlp/YouTube API
 
         this.emit('complete', {
             path: finalPath,

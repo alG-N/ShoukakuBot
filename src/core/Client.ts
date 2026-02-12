@@ -47,6 +47,10 @@ export const CLIENT_OPTIONS = {
         parse: ['users', 'roles'] as const,
         repliedUser: false
     },
+    // Increase REST timeout for large file uploads (video downloads can be 50-100MB)
+    rest: {
+        timeout: 120000, // 2 minutes (default is 15 seconds)
+    },
     // Sweep settings for memory optimization at scale
     sweepers: {
         messages: {

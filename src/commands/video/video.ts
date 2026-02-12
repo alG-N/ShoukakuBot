@@ -550,12 +550,48 @@ class VideoCommand extends BaseCommand {
                     name: `${platformId}_${isGif ? 'gif' : 'video'}.${fileExtension}` 
                 });
                 
-                await interaction.editReply({ 
-                    content: successMessage,
-                    embeds: [],
-                    files: [attachment],
-                    components: [originalButton]
-                });
+                // Log file details before upload
+                const uploadFileSize = fs.statSync(result.path).size / (1024 * 1024);
+                console.log(`📤 Attempting upload: ${result.path} (${uploadFileSize.toFixed(2)} MB)`);
+                console.log(`📋 File details: ${fileExtension} format, name: ${platformId}_${isGif ? 'gif' : 'video'}.${fileExtension}`);
+                
+                // Upload with retry logic for aborted operations
+                let uploadSuccess = false;
+                let retryCount = 0;
+                const maxRetries = 2;
+                
+                while (!uploadSuccess && retryCount <= maxRetries) {
+                    try {
+                        if (retryCount > 0) {
+                            console.log(`🔄 Retry attempt ${retryCount}/${maxRetries} for upload...`);
+                            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s before retry
+                        }
+                        
+                        await interaction.editReply({ 
+                            content: successMessage,
+                            embeds: [],
+                            files: [attachment],
+                            components: [originalButton]
+                        });
+                        
+                        uploadSuccess = true;
+                        console.log(`✅ Upload successful (${uploadFileSize.toFixed(2)} MB)`);
+                    } catch (uploadErr) {
+                        const uploadError = uploadErr as Error & { code?: number };
+                        console.error(`❌ Upload attempt ${retryCount + 1} failed:`, {
+                            message: uploadError.message,
+                            code: uploadError.code,
+                            name: uploadError.name,
+                            fileSize: `${uploadFileSize.toFixed(2)} MB`,
+                            platform: platformName
+                        });
+                        
+                        if (retryCount === maxRetries) {
+                            throw uploadErr; // Re-throw on final failure
+                        }
+                        retryCount++;
+                    }
+                }
 
                 // Delete file after successful upload
                 if (downloadedFilePath && fs.existsSync(downloadedFilePath)) {
@@ -578,7 +614,27 @@ class VideoCommand extends BaseCommand {
 
         } catch (error) {
             const err = error as Error & { code?: number };
-            console.error('[Video] Error:', err.message);
+            
+            // DETAILED ERROR LOGGING
+            console.error('═══════════════════════════════════════════');
+            console.error('🚨 [Video] Error Details:');
+            console.error('═══════════════════════════════════════════');
+            console.error('Message:', err.message);
+            console.error('Error Code:', err.code || 'N/A');
+            console.error('Error Name:', err.name || 'N/A');
+            console.error('URL:', url);
+            console.error('Quality:', quality);
+            if (downloadedFilePath) {
+                try {
+                    const fileSize = fs.existsSync(downloadedFilePath) 
+                        ? (fs.statSync(downloadedFilePath).size / (1024 * 1024)).toFixed(2) + ' MB'
+                        : 'File not found';
+                    console.error('Downloaded File Size:', fileSize);
+                    console.error('Downloaded File Path:', downloadedFilePath);
+                } catch { /* ignore */ }
+            }
+            console.error('Stack Trace:', err.stack?.split('\n').slice(0, 5).join('\n'));
+            console.error('═══════════════════════════════════════════');
             
             // Clean up file on error
             if (downloadedFilePath && fs.existsSync(downloadedFilePath)) {
@@ -643,17 +699,31 @@ class VideoCommand extends BaseCommand {
                     )
                     .setFooter({ text: 'Max capacity: 100 MB' });
             } else if (isTimeout) {
+                // Get file size if available for better error message
+                let fileSizeInfo = '';
+                if (downloadedFilePath && fs.existsSync(downloadedFilePath)) {
+                    try {
+                        const size = (fs.statSync(downloadedFilePath).size / (1024 * 1024)).toFixed(2);
+                        fileSizeInfo = `\n📦 **Downloaded file size:** ${size} MB`;
+                    } catch { /* ignore */ }
+                }
+                
                 errorEmbed = new EmbedBuilder()
                     .setColor(COLORS.ERROR)
-                    .setTitle('⏰ Download Timeout')
+                    .setTitle('⏰ Upload Timeout/Aborted')
                     .setDescription(
-                        `⚠️ The download took too long and was cancelled.\n\n` +
+                        `⚠️ The upload to Discord was aborted or timed out.${fileSizeInfo}\n\n` +
+                        `🔍 **Possible causes:**\n` +
+                        `• File too large for Discord to process\n` +
+                        `• Network connection issues\n` +
+                        `• Discord API experiencing delays\n\n` +
                         `💡 **Suggestions:**\n` +
                         `• Try a shorter video\n` +
                         `• Try lower quality (480p)\n` +
-                        `• Try again later if the server is busy`
+                        `• Use 🔗 **Link mode** instead\n` +
+                        `• Try again in a moment`
                     )
-                    .setFooter({ text: 'Download timeout: 2 minutes' });
+                    .setFooter({ text: 'Error: ' + err.message });
             } else {
                 errorEmbed = videoEmbedBuilder?.buildDownloadFailedEmbed?.(err.message) ||
                     new EmbedBuilder()

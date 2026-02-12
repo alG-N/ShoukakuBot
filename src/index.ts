@@ -85,7 +85,7 @@ class AlterGoldenBot {
 
     constructor() {
         this.client = createClient() as ClientWithCommands;
-        this.rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN!);
+        this.rest = new REST({ version: '10', timeout: 120000 }).setToken(process.env.BOT_TOKEN!);
     }
 
     /**

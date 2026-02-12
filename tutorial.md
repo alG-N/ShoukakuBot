@@ -6,6 +6,8 @@
 Set-Location "d:\Project\FumoBOT\alterGolden - Backend"; Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue; npx tsc; node dist/index.js
 ```
 
+Set-Location "C:\Users\alterGolden\Desktop\alterGoldenBOT\alterGolden - Backend"; Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue; npx tsc; node dist/index.js
+
 ## 📌 Quick Restart (không cần clean)
 ```powershell
 # Stop bot cũ, compile, chạy lại
