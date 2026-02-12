@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Video Command
  * Download videos from social media platforms
  * @module commands/video/VideoCommand
@@ -18,6 +18,7 @@ import { COLORS } from '../../constants.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import fs from 'fs';
 import path from 'path';
+import { getDefault } from '../../utils/common/moduleHelper.js';
 // TYPES
 interface VideoConfig {
     USER_COOLDOWN_SECONDS?: number;
@@ -97,7 +98,6 @@ let videoEmbedBuilder: VideoEmbedBuilder | undefined;
 let validateUrl: ((interaction: ChatInputCommandInteraction, url: string) => Promise<boolean>) | undefined;
 let videoConfig: VideoConfig | undefined;
 
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
 try {
     videoDownloadService = getDefault(require('../../services/video/VideoDownloadService'));
@@ -454,9 +454,21 @@ class VideoCommand extends BaseCommand {
 
                 downloadedFilePath = result.path;
                 
-                // Validate file size before upload (Discord limits)
+                // Verify ACTUAL file size on disk (don't trust API/header-reported sizes)
+                let actualSizeMB = result.size;
+                if (downloadedFilePath && fs.existsSync(downloadedFilePath)) {
+                    const actualStats = fs.statSync(downloadedFilePath);
+                    actualSizeMB = actualStats.size / (1024 * 1024);
+                    
+                    // Log discrepancy if reported vs actual size differs significantly
+                    if (Math.abs(actualSizeMB - result.size) > 0.5) {
+                        console.log(`⚠️ Size discrepancy: reported=${result.size.toFixed(2)}MB, actual=${actualSizeMB.toFixed(2)}MB`);
+                    }
+                }
+                
+                // Validate file size before upload (Discord limits) — use ACTUAL size
                 const maxFileSizeMB = videoConfig?.MAX_FILE_SIZE_MB || videoConfig?.limits?.maxFileSizeMB || 100;
-                if (result.size && result.size > maxFileSizeMB) {
+                if (actualSizeMB > maxFileSizeMB) {
                     // Clean up oversized file
                     if (fs.existsSync(downloadedFilePath)) {
                         try { fs.unlinkSync(downloadedFilePath); } catch (e) { /* ignore */ }
@@ -467,7 +479,7 @@ class VideoCommand extends BaseCommand {
                         .setTitle('❌ Video Too Large')
                         .setDescription(
                             `This video couldn't be downloaded because it exceeds our max capacity (**${maxFileSizeMB} MB**).\n\n` +
-                            `The video is **${result.size.toFixed(2)} MB**.\n\n` +
+                            `The video is **${actualSizeMB.toFixed(2)} MB**.\n\n` +
                             `💡 **Try instead:**\n` +
                             `• Use a lower quality (480p)\n` +
                             `• Use 🔗 **Link mode** for a direct download link`
@@ -498,7 +510,7 @@ class VideoCommand extends BaseCommand {
                 const hasNitro = member?.premiumSince != null;
                 const userUploadLimitMB = hasNitro ? maxFileSizeMB : 10; // Nitro: config cap (100MB), Non-Nitro: 10MB
 
-                if (result.size && result.size > userUploadLimitMB) {
+                if (actualSizeMB > userUploadLimitMB) {
                     // Clean up oversized file
                     if (downloadedFilePath && fs.existsSync(downloadedFilePath)) {
                         try { fs.unlinkSync(downloadedFilePath); } catch (e) { /* ignore */ }
@@ -509,11 +521,11 @@ class VideoCommand extends BaseCommand {
                         .setTitle('❌ File Exceeds Discord Upload Limit')
                         .setDescription(
                             hasNitro
-                                ? `Video **${result.size.toFixed(2)} MB** exceeds our max capacity (**${maxFileSizeMB} MB**).\n\n` +
+                                ? `Video **${actualSizeMB.toFixed(2)} MB** exceeds our max capacity (**${maxFileSizeMB} MB**).\n\n` +
                                   `💡 **Try instead:**\n` +
                                   `• Use a lower quality (480p)\n` +
                                   `• Use 🔗 **Link mode** for a direct download link`
-                                : `Video **${result.size.toFixed(2)} MB** exceeds Discord's upload limit for non-Nitro users (**10 MB**).\n\n` +
+                                : `Video **${actualSizeMB.toFixed(2)} MB** exceeds Discord's upload limit for non-Nitro users (**10 MB**).\n\n` +
                                   `💡 **Options:**\n` +
                                   `• Use 🔗 **Link mode** for a direct download link\n` +
                                   `• Use a lower quality (480p)\n` +
@@ -534,7 +546,7 @@ class VideoCommand extends BaseCommand {
 
                 // Build success message with Original button
                 const fileType = isGif ? 'GIF' : result.format;
-                const successMessage = `✅ **${platformName}** • ${result.size.toFixed(2)} MB • ${fileType}`;
+                const successMessage = `✅ **${platformName}** • ${actualSizeMB.toFixed(2)} MB • ${fileType}`;
                 
                 const originalButton = new ActionRowBuilder<ButtonBuilder>().addComponents(
                     new ButtonBuilder()

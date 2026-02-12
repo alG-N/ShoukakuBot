@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Google Command - Presentation Layer
  * Search the web using Google Custom Search or DuckDuckGo fallback
  * @module presentation/commands/api/google
@@ -15,6 +15,7 @@ import {
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import { checkAccess, AccessType } from '../../services/index.js';
+import { getDefault } from '../../utils/common/moduleHelper.js';
 // TYPES
 interface SearchResult {
     title: string;
@@ -56,7 +57,6 @@ let googleHandler: GoogleHandler | undefined;
 let cooldownManager: CooldownManager | undefined;
 let COOLDOWN_SETTINGS: Record<string, number> | undefined;
 
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
 try {
     googleService = getDefault(require('../../services/api/googleService'));

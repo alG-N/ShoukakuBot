@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Mod Log Handler
  * Formats and sends mod log messages
  * @module handlers/moderation/ModLogHandler
@@ -19,7 +19,7 @@ import {
 import { logger } from '../../core/Logger.js';
 import { formatDuration } from '../../utils/common/time.js';
 
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
+import { getDefault } from '../../utils/common/moduleHelper.js';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const ModLogService = getDefault(require('../../services/moderation/ModLogService'));
 /**

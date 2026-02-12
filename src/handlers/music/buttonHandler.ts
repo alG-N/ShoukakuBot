@@ -591,7 +591,7 @@ export const buttonHandler = {
                 return;
             }
 
-            const required = musicCache.getRequiredVotes(queue?.skipVoteListenerCount || listenerCount);
+            const required = musicCache.getRequiredVotes(musicCache.getSkipVoteListenerCount(guildId) || listenerCount);
             await interaction.reply({
                 content: `🗳️ Vote added! **${result.voteCount}/${required}**`,
                 ephemeral: true
@@ -608,18 +608,16 @@ export const buttonHandler = {
 
         await interaction.reply({ embeds: [embed], components: [row] });
 
-        const q = musicCache.getQueue(guildId);
-        if (q) {
-            if (q.skipVoteTimeout) clearTimeout(q.skipVoteTimeout);
-            q.skipVoteTimeout = setTimeout(async () => {
-                try {
-                    musicService.endSkipVote(guildId);
-                } catch (error: unknown) {
-                    const err = error as { message?: string };
-                    logger.error('Button', `Skip vote timeout error: ${err.message}`);
-                }
-            }, SKIP_VOTE_TIMEOUT);
-        }
+        // Set timeout via VoteCache (single source of truth for vote state)
+        const voteTimeout = setTimeout(async () => {
+            try {
+                musicService.endSkipVote(guildId);
+            } catch (error: unknown) {
+                const err = error as { message?: string };
+                logger.error('Button', `Skip vote timeout error: ${err.message}`);
+            }
+        }, SKIP_VOTE_TIMEOUT);
+        musicCache.setSkipVoteTimeout(guildId, voteTimeout);
     },
 
     async handleButtonQueuePage(interaction: ButtonInteraction, guildId: string, pageAction: string): Promise<void> {

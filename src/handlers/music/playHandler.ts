@@ -376,8 +376,8 @@ export const playHandler = {
 
     async refreshNowPlayingMessage(guildId: string, userId: string, guild: Guild | null = null): Promise<void> {
         try {
-            const nowPlayingMsg = musicService.getNowPlayingMessage(guildId);
-            if (!nowPlayingMsg) return;
+            const nowPlayingRef = musicService.getNowPlayingMessage(guildId);
+            if (!nowPlayingRef) return;
 
             const currentTrack = musicService.getCurrentTrack(guildId) as Track | null;
             if (!currentTrack) return;
@@ -410,7 +410,14 @@ export const playHandler = {
                 listenerCount: listenerCount
             });
 
-            await nowPlayingMsg.edit({ embeds: [embed], components: rows }).catch(() => {});
+            // Resolve the MessageRef to a full Message, then edit
+            const channel = (queue as any)?.textChannel as TextChannel | null;
+            if (channel && 'messages' in channel) {
+                const msg = await channel.messages.fetch(nowPlayingRef.messageId).catch(() => null);
+                if (msg) {
+                    await msg.edit({ embeds: [embed], components: rows }).catch(() => {});
+                }
+            }
         } catch {
             // Silently ignore errors
         }

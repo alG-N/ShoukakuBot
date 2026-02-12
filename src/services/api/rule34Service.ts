@@ -355,8 +355,16 @@ class Rule34Service {
 
         const minScore = timeframe === 'day' ? 50 : timeframe === 'week' ? 100 : 200;
 
+        // Use a time-bucketed random page offset so trending refreshes periodically
+        // Bucket changes every 30 minutes for 'day', every 2 hours for 'week', every 6 hours for 'month'
+        const bucketMs = timeframe === 'day' ? 30 * 60 * 1000 : timeframe === 'week' ? 2 * 60 * 60 * 1000 : 6 * 60 * 60 * 1000;
+        const timeBucket = Math.floor(Date.now() / bucketMs);
+        // Derive a pseudo-random page from the time bucket (0-9 range)
+        const pageOffset = timeBucket % 10;
+
         return this.search('', {
             limit,
+            page: pageOffset,
             sort: 'score:desc',
             minScore,
             excludeAi

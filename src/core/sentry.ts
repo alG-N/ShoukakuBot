@@ -32,6 +32,7 @@ interface BreadcrumbData {
 // STATE
 let isInitialized = false;
 let initializationFailed = false;
+let currentShardId: number | null = null;
 // FUNCTIONS
 /**
  * Initialize Sentry error tracking
@@ -97,6 +98,19 @@ export function initialize(options: SentryInitOptions = {}): boolean {
         console.error('   Error:', (error as Error).message);
         console.error('   Production errors will go untracked.\n');
         return false;
+    }
+}
+
+/**
+ * Set the shard ID for tagging all subsequent Sentry events.
+ * Should be called once after the client is ready.
+ * @param shardId - The shard ID (0-based)
+ */
+export function setShardId(shardId: number): void {
+    currentShardId = shardId;
+    if (isInitialized) {
+        Sentry.setTag('shard_id', String(shardId));
+        logger.debug('Sentry', `Shard ID tag set to ${shardId}`);
     }
 }
 
@@ -175,6 +189,10 @@ export function captureException(error: Error, context: SentryContext = {}): voi
         
         if (context.command) {
             scope.setTag('command', context.command);
+        }
+
+        if (currentShardId !== null) {
+            scope.setTag('shard_id', String(currentShardId));
         }
         
         if (context.extra) {

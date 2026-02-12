@@ -1,4 +1,4 @@
-/**
+﻿/**
  * NHentai Command - Presentation Layer
  * Search and browse doujinshi from nhentai
  * @module presentation/commands/api/nhentai
@@ -15,6 +15,7 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
+import { getDefault } from '../../utils/common/moduleHelper.js';
 // TYPES
 interface GalleryData {
     id: number;
@@ -56,7 +57,6 @@ interface NHentaiHandler {
 let nhentaiService: NHentaiService | undefined;
 let nhentaiHandler: NHentaiHandler | undefined;
 
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
 try {
     nhentaiService = getDefault(require('../../services/api/nhentaiService'));

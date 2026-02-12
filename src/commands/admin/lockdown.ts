@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Lockdown Command
  * Lock/unlock channels or server
  * @module commands/admin/lockdown
@@ -14,6 +14,7 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 
+import { getDefault } from '../../utils/common/moduleHelper.js';
 interface ModerationConfig {
     COLORS: Record<string, number>;
     EMOJIS: Record<string, string>;
@@ -44,7 +45,6 @@ interface LockdownService {
     getLockStatus?: (guildId: string) => Promise<LockStatus>;
 }
 
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
 let lockdownService: LockdownService | undefined;
 let moderationConfig: ModerationConfig | undefined;

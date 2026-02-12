@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Pixiv Content Handler
  * Creates embeds and buttons for Pixiv search results
  * @module handlers/api/pixivContentHandler
@@ -6,8 +6,7 @@
 
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
+import { getDefault } from '../../utils/common/moduleHelper.js';
 const pixivService = getDefault(require('../../services/api/pixivService'));
 // TYPES & INTERFACES
 interface PixivTag {

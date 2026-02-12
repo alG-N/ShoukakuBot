@@ -228,23 +228,13 @@ export async function clearMessages(guildId: Snowflake, channelId?: Snowflake): 
     return count;
 }
 
-/**
- * Get cache statistics
- * Note: In shard-safe mode, this only returns stats for messages accessed by this shard
- */
-export async function getStats(): Promise<{ guilds: number; totalMessages: number }> {
-    // In Redis mode, we can't easily count all guilds without SCAN
-    // Return a placeholder - real stats should come from monitoring
-    return { guilds: 0, totalMessages: 0 };
-}
 // EXPORTS
 export default {
     initialize,
     shutdown,
     getDeletedMessages,
     getMessage,
-    clearMessages,
-    getStats
+    clearMessages
 };
 
 export type { TrackedMessage, TrackedAttachment, TrackedEmbed };

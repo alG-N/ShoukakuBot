@@ -213,7 +213,7 @@ export class RedditService {
 
         // 2. Check Redis for a token another shard may have refreshed
         try {
-            const cached = await cacheService.get<{ accessToken: string; tokenExpiry: number }>(
+            const cached = await cacheService.peek<{ accessToken: string; tokenExpiry: number }>(
                 RedditService.AUTH_CACHE_NS, RedditService.AUTH_CACHE_KEY
             );
             if (cached && Date.now() < cached.tokenExpiry) {

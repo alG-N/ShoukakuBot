@@ -5,10 +5,11 @@
  * @module services/music/events/PlaybackEventHandler
  */
 
-import type { Message, ActionRowData, MessageActionRowComponentData } from 'discord.js';
+import type { Message, ActionRowData, MessageActionRowComponentData, TextBasedChannel, TextChannel } from 'discord.js';
 import musicEventBus from './MusicEventBus.js';
 import { MusicEvents, type MusicTrack } from './MusicEvents.js';
 import musicCache from '../../../cache/music/MusicCacheFacade.js';
+import type { MessageRef } from '../../../cache/music/QueueCache.js';
 import trackHandler, { type Track, type LoopMode } from '../../../handlers/music/trackHandler.js';
 import { TRACK_TRANSITION_DELAY } from '../../../config/features/music.js';
 // TYPES
@@ -74,6 +75,21 @@ class PlaybackEventHandler {
     
     /** Service references */
     private services: ServiceReferences = {};
+
+    /**
+     * Resolve a MessageRef to a full Discord Message via the queue's textChannel.
+     */
+    private async _resolveMessage(ref: MessageRef | null, guildId: string): Promise<Message | null> {
+        if (!ref) return null;
+        try {
+            const queue = musicCache.getQueue(guildId) as any;
+            const channel = queue?.textChannel as TextBasedChannel | null;
+            if (!channel || !('messages' in channel)) return null;
+            return await (channel as TextChannel).messages.fetch(ref.messageId);
+        } catch {
+            return null;
+        }
+    }
 
     /**
      * Initialize global event handlers
@@ -425,7 +441,8 @@ class PlaybackEventHandler {
      */
     private async _handleNowPlayingUpdate(data: EventData): Promise<void> {
         const { guildId, loopCount } = data;
-        const message = musicCache.getNowPlayingMessage(guildId);
+        const ref = musicCache.getNowPlayingMessage(guildId);
+        const message = await this._resolveMessage(ref, guildId);
         if (!message) return;
 
         const { queueService, voiceService } = this.services;
@@ -463,9 +480,7 @@ class PlaybackEventHandler {
                 listenerCount
             }) as MessageComponents;
 
-            if ('edit' in message) {
-                await (message as Message).edit({ embeds: [embed], components: rows });
-            }
+            await message.edit({ embeds: [embed], components: rows });
         } catch (err) {
             const error = err as { code?: number };
             if (error.code === 10008) {
@@ -486,7 +501,8 @@ class PlaybackEventHandler {
      * Disable now playing controls
      */
     private async _disableNowPlaying(guildId: string): Promise<void> {
-        const message = musicCache.getNowPlayingMessage(guildId) as Message | null;
+        const ref = musicCache.getNowPlayingMessage(guildId);
+        const message = await this._resolveMessage(ref, guildId);
         if (!message?.components?.length) return;
 
         try {

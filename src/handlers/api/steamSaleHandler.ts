@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Steam Sale Handler
  * Handles Steam sale command display
  * @module handlers/api/steamSaleHandler
@@ -13,9 +13,8 @@ import {
     ChatInputCommandInteraction,
     Message
 } from 'discord.js';
+import { getDefault } from '../../utils/common/moduleHelper.js';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 const steamService = getDefault(require('../../services/api/steamService'));
 // TYPES & INTERFACES
 interface SteamGame {

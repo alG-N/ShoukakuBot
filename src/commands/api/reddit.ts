@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Reddit Command - Presentation Layer
  * Fetch posts from Reddit
  * @module presentation/commands/api/reddit
@@ -14,6 +14,7 @@ import {
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import { checkAccess, AccessType } from '../../services/index.js';
+import { getDefault } from '../../utils/common/moduleHelper.js';
 // TYPES
 interface RedditPost {
     nsfw?: boolean;
@@ -63,7 +64,6 @@ let redditService: RedditService | undefined;
 let redditCache: RedditCache | undefined;
 let postHandler: PostHandler | undefined;
 
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
 try {
     redditService = getDefault(require('../../services/api/redditService'));

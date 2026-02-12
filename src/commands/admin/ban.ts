@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Ban Command - Presentation Layer
  * Ban/unban users from the server
  * @module commands/admin/ban
@@ -16,9 +16,8 @@ import {
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 
-// Helper to get default export from require()
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
+import { getDefault } from '../../utils/common/moduleHelper.js';
 // Logger for debugging
 const logger = getDefault(require('../../core/Logger'));
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Graceful Degradation Service
  * Provides fallback behaviors when services are unavailable
  * Ensures the bot continues functioning with reduced capability
@@ -7,9 +7,7 @@
 
 import { EventEmitter } from 'events';
 import logger from './Logger.js';
-
-// Helper to get default export from require()
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
+import { getDefault } from '../utils/common/moduleHelper.js';
 
 // Lazy-load cacheService to avoid circular dependency
 let _cacheService: typeof import('../cache/CacheService').default | null = null;
@@ -20,8 +18,9 @@ const getCacheService = () => {
     return _cacheService;
 };
 
-// Redis key for durable write queue
-const WRITE_QUEUE_KEY = 'graceful:writequeue:pending';
+// Redis key for durable write queue (shard-scoped to prevent cross-shard collisions)
+const WRITE_QUEUE_KEY_PREFIX = 'graceful:writequeue:pending';
+const getWriteQueueKey = (shardId: number): string => `${WRITE_QUEUE_KEY_PREFIX}:shard:${shardId}`;
 // TYPES & ENUMS
 /**
  * Degradation levels for service health
@@ -134,8 +133,25 @@ export class GracefulDegradation extends EventEmitter {
     /** Initialization state */
     private initialized: boolean = false;
 
+    /** Shard ID for scoping Redis keys (defaults from DISCORD_SHARD_ID env or 0) */
+    private shardId: number = parseInt(process.env.DISCORD_SHARD_ID || '0', 10);
+
+    /** Get the shard-scoped write queue Redis key */
+    private get writeQueueKey(): string {
+        return getWriteQueueKey(this.shardId);
+    }
+
     constructor() {
         super();
+    }
+
+    /**
+     * Set the shard ID for Redis key scoping
+     * Call this after the Discord client is ready with client.shard?.ids[0]
+     */
+    setShardId(id: number): void {
+        this.shardId = id;
+        logger.info('GracefulDegradation', `Shard ID set to ${id} (Redis key: ${this.writeQueueKey})`);
     }
 
     /**
@@ -475,9 +491,9 @@ export class GracefulDegradation extends EventEmitter {
             const cacheService = getCacheService();
             const redis = cacheService?.getRedis();
             if (redis) {
-                await redis.lpush(WRITE_QUEUE_KEY, JSON.stringify(entry));
+                await redis.lpush(this.writeQueueKey, JSON.stringify(entry));
                 // Set TTL of 24 hours to prevent unbounded growth
-                await redis.expire(WRITE_QUEUE_KEY, 86400);
+                await redis.expire(this.writeQueueKey, 86400);
             }
         } catch (error) {
             logger.error('GracefulDegradation', `Failed to persist write to Redis: ${(error as Error).message}`);
@@ -494,7 +510,7 @@ export class GracefulDegradation extends EventEmitter {
             const redis = cacheService?.getRedis();
             if (redis) {
                 // Remove the specific entry by value
-                await redis.lrem(WRITE_QUEUE_KEY, 1, JSON.stringify(entry));
+                await redis.lrem(this.writeQueueKey, 1, JSON.stringify(entry));
             }
         } catch (error) {
             logger.error('GracefulDegradation', `Failed to remove write from Redis: ${(error as Error).message}`);
@@ -515,7 +531,7 @@ export class GracefulDegradation extends EventEmitter {
                 return 0;
             }
 
-            const pending = await redis.lrange(WRITE_QUEUE_KEY, 0, -1);
+            const pending = await redis.lrange(this.writeQueueKey, 0, -1);
             if (pending.length === 0) {
                 return 0;
             }
@@ -706,7 +722,7 @@ export class GracefulDegradation extends EventEmitter {
             const cacheService = getCacheService();
             const redis = cacheService?.getRedis();
             if (redis) {
-                await redis.del(WRITE_QUEUE_KEY);
+                await redis.del(this.writeQueueKey);
                 logger.info('GracefulDegradation', 'Redis write queue cleared');
             }
         } catch (error) {

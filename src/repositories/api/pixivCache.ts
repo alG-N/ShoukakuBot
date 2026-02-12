@@ -147,7 +147,7 @@ class PixivCache {
     }
 
     private _hydrateSearch(key: string): void {
-        cacheService.get<any[]>(NS.SEARCH, key).then(val => {
+        cacheService.peek<any[]>(NS.SEARCH, key).then(val => {
             if (val && !this.searchMap.has(key)) {
                 if (this.searchMap.size >= MAX.SEARCH) this._evictOldest(this.searchMap);
                 this.searchMap.set(key, val);
@@ -156,7 +156,7 @@ class PixivCache {
     }
 
     private _hydrateResult(key: string): void {
-        cacheService.get<PixivResultData>(NS.RESULTS, key).then(val => {
+        cacheService.peek<PixivResultData>(NS.RESULTS, key).then(val => {
             if (val && !this.resultMap.has(key)) {
                 if (this.resultMap.size >= MAX.RESULTS) this._evictOldest(this.resultMap);
                 this.resultMap.set(key, val);

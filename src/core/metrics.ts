@@ -18,7 +18,6 @@ import client, {
     Counter,
     Gauge,
     Histogram,
-    Summary,
     collectDefaultMetrics
 } from 'prom-client';
 

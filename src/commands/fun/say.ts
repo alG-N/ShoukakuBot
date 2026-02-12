@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Say Command - Presentation Layer
  * Send a message as the bot
  * @module presentation/commands/fun/say
@@ -17,10 +17,10 @@ import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.j
 import { COLORS } from '../../constants.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 
+import { getDefault } from '../../utils/common/moduleHelper.js';
 // Import services
 let sayService: { validateChannel: (ch: unknown) => boolean; sanitizeMessage: (msg: string) => string } | undefined;
 
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
 try {
     sayService = getDefault(require('../../services/fun/say/SayService'));

@@ -11,8 +11,7 @@
  * @module modules/music/repository/MusicCacheFacade
  */
 
-import { Message } from 'discord.js';
-import queueCache, { MusicTrack, MusicQueue } from './QueueCache.js';
+import queueCache, { MusicTrack, MusicQueue, type MessageRef } from './QueueCache.js';
 import userMusicCache, { UserPreferences, FavoriteTrack, HistoryTrack, AddFavoriteResult, UserMusicStats } from './UserMusicCache.js';
 import voteCache, { VoteResult, AddVoteResult, VoteSkipStatus } from './VoteCache.js';
 import guildMusicCache, { GuildMusicSettings, RecentlyPlayedTrack, DJLockState, CachedPlaylist } from './GuildMusicCache.js';
@@ -154,16 +153,16 @@ class MusicCacheFacade {
     setVolume(guildId: string, volume: number): number {
         return queueCache.setVolume(guildId, volume);
     }
-    setNowPlayingMessage(guildId: string, message: Message | null): void {
+    setNowPlayingMessage(guildId: string, message: { id: string; channelId: string } | MessageRef | null): void {
         queueCache.setNowPlayingMessage(guildId, message);
     }
 
-    getNowPlayingMessage(guildId: string): Message | null {
+    getNowPlayingMessage(guildId: string): MessageRef | null {
         return queueCache.getNowPlayingMessage(guildId);
     }
 
-    async clearNowPlayingMessage(guildId: string): Promise<void> {
-        await queueCache.clearNowPlayingMessage(guildId);
+    clearNowPlayingMessage(guildId: string): void {
+        queueCache.clearNowPlayingMessage(guildId);
     }
     startSkipVote(guildId: string, userId: string, listenerCount: number): VoteResult {
         return voteCache.startSkipVote(guildId, userId, listenerCount);
@@ -187,6 +186,19 @@ class MusicCacheFacade {
 
     getVoteSkipStatus(guildId: string, listenerCount: number = 0): VoteSkipStatus {
         return voteCache.getVoteSkipStatus(guildId, listenerCount);
+    }
+
+    hasActiveSkipVote(guildId: string): boolean {
+        return voteCache.hasActiveSkipVote(guildId);
+    }
+
+    setSkipVoteTimeout(guildId: string, timeout: NodeJS.Timeout): void {
+        voteCache.setSkipVoteTimeout(guildId, timeout);
+    }
+
+    getSkipVoteListenerCount(guildId: string): number | null {
+        const session = voteCache.getSkipVoteSession(guildId);
+        return session?.listenerCount ?? null;
     }
     getDefaultPreferences(): UserPreferences {
         return userMusicCache.getDefaultPreferences();

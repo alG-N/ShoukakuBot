@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Anime Handler
  * Creates embeds for anime/manga search results
  * @module handlers/api/animeHandler
@@ -6,8 +6,7 @@
 
 import { EmbedBuilder } from 'discord.js';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
+import { getDefault } from '../../utils/common/moduleHelper.js';
 const anilistService = getDefault(require('../../services/api/anilistService'));
 // TYPES & INTERFACES
 interface MediaConfig {

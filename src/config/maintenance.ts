@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Maintenance Configuration
  * Persistence via CacheService (Redis) instead of synchronous file I/O.
  * Falls back to in-memory-only state when Redis is unavailable.
@@ -9,8 +9,8 @@
 import { EmbedBuilder } from 'discord.js';
 import { DEVELOPER_ID } from './owner.js';
 
+import { getDefault } from '../utils/common/moduleHelper.js';
 // Lazy-load cacheService to avoid circular dependency at module init
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 let _cacheService: typeof import('../cache/CacheService').default | null = null;
 const getCacheService = () => {
     if (!_cacheService) {

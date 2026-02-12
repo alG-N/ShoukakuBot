@@ -1,4 +1,4 @@
-/**
+﻿/**
  * DeathBattle Command - Presentation Layer
  * Anime-themed death battle game
  * @module presentation/commands/fun/deathbattle
@@ -18,6 +18,7 @@ import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.j
 import { checkAccess, AccessType } from '../../services/index.js';
 import type { BattleHistoryEntry } from '../../services/fun/deathbattle/BattleService.js';
 
+import { getDefault } from '../../utils/common/moduleHelper.js';
 // TYPES
 // Use the actual Battle interface from BattleService
 interface Battle {
@@ -81,7 +82,6 @@ let embedBuilder: EmbedBuilderService | undefined;
 let logger: LoggerService | undefined;
 let config: DeathBattleConfig | undefined;
 
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
 try {
     skillsetService = getDefault(require('../../services/fun/deathbattle/SkillsetService'));

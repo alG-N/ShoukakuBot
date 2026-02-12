@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Anime Command - Presentation Layer
  * Search anime/manga on AniList and MyAnimeList
  * @module presentation/commands/api/anime
@@ -17,6 +17,7 @@ import {
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import { checkAccess, AccessType } from '../../services/index.js';
+import { getDefault } from '../../utils/common/moduleHelper.js';
 // TYPES
 interface AnimeTitle {
     english?: string;
@@ -77,7 +78,6 @@ let myAnimeListService: MyAnimeListService | undefined;
 let animeHandler: AnimeHandler | undefined;
 let animeRepository: AnimeRepository | undefined;
 
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
 try {
     anilistService = getDefault(require('../../services/api/anilistService'));

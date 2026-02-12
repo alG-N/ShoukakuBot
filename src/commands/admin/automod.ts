@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AutoMod Command - Interactive Panel with Sections
  * Fixed: Use deferUpdate() + editReply() pattern to prevent timeout
  * @module commands/admin/automod
@@ -28,6 +28,7 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 
+import { getDefault } from '../../utils/common/moduleHelper.js';
 interface AutoModSettings {
     enabled: boolean;
     spam_enabled?: boolean;
@@ -71,7 +72,6 @@ interface ModerationConfig {
     COLORS: Record<string, number>;
 }
 
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
 let AutoModServiceInstance: AutoModService | undefined;
 let moderationConfig: ModerationConfig | undefined;

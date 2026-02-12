@@ -34,3 +34,6 @@ export type {
     ActionResult,
     AutoModSettings
 } from './AutoModHandler.js';
+
+// Anti-raid handler
+export { handleAntiRaid } from './AntiRaidHandler.js';

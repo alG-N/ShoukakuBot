@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Warnings Command
  * View warnings for a user
  * @module commands/admin/warnings
@@ -18,6 +18,7 @@ import {
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { formatDuration } from '../../utils/common/time.js';
 
+import { getDefault } from '../../utils/common/moduleHelper.js';
 const WARNINGS_PER_PAGE = 5;
 
 interface Infraction {
@@ -44,7 +45,6 @@ interface ModerationConfig {
     EMOJIS: Record<string, string>;
 }
 
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
 let infractionService: InfractionService | undefined;
 let moderationConfig: ModerationConfig | undefined;

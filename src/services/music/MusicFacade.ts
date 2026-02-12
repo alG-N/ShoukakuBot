@@ -5,13 +5,14 @@
  * @module services/music/MusicFacade
  */
 
-import { ChatInputCommandInteraction, Message, Guild, TextBasedChannel, ActionRowComponent } from 'discord.js';
+import { ChatInputCommandInteraction, Message, Guild, TextBasedChannel, ActionRowComponent, TextChannel } from 'discord.js';
 import { queueService, QueueService } from './queue/index.js';
 import { playbackService, PlaybackService } from './playback/index.js';
 import { voiceConnectionService, VoiceConnectionService } from './voice/index.js';
 import { autoPlayService, AutoPlayService } from './autoplay/index.js';
 import { musicEventBus, MusicEvents, playbackEventHandler } from './events/index.js';
 import musicCache from '../../cache/music/MusicCacheFacade.js';
+import type { MessageRef } from '../../cache/music/QueueCache.js';
 import trackHandler from '../../handlers/music/trackHandler.js';
 import { TRACK_TRANSITION_DELAY } from '../../config/features/music.js';
 import { updateMusicMetrics, musicTracksPlayedTotal } from '../../core/metrics.js';
@@ -638,7 +639,15 @@ export class MusicFacade {
     async cleanup(guildId: string): Promise<void> {
         musicEventBus.emitCleanup(guildId, 'manual');
         
-        await musicCache.clearNowPlayingMessage(guildId);
+        // Try to delete the now-playing message from Discord before clearing ref
+        const ref = this.getNowPlayingMessageRef(guildId);
+        if (ref) {
+            const message = await this._resolveMessage(ref, guildId);
+            if (message) {
+                await message.delete().catch(() => {});
+            }
+        }
+        musicCache.clearNowPlayingMessage(guildId);
         this.stopVCMonitor(guildId);
         this.clearInactivityTimer(guildId);
         this.unbindPlayerEvents(guildId);
@@ -673,19 +682,42 @@ export class MusicFacade {
     }
 
     isSkipVoteActive(guildId: string): boolean {
-        return musicCache.getQueue(guildId)?.skipVoteActive || false;
+        return musicCache.hasActiveSkipVote(guildId);
     }
     // NOW PLAYING MESSAGE
+
+    /**
+     * Resolve a MessageRef to a full Discord Message by fetching from the channel.
+     * Returns null if the channel or message is unavailable.
+     */
+    private async _resolveMessage(ref: MessageRef | null, guildId: string): Promise<Message | null> {
+        if (!ref) return null;
+        try {
+            const queue = musicCache.getQueue(guildId) as any;
+            const channel = queue?.textChannel as TextBasedChannel | null;
+            if (!channel || !('messages' in channel)) return null;
+            return await (channel as TextChannel).messages.fetch(ref.messageId);
+        } catch {
+            return null;
+        }
+    }
+
     setNowPlayingMessage(guildId: string, message: Message): void {
         musicCache.setNowPlayingMessage(guildId, message);
     }
 
-    getNowPlayingMessage(guildId: string): Message | null {
+    getNowPlayingMessageRef(guildId: string): MessageRef | null {
+        return musicCache.getNowPlayingMessage(guildId);
+    }
+
+    /** @deprecated Use getNowPlayingMessageRef() + _resolveMessage() */
+    getNowPlayingMessage(guildId: string): MessageRef | null {
         return musicCache.getNowPlayingMessage(guildId);
     }
 
     async updateNowPlayingMessage(guildId: string, payload: any): Promise<Message | null> {
-        const message = this.getNowPlayingMessage(guildId);
+        const ref = this.getNowPlayingMessageRef(guildId);
+        const message = await this._resolveMessage(ref, guildId);
         if (!message) return null;
 
         try {
@@ -700,7 +732,8 @@ export class MusicFacade {
     }
 
     async disableNowPlayingControls(guildId: string): Promise<void> {
-        const message = this.getNowPlayingMessage(guildId);
+        const ref = this.getNowPlayingMessageRef(guildId);
+        const message = await this._resolveMessage(ref, guildId);
         if (!message?.components?.length) return;
 
         try {
@@ -768,7 +801,8 @@ export class MusicFacade {
     }
 
     async updateNowPlayingForLoop(guildId: string, loopCount: number): Promise<void> {
-        const message = this.getNowPlayingMessage(guildId);
+        const ref = this.getNowPlayingMessageRef(guildId);
+        const message = await this._resolveMessage(ref, guildId);
         if (!message) return;
 
         const currentTrack = this.getCurrentTrack(guildId);

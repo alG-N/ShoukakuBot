@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Unified Cache Service
  * Single interface for all caching needs
  * Supports Redis (distributed) with in-memory fallback
@@ -9,9 +9,8 @@
 import type { Redis } from 'ioredis';
 import gracefulDegradation from '../core/GracefulDegradation.js';
 
-// Helper to get default export from require()
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
+import { getDefault } from '../utils/common/moduleHelper.js';
 // Use require for internal modules to avoid circular dependency issues
 const logger = getDefault(require('../core/Logger'));
 // TYPES & INTERFACES
@@ -260,7 +259,20 @@ export class CacheService {
                         this.metrics.redisHits++;
                         // Reset failures on success
                         this.redisFailures = 0;
-                        return JSON.parse(value) as T;
+                        const parsed = JSON.parse(value) as T;
+                        
+                        // Write-through to memory on Redis hit for faster subsequent lookups
+                        if (!this.memoryCache.has(namespace)) {
+                            this.memoryCache.set(namespace, new Map());
+                        }
+                        const memNs = this.memoryCache.get(namespace)!;
+                        if (memNs.size < config.maxSize) {
+                            // Use remaining TTL from Redis or default namespace TTL
+                            const ttlMs = config.ttl * 1000;
+                            memNs.set(key, { value: parsed, expiresAt: Date.now() + ttlMs });
+                        }
+                        
+                        return parsed;
                     }
                 } catch (redisError) {
                     // Redis operation failed, mark and fallback
@@ -484,10 +496,15 @@ export class CacheService {
             const config = this._getNamespaceConfig(namespace);
             
             if (config.useRedis && this.isRedisConnected && this.redis) {
-                const keys = await this.redis.keys(`${namespace}:*`);
-                if (keys.length > 0) {
-                    await this.redis.del(...keys);
-                }
+                // Use SCAN instead of KEYS to avoid blocking Redis
+                let cursor = '0';
+                do {
+                    const result = await this.redis.scan(cursor, 'MATCH', `${namespace}:*`, 'COUNT', 100);
+                    cursor = result[0];
+                    if (result[1].length > 0) {
+                        await this.redis.del(...result[1]);
+                    }
+                } while (cursor !== '0');
             }
 
             this.memoryCache.delete(namespace);

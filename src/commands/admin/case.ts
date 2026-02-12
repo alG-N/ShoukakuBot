@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Case Command
  * View details of a specific moderation case
  * @module commands/admin/case
@@ -13,6 +13,7 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 
+import { getDefault } from '../../utils/common/moduleHelper.js';
 interface Infraction {
     id: number;
     guild_id: string;
@@ -30,7 +31,6 @@ interface InfractionService {
     buildCaseEmbed?: (infraction: Infraction, targetUser: User | null) => EmbedBuilder;
 }
 
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
 let infractionService: InfractionService | undefined;
 

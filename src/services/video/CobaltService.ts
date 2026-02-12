@@ -275,16 +275,18 @@ class CobaltService extends EventEmitter {
                     // Get content length for progress tracking
                     totalBytes = parseInt(response.headers['content-length'] || '0', 10) || 0;
                     
-                    // PRE-DOWNLOAD SIZE CHECK
+                    // PRE-DOWNLOAD SIZE CHECK (using content-length as a hint, not authoritative)
+                    // Content-Length can be inaccurate due to transcoding/chunked encoding
                     if (totalBytes > 0) {
                         const fileSizeMB = totalBytes / (1024 * 1024);
-                        if (fileSizeMB > sizeLimit) {
-                            console.log(`🚫 File size ${fileSizeMB.toFixed(1)}MB exceeds ${sizeLimit}MB limit (pre-download check)`);
+                        // Only reject if significantly over limit (2x buffer) since header may be inaccurate
+                        if (fileSizeMB > sizeLimit * 2) {
+                            console.log(`🚫 File size ${fileSizeMB.toFixed(1)}MB greatly exceeds ${sizeLimit}MB limit (pre-download check)`);
                             req.destroy();
                             reject(new Error(`FILE_TOO_LARGE:${fileSizeMB.toFixed(1)}MB`));
                             return;
                         }
-                        console.log(`📊 Pre-download size check: ${fileSizeMB.toFixed(1)}MB (limit: ${sizeLimit}MB) ✓`);
+                        console.log(`📊 Pre-download size hint: ${fileSizeMB.toFixed(1)}MB (limit: ${sizeLimit}MB) — will verify after download`);
                     }
 
                     const file = fs.createWriteStream(outputPath);

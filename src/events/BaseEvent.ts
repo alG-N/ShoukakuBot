@@ -1,10 +1,11 @@
 /**
  * Base Event - Presentation Layer
- * Abstract base class for all events
+ * Abstract base class for all events with error boundary
  * @module presentation/events/BaseEvent
  */
 
 import type { Client } from 'discord.js';
+import logger from '../core/Logger.js';
 // TYPES
 export interface EventOptions {
     name: string;
@@ -13,6 +14,7 @@ export interface EventOptions {
 // BASE EVENT CLASS
 /**
  * Abstract base class for events
+ * Provides safeExecute() error boundary analogous to BaseCommand.execute()
  * @abstract
  */
 export abstract class BaseEvent {
@@ -29,6 +31,26 @@ export abstract class BaseEvent {
 
         this.name = options.name;
         this.once = options.once || false;
+    }
+
+    /**
+     * Safe execution wrapper with error boundary
+     * Catches all errors from execute() to prevent shard crashes
+     * @param client - Discord client
+     * @param args - Event arguments
+     */
+    async safeExecute(client: Client, ...args: unknown[]): Promise<void> {
+        try {
+            await this.execute(client, ...args);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            logger.error('Event', `[${this.name}] Unhandled error: ${message}`);
+            
+            // Log stack trace for debugging
+            if (error instanceof Error && error.stack) {
+                logger.debug('Event', `[${this.name}] Stack: ${error.stack}`);
+            }
+        }
     }
 
     /**

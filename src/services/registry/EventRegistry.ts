@@ -10,6 +10,7 @@ interface Event {
     name: string;
     once?: boolean;
     execute: (client: DiscordClient, ...args: unknown[]) => Promise<void> | void;
+    safeExecute?: (client: DiscordClient, ...args: unknown[]) => Promise<void>;
 }
 // EVENT REGISTRY CLASS
 class EventRegistry {
@@ -56,10 +57,15 @@ class EventRegistry {
      */
     registerWithClient(client: DiscordClient): void {
         for (const [name, event] of this.events) {
+            // Use safeExecute (error boundary) if available, otherwise fall back to execute
+            const handler = event.safeExecute 
+                ? (...args: unknown[]) => event.safeExecute!(client, ...args)
+                : (...args: unknown[]) => event.execute(client, ...args);
+
             if (event.once) {
-                client.once(name, (...args: unknown[]) => event.execute(client, ...args));
+                client.once(name, handler);
             } else {
-                client.on(name, (...args: unknown[]) => event.execute(client, ...args));
+                client.on(name, handler);
             }
             console.log(`[EventRegistry] Registered: ${name} (once: ${event.once || false})`);
         }

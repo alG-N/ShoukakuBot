@@ -40,13 +40,6 @@ export function formatDuration(seconds: number): string {
 }
 
 /**
- * Check if user is AFK (exported for external use)
- */
-export async function isUserAfk(userId: string, guildId: string | null = null): Promise<AfkInfo | null> {
-    return afkRepository.isUserAfk(userId, guildId);
-}
-
-/**
  * Remove user from AFK (exported for external use)
  */
 export async function removeAfk(userId: string, guildId: string | null = null): Promise<AfkInfo | null> {
@@ -122,12 +115,12 @@ class AfkCommand extends BaseCommand {
 }
 
 // ============================================================================
-// MESSAGE HANDLER
+// MESSAGE HANDLER (DEPRECATED — use handlers/general/AfkHandler.ts instead)
+// Kept for backward compatibility. Will be removed in next cleanup pass.
 // ============================================================================
 
 /**
- * Handle message events for AFK system
- * Checks if author is AFK (removes them) and notifies about mentioned AFK users
+ * @deprecated Use `handleAfkMessage` from `handlers/general/AfkHandler.ts` instead.
  */
 export async function onMessage(message: Message, client: Client): Promise<void> {
     try {

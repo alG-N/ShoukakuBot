@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Kick Command - Presentation Layer
  * Kick a user from the server
  * @module presentation/commands/admin/kick
@@ -15,9 +15,8 @@ import {
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 
-// Helper to get default export from require()
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
+import { getDefault } from '../../utils/common/moduleHelper.js';
 const logger = getDefault(require('../../core/Logger'));
 
 interface ValidationResult {

@@ -34,7 +34,8 @@ import {
     initializeShutdownHandlers, 
     initializeErrorHandlers,
     sentry,
-    health
+    health,
+    gracefulDegradation
 } from './core/index.js';
 
 // DI Container & Service Registration
@@ -141,6 +142,11 @@ class AlterGoldenBot {
                 // Initialize logger with client
                 logger.initialize(this.client);
                 
+                // Set shard ID for shard-scoped Redis keys and Sentry tags
+                const shardId = this.client.shard?.ids[0] ?? 0;
+                gracefulDegradation.setShardId(shardId);
+                sentry.setShardId(shardId);
+                
                 // Register health checks now that services are ready
                 await this.registerHealthChecks();
                 health.setStatus('healthy');
@@ -175,7 +181,9 @@ class AlterGoldenBot {
      * Start health check HTTP server
      */
     private startHealthServer(): void {
-        const port = parseInt(process.env.HEALTH_PORT || '3000');
+        const basePort = parseInt(process.env.HEALTH_PORT || '3000');
+        const shardId = this.client.shard?.ids[0] ?? 0;
+        const port = basePort + shardId;
         this.healthServer = health.startHealthServer(port);
     }
 
@@ -356,9 +364,8 @@ class AlterGoldenBot {
         try {
             const lavalinkModule = await import('./services/music/LavalinkService.js');
             const mod = lavalinkModule.default as Record<string, unknown>;
-            const lavalinkService = ((mod && typeof mod === 'object' && 'default' in mod) ? mod.default : mod) as { preInitialize: (client: unknown) => void; finalize: () => void };
+            const lavalinkService = ((mod && typeof mod === 'object' && 'default' in mod) ? mod.default : mod) as { preInitialize: (client: unknown) => void };
             lavalinkService.preInitialize(this.client);
-            lavalinkService.finalize();
             logger.info('Lavalink', 'Music service pre-initialized');
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);

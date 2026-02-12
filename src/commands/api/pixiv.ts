@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Pixiv Command - Presentation Layer
  * Search for artwork, manga, or novels on Pixiv
  * @module presentation/commands/api/pixiv
@@ -12,6 +12,7 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
+import { getDefault } from '../../utils/common/moduleHelper.js';
 // TYPES
 interface Artwork {
     id: number;
@@ -85,7 +86,6 @@ let pixivService: PixivService | undefined;
 let pixivCache: PixivCache | undefined;
 let contentHandler: ContentHandler | undefined;
 
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
 try {
     pixivService = getDefault(require('../../services/api/pixivService'));

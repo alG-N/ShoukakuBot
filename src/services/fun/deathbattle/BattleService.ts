@@ -156,7 +156,7 @@ class BattleService {
 
         // Cross-shard check: Redis lock
         try {
-            const lock = await cacheService.get('temp', `battle:active:${guildId}`);
+            const lock = await cacheService.peek('temp', `battle:active:${guildId}`);
             return lock !== null && lock !== undefined;
         } catch {
             // Redis unavailable — fall back to local-only check

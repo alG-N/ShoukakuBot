@@ -141,7 +141,7 @@ The shard manager also starts its own health server on `SHARD_HEALTH_PORT=3001`.
 | A2 | `src/utils/music/index.ts` — `formatTimeAgo()`, `formatViewCount()`, `formatNumber()`, `truncateText()`, `formatTimestamp()` | Music-specific utility functions | **Not imported by any file.** Duplicated from `utils/common/time.ts` and `utils/common/embed.ts`. | Same-named functions in `utils/common/` | 🟢 None |
 | A3 | `src/utils/common/time.ts` — `unixTimestamp()`, `isToday()`, `startOfDay()`, `endOfDay()` | Time utility functions | **Not imported by any file.** Dead exports. | Nothing — not needed | 🟢 None |
 | A4 | `src/utils/common/apiUtils.ts` — `withTimeout()`, `withTimeoutAndRetry()`, `RateLimiter` class | API call utilities | **Not imported.** `withRetry()` is the only used export. `RateLimiter` class duplicates the one in `middleware/access.ts`. | `access.ts` RateLimiter, `core/errorHandler.ts` `withTimeout()` | 🟢 None |
-| A5 | `src/repositories/api/pixivCache.ts` — `getSearchResults()`, `setSearchResults()`, `updateSearchResults()` | Alias methods "for button handler compatibility" | Adapter shims from old API. Direct methods (`getCachedResults()`, `cacheSearchResults()`) are the canonical API. | The non-aliased methods | 🟢 None |
+| A5 | `src/repositories/api/pixivCache.ts` — `getSearchResults()`, `setSearchResults()`, `updateSearchResults()` | Alias methods "for button handler compatibility" | ~~Adapter shims from old API~~ **CORRECTION: Actively used by `pixiv.ts`** — not dead code. | N/A | ⚠️ **Keep — was misidentified** |
 | A6 | `src/repositories/general/AfkRepository.ts` — `isUserAfk()` | Convenience alias | Pure alias for `getAfk()` — zero additional logic. Dead weight. | `getAfk()` | 🟢 None |
 | A7 | `src/core/metrics.ts` — `import { Summary }` | prom-client import | **Imported but never used.** Dead import. | Nothing | 🟢 None |
 | A8 | `src/core/Logger.ts` — `import os` | Node built-in import | **Imported but never used.** Dead import. | Nothing | 🟢 None |
@@ -297,12 +297,12 @@ However, **scaling to 1000+ servers with multi-shard deployment has 5 blocking i
 
 | Step | Effort | Status |
 |---|---|---|
-| Fix health port to be shard-aware | 1 hour | ⬜ |
-| Scope GracefulDegradation Redis keys by shard | 2 hours | ⬜ |
-| Replace `KEYS` with `SCAN` in `clearNamespace` | 30 min | ⬜ |
-| Fix `getNextCaseId` to use SERIAL/sequence | 30 min | ⬜ |
-| Add BaseEvent error wrapper | 2 hours | ⬜ |
-| Remove QueueCache Message object storage | 4 hours | ⬜ |
+| Fix health port to be shard-aware | 1 hour | ✅ Fixed (2026-02-13) |
+| Scope GracefulDegradation Redis keys by shard | 2 hours | ✅ Fixed (2026-02-13) |
+| Replace `KEYS` with `SCAN` in `clearNamespace` | 30 min | ✅ Fixed (2026-02-13) |
+| Fix `getNextCaseId` to use atomic INSERT | 30 min | ✅ Fixed (2026-02-13) |
+| Add BaseEvent error wrapper | 2 hours | ✅ Fixed (2026-02-13) |
+| Remove QueueCache Message object storage | 4 hours | ✅ Fixed (2026-02-13) |
 | Minimum test suite (BaseCommand, CacheService, postgres) | 20 hours | ⬜ |
 
 **Total: ~30 hours to full GO.**
@@ -311,49 +311,51 @@ However, **scaling to 1000+ servers with multi-shard deployment has 5 blocking i
 
 ## 6. Cleanup & Stabilization Plan
 
-### Phase A: Zero-Risk Deletions (Day 1 — 2 hours)
+### Phase A: Zero-Risk Deletions (Day 1 — 2 hours) ✅ COMPLETED (2026-02-13)
 
-Delete dead code with zero functional impact. No tests needed.
+Dead code removed with zero functional impact. Build verified with `tsc --noEmit` — no errors.
 
-| # | Action | Files |
-|---|---|---|
-| 1 | Delete unused `httpClient.ts` | `src/utils/common/httpClient.ts` |
-| 2 | Delete dead exports from `src/utils/music/index.ts` | `formatTimeAgo`, `formatViewCount`, `formatNumber`, `truncateText`, `formatTimestamp` |
-| 3 | Delete dead exports from `src/utils/common/time.ts` | `unixTimestamp`, `isToday`, `startOfDay`, `endOfDay` |
-| 4 | Delete dead exports from `src/utils/common/apiUtils.ts` | `withTimeout`, `withTimeoutAndRetry`, `RateLimiter` class |
-| 5 | Remove dead `os` import from `Logger.ts` | 1 line |
-| 6 | Remove dead `Summary` import from `metrics.ts` | 1 line |
-| 7 | Remove dead `finalize()` from `LavalinkService.ts` | Empty method |
-| 8 | Remove dead `buttonHandlers`/`selectMenuHandlers` from `CommandRegistry.ts` | Unused Maps |
-| 9 | Remove dead `getStats()` from `SnipeService.ts` | Returns hardcoded zeros |
-| 10 | Remove dead `getStats()`/`destroy()` from `cooldown.ts` | No-ops |
-| 11 | Remove adapter aliases from `pixivCache.ts` | `getSearchResults`, `setSearchResults`, `updateSearchResults` |
-| 12 | Remove `isUserAfk()` alias from `AfkRepository.ts` | Pure alias for `getAfk()` |
-
-### Phase B: Critical Fixes (Week 1 — 10 hours)
-
-Blocking issues for multi-shard deployment.
-
-| # | Action | Scope | Effort |
+| # | Action | Files | Status |
 |---|---|---|---|
-| 1 | Fix health port: `base_port + shard_id` | `src/core/health.ts`, `src/index.ts` | 1 hour |
-| 2 | Scope GracefulDegradation Redis keys by shard ID | `src/core/GracefulDegradation.ts` | 2 hours |
-| 3 | Replace `KEYS` with `SCAN` in `clearNamespace` | `src/cache/CacheService.ts` | 30 min |
-| 4 | Fix `getNextCaseId` — use PostgreSQL SERIAL | `src/repositories/moderation/InfractionRepository.ts`, SQL migration | 1 hour |
-| 5 | Add `safeExecute()` to `BaseEvent` | `src/events/BaseEvent.ts` + all events | 2 hours |
-| 6 | Remove Discord `Message` storage from `QueueCache` | `src/cache/music/QueueCache.ts` + consumers | 4 hours |
+| 1 | Delete unused `httpClient.ts` | `src/utils/common/httpClient.ts` | ✅ Deleted |
+| 2 | Delete dead exports from `src/utils/music/index.ts` | `formatTimeAgo`, `formatViewCount`, `formatNumber`, `truncateText`, `formatTimestamp` | ✅ Removed |
+| 3 | Delete dead exports from `src/utils/common/time.ts` | `unixTimestamp`, `isToday`, `startOfDay`, `endOfDay` | ✅ Removed |
+| 4 | Delete dead exports from `src/utils/common/apiUtils.ts` | `withTimeout`, `withTimeoutAndRetry`, `RateLimiter` class, `TimeoutRetryOptions` interface | ✅ Removed |
+| 5 | Remove dead `os` import from `Logger.ts` | 1 line | ✅ Removed |
+| 6 | Remove dead `Summary` import from `metrics.ts` | 1 line | ✅ Removed |
+| 7 | Remove dead `finalize()` from `LavalinkService.ts` | Empty method + call site in `index.ts` | ✅ Removed |
+| 8 | Remove dead `buttonHandlers`/`selectMenuHandlers` from `CommandRegistry.ts` | Unused Maps + `.clear()` calls | ✅ Removed |
+| 9 | Remove dead `getStats()` from `SnipeService.ts` | Returns hardcoded zeros + default export entry | ✅ Removed |
+| 10 | Remove dead `getStats()`/`destroy()` from `cooldown.ts` | No-ops + `CooldownStats` interface | ✅ Removed |
+| 11 | ~~Remove adapter aliases from `pixivCache.ts`~~ | `getSearchResults`, `setSearchResults`, `updateSearchResults` | ⚠️ **SKIPPED** — actively used by `pixiv.ts` (not dead code) |
+| 12 | Remove `isUserAfk()` alias chain | `AfkRepository.ts` method + `afk.ts` wrapper + `general/index.ts` re-export | ✅ Removed (3 files) |
 
-### Phase C: Structural Debt Reduction (Week 2–3 — 16 hours)
+### Phase B: Critical Fixes (Week 1 — 10 hours) ✅ COMPLETED (2026-02-13)
 
-| # | Action | Scope | Effort |
+All 6 blocking issues for multi-shard deployment fixed. Build verified with `tsc --noEmit` — no errors.
+
+| # | Action | Scope | Status |
 |---|---|---|---|
-| 1 | Extract `getDefault()` to shared util, reduce `require()` calls | 50+ command files | 4 hours |
-| 2 | Split `access.ts` kitchen sink | `src/middleware/access.ts` → 4 files | 3 hours |
-| 3 | Extract `afk.onMessage()` to handler | `src/commands/general/afk.ts` → `src/handlers/general/afkHandler.ts` | 1 hour |
-| 4 | Extract `guildMemberAdd` raid logic to service | `src/events/guildMemberAdd.ts` → `AntiRaidService` | 2 hours |
-| 5 | Unify cooldown on `DistributedRateLimiter` | `BaseCommand` cooldowns → Redis | 3 hours |
-| 6 | Remove `isLooping` / consolidate vote state in `QueueCache` | `src/cache/music/QueueCache.ts` | 2 hours |
-| 7 | Fix Sentry missing shard_id tag | `src/core/sentry.ts` | 15 min |
+| 1 | Fix health port: `base_port + shard_id` | `src/index.ts` — port now computed as `basePort + shardId` | ✅ Fixed |
+| 2 | Scope GracefulDegradation Redis keys by shard ID | `src/core/GracefulDegradation.ts` — key is now `graceful:writequeue:pending:shard:{shardId}`, `setShardId()` called on ready | ✅ Fixed |
+| 3 | Replace `KEYS` with `SCAN` in `clearNamespace` | `src/cache/CacheService.ts` — uses SCAN cursor loop (same pattern as `clearUserCooldowns`) | ✅ Fixed |
+| 4 | Fix `getNextCaseId` — atomic INSERT with sub-select | `src/repositories/moderation/InfractionRepository.ts` — `SELECT MAX FOR UPDATE` in a single INSERT statement | ✅ Fixed |
+| 5 | Add `safeExecute()` to `BaseEvent` | `src/events/BaseEvent.ts` + `src/services/registry/EventRegistry.ts` — all events now wrapped in try/catch error boundary | ✅ Fixed |
+| 6 | Remove Discord `Message` storage from `QueueCache` | `QueueCache.ts`, `MusicCacheFacade.ts`, `VoteCache.ts`, `MusicFacade.ts`, `PlaybackEventHandler.ts`, `playHandler.ts` — stores lightweight `MessageRef { messageId, channelId }` instead of full Message objects, lazy-fetched when needed | ✅ Fixed |
+
+### Phase C: Structural Debt Reduction (Week 2–3 — 16 hours) ✅ COMPLETED (2025-06-13)
+
+All 7 structural debt items resolved. Build verified with `tsc --noEmit` — no errors.
+
+| # | Action | Scope | Status |
+|---|---|---|---|
+| 1 | Extract `getDefault()` to shared util, reduce `require()` calls | Created `src/utils/common/moduleHelper.ts`. 34 files updated to import shared `getDefault()` instead of local declarations. | ✅ Done |
+| 2 | Split `access.ts` kitchen sink | `src/middleware/access.ts` (525 lines) → 4 focused files: `rateLimiter.ts`, `permissions.ts`, `checks.ts`, `embeds.ts`. Original file is now a thin re-export layer (~45 lines). | ✅ Done |
+| 3 | Extract `afk.onMessage()` to handler | Created `src/handlers/general/AfkHandler.ts`. `messageCreate.ts` imports from handler. Original `onMessage()` in `afk.ts` marked `@deprecated`. | ✅ Done |
+| 4 | Extract `guildMemberAdd` raid logic to service | Created `src/handlers/moderation/AntiRaidHandler.ts`. `guildMemberAdd.ts` reduced from ~172 to ~45 lines. Bug fix: implemented missing `checkAccountAge()` on `AntiRaidService`. | ✅ Done |
+| 5 | Unify cooldown on `CooldownManager` (Redis) | `BaseCommand._cooldowns` Map removed. `_checkCooldown()` and `_setCooldown()` now async, backed by `globalCooldownManager` (Redis via CacheService). Shard-safe, TTL-managed. | ✅ Done |
+| 6 | Remove `isLooping` / consolidate vote state in `QueueCache` | Removed `isLooping` field (already managed by `GuildMusicCache`). Removed 7 vote fields from `QueueCache` — `VoteCache` is now single source of truth. Added helper methods to `MusicCacheFacade`. | ✅ Done |
+| 7 | Fix Sentry missing shard_id tag | Added `setShardId()` to `src/core/sentry.ts`, called from `index.ts` on ready. `captureException` now includes `shard_id` in scope. | ✅ Done |
 
 ### Phase D: Test Coverage Foundation (Week 3–6 — 30 hours)
 
@@ -372,22 +374,22 @@ Blocking issues for multi-shard deployment.
 
 ## 7. Top 5 Highest-Leverage Next Actions
 
-Ranked by effort-to-impact ratio.
+Ranked by effort-to-impact ratio. *(Updated 2025-06-13 after Phase B + C completion)*
 
-### 1. Fix Multi-Shard Blockers (4 hours → enables horizontal scaling)
-Health port shard-awareness, GracefulDegradation key scoping, KEYS→SCAN, getNextCaseId sequence. These are all small, surgical fixes that unblock the entire scaling path.
+### 1. ~~Fix Multi-Shard Blockers~~ ✅ DONE (Phase B)
+Health port, GracefulDegradation key scoping, KEYS→SCAN, getNextCaseId — all fixed.
 
-### 2. Add BaseEvent Error Wrapper (2 hours → prevents crash loops)
-`guildDelete.ts` has zero error handling. An uncaught exception in any event handler will crash the shard process. A `safeExecute()` wrapper on BaseEvent (identical pattern to BaseCommand) catches this entire class of bugs.
+### 2. ~~Add BaseEvent Error Wrapper~~ ✅ DONE (Phase B5)
+`safeExecute()` added to BaseEvent, all events wrapped.
 
-### 3. Remove QueueCache Message Object Storage (4 hours → 50%+ memory reduction per music guild)
-Storing full Discord `Message` instances in QueueCache means each active music session holds reference chains to `Client` → `Guild` → `Channel` → all cached messages. Replacing with `{ messageId, channelId }` and lazy-fetching will dramatically reduce memory per concurrent music session.
+### 3. ~~Remove QueueCache Message Object Storage~~ ✅ DONE (Phase B6)
+Now stores lightweight `MessageRef { messageId, channelId }`.
 
 ### 4. Write CacheService + postgres.ts Tests (8 hours → validates the two pillars)
-These two modules underpin everything. CacheService handles all caching for 50+ services. postgres.ts handles all database access. Testing these two validates the reliability of the entire system's data layer.
+These two modules underpin everything. CacheService handles all caching for 50+ services. postgres.ts handles all database access. Testing these two validates the reliability of the entire system's data layer. **This is now the #1 priority — Phase D.**
 
-### 5. Centralize `getDefault`/`require` Pattern (4 hours → reduces cognitive load)
-One `getDefault()` in a shared util instead of 20+ copies. Better: have BaseCommand accept container reference and resolve services at construction. This eliminates the biggest source of code duplication and inconsistency.
+### 5. ~~Centralize `getDefault`/`require` Pattern~~ ✅ DONE (Phase C1)
+Shared `getDefault()` in `src/utils/common/moduleHelper.ts`. 34 files migrated.
 
 ---
 
@@ -404,8 +406,8 @@ One `getDefault()` in a shared util instead of 20+ copies. Better: have BaseComm
 
 | Status | Components |
 |---|---|
-| ✅ **Shard-Safe** (Redis/DB) | CacheService, GuildSettings, all Moderation (8), ShardBridge, UserMusicCache, all Repositories, Pixiv OAuth, Reddit OAuth, MAL rate limiter, NHentaiHandler sessions |
-| ❌ **Shard-Unsafe** (needs fix) | Health server port, GracefulDegradation write queue key, PaginationState, BaseCommand cooldowns |
+| ✅ **Shard-Safe** (Redis/DB) | CacheService, GuildSettings, all Moderation (8), ShardBridge, UserMusicCache, all Repositories, Pixiv OAuth, Reddit OAuth, MAL rate limiter, NHentaiHandler sessions, BaseCommand cooldowns (Phase C5), Health server port (Phase B1), GracefulDegradation write queue key (Phase B2) |
+| ❌ **Shard-Unsafe** (needs fix) | PaginationState |
 | ⚠️ **Shard-Local by Design** (acceptable) | QueueService, PlaybackService, MusicFacade, MusicEventBus, AutoPlayService, VoteCache, GuildMusicCache, BattleService, CommandRegistry, EventRegistry |
 
 ## Appendix C: Dependency Issues

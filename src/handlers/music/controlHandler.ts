@@ -120,22 +120,19 @@ export const controlHandler = {
         const response = await interaction.reply({ embeds: [embed], components: [row], withResponse: true });
         const message = response?.resource?.message || await interaction.fetchReply();
 
-        // Set timeout
-        const queue2 = musicCache.getQueue(guildId);
-        if (queue2) {
-            if (queue2.skipVoteTimeout) clearTimeout(queue2.skipVoteTimeout);
-            queue2.skipVoteTimeout = setTimeout(async () => {
-                try {
-                    musicService.endSkipVote(guildId);
-                    await message.edit({
-                        embeds: [trackHandler.createInfoEmbed('⏱️ Vote Expired', 'Not enough votes to skip.', 'warning')],
-                        components: []
-                    }).catch(() => {});
-                } catch (error) {
-                    console.error('Error in skip vote timeout:', error);
-                }
-            }, SKIP_VOTE_TIMEOUT);
-        }
+        // Set timeout via VoteCache (single source of truth for vote state)
+        const voteTimeout = setTimeout(async () => {
+            try {
+                musicService.endSkipVote(guildId);
+                await message.edit({
+                    embeds: [trackHandler.createInfoEmbed('⏱️ Vote Expired', 'Not enough votes to skip.', 'warning')],
+                    components: []
+                }).catch(() => {});
+            } catch (error) {
+                console.error('Error in skip vote timeout:', error);
+            }
+        }, SKIP_VOTE_TIMEOUT);
+        musicCache.setSkipVoteTimeout(guildId, voteTimeout);
     },
 
     async handlePause(interaction: ChatInputCommandInteraction, guildId: string): Promise<void> {

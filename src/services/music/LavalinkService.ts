@@ -153,13 +153,6 @@ class LavalinkService {
     }
 
     /**
-     * Finalize connection - nodes will emit 'ready' when connected
-     */
-    finalize(): void {
-        // Connection finalized - nodes will emit 'ready' when connected
-    }
-
-    /**
      * Setup Shoukaku event handlers
      */
     private setupEventHandlers(): void {

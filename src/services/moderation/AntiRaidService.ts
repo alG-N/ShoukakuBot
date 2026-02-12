@@ -63,7 +63,7 @@ interface DeactivateResult {
     };
 }
 
-interface JoinAnalysis {
+export interface JoinAnalysis {
     isRaid: boolean;
     isSuspicious: boolean;
     triggers: string[];
@@ -332,9 +332,24 @@ class AntiRaidService {
     }
 
     /**
+     * Check if a member's account is suspiciously new
+     * @returns Whether the account is suspicious and what action to take
+     */
+    checkAccountAge(member: GuildMember): { isSuspicious: boolean; action: string; accountAgeDays: number } {
+        const ANTI_RAID = automodConfig.ANTI_RAID || { ACCOUNT_AGE: { MIN_DAYS: 7 }, ACTIONS: { ON_SUSPICIOUS: 'flag' } };
+        const accountAge = Date.now() - member.user.createdTimestamp;
+        const minAgeDays = ANTI_RAID.ACCOUNT_AGE?.MIN_DAYS || 7;
+        const accountAgeDays = Math.floor(accountAge / (24 * 60 * 60 * 1000));
+        const isSuspicious = accountAgeDays < minAgeDays;
+        const actions = ANTI_RAID.ACTIONS as Record<string, string> | undefined;
+        const action = isSuspicious ? (actions?.ON_SUSPICIOUS || 'flag') : 'none';
+        return { isSuspicious, action, accountAgeDays };
+    }
+
+    /**
      * Update raid mode stats (kick/ban counts)
      */
-    async updateStats(guildId: Snowflake, action: 'kick' | 'ban'): Promise<void> {
+    async updateStats(guildId: Snowflake, action: 'kick' | 'ban' | 'flag'): Promise<void> {
         const state = await this.getRaidModeState(guildId);
         if (!state) return;
 
@@ -344,9 +359,10 @@ class AntiRaidService {
 
         if (action === 'kick') {
             state.stats.kickedCount++;
-        } else {
+        } else if (action === 'ban') {
             state.stats.bannedCount++;
         }
+        // 'flag' action doesn't increment counters — already tracked in flagged accounts list
 
         await cacheService.set(CACHE_NAMESPACE, this._raidModeKey(guildId), state, RAID_MODE_TTL);
     }

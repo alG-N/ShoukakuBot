@@ -147,7 +147,7 @@ function hydrateInBackground<T>(
     ns: string,
     key: string,
 ): void {
-    cacheService.get<T>(ns, key).then(value => {
+    cacheService.peek<T>(ns, key).then(value => {
         if (value !== null && !map.has(key)) {
             map.set(key, value);
         }

@@ -7,7 +7,6 @@
  */
 
 import { Client, EmbedBuilder, TextChannel, Guild, ChannelType, PermissionFlagsBits } from 'discord.js';
-import os from 'os';
 // TYPES & INTERFACES
 /**
  * Log level names

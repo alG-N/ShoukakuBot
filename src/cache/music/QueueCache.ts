@@ -4,8 +4,17 @@
  * @module modules/music/repository/QueueCache
  */
 
-import { Message } from 'discord.js';
 import { CACHE_LIMITS } from '../../constants.js';
+
+/**
+ * Lightweight reference to a Discord message.
+ * Avoids holding full Message objects (which retain Client → Guild → Channel chains).
+ * Resolve to a real Message via channel.messages.fetch(messageId) when needed.
+ */
+export interface MessageRef {
+    messageId: string;
+    channelId: string;
+}
 // Types
 export interface MusicTrack {
     url?: string;
@@ -34,27 +43,17 @@ export interface MusicQueue {
     
     // Playback state
     isPaused: boolean;
-    isLooping: boolean;
     loopMode: 'off' | 'track' | 'queue';
     loopCount: number;
     isShuffled: boolean;
     volume: number;
     
-    // Messages
-    nowPlayingMessage: Message | null;
-    controlsMessage: Message | null;
-    
-    // Voting
-    skipVotes: Set<string>;
-    skipVoteActive: boolean;
-    skipVoteTimeout: NodeJS.Timeout | null;
-    skipVoteMessage: Message | null;
-    skipVoteListenerCount: number | null;
+    // Messages (lightweight refs — resolve via channel.messages.fetch() when needed)
+    nowPlayingMessage: MessageRef | null;
+    controlsMessage: MessageRef | null;
     
     // Priority queue
     priorityQueue: MusicTrack[];
-    priorityVotes: Set<string>;
-    priorityVoteActive: boolean;
     
     // Timers
     inactivityTimer: NodeJS.Timeout | null;
@@ -141,7 +140,6 @@ class QueueCache {
             
             // Playback state
             isPaused: false,
-            isLooping: false,
             loopMode: 'off',
             loopCount: 0,
             isShuffled: false,
@@ -151,17 +149,8 @@ class QueueCache {
             nowPlayingMessage: null,
             controlsMessage: null,
             
-            // Voting
-            skipVotes: new Set(),
-            skipVoteActive: false,
-            skipVoteTimeout: null,
-            skipVoteMessage: null,
-            skipVoteListenerCount: null,
-            
             // Priority queue
             priorityQueue: [],
-            priorityVotes: new Set(),
-            priorityVoteActive: false,
             
             // Timers
             inactivityTimer: null,
@@ -218,16 +207,10 @@ class QueueCache {
             // Clear all timers
             if (queue.inactivityTimer) clearTimeout(queue.inactivityTimer);
             if (queue.vcMonitorInterval) clearInterval(queue.vcMonitorInterval);
-            if (queue.skipVoteTimeout) clearTimeout(queue.skipVoteTimeout);
             
             // Clear message references to avoid memory leaks
             queue.nowPlayingMessage = null;
             queue.controlsMessage = null;
-            queue.skipVoteMessage = null;
-            
-            // Clear sets
-            queue.skipVotes.clear();
-            queue.priorityVotes.clear();
         }
         return this.guildQueues.delete(guildId);
     }
@@ -390,7 +373,6 @@ class QueueCache {
         const queue = this.get(guildId);
         if (!queue) return;
         queue.loopMode = mode;
-        queue.isLooping = mode !== 'off';
         queue.loopCount = 0;
         queue.updatedAt = Date.now();
     }
@@ -402,7 +384,6 @@ class QueueCache {
         const modes: Array<'off' | 'track' | 'queue'> = ['off', 'track', 'queue'];
         const currentIndex = modes.indexOf(queue.loopMode);
         queue.loopMode = modes[(currentIndex + 1) % modes.length];
-        queue.isLooping = queue.loopMode !== 'off';
         queue.loopCount = 0;
         queue.updatedAt = Date.now();
         
@@ -416,24 +397,35 @@ class QueueCache {
         queue.updatedAt = Date.now();
         return queue.volume;
     }
-    setNowPlayingMessage(guildId: string, message: Message | null): void {
+    /**
+     * Store a now-playing message reference.
+     * Accepts a full Discord Message (extracts id+channelId) or a MessageRef or null.
+     */
+    setNowPlayingMessage(guildId: string, message: { id: string; channelId: string } | MessageRef | null): void {
         const queue = this.get(guildId);
         if (!queue) return;
-        queue.nowPlayingMessage = message;
+        if (!message) {
+            queue.nowPlayingMessage = null;
+            return;
+        }
+        // Accept both Message (has .id) and MessageRef (has .messageId)
+        queue.nowPlayingMessage = {
+            messageId: 'messageId' in message ? message.messageId : message.id,
+            channelId: message.channelId
+        };
     }
 
-    getNowPlayingMessage(guildId: string): Message | null {
+    getNowPlayingMessage(guildId: string): MessageRef | null {
         return this.get(guildId)?.nowPlayingMessage || null;
     }
 
-    async clearNowPlayingMessage(guildId: string): Promise<void> {
+    /**
+     * Clear the now-playing message reference.
+     * Caller is responsible for deleting the Discord message if needed.
+     */
+    clearNowPlayingMessage(guildId: string): void {
         const queue = this.get(guildId);
-        if (!queue || !queue.nowPlayingMessage) return;
-        
-        try {
-            await queue.nowPlayingMessage.delete().catch(() => {});
-        } catch {}
-        
+        if (!queue) return;
         queue.nowPlayingMessage = null;
     }
     /**

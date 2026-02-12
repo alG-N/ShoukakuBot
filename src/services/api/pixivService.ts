@@ -244,7 +244,7 @@ class PixivService {
 
         // 2. Check Redis for a token another shard may have refreshed
         try {
-            const cached = await cacheService.get<{ accessToken: string; refreshToken: string; expiresAt: number }>(
+            const cached = await cacheService.peek<{ accessToken: string; refreshToken: string; expiresAt: number }>(
                 PixivService.AUTH_CACHE_NS, PixivService.AUTH_CACHE_KEY
             );
             if (cached && Date.now() < cached.expiresAt) {

@@ -17,11 +17,6 @@ interface CooldownCheckAndSetResult {
     remaining: number;
 }
 
-interface CooldownStats {
-    totalEntries: number;
-    memoryEstimate: number;
-}
-
 interface CooldownManagerOptions {
     defaultCooldown?: number;
     prefix?: string;
@@ -118,22 +113,6 @@ export class CooldownManager {
         return result.remaining;
     }
 
-    /**
-     * Get stats for monitoring (placeholder - stats now in CacheService)
-     */
-    getStats(): CooldownStats {
-        return {
-            totalEntries: 0,
-            memoryEstimate: 0
-        };
-    }
-
-    /**
-     * Destroy the cooldown manager (no-op with CacheService backend)
-     */
-    destroy(): void {
-        // No-op - CacheService handles cleanup
-    }
 }
 // GLOBAL INSTANCE & EXPORTS
 // Global cooldown manager instance

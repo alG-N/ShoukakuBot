@@ -175,13 +175,6 @@ class AfkRepository {
     }
 
     /**
-     * Check if user is AFK (alias for getAfk)
-     */
-    async isUserAfk(userId: string, guildId: string | null = null): Promise<AfkInfo | null> {
-        return this.getAfk(userId, guildId);
-    }
-
-    /**
      * Get all AFK users in a guild (for bulk operations)
      */
     async getGuildAfkUsers(guildId: string): Promise<AfkRecord[]> {

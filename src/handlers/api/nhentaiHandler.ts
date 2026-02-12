@@ -1,4 +1,4 @@
-/**
+﻿/**
  * NHentai Handler
  * Creates embeds and buttons for nhentai command
  * @module handlers/api/nhentaiHandler
@@ -18,8 +18,7 @@ import {
 import nhentaiRepository, { NHentaiGallery, NHentaiFavourite } from '../../repositories/api/nhentaiRepository.js';
 import cacheService from '../../cache/CacheService.js';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
+import { getDefault } from '../../utils/common/moduleHelper.js';
 const nhentaiService = getDefault(require('../../services/api/nhentaiService'));
 // TYPES & INTERFACES
 interface GalleryTitle {
@@ -107,7 +106,11 @@ const COLORS = {
 // NHENTAI HANDLER CLASS
 class NHentaiHandler {
     private readonly CACHE_NS = 'api';
-    private readonly SESSION_TTL = 600; // 10 minutes in seconds
+    private readonly SESSION_TTL = 1800; // 30 minutes in seconds for longer reading sessions
+    private readonly CDN_MIRRORS = ['i1', 'i2', 'i3', 'i5', 'i7'];
+    private readonly THUMB_MIRRORS = ['t1', 't2', 't3', 't5', 't7'];
+    private cdnIndex = 0;
+    private thumbIndex = 0;
     private _cleanupInterval: NodeJS.Timeout | null = null;
 
     constructor() {
@@ -190,6 +193,7 @@ class NHentaiHandler {
 
         const page = pages[pageNum - 1];
         const imageUrl = this._getPageImageUrl(media_id, pageNum, page.t);
+        const thumbUrl = this._getPageThumbUrl(media_id, pageNum, page.t);
 
         const embed = new EmbedBuilder()
             .setColor(COLORS.NHENTAI)
@@ -198,6 +202,7 @@ class NHentaiHandler {
                 url: `https://nhentai.net/g/${id}/`
             })
             .setImage(imageUrl)
+            .setThumbnail(thumbUrl) // Small thumbnail loads faster as visual hint while full image loads
             .setFooter({ text: `Page ${pageNum}/${num_pages} • ID: ${id}` });
 
         return embed;
@@ -459,7 +464,7 @@ class NHentaiHandler {
     }
 
     async getPageSession(userId: string): Promise<PageSession | null> {
-        return cacheService.get<PageSession>(this.CACHE_NS, `nhentai:page:${userId}`);
+        return cacheService.peek<PageSession>(this.CACHE_NS, `nhentai:page:${userId}`);
     }
 
     async updatePageSession(userId: string, currentPage: number): Promise<void> {
@@ -484,7 +489,7 @@ class NHentaiHandler {
     }
 
     async getSearchSession(userId: string): Promise<SearchSession | null> {
-        return cacheService.get<SearchSession>(this.CACHE_NS, `nhentai:search:${userId}`);
+        return cacheService.peek<SearchSession>(this.CACHE_NS, `nhentai:search:${userId}`);
     }
 
     /**
@@ -592,21 +597,35 @@ class NHentaiHandler {
     }
 
     /**
-     * Get thumbnail URL using multiple CDN mirrors
+     * Get thumbnail URL using rotating CDN mirrors
      */
     private _getThumbnailUrl(mediaId: string, coverType: string): string {
         const ext: Record<string, string> = { 'j': 'jpg', 'p': 'png', 'g': 'gif' };
         const extension = ext[coverType] || 'jpg';
-        return `https://t3.nhentai.net/galleries/${mediaId}/cover.${extension}`;
+        const mirror = this.THUMB_MIRRORS[this.thumbIndex % this.THUMB_MIRRORS.length];
+        this.thumbIndex++;
+        return `https://${mirror}.nhentai.net/galleries/${mediaId}/cover.${extension}`;
     }
 
     /**
-     * Get page image URL using multiple CDN mirrors
+     * Get page image URL using rotating CDN mirrors for better load distribution
      */
     private _getPageImageUrl(mediaId: string, pageNum: number, pageType: string): string {
         const ext: Record<string, string> = { 'j': 'jpg', 'p': 'png', 'g': 'gif' };
         const extension = ext[pageType] || 'jpg';
-        return `https://i3.nhentai.net/galleries/${mediaId}/${pageNum}.${extension}`;
+        // Rotate CDN mirrors based on page number for consistent caching per page
+        const mirror = this.CDN_MIRRORS[pageNum % this.CDN_MIRRORS.length];
+        return `https://${mirror}.nhentai.net/galleries/${mediaId}/${pageNum}.${extension}`;
+    }
+
+    /**
+     * Get page thumbnail URL (smaller, loads faster) as fallback
+     */
+    private _getPageThumbUrl(mediaId: string, pageNum: number, pageType: string): string {
+        const ext: Record<string, string> = { 'j': 'jpg', 'p': 'png', 'g': 'gif' };
+        const extension = ext[pageType] || 'jpg';
+        const mirror = this.THUMB_MIRRORS[pageNum % this.THUMB_MIRRORS.length];
+        return `https://${mirror}.nhentai.net/galleries/${mediaId}/${pageNum}t.${extension}`;
     }
 
     private _parseTags(tags: GalleryTag[]): ParsedTags {
@@ -667,6 +686,32 @@ class NHentaiHandler {
         }
 
         try {
+            // Handle 'jump' BEFORE deferUpdate — modals require a non-deferred interaction
+            if (action === 'jump') {
+                const galleryId = parts[2];
+                const session = await this.getPageSession(userId);
+                const totalPages = session?.totalPages || 1;
+                
+                const modal = new ModalBuilder()
+                    .setCustomId(`nhentai_jumpmodal_${galleryId}_${userId}`)
+                    .setTitle('Jump to Page');
+                
+                const pageInput = new TextInputBuilder()
+                    .setCustomId('page_number')
+                    .setLabel(`Enter page number (1-${totalPages})`)
+                    .setStyle(TextInputStyle.Short)
+                    .setPlaceholder('e.g., 10')
+                    .setRequired(true)
+                    .setMinLength(1)
+                    .setMaxLength(5);
+                
+                const actionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(pageInput);
+                modal.addComponents(actionRow);
+                
+                await interaction.showModal(modal);
+                return;
+            }
+
             await interaction.deferUpdate();
 
             switch (action) {
@@ -877,32 +922,6 @@ class NHentaiHandler {
                     const rows = this.createFavouritesButtons(userId, 1, totalPages, favourites);
                     await this.setSearchSession(userId, { favPage: 1, expiresAt: Date.now() + this.SESSION_TTL * 1000 });
                     await interaction.editReply({ embeds: [embed], components: rows });
-                    break;
-                }
-
-                case 'jump': {
-                    const galleryId = parts[2];
-                    const session = await this.getPageSession(userId);
-                    const totalPages = session?.totalPages || 1;
-                    
-                    const modal = new ModalBuilder()
-                        .setCustomId(`nhentai_jumpmodal_${galleryId}_${userId}`)
-                        .setTitle('Jump to Page');
-                    
-                    const pageInput = new TextInputBuilder()
-                        .setCustomId('page_number')
-                        .setLabel(`Enter page number (1-${totalPages})`)
-                        .setStyle(TextInputStyle.Short)
-                        .setPlaceholder('e.g., 10')
-                        .setRequired(true)
-                        .setMinLength(1)
-                        .setMaxLength(5);
-                    
-                    const actionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(pageInput);
-                    modal.addComponents(actionRow);
-                    
-                    // Show the modal instead of text message
-                    await interaction.showModal(modal);
                     break;
                 }
 

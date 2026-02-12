@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Report Command - Presentation Layer
  * Submit reports to bot developers
  * @module presentation/commands/general/report
@@ -19,9 +19,8 @@ import {
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 
-// Helper to get default export from require()
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
+import { getDefault } from '../../utils/common/moduleHelper.js';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const logger = getDefault(require('../../core/Logger'));
 

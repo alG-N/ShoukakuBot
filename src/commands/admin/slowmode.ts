@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Slowmode Command
  * Set channel slowmode
  * @module commands/admin/slowmode
@@ -14,6 +14,7 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 
+import { getDefault } from '../../utils/common/moduleHelper.js';
 interface ModerationConfig {
     COLORS: Record<string, number>;
     EMOJIS: Record<string, string>;
@@ -34,7 +35,6 @@ interface LockdownService {
     setServerSlowmode?: (guild: ChatInputCommandInteraction['guild'], duration: number, reason: string) => Promise<ServerSlowmodeResult>;
 }
 
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
 let lockdownService: LockdownService | undefined;
 let moderationConfig: ModerationConfig | undefined;

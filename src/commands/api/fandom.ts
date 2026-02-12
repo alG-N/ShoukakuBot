@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Fandom Command - Presentation Layer
  * Search and browse wiki articles from Fandom
  * @module presentation/commands/api/fandom
@@ -15,6 +15,7 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
+import { getDefault } from '../../utils/common/moduleHelper.js';
 // TYPES
 interface WikiInfo {
     name?: string;
@@ -70,7 +71,6 @@ interface FandomService {
 // SERVICE IMPORTS
 let fandomService: FandomService | undefined;
 
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
 try {
     fandomService = getDefault(require('../../services/api/fandomService'));

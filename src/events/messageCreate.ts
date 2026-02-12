@@ -7,7 +7,7 @@
 import { Events, Client, Message } from 'discord.js';
 import { BaseEvent } from './BaseEvent.js';
 import { handleAutoModMessage } from '../handlers/moderation/index.js';
-import { onMessage as handleAfkMessage } from '../commands/general/afk.js';
+import { handleAfkMessage } from '../handlers/general/index.js';
 // TYPES
 interface AutoModResult {
     deleted?: boolean;

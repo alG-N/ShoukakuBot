@@ -204,7 +204,7 @@ class RedditCache {
     }
 
     private _hydrate(userId: string): void {
-        cacheService.get<RedditSession>(NS, userId).then(val => {
+        cacheService.peek<RedditSession>(NS, userId).then(val => {
             if (val && !this.sessions.has(userId)) {
                 if (this.sessions.size >= MAX_SESSIONS) this._evictOldest();
                 this.sessions.set(userId, val);

@@ -169,42 +169,7 @@ export function discordTimestamp(date: Date | number, style: DiscordTimestampSty
 export function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-// ADDITIONAL UTILITIES
-/**
- * Get current Unix timestamp in seconds
- */
-export function unixTimestamp(): number {
-    return Math.floor(Date.now() / 1000);
-}
 
-/**
- * Check if a date is today
- */
-export function isToday(date: Date | number): boolean {
-    const d = date instanceof Date ? date : new Date(date);
-    const today = new Date();
-    return d.getDate() === today.getDate() &&
-           d.getMonth() === today.getMonth() &&
-           d.getFullYear() === today.getFullYear();
-}
-
-/**
- * Get start of day timestamp
- */
-export function startOfDay(date: Date = new Date()): Date {
-    const result = new Date(date);
-    result.setHours(0, 0, 0, 0);
-    return result;
-}
-
-/**
- * Get end of day timestamp
- */
-export function endOfDay(date: Date = new Date()): Date {
-    const result = new Date(date);
-    result.setHours(23, 59, 59, 999);
-    return result;
-}
 
 /**
  * Format uptime from milliseconds to human readable

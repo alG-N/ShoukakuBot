@@ -18,6 +18,7 @@ export { default as voteCache, voteCache as VoteCache } from './VoteCache.js';
 export type {
     MusicTrack,
     MusicQueue,
+    MessageRef,
     AddTrackResult,
     AddTracksResult,
     QueueStats

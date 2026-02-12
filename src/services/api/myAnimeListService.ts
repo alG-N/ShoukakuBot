@@ -314,7 +314,7 @@ class MyAnimeListService {
      */
     private async _getLastRequest(): Promise<number> {
         try {
-            const ts = await cacheService.get<number>(this.CACHE_NS, this.RATE_LIMIT_KEY);
+            const ts = await cacheService.peek<number>(this.CACHE_NS, this.RATE_LIMIT_KEY);
             if (ts !== null) return ts;
         } catch {
             // Redis unavailable — fall through to local

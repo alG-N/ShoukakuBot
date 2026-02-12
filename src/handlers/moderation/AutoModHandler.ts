@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Auto-Mod Handler
  * Integrates auto-mod with message events
  * @module handlers/moderation/AutoModHandler
@@ -7,7 +7,7 @@
 import { EmbedBuilder, Message, Guild, GuildTextBasedChannel } from 'discord.js';
 import { logger } from '../../core/Logger.js';
 
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
+import { getDefault } from '../../utils/common/moduleHelper.js';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const AutoModService = getDefault(require('../../services/moderation/AutoModService'));
 // eslint-disable-next-line @typescript-eslint/no-require-imports

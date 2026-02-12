@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Rule34 Post Handler
  * Handles embed creation and UI components for Rule34 posts
  * @module handlers/api/rule34PostHandler
@@ -13,11 +13,10 @@ import {
     StringSelectMenuOptionBuilder
 } from 'discord.js';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 const rule34Service = getDefault(require('../../services/api/rule34Service'));
 import { rule34Cache, UserPreferences as CacheUserPreferences } from '../../repositories/api/rule34Cache.js';
 import { truncateText, formatNumber } from '../../utils/common/embed.js';
+import { getDefault } from '../../utils/common/moduleHelper.js';
 /**
  * Post rating types
  */

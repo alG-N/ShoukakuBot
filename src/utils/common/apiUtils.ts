@@ -14,10 +14,6 @@ interface RetryOptions {
     onRetry?: (attempt: number, error: Error) => void;
 }
 
-interface TimeoutRetryOptions extends RetryOptions {
-    timeout?: number;
-}
-
 interface ErrorWithResponse extends Error {
     code?: string;
     response?: { status?: number };
@@ -115,88 +111,4 @@ export async function withRetry<T>(fn: () => Promise<T>, options: RetryOptions =
     throw lastError;
 }
 
-/**
- * Execute a function with a timeout
- * @param fn - Async function to execute
- * @param timeoutMs - Timeout in milliseconds
- * @param name - Name for error messages
- * @returns Result of the function
- */
-export async function withTimeout<T>(
-    fn: () => Promise<T>, 
-    timeoutMs: number = DEFAULT_CONFIG.timeout, 
-    name: string = 'Operation'
-): Promise<T> {
-    const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`${name} timed out after ${timeoutMs}ms`)), timeoutMs);
-    });
-    
-    return Promise.race([fn(), timeoutPromise]);
-}
 
-/**
- * Execute a function with both timeout and retries
- * @param fn - Async function to execute
- * @param options - Options
- * @returns Result of the function
- */
-export async function withTimeoutAndRetry<T>(fn: () => Promise<T>, options: TimeoutRetryOptions = {}): Promise<T> {
-    const {
-        name = 'API call',
-        timeout = DEFAULT_CONFIG.timeout,
-        ...retryOptions
-    } = options;
-    
-    return withRetry(
-        () => withTimeout(fn, timeout, name),
-        { name, ...retryOptions }
-    );
-}
-// RATE LIMITER
-/**
- * Simple rate limiter
- */
-export class RateLimiter {
-    private maxRequests: number;
-    private windowMs: number;
-    private requests: number[] = [];
-
-    constructor(maxRequests: number, windowMs: number) {
-        this.maxRequests = maxRequests;
-        this.windowMs = windowMs;
-    }
-    
-    /**
-     * Check if a request can be made
-     */
-    canMakeRequest(): boolean {
-        this._cleanup();
-        return this.requests.length < this.maxRequests;
-    }
-    
-    /**
-     * Record a request
-     */
-    recordRequest(): void {
-        this._cleanup();
-        this.requests.push(Date.now());
-    }
-    
-    /**
-     * Wait until a request can be made
-     */
-    async waitForSlot(): Promise<void> {
-        while (!this.canMakeRequest()) {
-            const oldestRequest = this.requests[0];
-            if (oldestRequest === undefined) break;
-            const waitTime = oldestRequest + this.windowMs - Date.now() + 10;
-            await sleep(Math.max(0, waitTime));
-        }
-    }
-    
-    private _cleanup(): void {
-        const now = Date.now();
-        const cutoff = now - this.windowMs;
-        this.requests = this.requests.filter(time => time > cutoff);
-    }
-}

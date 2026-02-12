@@ -21,8 +21,6 @@ interface Command {
 class CommandRegistry {
     public commands: Collection<string, Command> = new Collection();
     public modalHandlers: Map<string, Command> = new Map();
-    public buttonHandlers: Map<string, Command> = new Map();
-    public selectMenuHandlers: Map<string, Command> = new Map();
 
     /**
      * Load commands from all sources
@@ -130,8 +128,6 @@ class CommandRegistry {
     async shutdown(): Promise<void> {
         this.commands.clear();
         this.modalHandlers.clear();
-        this.buttonHandlers.clear();
-        this.selectMenuHandlers.clear();
         console.log('[CommandRegistry] Shutdown complete');
     }
 }

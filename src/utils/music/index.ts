@@ -80,23 +80,7 @@ export function parseDuration(durationStr: string | number): number {
     return 0;
 }
 
-/**
- * Format time ago
- * @param timestamp - Timestamp
- * @returns Time ago string
- */
-export function formatTimeAgo(timestamp: number): string {
-    if (!timestamp) return 'Never';
-    const diff = Date.now() - timestamp;
-    const seconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-    if (days > 0) return `${days}d ago`;
-    if (hours > 0) return `${hours}h ago`;
-    if (minutes > 0) return `${minutes}m ago`;
-    return `${seconds}s ago`;
-}
+
 
 /**
  * Delay execution
@@ -105,57 +89,7 @@ export function formatTimeAgo(timestamp: number): string {
 export function delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-// FORMATTING UTILITIES
-/**
- * Format view count
- * @param views - View count
- * @returns Formatted view count
- */
-export function formatViewCount(views: number | null | undefined): string {
-    if (!views) return 'N/A';
-    
-    if (views >= 1000000000) {
-        return (views / 1000000000).toFixed(1) + 'B';
-    }
-    if (views >= 1000000) {
-        return (views / 1000000).toFixed(1) + 'M';
-    }
-    if (views >= 1000) {
-        return (views / 1000).toFixed(1) + 'K';
-    }
-    return views.toString();
-}
 
-/**
- * Format number with locale
- * @param num - Number
- * @returns Formatted number
- */
-export function formatNumber(num: number | null | undefined): string {
-    if (!num) return '0';
-    return num.toLocaleString();
-}
-
-/**
- * Truncate text
- * @param text - Text to truncate
- * @param maxLength - Maximum length
- * @returns Truncated text
- */
-export function truncateText(text: string | null | undefined, maxLength: number = 50): string {
-    if (!text) return 'Unknown';
-    return text.length > maxLength ? text.substring(0, maxLength - 3) + '...' : text;
-}
-
-/**
- * Format timestamp
- * @param ms - Timestamp in milliseconds
- * @returns Formatted timestamp
- */
-export function formatTimestamp(ms: number): string {
-    const date = new Date(ms);
-    return date.toLocaleString("en-US", { hour12: false });
-}
 // VALIDATORS
 export const validators: Validators = {
     _youtubeRegex: /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/,

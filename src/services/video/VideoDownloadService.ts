@@ -184,9 +184,11 @@ class VideoDownloadService extends EventEmitter {
                 throw new Error('Download completed but file not found');
             }
             
-            // Get file size
+            // Get ACTUAL file size (authoritative — don't trust content-length headers)
             let stats = fs.statSync(videoPath);
             let fileSizeMB = stats.size / (1024 * 1024);
+            
+            console.log(`📏 Actual file size: ${fileSizeMB.toFixed(2)}MB (method: ${downloadMethod})`);
             
             // Check if file is empty
             if (fileSizeMB === 0) {
@@ -194,9 +196,10 @@ class VideoDownloadService extends EventEmitter {
                 throw new Error('Downloaded file is empty. The video may be unavailable or protected.');
             }
 
-            // Check file size limit (100MB - Discord Nitro limit)
+            // Check file size limit using ACTUAL size (100MB - Discord Nitro limit)
             const maxSizeMB = config.MAX_FILE_SIZE_MB || 100;
             if (fileSizeMB > maxSizeMB) {
+                console.log(`🚫 Actual file size ${fileSizeMB.toFixed(1)}MB exceeds limit ${maxSizeMB}MB`);
                 fs.unlinkSync(videoPath);
                 throw new Error(`FILE_TOO_LARGE:${fileSizeMB.toFixed(1)}MB`);
             }

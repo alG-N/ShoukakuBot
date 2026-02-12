@@ -4,7 +4,7 @@
  * @module modules/music/repository/VoteCache
  */
 
-import { Message } from 'discord.js';
+import type { MessageRef } from './QueueCache.js';
 import { MusicTrack } from './QueueCache.js';
 // Types
 export interface SkipVoteSession {
@@ -14,7 +14,7 @@ export interface SkipVoteSession {
     startedAt: number;
     startedBy: string;
     timeout: NodeJS.Timeout | null;
-    message: Message | null;
+    message: MessageRef | null;
 }
 
 export interface PriorityVoteSession {
@@ -25,7 +25,7 @@ export interface PriorityVoteSession {
     startedAt: number;
     startedBy: string;
     timeout: NodeJS.Timeout | null;
-    message: Message | null;
+    message: MessageRef | null;
 }
 
 export interface VoteResult {
@@ -149,10 +149,12 @@ class VoteCache {
     /**
      * Set skip vote message
      */
-    setSkipVoteMessage(guildId: string, message: Message): void {
+    setSkipVoteMessage(guildId: string, message: { id: string; channelId: string } | MessageRef): void {
         const session = this.skipVoteSessions.get(guildId);
         if (session) {
-            session.message = message;
+            session.message = 'messageId' in message 
+                ? message 
+                : { messageId: message.id, channelId: message.channelId };
         }
     }
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Warn Command
  * Issue a warning to a user with settings panel
  * @module commands/admin/warn
@@ -23,6 +23,7 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 
+import { getDefault } from '../../utils/common/moduleHelper.js';
 interface Infraction {
     case_id: number;
     type: string;
@@ -97,7 +98,6 @@ interface Database {
     query: (sql: string, params?: (string | number | null)[]) => Promise<{ rows: WarnThreshold[] }>;
 }
 
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
 let infractionService: InfractionService | undefined;
 let moderationService: ModerationService | undefined;

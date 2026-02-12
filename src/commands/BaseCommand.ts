@@ -27,6 +27,7 @@ import { AppError, ValidationError, PermissionError } from '../errors/index.js';
 import { trackCommand, commandsActive, commandErrorsTotal } from '../core/metrics.js';
 import { isOwner } from '../config/owner.js';
 import { logger } from '../core/Logger.js';
+import { globalCooldownManager } from '../utils/common/cooldown.js';
 // TYPES & INTERFACES
 /**
  * Command categories enum
@@ -127,8 +128,7 @@ export abstract class BaseCommand {
     /** Whether reply should be ephemeral */
     readonly ephemeral: boolean;
     
-    /** Cooldown tracking map */
-    private _cooldowns: Map<string, number> = new Map();
+    // Cooldowns managed by globalCooldownManager (Redis-backed, shard-safe)
 
     constructor(options: CommandOptions = {}) {
         this.category = options.category || CommandCategory.GENERAL;
@@ -195,8 +195,8 @@ export abstract class BaseCommand {
             // Pre-execution validations
             await this._validateExecution(interaction);
 
-            // Check cooldown
-            const cooldownResult = this._checkCooldown(interaction.user.id);
+            // Check cooldown (Redis-backed, shard-safe)
+            const cooldownResult = await this._checkCooldown(interaction.user.id);
             if (cooldownResult.onCooldown && cooldownResult.remaining) {
                 await this._sendCooldownMessage(interaction, cooldownResult.remaining);
                 return;
@@ -215,8 +215,8 @@ export abstract class BaseCommand {
                 member: interaction.member as GuildMember | null,
             });
 
-            // Set cooldown after successful execution
-            this._setCooldown(interaction.user.id);
+            // Set cooldown after successful execution (Redis-backed, shard-safe)
+            await this._setCooldown(interaction.user.id);
 
             // Track metrics
             const duration = Date.now() - startTime;
@@ -300,18 +300,18 @@ export abstract class BaseCommand {
     }
 
     /**
-     * Check cooldown
+     * Check cooldown via Redis-backed CooldownManager (shard-safe)
      */
-    private _checkCooldown(userId: string): CooldownResult {
+    private async _checkCooldown(userId: string): Promise<CooldownResult> {
         if (this.cooldown <= 0) return { onCooldown: false };
 
-        const now = Date.now();
-        const cooldownEnd = this._cooldowns.get(userId);
+        const commandName = this.data?.name || 'unknown';
+        const result = await globalCooldownManager.check(userId, commandName, this.cooldown * 1000);
 
-        if (cooldownEnd && now < cooldownEnd) {
+        if (result.onCooldown) {
             return {
                 onCooldown: true,
-                remaining: Math.ceil((cooldownEnd - now) / 1000),
+                remaining: Math.ceil(result.remaining / 1000),
             };
         }
 
@@ -319,16 +319,13 @@ export abstract class BaseCommand {
     }
 
     /**
-     * Set cooldown
+     * Set cooldown via Redis-backed CooldownManager (shard-safe)
+     * Redis TTL handles auto-cleanup — no setTimeout needed
      */
-    private _setCooldown(userId: string): void {
+    private async _setCooldown(userId: string): Promise<void> {
         if (this.cooldown <= 0) return;
-        this._cooldowns.set(userId, Date.now() + (this.cooldown * 1000));
-
-        // Auto-cleanup after cooldown expires
-        setTimeout(() => {
-            this._cooldowns.delete(userId);
-        }, this.cooldown * 1000 + 1000);
+        const commandName = this.data?.name || 'unknown';
+        await globalCooldownManager.set(userId, commandName, this.cooldown * 1000);
     }
 
     /**

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Rule34 Command - Presentation Layer
  * Search Rule34 for images and videos
  * @module presentation/commands/api/rule34
@@ -22,6 +22,7 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
+import { getDefault } from '../../utils/common/moduleHelper.js';
 // TYPES
 interface Post {
     id: number;
@@ -128,7 +129,6 @@ let rule34Service: Rule34Service | undefined;
 let rule34Cache: Rule34Cache | undefined;
 let postHandler: PostHandler | undefined;
 
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
 try {
     rule34Service = getDefault(require('../../services/api/rule34Service'));

@@ -171,27 +171,30 @@ class GoogleService {
             };
         } catch (error) {
             const axiosError = error as AxiosError;
-            console.error('[Google Search Error]', axiosError.message);
+            console.error('[Google Search Error]', axiosError.message, `Status: ${axiosError.response?.status || 'N/A'}`);
 
-            // Fallback to DuckDuckGo on error
-            if (axiosError.response?.status === 429 || axiosError.response?.status === 403) {
-                console.log('[Google] Falling back to DuckDuckGo');
-                return this.searchDuckDuckGo(query);
-            }
-
-            return {
-                success: false,
-                error: 'Search failed. Please try again.',
-                searchEngine: 'Google'
-            };
+            // Fallback to DuckDuckGo on ANY Google API error (403, 429, quota, etc.)
+            console.log(`[Google] API error (${axiosError.response?.status || 'unknown'}), falling back to DuckDuckGo`);
+            return this.searchDuckDuckGo(query);
         }
     }
 
     /**
-     * Search using DuckDuckGo Instant Answer API
+     * Search using DuckDuckGo Instant Answer API with HTML fallback
      */
     async searchDuckDuckGo(query: string): Promise<SearchResponse> {
         try {
+            // Try the HTML lite endpoint first for better results
+            try {
+                const htmlResults = await this._searchDuckDuckGoHtml(query);
+                if (htmlResults.results && htmlResults.results.length > 0) {
+                    return htmlResults;
+                }
+            } catch (htmlError) {
+                console.log('[DuckDuckGo HTML] Fallback to Instant Answer API:', (htmlError as Error).message);
+            }
+
+            // Fallback to Instant Answer API
             const response = await axios.get<DuckDuckGoResponse>('https://api.duckduckgo.com/', {
                 params: {
                     q: query,
@@ -260,6 +263,66 @@ class GoogleService {
                 searchEngine: 'DuckDuckGo'
             };
         }
+    }
+
+    /**
+     * Search DuckDuckGo using the HTML lite endpoint for better results
+     */
+    private async _searchDuckDuckGoHtml(query: string): Promise<SearchResponse> {
+        const response = await axios.get('https://html.duckduckgo.com/html/', {
+            params: { q: query },
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html',
+                'Accept-Language': 'en-US,en;q=0.9',
+            },
+            timeout: REQUEST_TIMEOUT,
+            responseType: 'text'
+        });
+
+        const html = response.data as string;
+        const results: SearchResultItem[] = [];
+
+        // Parse results from DuckDuckGo HTML lite response
+        // Each result is in a <div class="result"> with <a class="result__a"> for URL/title
+        // and <a class="result__snippet"> for snippet
+        const resultBlocks = html.split(/class="result\s/);
+        
+        for (let i = 1; i < resultBlocks.length && results.length < 5; i++) {
+            const block = resultBlocks[i];
+            
+            // Extract URL and title from result__a
+            const linkMatch = block.match(/class="result__a"[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/);
+            if (!linkMatch) continue;
+            
+            let link = linkMatch[1];
+            // DuckDuckGo wraps URLs in a redirect, extract the actual URL
+            const uddgMatch = link.match(/[?&]uddg=([^&]+)/);
+            if (uddgMatch) {
+                link = decodeURIComponent(uddgMatch[1]);
+            }
+            
+            const title = linkMatch[2].replace(/<[^>]*>/g, '').trim();
+            if (!title || !link || !link.startsWith('http')) continue;
+            
+            // Extract snippet
+            const snippetMatch = block.match(/class="result__snippet"[^>]*>([\s\S]*?)<\/a>/);
+            const snippet = snippetMatch 
+                ? snippetMatch[1].replace(/<[^>]*>/g, '').trim()
+                : 'No description available.';
+            
+            let displayLink = '';
+            try { displayLink = new URL(link).hostname; } catch { /* ignore */ }
+            
+            results.push({ title, link, snippet, displayLink, thumbnail: null });
+        }
+
+        return {
+            success: results.length > 0,
+            results,
+            totalResults: results.length,
+            searchEngine: 'DuckDuckGo'
+        };
     }
 
     /**

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Clear Warnings Command
  * Clear all warnings for a user
  * @module commands/admin/clearwarns
@@ -14,6 +14,7 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 
+import { getDefault } from '../../utils/common/moduleHelper.js';
 interface InfractionService {
     getWarningCount?: (guildId: string, userId: string) => Promise<number>;
     clearWarnings?: (guildId: string, userId: string) => Promise<number>;
@@ -27,7 +28,6 @@ interface InfractionService {
     }) => Promise<unknown>;
 }
 
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
 let infractionService: InfractionService | undefined;
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Delete Warning Command
  * Delete a specific warning by case ID
  * @module commands/admin/delwarn
@@ -12,6 +12,7 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 
+import { getDefault } from '../../utils/common/moduleHelper.js';
 interface Infraction {
     id: number;
     guild_id: string;
@@ -28,7 +29,6 @@ interface InfractionService {
     deleteCase?: (guildId: string, caseId: number) => Promise<boolean>;
 }
 
-const getDefault = <T>(mod: { default?: T } | T): T => (mod as { default?: T }).default || mod as T;
 
 let infractionService: InfractionService | undefined;
 

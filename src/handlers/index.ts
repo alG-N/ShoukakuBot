@@ -17,3 +17,8 @@ export * from './music/index.js';
 import * as moderationHandlers from './moderation/index.js';
 export { moderationHandlers as moderation };
 export * from './moderation/index.js';
+
+// General handlers
+import * as generalHandlers from './general/index.js';
+export { generalHandlers as general };
+export * from './general/index.js';
