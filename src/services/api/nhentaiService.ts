@@ -4,12 +4,13 @@
  * @module services/api/nhentaiService
  */
 
-import axios from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
 import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
 import cacheService from '../../cache/CacheService.js';
+import { nhentai as nhentaiConfig } from '../../config/services.js';
 // TYPES & INTERFACES
 // API Configuration
-const API_BASE = 'https://nhentai.net/api';
+const API_BASE = nhentaiConfig.baseUrl;
 const GALLERY_ENDPOINT = '/gallery';
 const THUMBNAIL_BASE = 'https://t.nhentai.net/galleries';
 const IMAGE_BASE = 'https://i.nhentai.net/galleries';
@@ -29,15 +30,38 @@ const POPULAR_GALLERIES: number[] = [
     386483, 393321, 393497, 396823, 400485
 ];
 
-// Request configuration
-const REQUEST_CONFIG = {
-    timeout: 15000,
-    headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json',
-        'Accept-Language': 'en-US,en;q=0.9'
+/**
+ * Build request headers with Cloudflare bypass support.
+ * nhentai.net uses Cloudflare protection — requests without proper
+ * Referer + cf_clearance cookie get 403'd intermittently.
+ */
+function buildRequestHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+        'User-Agent': nhentaiConfig.userAgent,
+        'Accept': 'application/json, text/html, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://nhentai.net/',
+        'Origin': 'https://nhentai.net',
+    };
+
+    // Add cf_clearance cookie if configured (obtained from real browser session)
+    if (nhentaiConfig.cfClearance) {
+        headers['Cookie'] = `cf_clearance=${nhentaiConfig.cfClearance}`;
     }
-};
+
+    return headers;
+}
+
+// Request configuration — rebuilt per-call to pick up hot-reloaded config
+function getRequestConfig(overrides: Partial<AxiosRequestConfig> = {}): AxiosRequestConfig {
+    return {
+        timeout: 15000,
+        headers: buildRequestHeaders(),
+        // Don't follow redirects to detect Cloudflare challenge pages
+        maxRedirects: 5,
+        ...overrides,
+    };
+}
 
 export interface NHentaiTag {
     id: number;
@@ -124,7 +148,7 @@ interface NHentaiSearchResponse {
 }
 // NHENTAI SERVICE CLASS
 class NHentaiService {
-    private readonly CACHE_NS = 'api';
+    private readonly CACHE_NS = 'api:nhentai';
     private readonly CACHE_TTL = 300; // 5 minutes in seconds
 
     constructor() {
@@ -132,7 +156,7 @@ class NHentaiService {
     }
 
     /**
-     * Fetch gallery data by code with circuit breaker
+     * Fetch gallery data by code with circuit breaker + automatic 403 retry
      */
     async fetchGallery(code: number | string): Promise<GalleryResult> {
         // Check cache first
@@ -140,19 +164,14 @@ class NHentaiService {
         if (cached) return { success: true, data: cached, fromCache: true };
 
         return circuitBreakerRegistry.execute('nsfw', async () => {
-            try {
-                const response = await axios.get<NHentaiGallery>(
-                    `${API_BASE}${GALLERY_ENDPOINT}/${code}`,
-                    REQUEST_CONFIG
-                );
-
-                // Cache successful response
-                await cacheService.set(this.CACHE_NS, `nhentai:gallery_${code}`, response.data, this.CACHE_TTL);
-
-                return { success: true, data: response.data };
-            } catch (error) {
-                return this._handleError(error);
-            }
+            return this._fetchWithRetry(
+                `${API_BASE}${GALLERY_ENDPOINT}/${code}`,
+                async (url) => {
+                    const response = await axios.get<NHentaiGallery>(url, getRequestConfig());
+                    await cacheService.set(this.CACHE_NS, `nhentai:gallery_${code}`, response.data, this.CACHE_TTL);
+                    return { success: true, data: response.data };
+                }
+            );
         });
     }
 
@@ -185,10 +204,7 @@ class NHentaiService {
     async fetchPopularGallery(): Promise<GalleryResult> {
         // First, try to fetch from actual popular/homepage API
         try {
-            const response = await axios.get(`${API_BASE}/galleries/popular`, {
-                ...REQUEST_CONFIG,
-                timeout: 10000
-            });
+            const response = await axios.get(`${API_BASE}/galleries/popular`, getRequestConfig({ timeout: 10000 }));
             
             if (response.data?.result && Array.isArray(response.data.result) && response.data.result.length > 0) {
                 // Pick a random gallery from popular results
@@ -205,11 +221,10 @@ class NHentaiService {
 
         // Try homepage galleries
         try {
-            const response = await axios.get(`${API_BASE}/galleries/all`, {
-                ...REQUEST_CONFIG,
+            const response = await axios.get(`${API_BASE}/galleries/all`, getRequestConfig({
                 params: { page: 1 },
                 timeout: 10000
-            });
+            }));
             
             if (response.data?.result && Array.isArray(response.data.result) && response.data.result.length > 0) {
                 const randomIndex = Math.floor(Math.random() * Math.min(25, response.data.result.length));
@@ -265,7 +280,7 @@ class NHentaiService {
 
                 const response = await axios.get<NHentaiSearchResponse>(
                     `${API_BASE}/galleries/search?query=${encodedQuery}&page=${page}&sort=${sortParam}`,
-                    REQUEST_CONFIG
+                    getRequestConfig()
                 );
 
                 const data: SearchData = {
@@ -298,7 +313,7 @@ class NHentaiService {
             try {
                 const response = await axios.get<NHentaiSearchResponse>(
                     `${API_BASE}/galleries/search?query=${encodeURIComponent(query)}&page=1`,
-                    { ...REQUEST_CONFIG, timeout: 3000 }
+                    getRequestConfig({ timeout: 3000 })
                 );
 
                 const results = response.data.result || [];
@@ -406,26 +421,67 @@ class NHentaiService {
     }
 
     /**
+     * Retry wrapper for requests that may get 403'd by Cloudflare.
+     * Retries up to 2 times with exponential backoff + jitter and slightly
+     * varied headers on each attempt to reduce fingerprint consistency.
+     */
+    private async _fetchWithRetry(
+        url: string,
+        fetchFn: (url: string) => Promise<GalleryResult>,
+        maxRetries: number = 2
+    ): Promise<GalleryResult> {
+        let lastError: unknown;
+
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                return await fetchFn(url);
+            } catch (error) {
+                lastError = error;
+                const err = error as { response?: { status: number } };
+
+                // Only retry on 403 (Cloudflare block) or 503 (Cloudflare challenge)
+                if (err.response?.status === 403 || err.response?.status === 503) {
+                    if (attempt < maxRetries) {
+                        // Exponential backoff with jitter: 1-2s, 2-4s
+                        const delay = (1000 * Math.pow(2, attempt)) + Math.random() * 1000;
+                        console.warn(`[NHentai] 403/503 on attempt ${attempt + 1}, retrying in ${Math.round(delay)}ms...`);
+                        await new Promise(r => setTimeout(r, delay));
+                        continue;
+                    }
+                }
+
+                // Non-retryable error, bail out
+                break;
+            }
+        }
+
+        return this._handleError(lastError);
+    }
+
+    /**
      * Handle API errors
      */
-    private _handleError<T extends { success: boolean; error?: string; code?: string }>(error: unknown): T {
+    private _handleError(error: unknown): { success: false; error: string; code: string } {
         const err = error as { response?: { status: number }; code?: string; message?: string };
 
         if (err.response?.status === 404) {
-            return { success: false, error: 'Gallery not found. Please check the code.', code: 'NOT_FOUND' } as T;
+            return { success: false, error: 'Gallery not found. Please check the code.', code: 'NOT_FOUND' };
         }
         if (err.response?.status === 403) {
-            return { success: false, error: 'Access denied. The gallery may be region-locked.', code: 'FORBIDDEN' } as T;
+            return { success: false, error: 'Access denied by Cloudflare. Try setting NHENTAI_CF_CLEARANCE env var from a browser session.', code: 'FORBIDDEN' };
+        }
+        if (err.response?.status === 503) {
+            return { success: false, error: 'Cloudflare challenge active. Set NHENTAI_CF_CLEARANCE env var to bypass.', code: 'CF_CHALLENGE' };
         }
         if (err.response?.status === 429) {
-            return { success: false, error: 'Rate limited. Please wait a moment.', code: 'RATE_LIMITED' } as T;
+            return { success: false, error: 'Rate limited. Please wait a moment.', code: 'RATE_LIMITED' };
         }
         if (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT') {
-            return { success: false, error: 'Request timed out. Please try again.', code: 'TIMEOUT' } as T;
+            return { success: false, error: 'Request timed out. Please try again.', code: 'TIMEOUT' };
         }
 
         console.error('[NHentai Service Error]', err.message);
-        return { success: false, error: 'Failed to fetch gallery. Please try again later.', code: 'UNKNOWN' } as T;
+        return { success: false, error: 'Failed to fetch gallery. Please try again later.', code: 'UNKNOWN' };
     }
 
     /**

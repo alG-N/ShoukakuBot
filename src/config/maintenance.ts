@@ -21,7 +21,7 @@ const getCacheService = () => {
 
 // Redis key for persistent maintenance state
 const REDIS_KEY = 'altergolden:maintenance:state';
-const REDIS_NS = 'session'; // Long-lived namespace
+const REDIS_NS = 'maintenance'; // Long-lived, Redis-backed namespace
 
 // ── Types ────────────────────────────────────────────────────────────
 interface ScheduledMaintenance {

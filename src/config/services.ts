@@ -45,7 +45,11 @@ export const nhentai = {
     baseUrl: 'https://nhentai.net/api',
     imageUrl: 'https://i.nhentai.net',
     thumbUrl: 'https://t.nhentai.net',
-    rateLimit: 20  // requests per minute
+    rateLimit: 20,  // requests per minute
+    // Cloudflare bypass: cf_clearance cookie from a real browser session
+    // The User-Agent MUST match the one used when the cookie was obtained
+    cfClearance: process.env.NHENTAI_CF_CLEARANCE || '',
+    userAgent: process.env.NHENTAI_USER_AGENT || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
 };
 
 export const google = {

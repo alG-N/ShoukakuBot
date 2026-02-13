@@ -105,7 +105,7 @@ const COLORS = {
 } as const;
 // NHENTAI HANDLER CLASS
 class NHentaiHandler {
-    private readonly CACHE_NS = 'api';
+    private readonly CACHE_NS = 'api:nhentai';
     private readonly SESSION_TTL = 1800; // 30 minutes in seconds for longer reading sessions
     private readonly CDN_MIRRORS = ['i1', 'i2', 'i3', 'i5', 'i7'];
     private readonly THUMB_MIRRORS = ['t1', 't2', 't3', 't5', 't7'];

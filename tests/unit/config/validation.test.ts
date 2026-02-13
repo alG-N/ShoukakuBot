@@ -140,7 +140,7 @@ describe('Config Validation', () => {
             process.env.DB_PASSWORD = 'secret';
             process.env.DB_NAME = 'altergolden';
             delete process.env.REDIS_URL;
-            delete process.env.LAVALINK_HOST;
+            delete process.env.LAVALINK_HOST_1;
 
             const result = validateEnvironment();
 
@@ -149,8 +149,8 @@ describe('Config Validation', () => {
 
             // REDIS_URL is database category
             expect(dbWarnings.some(w => w.name === 'REDIS_URL')).toBe(true);
-            // LAVALINK_HOST is music category
-            expect(musicWarnings.some(w => w.name === 'LAVALINK_HOST')).toBe(true);
+            // LAVALINK_HOST_1 is music category
+            expect(musicWarnings.some(w => w.name === 'LAVALINK_HOST_1')).toBe(true);
         });
 
         it('should include description in missing vars', () => {

@@ -298,7 +298,7 @@ interface JikanSingleResponse<T> {
 }
 // MYANIMEIST SERVICE CLASS
 class MyAnimeListService {
-    private readonly CACHE_NS = 'api';
+    private readonly CACHE_NS = 'api:anime';
     private readonly CACHE_TTL = 300; // 5 minutes in seconds
     private readonly rateLimitDelay: number = 400; // Jikan has rate limiting
     private readonly RATE_LIMIT_KEY = 'mal_ratelimit:last_request';
@@ -424,6 +424,11 @@ class MyAnimeListService {
         limit: number = 10
     ): Promise<MALAutocompleteItem[]> {
         const config = MEDIA_TYPE_CONFIG[mediaType] || MEDIA_TYPE_CONFIG.anime;
+        const cacheKey = `mal:autocomplete_${mediaType}_${query.toLowerCase()}`;
+
+        // Check cache first
+        const cached = await cacheService.get<MALAutocompleteItem[]>(this.CACHE_NS, cacheKey);
+        if (cached) return cached;
 
         return circuitBreakerRegistry.execute('anime', async () => {
             try {
@@ -438,7 +443,7 @@ class MyAnimeListService {
 
                 const data = await response.json() as JikanSearchResponse<JikanAnimeData | JikanMangaData>;
 
-                return (data.data || []).map(item => {
+                const results = (data.data || []).map(item => {
                     const animeItem = item as JikanAnimeData;
                     const mangaItem = item as JikanMangaData;
                     
@@ -456,6 +461,12 @@ class MyAnimeListService {
                         averageScore: item.score ? Math.round(item.score * 10) : null
                     };
                 });
+
+                // Cache successful results
+                if (results.length > 0) {
+                    await cacheService.set(this.CACHE_NS, cacheKey, results, this.CACHE_TTL);
+                }
+                return results;
             } catch (error) {
                 console.error('[MAL Autocomplete Error]', (error as Error).message);
                 return [];

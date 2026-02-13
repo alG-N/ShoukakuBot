@@ -280,17 +280,32 @@ class UserMusicCache {
      * Remove from favorites
      */
     async removeFavorite(userId: string, trackUrl: string): Promise<FavoriteTrack[]> {
+        let dbSuccess = false;
         try {
             await postgres.query(
                 'DELETE FROM user_music_favorites WHERE user_id = $1 AND url = $2',
                 [userId, trackUrl]
             );
+            dbSuccess = true;
         } catch (error) {
             console.error('[UserMusicCache] Failed to remove favorite:', (error as Error).message);
         }
 
-        // Invalidate and return fresh list
-        await cacheService.delete(this.CACHE_NS, `user_favs:${userId}`);
+        if (dbSuccess) {
+            // Update cache directly: read current cached list, remove the track, and re-cache
+            const cacheKey = `user_favs:${userId}`;
+            const cached = await cacheService.get<FavoriteTrack[]>(this.CACHE_NS, cacheKey);
+            if (cached) {
+                const updated = cached.filter(t => t.url !== trackUrl);
+                await cacheService.set(this.CACHE_NS, cacheKey, updated, this.FAVS_TTL);
+                return updated;
+            }
+        } else {
+            // DB failed — invalidate cache to force fresh read next time
+            await cacheService.delete(this.CACHE_NS, `user_favs:${userId}`);
+        }
+
+        // Cache was empty or DB failed — fetch from DB
         return this.getFavorites(userId);
     }
 
@@ -302,9 +317,10 @@ class UserMusicCache {
         return favorites.some(f => f.url === trackUrl);
     }
     /**
-     * Add to listening history (write-through: DB + invalidate cache)
+     * Add to listening history (write-through: DB + update cache directly)
      */
     async addToHistory(userId: string, track: any): Promise<HistoryTrack[]> {
+        let dbSuccess = false;
         try {
             // Remove existing entry for same URL (move to top)
             await postgres.query(
@@ -318,13 +334,37 @@ class UserMusicCache {
                  VALUES ($1, $2, $3, $4, $5, $6)`,
                 [userId, track.url, track.title, track.author || null, track.lengthSeconds || track.duration || null, track.thumbnail || null]
             );
+            dbSuccess = true;
             // Trim trigger handles size limit in DB
         } catch (error) {
             console.error('[UserMusicCache] Failed to add to history:', (error as Error).message);
         }
 
-        // Invalidate cache
-        await cacheService.delete(this.CACHE_NS, `user_history:${userId}`);
+        if (dbSuccess) {
+            // Update cache directly: prepend new track to cached list
+            const cacheKey = `user_history:${userId}`;
+            const newTrack: HistoryTrack = {
+                url: track.url,
+                title: track.title,
+                author: track.author || undefined,
+                duration: track.lengthSeconds || track.duration || undefined,
+                thumbnail: track.thumbnail || undefined,
+                playedAt: Date.now()
+            };
+
+            const cached = await cacheService.get<HistoryTrack[]>(this.CACHE_NS, cacheKey);
+            if (cached) {
+                // Remove duplicate, prepend new entry, trim to max size
+                const updated = [newTrack, ...cached.filter(t => t.url !== track.url)].slice(0, this.HISTORY_MAX_SIZE);
+                await cacheService.set(this.CACHE_NS, cacheKey, updated, this.HISTORY_TTL);
+                return updated;
+            }
+        } else {
+            // DB failed — invalidate cache to force fresh read next time
+            await cacheService.delete(this.CACHE_NS, `user_history:${userId}`);
+        }
+
+        // Cache was empty or DB failed — fetch from DB
         return this.getHistory(userId);
     }
 

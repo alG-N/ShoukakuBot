@@ -89,7 +89,7 @@ const REQUEST_TIMEOUT = 10000;
  * Google Search Service with DuckDuckGo fallback
  */
 class GoogleService {
-    private readonly CACHE_NS = 'api';
+    private readonly CACHE_NS = 'api:search';
     private readonly CACHE_TTL = 300; // 5 minutes in seconds
     private readonly useDuckDuckGo: boolean;
 

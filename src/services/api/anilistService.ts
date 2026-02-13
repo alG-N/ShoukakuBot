@@ -189,7 +189,7 @@ class AnilistService {
         const breaker = this._getCircuitBreaker();
 
         // Try cache first
-        const cachedResult = await cacheService.get('api', cacheKey) as T | null;
+        const cachedResult = await cacheService.get('api:anime', cacheKey) as T | null;
         if (cachedResult) {
             return cachedResult;
         }
@@ -200,7 +200,7 @@ class AnilistService {
 
             if (result) {
                 // Cache successful result
-                await cacheService.set('api', cacheKey, result, this.cacheTTL);
+                await cacheService.set('api:anime', cacheKey, result, this.cacheTTL);
                 gracefulDegradation.markHealthy('anilist');
             }
 
@@ -230,16 +230,16 @@ class AnilistService {
      */
     private async _getStaleCache<T>(cacheKey: string): Promise<T | null> {
         const staleKey = `stale:${cacheKey}`;
-        return await cacheService.get('temp', staleKey) as T | null;
+        return await cacheService.get('api:anime', staleKey) as T | null;
     }
 
     /**
-     * Store stale cache backup (longer TTL for fallback)
+     * Store stale cache backup (longer TTL for fallback, Redis-backed for cross-shard access)
      */
     private async _setStaleCache<T>(cacheKey: string, data: T): Promise<void> {
         const staleKey = `stale:${cacheKey}`;
-        // Keep stale cache for 24 hours as fallback
-        await cacheService.set('temp', staleKey, data, 86400);
+        // Keep stale cache for 24 hours as fallback (stored in Redis-backed api:anime namespace)
+        await cacheService.set('api:anime', staleKey, data, 86400);
     }
 
     /**

@@ -93,8 +93,9 @@ describe('CacheService', () => {
             const stats = cache.getStats();
             
             expect(stats.namespaces).toContain('guild');
-            expect(stats.namespaces).toContain('user');
-            expect(stats.namespaces).toContain('api');
+            expect(stats.namespaces).toContain('api:nhentai');
+            expect(stats.namespaces).toContain('api:anime');
+            expect(stats.namespaces).toContain('api:search');
             expect(stats.namespaces).toContain('music');
             expect(stats.namespaces).toContain('automod');
             expect(stats.namespaces).toContain('ratelimit');
@@ -354,13 +355,13 @@ describe('CacheService', () => {
         it('should clear all keys in namespace', async () => {
             await cache.set('guild', 'key1', 'value1');
             await cache.set('guild', 'key2', 'value2');
-            await cache.set('user', 'key3', 'value3'); // Different namespace
+            await cache.set('music', 'key3', 'value3'); // Different namespace
             
             await cache.clearNamespace('guild');
             
             expect(await cache.get('guild', 'key1')).toBeNull();
             expect(await cache.get('guild', 'key2')).toBeNull();
-            expect(await cache.get('user', 'key3')).toBe('value3'); // Should still exist
+            expect(await cache.get('music', 'key3')).toBe('value3'); // Should still exist
         });
     });
 
@@ -393,6 +394,9 @@ describe('CacheService', () => {
             expect(stats.misses).toBe(1);
             expect(stats.hitRate).toBe(0.5);
             expect(stats.memoryEntries).toBe(1);
+            expect(stats.effectiveHitRate).toBeGreaterThanOrEqual(0);
+            expect(stats.topMissNamespaces).toBeDefined();
+            expect(Array.isArray(stats.topMissNamespaces)).toBe(true);
         });
 
         it('should calculate hit rate correctly', async () => {
@@ -407,13 +411,51 @@ describe('CacheService', () => {
             
             expect(cache.getStats().hitRate).toBe(0.75);
         });
+
+        it('should track per-namespace stats in topMissNamespaces', async () => {
+            await cache.get('guild', 'miss1');
+            await cache.get('guild', 'miss2');
+            await cache.set('guild', 'hit1', 'v');
+            await cache.get('guild', 'hit1');
+            
+            const stats = cache.getStats();
+            const guildNs = stats.topMissNamespaces.find(n => n.namespace === 'guild');
+            expect(guildNs).toBeDefined();
+            expect(guildNs!.misses).toBe(2);
+            expect(guildNs!.hits).toBe(1);
+        });
+
+        it('should track specializedOps for rate limit checks', async () => {
+            await cache.checkRateLimit('test:user1', 5, 60);
+            await cache.checkRateLimit('test:user2', 5, 60);
+            
+            const stats = cache.getStats();
+            expect(stats.specializedOps).toBe(2);
+        });
+
+        it('should count getOrSet misses as real misses', async () => {
+            let factoryCalls = 0;
+            const factory = async () => { factoryCalls++; return 'generated'; };
+            
+            // First call: cache miss → factory called
+            await cache.getOrSet('guild', 'gosKey', factory);
+            expect(factoryCalls).toBe(1);
+            expect(cache.getStats().misses).toBe(1);  // miss IS counted now
+            
+            // Second call: cache hit → factory not called
+            await cache.getOrSet('guild', 'gosKey', factory);
+            expect(factoryCalls).toBe(1);
+            expect(cache.getStats().hits).toBe(1);
+        });
     });
 
     describe('DEFAULT_NAMESPACES', () => {
         it('should have correct TTL configurations', () => {
             expect(DEFAULT_NAMESPACES.guild.ttl).toBe(300);
-            expect(DEFAULT_NAMESPACES.user.ttl).toBe(600);
-            expect(DEFAULT_NAMESPACES.api.ttl).toBe(300);
+            expect(DEFAULT_NAMESPACES['api:nhentai'].ttl).toBe(300);
+            expect(DEFAULT_NAMESPACES['api:anime'].ttl).toBe(600);
+            expect(DEFAULT_NAMESPACES['api:search'].ttl).toBe(300);
+            expect(DEFAULT_NAMESPACES['api:translate'].ttl).toBe(1800);
             expect(DEFAULT_NAMESPACES.music.ttl).toBe(3600);
             expect(DEFAULT_NAMESPACES.automod.ttl).toBe(60);
             expect(DEFAULT_NAMESPACES.ratelimit.ttl).toBe(60);
@@ -422,7 +464,7 @@ describe('CacheService', () => {
 
         it('should have Redis enabled for most namespaces', () => {
             expect(DEFAULT_NAMESPACES.guild.useRedis).toBe(true);
-            expect(DEFAULT_NAMESPACES.user.useRedis).toBe(true);
+            expect(DEFAULT_NAMESPACES['api:anime'].useRedis).toBe(true);
             expect(DEFAULT_NAMESPACES.temp.useRedis).toBe(false); // temp is memory-only
         });
     });

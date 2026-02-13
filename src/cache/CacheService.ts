@@ -47,18 +47,26 @@ export interface CacheMetrics {
     redisHits: number;
     memoryHits: number;
     redisFallbacks: number;
+    /** Total specialized operations (cooldowns, rate limits, automod) not tracked in hit/miss */
+    specializedOps: number;
+    /** Per-namespace hit/miss counters */
+    namespaceStats: Map<string, { hits: number; misses: number }>;
 }
 
 /**
  * Cache statistics with service state
  */
-export interface CacheServiceStats extends CacheMetrics {
+export interface CacheServiceStats extends Omit<CacheMetrics, 'namespaceStats'> {
     hitRate: number;
+    /** Effective hit rate including getOrSet and peek operations */
+    effectiveHitRate: number;
     redisConnected: boolean;
     redisState: string;
     redisFailures: number;
     memoryEntries: number;
     namespaces: string[];
+    /** Top namespaces by miss count (for optimization) */
+    topMissNamespaces: Array<{ namespace: string; hits: number; misses: number; hitRate: number }>;
 }
 
 /**
@@ -79,17 +87,21 @@ export type CacheFactory<T> = () => Promise<T>;
  */
 export const DEFAULT_NAMESPACES: Record<string, NamespaceConfig> = {
     'guild': { ttl: 300, maxSize: 1000, useRedis: true },      // Guild settings - 5min
-    'user': { ttl: 600, maxSize: 2000, useRedis: true },       // User data - 10min
-    'api': { ttl: 300, maxSize: 500, useRedis: true },         // API responses - 5min
+    'api:nhentai': { ttl: 300, maxSize: 300, useRedis: true },   // nhentai galleries/search - 5min
+    'api:anime': { ttl: 600, maxSize: 400, useRedis: true },     // AniList + MAL + stale fallback - 10min
+    'api:search': { ttl: 300, maxSize: 200, useRedis: true },    // Google, Wikipedia, Fandom - 5min
+    'api:translate': { ttl: 1800, maxSize: 100, useRedis: true }, // Pixiv translations - 30min
     'music': { ttl: 3600, maxSize: 200, useRedis: true },      // Music queues - 1h
     'automod': { ttl: 60, maxSize: 5000, useRedis: true },     // AutoMod tracking - 1min
     'ratelimit': { ttl: 60, maxSize: 10000, useRedis: true },  // Rate limits - 1min
-    'session': { ttl: 1800, maxSize: 500, useRedis: true },    // Sessions - 30min
     'snipe': { ttl: 43200, maxSize: 500, useRedis: true },     // Snipe messages - 12h
     'lockdown': { ttl: 86400, maxSize: 200, useRedis: true },  // Lockdown state - 24h
     'antiraid': { ttl: 3600, maxSize: 500, useRedis: true },   // Anti-raid tracking - 1h
     'voice': { ttl: 600, maxSize: 200, useRedis: true },       // Voice state tracking - 10min
     'temp': { ttl: 60, maxSize: 1000, useRedis: false },       // Temporary - 1min, memory only
+    'pixiv_auth': { ttl: 3600, maxSize: 10, useRedis: true },  // Pixiv OAuth tokens - 1h, cross-shard
+    'reddit_auth': { ttl: 3600, maxSize: 10, useRedis: true }, // Reddit OAuth tokens - 1h, cross-shard
+    'maintenance': { ttl: 2592000, maxSize: 10, useRedis: true }, // Maintenance state - 30d, cross-shard
 };
 
 /**
@@ -125,8 +137,23 @@ export class CacheService {
     /** Cleanup interval reference */
     private _cleanupInterval: NodeJS.Timeout;
 
-    /** Flag to suppress miss metric during getOrSet internal lookup */
+    /** Flag to suppress miss metric during peek() — used only for existence
+     *  checks where null is the expected/normal result (lockdown, antiraid, etc.) */
     private _suppressMissMetric: boolean = false;
+
+    /** Track a hit for a namespace */
+    private _trackNamespaceHit(namespace: string): void {
+        const ns = this.metrics.namespaceStats.get(namespace) || { hits: 0, misses: 0 };
+        ns.hits++;
+        this.metrics.namespaceStats.set(namespace, ns);
+    }
+
+    /** Track a miss for a namespace */
+    private _trackNamespaceMiss(namespace: string): void {
+        const ns = this.metrics.namespaceStats.get(namespace) || { hits: 0, misses: 0 };
+        ns.misses++;
+        this.metrics.namespaceStats.set(namespace, ns);
+    }
 
     constructor(options: CacheServiceOptions = {}) {
         this.memoryCache = new Map();
@@ -144,6 +171,8 @@ export class CacheService {
             redisHits: 0,
             memoryHits: 0,
             redisFallbacks: 0,
+            specializedOps: 0,
+            namespaceStats: new Map(),
         };
         
         // Cleanup interval for memory cache
@@ -257,6 +286,7 @@ export class CacheService {
                     if (value !== null) {
                         this.metrics.hits++;
                         this.metrics.redisHits++;
+                        this._trackNamespaceHit(namespace);
                         // Reset failures on success
                         this.redisFailures = 0;
                         const parsed = JSON.parse(value) as T;
@@ -288,6 +318,7 @@ export class CacheService {
                 if (entry && Date.now() < entry.expiresAt) {
                     this.metrics.hits++;
                     this.metrics.memoryHits++;
+                    this._trackNamespaceHit(namespace);
                     return entry.value as T;
                 }
                 // Clean up expired
@@ -296,6 +327,7 @@ export class CacheService {
 
             if (!this._suppressMissMetric) {
                 this.metrics.misses++;
+                this._trackNamespaceMiss(namespace);
             }
             return null;
         } catch (error) {
@@ -427,17 +459,15 @@ export class CacheService {
         factory: CacheFactory<T>, 
         ttl?: number
     ): Promise<T> {
-        // Suppress miss metric for this internal lookup — a getOrSet "miss"
-        // is expected on first call and is immediately followed by a set().
-        this._suppressMissMetric = true;
+        // DO count misses here — getOrSet misses are real misses and must
+        // be reflected in the hit rate so we can optimise effectively.
         const cached = await this.get<T>(namespace, key);
-        this._suppressMissMetric = false;
 
         if (cached !== null) {
             return cached;
         }
 
-        // This is a cache population, not a true miss
+        // Cache miss — populate from factory
         const value = await factory();
         await this.set(namespace, key, value, ttl);
         return value;
@@ -516,6 +546,48 @@ export class CacheService {
     }
 
     /**
+     * Delete all keys matching a prefix within a namespace
+     * @param namespace - Cache namespace
+     * @param prefix - Key prefix to match (e.g., 'nhentai:' deletes 'nhentai:gallery_1', 'nhentai:search_x', etc.)
+     */
+    async deleteByPrefix(namespace: string, prefix: string): Promise<number> {
+        let deletedCount = 0;
+        try {
+            const config = this._getNamespaceConfig(namespace);
+
+            // Delete from Redis using SCAN
+            if (config.useRedis && this.isRedisConnected && this.redis) {
+                let cursor = '0';
+                do {
+                    const result = await this.redis.scan(cursor, 'MATCH', `${namespace}:${prefix}*`, 'COUNT', 100);
+                    cursor = result[0];
+                    if (result[1].length > 0) {
+                        await this.redis.del(...result[1]);
+                        deletedCount += result[1].length;
+                    }
+                } while (cursor !== '0');
+            }
+
+            // Delete from memory cache
+            const memNs = this.memoryCache.get(namespace);
+            if (memNs) {
+                for (const key of [...memNs.keys()]) {
+                    if (key.startsWith(prefix)) {
+                        memNs.delete(key);
+                        deletedCount++;
+                    }
+                }
+            }
+
+            logger.debug('CacheService', `Deleted ${deletedCount} keys with prefix '${prefix}' in namespace '${namespace}'`);
+        } catch (error) {
+            this.metrics.errors++;
+            logger.error('CacheService', `Delete by prefix error: ${(error as Error).message}`);
+        }
+        return deletedCount;
+    }
+
+    /**
      * Get cache statistics
      * @returns Cache statistics with service state
      */
@@ -528,14 +600,39 @@ export class CacheService {
         // Only count real get() hits + misses for hit rate (exclude peek absence checks)
         const totalRequests = this.metrics.hits + this.metrics.misses;
         
+        // Effective hit rate includes ALL operations: hits, misses, absence checks, specialized ops
+        const totalAllOps = this.metrics.hits + this.metrics.misses 
+                          + this.metrics.absenceChecks + this.metrics.specializedOps;
+        // Specialized ops are "hits" conceptually (they always succeed — counters, cooldowns, etc.)
+        const effectiveHits = this.metrics.hits + this.metrics.specializedOps + this.metrics.absenceChecks;
+        const effectiveHitRate = totalAllOps > 0 ? effectiveHits / totalAllOps : 0;
+
+        // Build top-miss namespaces sorted by miss count (descending)
+        const topMissNamespaces = [...this.metrics.namespaceStats.entries()]
+            .map(([namespace, stats]) => ({
+                namespace,
+                hits: stats.hits,
+                misses: stats.misses,
+                hitRate: (stats.hits + stats.misses) > 0 
+                    ? stats.hits / (stats.hits + stats.misses) 
+                    : 0,
+            }))
+            .sort((a, b) => b.misses - a.misses)
+            .slice(0, 10);
+
+        // Destructure to exclude namespaceStats Map (not serializable)
+        const { namespaceStats: _ns, ...serializableMetrics } = this.metrics;
+        
         return {
-            ...this.metrics,
+            ...serializableMetrics,
             hitRate: totalRequests > 0 ? this.metrics.hits / totalRequests : 0,
+            effectiveHitRate,
             redisConnected: this.isRedisConnected,
             redisState,
             redisFailures: this.redisFailures,
             memoryEntries: memorySize,
             namespaces: [...this.namespaces.keys()],
+            topMissNamespaces,
         };
     }
 
@@ -586,6 +683,7 @@ export class CacheService {
      * @returns Current message count in window
      */
     async trackSpamMessage(guildId: string, userId: string, windowSeconds: number = 5): Promise<number> {
+        this.metrics.specializedOps++;
         const key = `spam:${guildId}:${userId}`;
         const namespace = 'automod';
 
@@ -638,6 +736,7 @@ export class CacheService {
         content: string, 
         windowSeconds: number = 30
     ): Promise<{ count: number; isNew: boolean }> {
+        this.metrics.specializedOps++;
         const contentHash = Buffer.from(content.toLowerCase().trim()).toString('base64').slice(0, 32);
         const countKey = `dup:${guildId}:${userId}:count`;
         const hashKey = `dup:${guildId}:${userId}:hash`;
@@ -740,6 +839,7 @@ export class CacheService {
         limit: number, 
         windowSeconds: number
     ): Promise<{ allowed: boolean; remaining: number; resetIn: number }> {
+        this.metrics.specializedOps++;
         const fullKey = `ratelimit:${key}`;
         const namespace = 'ratelimit';
         
@@ -829,6 +929,7 @@ export class CacheService {
      * @returns Remaining cooldown in milliseconds or null
      */
     async getCooldown(commandName: string, userId: string): Promise<number | null> {
+        this.metrics.specializedOps++;
         const key = `cooldown:${commandName}:${userId}`;
         const namespace = 'ratelimit';
         const fullKey = this._buildKey(namespace, key);
@@ -881,6 +982,7 @@ export class CacheService {
         userId: string, 
         cooldownMs: number
     ): Promise<{ passed: boolean; remaining: number }> {
+        this.metrics.specializedOps++;
         const key = `cooldown:${commandName}:${userId}`;
         const namespace = 'ratelimit';
         const fullKey = this._buildKey(namespace, key);

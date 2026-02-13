@@ -201,7 +201,7 @@ const POPULAR_WIKIS: Record<string, string> = {
 };
 // FANDOM SERVICE CLASS
 class FandomService {
-    private readonly CACHE_NS = 'api';
+    private readonly CACHE_NS = 'api:search';
     private readonly CACHE_TTL = 600; // 10 minutes in seconds
 
     constructor() {
@@ -487,6 +487,11 @@ class FandomService {
             return localMatches;
         }
 
+        // Check cache for API-augmented results
+        const cacheKey = `fandom:wikisearch_${query.toLowerCase()}`;
+        const cached = await cacheService.get<WikiSuggestion[]>(this.CACHE_NS, cacheKey);
+        if (cached) return cached;
+
         // If not enough local matches, try Fandom's wiki search
         try {
             const response = await axios.get('https://community.fandom.com/api.php', {
@@ -521,7 +526,10 @@ class FandomService {
                 }
             }
 
-            return combined.slice(0, 15);
+            const result = combined.slice(0, 15);
+            // Cache combined results
+            await cacheService.set(this.CACHE_NS, cacheKey, result, this.CACHE_TTL);
+            return result;
         } catch {
             return localMatches;
         }

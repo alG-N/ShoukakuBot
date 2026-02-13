@@ -30,6 +30,29 @@ jest.mock('../../../src/config/owner', () => ({
     isOwner: jest.fn((id: string) => id === 'owner-123'),
 }));
 
+// Mock cooldown manager with stateful in-memory tracking (resets per test via beforeEach)
+const mockCooldownState = new Map<string, number>();
+jest.mock('../../../src/utils/common/cooldown', () => ({
+    globalCooldownManager: {
+        check: jest.fn().mockImplementation(async (userId: string, commandName: string) => {
+            const key = `${commandName}:${userId}`;
+            const expiresAt = mockCooldownState.get(key);
+            if (expiresAt && Date.now() < expiresAt) {
+                return { onCooldown: true, remaining: expiresAt - Date.now() };
+            }
+            return { onCooldown: false, remaining: 0 };
+        }),
+        set: jest.fn().mockImplementation(async (userId: string, commandName: string, cooldownMs: number) => {
+            const key = `${commandName}:${userId}`;
+            mockCooldownState.set(key, Date.now() + cooldownMs);
+        }),
+        clear: jest.fn().mockImplementation(async (userId: string, commandName: string) => {
+            const key = `${commandName}:${userId}`;
+            mockCooldownState.delete(key);
+        }),
+    },
+}));
+
 import { BaseCommand, CommandCategory, CommandOptions, CommandContext } from '../../../src/commands/BaseCommand';
 import { ChatInputCommandInteraction, SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
 import { trackCommand, commandsActive, commandErrorsTotal } from '../../../src/core/metrics';
@@ -88,6 +111,11 @@ function createMockInteraction(overrides: Record<string, unknown> = {}): ChatInp
 }
 
 describe('BaseCommand', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+        mockCooldownState.clear();
+    });
+
     describe('constructor defaults', () => {
         it('should set default values', () => {
             const cmd = new TestCommand();

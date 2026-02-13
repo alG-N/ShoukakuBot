@@ -57,7 +57,6 @@ interface NHentaiHandler {
 let nhentaiService: NHentaiService | undefined;
 let nhentaiHandler: NHentaiHandler | undefined;
 
-
 try {
     nhentaiService = getDefault(require('../../services/api/nhentaiService'));
     nhentaiHandler = getDefault(require('../../handlers/api/nhentaiHandler'));

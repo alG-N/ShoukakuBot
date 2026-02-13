@@ -88,7 +88,7 @@ const REQUEST_CONFIG: AxiosRequestConfig = {
 };
 // WIKIPEDIA SERVICE CLASS
 class WikipediaService {
-    private readonly CACHE_NS = 'api';
+    private readonly CACHE_NS = 'api:search';
     private readonly CACHE_TTL = 600; // 10 minutes in seconds
     private readonly defaultLanguage: SupportedLanguage;
 

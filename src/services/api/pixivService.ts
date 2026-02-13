@@ -775,7 +775,7 @@ class PixivService {
      */
     async translateToJapanese(text: string): Promise<string> {
         const cacheKey = `translate:en_ja_${text}`;
-        const cached = await cacheService.get<string>('api', cacheKey);
+        const cached = await cacheService.get<string>('api:translate', cacheKey);
         if (cached) {
             return cached;
         }
@@ -795,7 +795,7 @@ class PixivService {
             const result = (data as Array<Array<string[]>>)?.[0]?.[0]?.[0];
 
             if (result) {
-                await cacheService.set('api', cacheKey, result, 3600); // 1 hour TTL
+                await cacheService.set('api:translate', cacheKey, result, 3600); // 1 hour TTL
                 return result;
             }
             return text;
@@ -809,7 +809,7 @@ class PixivService {
      */
     async translateToEnglish(text: string): Promise<string | null> {
         const cacheKey = `translate:ja_en_${text}`;
-        const cached = await cacheService.get<string>('api', cacheKey);
+        const cached = await cacheService.get<string>('api:translate', cacheKey);
         if (cached) {
             return cached;
         }
@@ -829,7 +829,7 @@ class PixivService {
             const result = (data as Array<Array<string[]>>)?.[0]?.[0]?.[0];
 
             if (result) {
-                await cacheService.set('api', cacheKey, result, 3600); // 1 hour TTL
+                await cacheService.set('api:translate', cacheKey, result, 3600); // 1 hour TTL
                 return result;
             }
             return null;
