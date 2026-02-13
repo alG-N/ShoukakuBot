@@ -365,6 +365,15 @@ class Rule34Command extends BaseCommand {
     }
 
     async run(interaction: ChatInputCommandInteraction): Promise<void> {
+        // Service availability check
+        if (!rule34Service || !postHandler) {
+            await this.safeReply(interaction, {
+                embeds: [this.errorEmbed('⚠️ Rule34 service is currently unavailable. Please try again later.')],
+                ephemeral: true
+            });
+            return;
+        }
+
         // Access control
         const access = await checkAccess(interaction, AccessType.SUB);
         if (access.blocked) {
@@ -457,7 +466,7 @@ class Rule34Command extends BaseCommand {
             excludeLowQuality: prefs.excludeLowQuality
         };
 
-        const result = await rule34Service!.search(tags, searchOptions);
+        const result = await rule34Service.search(tags, searchOptions);
 
         if (!result?.posts?.length) {
             const noResultsEmbed = postHandler?.createNoResultsEmbed?.(tags) || this.errorEmbed(`No results found for **${tags}**`);
@@ -489,7 +498,7 @@ class Rule34Command extends BaseCommand {
             return;
         }
 
-        const { embed, rows } = await postHandler!.createPostEmbed(post, {
+        const { embed, rows } = await postHandler.createPostEmbed(post, {
             resultIndex: 0,
             totalResults: result.posts.length,
             query: tags,
@@ -515,7 +524,7 @@ class Rule34Command extends BaseCommand {
             count,
             excludeAi: aiFilter ?? prefs.aiFilter,
             minScore: prefs.minScore
-        }) || (await rule34Service!.search(tags, { limit: count, sort: 'random' })).posts || [];
+        }) || (await rule34Service.search(tags, { limit: count, sort: 'random' })).posts || [];
 
         const filteredPosts = rawPosts.filter(post => {
             const postTags = (post.tags || '').split(' ');
@@ -549,7 +558,7 @@ class Rule34Command extends BaseCommand {
             return;
         }
 
-        const { embed, rows } = await postHandler!.createPostEmbed(post, {
+        const { embed, rows } = await postHandler.createPostEmbed(post, {
             resultIndex: 0,
             totalResults: filteredPosts.length,
             userId
@@ -589,7 +598,7 @@ class Rule34Command extends BaseCommand {
             return;
         }
 
-        const { embed, rows } = await postHandler!.createPostEmbed(post, {
+        const { embed, rows } = await postHandler.createPostEmbed(post, {
             resultIndex: 0,
             totalResults: 1,
             userId
@@ -610,7 +619,7 @@ class Rule34Command extends BaseCommand {
         const result = await rule34Service?.getTrending?.({
             timeframe,
             excludeAi: aiFilter ?? prefs.aiFilter
-        }) || await rule34Service!.search('', { sort: 'score:desc', limit: 50 });
+        }) || await rule34Service.search('', { sort: 'score:desc', limit: 50 });
 
         const rawPosts = result?.posts || [];
         
@@ -646,7 +655,7 @@ class Rule34Command extends BaseCommand {
             return;
         }
 
-        const { embed, rows } = await postHandler!.createPostEmbed(post, {
+        const { embed, rows } = await postHandler.createPostEmbed(post, {
             resultIndex: 0,
             totalResults: filteredPosts.length,
             query: `🔥 Trending (${timeframe})`,
@@ -744,6 +753,14 @@ class Rule34Command extends BaseCommand {
     }
 
     async handleButton(interaction: ButtonInteraction): Promise<void> {
+        if (!rule34Service || !postHandler) {
+            await interaction.reply({
+                content: '⚠️ Rule34 service is currently unavailable. Please try again later.',
+                ephemeral: true
+            });
+            return;
+        }
+
         const parts = interaction.customId.split('_');
         const action = parts[1];
         const userId = parts[parts.length - 1];
@@ -844,7 +861,7 @@ class Rule34Command extends BaseCommand {
             return;
         }
 
-        const { embed, rows } = await postHandler!.createPostEmbed(post, {
+        const { embed, rows } = await postHandler.createPostEmbed(post, {
             resultIndex: newIndex,
             totalResults: session.posts.length,
             query: session.query,
@@ -875,7 +892,7 @@ class Rule34Command extends BaseCommand {
         let hasMore = false;
 
         if (session.type === 'search' && session.options) {
-            const result = await rule34Service!.search(session.query || '', {
+            const result = await rule34Service.search(session.query || '', {
                 ...session.options,
                 page: newPage - 1
             });
@@ -883,7 +900,7 @@ class Rule34Command extends BaseCommand {
             hasMore = result?.hasMore || false;
         } else if (session.type === 'random') {
             // For random, fetch new random posts using getRandom
-            const result = await rule34Service!.getRandom?.({
+            const result = await rule34Service.getRandom?.({
                 count: session.options?.limit || 50,
                 excludeAi: session.options?.excludeAi,
                 minScore: session.options?.minScore
@@ -892,7 +909,7 @@ class Rule34Command extends BaseCommand {
             hasMore = true; // Random can always get more
         } else if (session.type === 'trending') {
             // For trending, fetch next page
-            const result = await rule34Service!.getTrending?.({
+            const result = await rule34Service.getTrending?.({
                 ...session.options,
                 page: newPage - 1
             });
@@ -929,7 +946,7 @@ class Rule34Command extends BaseCommand {
             return;
         }
 
-        const { embed, rows } = await postHandler!.createPostEmbed(post, {
+        const { embed, rows } = await postHandler.createPostEmbed(post, {
             resultIndex: 0,
             totalResults: posts.length,
             query: session.query,
@@ -996,7 +1013,7 @@ class Rule34Command extends BaseCommand {
             return;
         }
 
-        const { embed, rows } = await postHandler!.createPostEmbed(post, {
+        const { embed, rows } = await postHandler.createPostEmbed(post, {
             resultIndex: session.currentIndex,
             totalResults: session.posts.length,
             query: session.query,

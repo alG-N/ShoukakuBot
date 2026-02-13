@@ -293,20 +293,23 @@ class UserMusicCache {
 
         if (dbSuccess) {
             // Update cache directly: read current cached list, remove the track, and re-cache
+            // Use peek() — null is expected on cold cache, shouldn't count as a miss
             const cacheKey = `user_favs:${userId}`;
-            const cached = await cacheService.get<FavoriteTrack[]>(this.CACHE_NS, cacheKey);
+            const cached = await cacheService.peek<FavoriteTrack[]>(this.CACHE_NS, cacheKey);
             if (cached) {
                 const updated = cached.filter(t => t.url !== trackUrl);
                 await cacheService.set(this.CACHE_NS, cacheKey, updated, this.FAVS_TTL);
                 return updated;
             }
+            // Cache was cold — fetch from DB directly (skip getFavorites to avoid double miss)
+            return this._fetchFavoritesFromDB(userId);
         } else {
             // DB failed — invalidate cache to force fresh read next time
             await cacheService.delete(this.CACHE_NS, `user_favs:${userId}`);
         }
 
-        // Cache was empty or DB failed — fetch from DB
-        return this.getFavorites(userId);
+        // DB failed — fetch from DB as last resort
+        return this._fetchFavoritesFromDB(userId);
     }
 
     /**
@@ -342,6 +345,7 @@ class UserMusicCache {
 
         if (dbSuccess) {
             // Update cache directly: prepend new track to cached list
+            // Use peek() — null is expected on cold cache, shouldn't count as a miss
             const cacheKey = `user_history:${userId}`;
             const newTrack: HistoryTrack = {
                 url: track.url,
@@ -352,20 +356,25 @@ class UserMusicCache {
                 playedAt: Date.now()
             };
 
-            const cached = await cacheService.get<HistoryTrack[]>(this.CACHE_NS, cacheKey);
+            const cached = await cacheService.peek<HistoryTrack[]>(this.CACHE_NS, cacheKey);
             if (cached) {
                 // Remove duplicate, prepend new entry, trim to max size
                 const updated = [newTrack, ...cached.filter(t => t.url !== track.url)].slice(0, this.HISTORY_MAX_SIZE);
                 await cacheService.set(this.CACHE_NS, cacheKey, updated, this.HISTORY_TTL);
                 return updated;
             }
+            // Cache was cold — fetch from DB directly and prepend (skip getHistory to avoid double miss)
+            const history = await this._fetchHistoryFromDB(userId);
+            const merged = [newTrack, ...history.filter(t => t.url !== track.url)].slice(0, this.HISTORY_MAX_SIZE);
+            await cacheService.set(this.CACHE_NS, cacheKey, merged, this.HISTORY_TTL);
+            return merged;
         } else {
             // DB failed — invalidate cache to force fresh read next time
             await cacheService.delete(this.CACHE_NS, `user_history:${userId}`);
         }
 
-        // Cache was empty or DB failed — fetch from DB
-        return this.getHistory(userId);
+        // DB failed — fetch from DB as last resort
+        return this._fetchHistoryFromDB(userId);
     }
 
     /**
@@ -449,6 +458,62 @@ class UserMusicCache {
      */
     shutdown(): void {
         // No intervals or local state to clean up
+    }
+
+    /**
+     * Fetch favorites directly from DB and cache the result.
+     * Used internally to avoid the get() miss in getFavorites() when called as a fallback.
+     */
+    private async _fetchFavoritesFromDB(userId: string): Promise<FavoriteTrack[]> {
+        try {
+            const result = await postgres.query(
+                'SELECT url, title, author, duration, thumbnail, added_at FROM user_music_favorites WHERE user_id = $1 ORDER BY added_at DESC LIMIT $2',
+                [userId, this.FAVORITES_MAX_SIZE]
+            );
+
+            const tracks: FavoriteTrack[] = (result.rows as any[]).map((row) => ({
+                url: row.url,
+                title: row.title,
+                author: row.author || undefined,
+                duration: row.duration || undefined,
+                thumbnail: row.thumbnail || undefined,
+                addedAt: new Date(row.added_at).getTime()
+            }));
+
+            await cacheService.set(this.CACHE_NS, `user_favs:${userId}`, tracks, this.FAVS_TTL);
+            return tracks;
+        } catch (error) {
+            console.error('[UserMusicCache] Failed to load favorites from DB:', (error as Error).message);
+            return [];
+        }
+    }
+
+    /**
+     * Fetch history directly from DB and cache the result.
+     * Used internally to avoid the get() miss in getHistory() when called as a fallback.
+     */
+    private async _fetchHistoryFromDB(userId: string): Promise<HistoryTrack[]> {
+        try {
+            const result = await postgres.query(
+                'SELECT url, title, author, duration, thumbnail, played_at FROM user_music_history WHERE user_id = $1 ORDER BY played_at DESC LIMIT $2',
+                [userId, this.HISTORY_MAX_SIZE]
+            );
+
+            const tracks: HistoryTrack[] = (result.rows as any[]).map((row) => ({
+                url: row.url,
+                title: row.title,
+                author: row.author || undefined,
+                duration: row.duration || undefined,
+                thumbnail: row.thumbnail || undefined,
+                playedAt: new Date(row.played_at).getTime()
+            }));
+
+            await cacheService.set(this.CACHE_NS, `user_history:${userId}`, tracks, this.HISTORY_TTL);
+            return tracks;
+        } catch (error) {
+            console.error('[UserMusicCache] Failed to load history from DB:', (error as Error).message);
+            return [];
+        }
     }
 }
 
