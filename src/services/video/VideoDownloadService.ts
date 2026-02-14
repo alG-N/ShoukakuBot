@@ -11,6 +11,7 @@ import cobaltService from './CobaltService.js';
 import ytDlpService from './YtDlpService.js';
 import videoProcessingService from './VideoProcessingService.js';
 import * as videoConfig from '../../config/features/video.js';
+import logger from '../../core/Logger.js';
 // TYPES
 interface DownloadOptions {
     onProgress?: (data: ProgressData) => void;
@@ -108,7 +109,7 @@ class VideoDownloadService extends EventEmitter {
         
         this.startCleanupInterval();
         this.initialized = true;
-        console.log('✅ VideoDownloadService initialized');
+        logger.info('VideoDownloadService', 'Initialized');
     }
 
     /**
@@ -148,7 +149,7 @@ class VideoDownloadService extends EventEmitter {
 
             if (isYouTube) {
                 // YouTube → use yt-dlp directly (bypass Cobalt)
-                console.log('🎯 YouTube URL detected, using yt-dlp directly (skipping Cobalt)');
+                logger.info('VideoDownloadService', 'YouTube URL detected, using yt-dlp directly (skipping Cobalt)');
                 this.emit('stage', { stage: 'connecting', message: 'Downloading with yt-dlp...', method: 'yt-dlp' });
                 downloadMethod = 'yt-dlp';
                 videoPath = await ytDlpService.downloadVideo(url, this.tempDir, { quality: videoQuality });
@@ -165,7 +166,7 @@ class VideoDownloadService extends EventEmitter {
                         throw cobaltError;
                     }
                     
-                    console.log(`⚠️ Cobalt failed: ${errorMsg}, trying yt-dlp fallback...`);
+                    logger.info('VideoDownloadService', `Cobalt failed: ${errorMsg}, trying yt-dlp fallback...`);
                     this.emit('stage', { stage: 'fallback', message: 'Cobalt failed, trying yt-dlp...', method: 'yt-dlp' });
                     
                     // Fallback to yt-dlp
@@ -188,7 +189,7 @@ class VideoDownloadService extends EventEmitter {
             let stats = fs.statSync(videoPath);
             let fileSizeMB = stats.size / (1024 * 1024);
             
-            console.log(`📏 Actual file size: ${fileSizeMB.toFixed(2)}MB (method: ${downloadMethod})`);
+            logger.info('VideoDownloadService', `Actual file size: ${fileSizeMB.toFixed(2)}MB (method: ${downloadMethod})`);
             
             // Check if file is empty
             if (fileSizeMB === 0) {
@@ -199,7 +200,7 @@ class VideoDownloadService extends EventEmitter {
             // Check file size limit using ACTUAL size (100MB - Discord Nitro limit)
             const maxSizeMB = config.MAX_FILE_SIZE_MB || 100;
             if (fileSizeMB > maxSizeMB) {
-                console.log(`🚫 Actual file size ${fileSizeMB.toFixed(1)}MB exceeds limit ${maxSizeMB}MB`);
+                logger.info('VideoDownloadService', `Actual file size ${fileSizeMB.toFixed(1)}MB exceeds limit ${maxSizeMB}MB`);
                 fs.unlinkSync(videoPath);
                 throw new Error(`FILE_TOO_LARGE:${fileSizeMB.toFixed(1)}MB`);
             }
@@ -215,16 +216,16 @@ class VideoDownloadService extends EventEmitter {
                     try {
                         if (fs.existsSync(originalPath)) {
                             fs.unlinkSync(originalPath);
-                            console.log(`🗑️ Deleted original file after conversion: ${path.basename(originalPath)}`);
+                            logger.info('VideoDownloadService', `Deleted original file after conversion: ${path.basename(originalPath)}`);
                         }
                     } catch { /* ignore */ }
                     // Update file size after processing
                     stats = fs.statSync(videoPath);
                     fileSizeMB = stats.size / (1024 * 1024);
-                    console.log(`✅ Video converted for mobile compatibility`);
+                    logger.info('VideoDownloadService', 'Video converted for mobile compatibility');
                 }
             } catch (processError) {
-                console.warn(`⚠️ Mobile processing failed, using original: ${(processError as Error).message}`);
+                logger.warn('VideoDownloadService', `Mobile processing failed, using original: ${(processError as Error).message}`);
                 // Continue with original file if processing fails
             }
 
@@ -246,7 +247,7 @@ class VideoDownloadService extends EventEmitter {
 
         } catch (error) {
             const errorMsg = (error as Error).message;
-            console.error('❌ Download error:', errorMsg);
+            logger.error('VideoDownloadService', `Download error: ${errorMsg}`);
             this.emit('error', { message: errorMsg });
             
             // Cleanup any partial files
@@ -289,14 +290,14 @@ class VideoDownloadService extends EventEmitter {
                         (file.startsWith('video_') && ageMs > 5 * 60 * 1000) ||
                         ageMs > 30 * 60 * 1000) {
                         fs.unlinkSync(filePath);
-                        console.log(`🗑️ Cleaned up file: ${file} (age: ${Math.round(ageMs / 1000)}s)`);
+                        logger.info('VideoDownloadService', `Cleaned up file: ${file} (age: ${Math.round(ageMs / 1000)}s)`);
                     }
                 } catch {
                     // Ignore individual file errors
                 }
             });
         } catch (e) {
-            console.error('Cleanup partial downloads error:', (e as Error).message);
+            logger.error('VideoDownloadService', `Cleanup partial downloads error: ${(e as Error).message}`);
         }
     }
 
@@ -318,7 +319,7 @@ class VideoDownloadService extends EventEmitter {
                     };
                 }
             } catch (ytdlpError) {
-                console.error('❌ yt-dlp URL extraction failed:', (ytdlpError as Error).message);
+                logger.error('VideoDownloadService', `yt-dlp URL extraction failed: ${(ytdlpError as Error).message}`);
             }
             return null;
         }
@@ -341,7 +342,7 @@ class VideoDownloadService extends EventEmitter {
                 };
             }
         } catch (cobaltError) {
-            console.log(`⚠️ Cobalt URL extraction failed: ${(cobaltError as Error).message}, trying yt-dlp...`);
+            logger.info('VideoDownloadService', `Cobalt URL extraction failed: ${(cobaltError as Error).message}, trying yt-dlp...`);
             
             // Fallback to yt-dlp
             try {
@@ -356,7 +357,7 @@ class VideoDownloadService extends EventEmitter {
                     };
                 }
             } catch (ytdlpError) {
-                console.error('❌ yt-dlp URL extraction failed:', (ytdlpError as Error).message);
+                logger.error('VideoDownloadService', `yt-dlp URL extraction failed: ${(ytdlpError as Error).message}`);
             }
         }
 
@@ -403,10 +404,10 @@ class VideoDownloadService extends EventEmitter {
             });
             
             if (cleanedCount > 0) {
-                console.log(`🗑️ Periodic cleanup: removed ${cleanedCount} temp file(s)`);
+                logger.info('VideoDownloadService', `Periodic cleanup: removed ${cleanedCount} temp file(s)`);
             }
         } catch (error) {
-            console.error('Cleanup error:', (error as Error).message);
+            logger.error('VideoDownloadService', `Cleanup error: ${(error as Error).message}`);
         }
     }
 
@@ -438,7 +439,7 @@ class VideoDownloadService extends EventEmitter {
                     fs.unlinkSync(filePath);
                 }
             } catch (err) {
-                console.error(`Failed to delete file ${filePath}:`, (err as Error).message);
+                logger.error('VideoDownloadService', `Failed to delete file ${filePath}: ${(err as Error).message}`);
             }
         }, delay);
     }

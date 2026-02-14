@@ -17,8 +17,13 @@ import {
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import type { BattleHistoryEntry } from '../../services/fun/deathbattle/BattleService.js';
+import coreLogger from '../../core/Logger.js';
 
-import { getDefault } from '../../utils/common/moduleHelper.js';
+import _skillsetService from '../../services/fun/deathbattle/SkillsetService.js';
+import _battleService from '../../services/fun/deathbattle/BattleService.js';
+import _embedBuilder from '../../utils/deathbattle/embedBuilder.js';
+import deathBattleLogger from '../../utils/deathbattle/logger.js';
+import deathbattleConfig from '../../config/deathbattle/index.js';
 // TYPES
 // Use the actual Battle interface from BattleService
 interface Battle {
@@ -75,23 +80,12 @@ interface DeathBattleConfig {
     COUNTDOWN_SECONDS?: number;
     ROUND_INTERVAL?: number;
 }
-// SERVICE IMPORTS
-let skillsetService: SkillsetService | undefined;
-let battleService: BattleService | undefined;
-let embedBuilder: EmbedBuilderService | undefined;
-let logger: LoggerService | undefined;
-let config: DeathBattleConfig | undefined;
-
-
-try {
-    skillsetService = getDefault(require('../../services/fun/deathbattle/SkillsetService'));
-    battleService = getDefault(require('../../services/fun/deathbattle/BattleService'));
-    embedBuilder = getDefault(require('../../utils/deathbattle/embedBuilder'));
-    logger = getDefault(require('../../utils/deathbattle/logger'));
-    config = getDefault(require('../../config/deathbattle'));
-} catch (e) {
-    console.warn('[DeathBattle] Could not load services:', (e as Error).message);
-}
+// SERVICE IMPORTS — static ESM imports (converted from CJS require())
+const skillsetService: SkillsetService = _skillsetService as any;
+const battleService: BattleService = _battleService as any;
+const embedBuilder: EmbedBuilderService = _embedBuilder as any;
+const logger: LoggerService = deathBattleLogger as any;
+const config: DeathBattleConfig = deathbattleConfig as any;
 
 const MAX_HP = config?.MAX_HP || 10000;
 const DEFAULT_HP = config?.DEFAULT_HP || 1000;
@@ -297,7 +291,7 @@ class DeathBattleCommand extends BaseCommand {
                             });
                         }
                     } catch (err) {
-                        console.error('[DeathBattle] Button interaction error:', err);
+                        coreLogger.error('DeathBattle', `Button interaction error: ${err}`);
                     }
                 });
 

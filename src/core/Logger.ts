@@ -138,6 +138,9 @@ export class Logger {
     private lastDiscordLog: number = 0;
     private discordLogCooldown: number = 1000; // 1 second between logs
     private readonly MAX_DISCORD_QUEUE_SIZE = 100;
+    
+    // Error counter for detailed error logs
+    private _errorCount: number = 0;
 
     constructor() {
         this.minPriority = LOG_LEVELS[MIN_LOG_LEVEL]?.priority ?? 1;
@@ -358,19 +361,6 @@ export class Logger {
         this.console('CRITICAL', category, message, meta); 
     }
 
-    // Structured logging convenience methods with metadata
-    debugWithMeta(category: string, message: string, meta: LogMetadata): void { 
-        this.console('DEBUG', category, message, meta); 
-    }
-    
-    infoWithMeta(category: string, message: string, meta: LogMetadata): void { 
-        this.console('INFO', category, message, meta); 
-    }
-    
-    errorWithMeta(category: string, message: string, meta: LogMetadata): void { 
-        this.console('ERROR', category, message, meta); 
-    }
-
     /**
      * Log a request/response for API tracking
      */
@@ -504,12 +494,11 @@ export class Logger {
         );
 
         // Footer with error count and timestamp
-        const errorCount = (this as unknown as { _errorCount?: number })._errorCount || 1;
-        embed.setFooter({ text: `Error #${errorCount} • ${this.serviceName} • ${new Date().toLocaleString()}` });
+        this._errorCount++;
+        embed.setFooter({ text: `Error #${this._errorCount} \u2022 ${this.serviceName} \u2022 ${new Date().toLocaleString()}` });
 
         try {
             await this.logChannel.send({ embeds: [embed] });
-            (this as unknown as { _errorCount: number })._errorCount = errorCount + 1;
         } catch (err) {
             console.error('[Logger] Failed to send detailed error log:', (err as Error).message);
         }

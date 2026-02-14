@@ -8,6 +8,7 @@ import { Events, Client, Message } from 'discord.js';
 import { BaseEvent } from './BaseEvent.js';
 import { handleAutoModMessage } from '../handlers/moderation/index.js';
 import { handleAfkMessage } from '../handlers/general/index.js';
+import logger from '../core/Logger.js';
 // TYPES
 interface AutoModResult {
     deleted?: boolean;
@@ -45,7 +46,7 @@ class MessageCreateEvent extends BaseEvent {
             return result as AutoModResult | null;
         } catch (error: unknown) {
             const err = error as { message?: string };
-            console.error('[AutoMod] Error:', err.message);
+            logger.error('AutoMod', `Error: ${err.message}`);
             return null;
         }
     }

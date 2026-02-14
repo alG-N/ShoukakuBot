@@ -14,21 +14,13 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
+import logger from '../../core/Logger.js';
+import { moderationService } from '../../services/moderation/index.js';
 
 interface ValidationResult {
     valid: boolean;
     error?: string;
     member?: GuildMember | null;
-}
-
-interface ModerationService {
-    logAction?: (guildId: string, data: {
-        type: string;
-        target: User;
-        moderator: User;
-        reason: string;
-        extra?: Record<string, unknown>;
-    }) => Promise<void>;
 }
 
 /**
@@ -206,13 +198,12 @@ class MuteCommand extends BaseCommand {
 
             // Log to ModerationService
             try {
-                const { ModerationService } = require('../../services') as { ModerationService: ModerationService };
-                await ModerationService.logAction?.(interaction.guild.id, {
-                    type: 'mute',
+                await moderationService.logModAction(interaction.guild, {
+                    type: 'MUTE',
                     target: targetUser,
-                    moderator: interaction.user,
+                    moderator: interaction.member as GuildMember,
                     reason,
-                    extra: { duration: formatDuration(durationMs) }
+                    duration: durationMs
                 });
             } catch {
                 // Service not available
@@ -235,7 +226,7 @@ class MuteCommand extends BaseCommand {
             await this.safeReply(interaction, { embeds: [embed] });
 
         } catch (error) {
-            console.error('[Mute] Error:', error);
+            logger.error('Mute', `Error: ${(error as Error).message}`);
             await this.errorReply(interaction, 'Failed to timeout the user. Make sure I have the proper permissions.');
         }
     }
@@ -284,11 +275,10 @@ class MuteCommand extends BaseCommand {
 
             // Log to ModerationService
             try {
-                const { ModerationService } = require('../../services') as { ModerationService: ModerationService };
-                await ModerationService.logAction?.(interaction.guild.id, {
-                    type: 'unmute',
+                await moderationService.logModAction(interaction.guild, {
+                    type: 'UNMUTE',
                     target: targetUser,
-                    moderator: interaction.user,
+                    moderator: interaction.member as GuildMember,
                     reason
                 });
             } catch {
@@ -309,7 +299,7 @@ class MuteCommand extends BaseCommand {
             await this.safeReply(interaction, { embeds: [embed] });
 
         } catch (error) {
-            console.error('[Unmute] Error:', error);
+            logger.error('Mute', `Unmute error: ${(error as Error).message}`);
             await this.errorReply(interaction, 'Failed to remove the timeout.');
         }
     }

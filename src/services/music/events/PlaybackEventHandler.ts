@@ -8,6 +8,7 @@
 import type { Message, ActionRowData, MessageActionRowComponentData, TextBasedChannel, TextChannel } from 'discord.js';
 import musicEventBus from './MusicEventBus.js';
 import { MusicEvents, type MusicTrack } from './MusicEvents.js';
+import logger from '../../../core/Logger.js';
 import musicCache from '../../../cache/music/MusicCacheFacade.js';
 import type { MessageRef } from '../../../cache/music/QueueCache.js';
 import trackHandler, { type Track, type LoopMode } from '../../../handlers/music/trackHandler.js';
@@ -102,7 +103,7 @@ class PlaybackEventHandler {
         this._bindGlobalHandlers();
         this.globalHandlersBound = true;
 
-        console.log('[PlaybackEventHandler] Initialized with global handlers');
+        logger.info('PlaybackEventHandler', 'Initialized with global handlers');
     }
 
     /**
@@ -217,7 +218,7 @@ class PlaybackEventHandler {
 
         } catch (error) {
             const err = error as Error;
-            console.error(`[PlaybackEventHandler] Error in track end handler:`, err.message);
+            logger.error('PlaybackEventHandler', `Error in track end handler: ${err.message}`);
             musicEventBus.emitEvent(MusicEvents.ERROR, { guildId, error: err });
         } finally {
             playbackService.releaseTransitionLock(guildId);
@@ -233,11 +234,11 @@ class PlaybackEventHandler {
         // Check if we're replacing a track - if so, ignore the error
         const queue = musicCache.getQueue(guildId) as any;
         if (queue?.isReplacing) {
-            console.log(`[PlaybackEventHandler] Ignoring track error during replacement in guild ${guildId}`);
+            logger.info('PlaybackEventHandler', `Ignoring track error during replacement in guild ${guildId}`);
             return;
         }
         
-        console.error(`[PlaybackEventHandler] Track error in guild ${guildId}:`, error);
+        logger.error('PlaybackEventHandler', `Track error in guild ${guildId}: ${error}`);
 
         const { playbackService } = this.services;
         if (!playbackService) return;
@@ -256,7 +257,7 @@ class PlaybackEventHandler {
             }
         } catch (err) {
             const error = err as Error;
-            console.error(`[PlaybackEventHandler] Error handling track error:`, error.message);
+            logger.error('PlaybackEventHandler', `Error handling track error: ${error.message}`);
         } finally {
             playbackService.releaseTransitionLock(guildId);
         }
@@ -267,7 +268,7 @@ class PlaybackEventHandler {
      */
     private async _handleTrackStuck(data: EventData): Promise<void> {
         const { guildId } = data;
-        console.warn(`[PlaybackEventHandler] Track stuck in guild ${guildId}, skipping...`);
+        logger.warn('PlaybackEventHandler', `Track stuck in guild ${guildId}, skipping...`);
 
         // Same handling as error
         await this._handleTrackError(data);
@@ -278,7 +279,7 @@ class PlaybackEventHandler {
      */
     private async _handleVoiceClosed(data: EventData): Promise<void> {
         const { guildId } = data;
-        console.log(`[PlaybackEventHandler] Voice closed in guild ${guildId}`);
+        logger.info('PlaybackEventHandler', `Voice closed in guild ${guildId}`);
         
         musicEventBus.emitCleanup(guildId, 'voice_closed');
     }
@@ -292,7 +293,7 @@ class PlaybackEventHandler {
 
         // Try auto-play if enabled
         if (queue?.autoPlay && lastTrack) {
-            console.log(`[PlaybackEventHandler] Queue ended, trying auto-play...`);
+            logger.info('PlaybackEventHandler', 'Queue ended, trying auto-play...');
 
             try {
                 const { autoPlayService } = this.services;
@@ -301,7 +302,7 @@ class PlaybackEventHandler {
                 const similarTrack = await autoPlayService.findSimilarTrack(guildId, lastTrack);
 
                 if (similarTrack) {
-                    console.log(`[PlaybackEventHandler] Auto-play found: ${similarTrack.info?.title}`);
+                    logger.info('PlaybackEventHandler', `Auto-play found: ${similarTrack.info?.title}`);
 
                     // Track history
                     const trackInfo = lastTrack.info || lastTrack;
@@ -332,7 +333,7 @@ class PlaybackEventHandler {
                 }
             } catch (err) {
                 const error = err as Error;
-                console.error(`[PlaybackEventHandler] Auto-play error:`, error.message);
+                logger.error('PlaybackEventHandler', `Auto-play error: ${error.message}`);
                 musicEventBus.emitEvent(MusicEvents.AUTOPLAY_FAILED, { guildId, error: error.message });
                 // Auto-play failed, but don't show queue finished - will retry or user can add songs
                 return;
@@ -363,7 +364,7 @@ class PlaybackEventHandler {
      */
     private async _handleCleanup(data: EventData): Promise<void> {
         const { guildId, reason } = data;
-        console.log(`[PlaybackEventHandler] Cleanup for guild ${guildId}, reason: ${reason}`);
+        logger.info('PlaybackEventHandler', `Cleanup for guild ${guildId}, reason: ${reason}`);
 
         try {
             // Call registered cleanup handler
@@ -380,7 +381,7 @@ class PlaybackEventHandler {
             musicEventBus.emitEvent(MusicEvents.CLEANUP_COMPLETE, { guildId, reason });
         } catch (err) {
             const error = err as Error;
-            console.error(`[PlaybackEventHandler] Cleanup error:`, error.message);
+            logger.error('PlaybackEventHandler', `Cleanup error: ${error.message}`);
         }
     }
 
@@ -564,7 +565,7 @@ class PlaybackEventHandler {
     shutdown(): void {
         this.cleanupHandlers.clear();
         this.globalHandlersBound = false;
-        console.log('[PlaybackEventHandler] Shutdown complete');
+        logger.info('PlaybackEventHandler', 'Shutdown complete');
     }
 }
 

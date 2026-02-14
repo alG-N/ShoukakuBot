@@ -22,8 +22,10 @@ import {
     Message
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
-
-import { getDefault } from '../../utils/common/moduleHelper.js';
+import logger from '../../core/Logger.js';
+import { infractionService as _infractionSvc, moderationService as _moderationSvc } from '../../services/moderation/index.js';
+import _moderationConfigModule from '../../config/features/moderation/index.js';
+import _dbModule from '../../database/index.js';
 interface Infraction {
     case_id: number;
     type: string;
@@ -99,20 +101,11 @@ interface Database {
 }
 
 
-let infractionService: InfractionService | undefined;
-let moderationService: ModerationService | undefined;
-let moderationConfig: ModerationConfig | undefined;
-let db: Database | undefined;
-
-try {
-    const mod = getDefault(require('../../services/moderation'));
-    infractionService = mod.InfractionService;
-    moderationService = mod.ModerationService;
-    moderationConfig = getDefault(require('../../config/features/moderation'));
-    db = getDefault(require('../../database'));
-} catch {
-    // Services not available
-}
+// SERVICE IMPORTS — static ESM imports (converted from CJS require())
+const infractionService: InfractionService = _infractionSvc as any;
+const moderationService: ModerationService = _moderationSvc as any;
+const moderationConfig: ModerationConfig = _moderationConfigModule as any;
+const db: Database = _dbModule as any;
 
 /**
  * Format duration for display
@@ -301,7 +294,7 @@ class WarnCommand extends BaseCommand {
             await interaction.editReply({ embeds: [embed] });
 
         } catch (error) {
-            console.error('[WarnCommand] Error:', error);
+            logger.error('Warn', `Error: ${(error as Error).message}`);
             await interaction.editReply({
                 content: `❌ Failed to warn user: ${(error as Error).message}`
             });
@@ -390,7 +383,7 @@ class WarnCommand extends BaseCommand {
                 }
             }
         } catch (error) {
-            console.error('[WarnCommand] Escalation error:', error);
+            logger.error('Warn', `Escalation error: ${(error as Error).message}`);
         }
 
         return null;
@@ -531,7 +524,7 @@ class WarnCommand extends BaseCommand {
                     await this._showEditThresholdModal(i as StringSelectMenuInteraction, warnCount);
                 }
             } catch (error) {
-                console.error('[WarnCommand] Settings collector error:', error);
+                logger.error('Warn', `Settings collector error: ${(error as Error).message}`);
             }
         });
         

@@ -22,7 +22,10 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
-import { getDefault } from '../../utils/common/moduleHelper.js';
+import _rule34Service from '../../services/api/rule34Service.js';
+import _rule34Cache from '../../repositories/api/rule34Cache.js';
+import _postHandler from '../../handlers/api/rule34PostHandler.js';
+import logger from '../../core/Logger.js';
 // TYPES
 interface Post {
     id: number;
@@ -124,19 +127,10 @@ interface PostHandler {
     createSettingsComponents?: (userId: string) => ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[];
     createErrorEmbed?: (error: Error) => EmbedBuilder;
 }
-// SERVICE IMPORTS
-let rule34Service: Rule34Service | undefined;
-let rule34Cache: Rule34Cache | undefined;
-let postHandler: PostHandler | undefined;
-
-
-try {
-    rule34Service = getDefault(require('../../services/api/rule34Service'));
-    rule34Cache = getDefault(require('../../repositories/api/rule34Cache'));
-    postHandler = getDefault(require('../../handlers/api/rule34PostHandler'));
-} catch (e) {
-    console.warn('[Rule34] Could not load services:', (e as Error).message);
-}
+// SERVICE IMPORTS — static ESM imports (converted from CJS require())
+const rule34Service: Rule34Service = _rule34Service as any;
+const rule34Cache: Rule34Cache = _rule34Cache as any;
+const postHandler: PostHandler = _postHandler as any;
 // COMMAND
 class Rule34Command extends BaseCommand {
     constructor() {
@@ -356,7 +350,7 @@ class Rule34Command extends BaseCommand {
 
             await interaction.respond(choices).catch(() => {});
         } catch (error) {
-            console.log('[Rule34 Autocomplete] Error:', (error as Error).message);
+            logger.warn('Rule34', 'Autocomplete error: ' + (error as Error).message);
             const focusedValue = interaction.options.getFocused() || '';
             await interaction.respond([
                 { name: `🔍 "${focusedValue.slice(0, 90)}"`, value: focusedValue.slice(0, 100) || 'search' }
@@ -365,15 +359,6 @@ class Rule34Command extends BaseCommand {
     }
 
     async run(interaction: ChatInputCommandInteraction): Promise<void> {
-        // Service availability check
-        if (!rule34Service || !postHandler) {
-            await this.safeReply(interaction, {
-                embeds: [this.errorEmbed('⚠️ Rule34 service is currently unavailable. Please try again later.')],
-                ephemeral: true
-            });
-            return;
-        }
-
         // Access control
         const access = await checkAccess(interaction, AccessType.SUB);
         if (access.blocked) {
@@ -422,7 +407,7 @@ class Rule34Command extends BaseCommand {
                     });
             }
         } catch (error) {
-            console.error('[Rule34 Command Error]', error);
+            logger.error('Rule34', `Command error: ${(error as Error).message}`);
             const errorEmbed = postHandler?.createErrorEmbed?.(error as Error) || this.errorEmbed((error as Error).message || 'An error occurred');
             
             if (interaction.deferred || interaction.replied) {
@@ -753,14 +738,6 @@ class Rule34Command extends BaseCommand {
     }
 
     async handleButton(interaction: ButtonInteraction): Promise<void> {
-        if (!rule34Service || !postHandler) {
-            await interaction.reply({
-                content: '⚠️ Rule34 service is currently unavailable. Please try again later.',
-                ephemeral: true
-            });
-            return;
-        }
-
         const parts = interaction.customId.split('_');
         const action = parts[1];
         const userId = parts[parts.length - 1];
@@ -814,7 +791,7 @@ class Rule34Command extends BaseCommand {
                     await interaction.deferUpdate();
             }
         } catch (error) {
-            console.error('[Rule34 Button Error]', error);
+            logger.error('Rule34', `Button error: ${(error as Error).message}`);
             await interaction.reply({
                 content: '❌ An error occurred. Please try again.',
                 ephemeral: true
@@ -1260,7 +1237,7 @@ class Rule34Command extends BaseCommand {
         } catch (error) {
             const err = error as Error & { code?: number };
             if (err.code !== 10062 && err.code !== 40060) {
-                console.error('[Rule34 SelectMenu Error]', error);
+                logger.error('Rule34', `SelectMenu error: ${(error as Error).message}`);
             }
             if (!interaction.replied && !interaction.deferred) {
                 await interaction.reply({
@@ -1397,7 +1374,7 @@ class Rule34Command extends BaseCommand {
         } catch (error) {
             const err = error as Error & { code?: number };
             if (err.code !== 10062 && err.code !== 40060) {
-                console.error('[Rule34 SettingMenuSelect Error]', error);
+                logger.error('Rule34', `SettingMenuSelect error: ${(error as Error).message}`);
             }
         }
     }

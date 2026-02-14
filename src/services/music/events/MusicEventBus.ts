@@ -7,6 +7,7 @@
 
 import { EventEmitter } from 'events';
 import { MusicEvents, type MusicTrack } from './MusicEvents.js';
+import logger from '../../../core/Logger.js';
 // TYPES
 interface EventStats {
     totalEvents: number;
@@ -48,7 +49,7 @@ class MusicEventBus extends EventEmitter {
         this.statsResetInterval = setInterval(() => {
             const stats = this.getStats();
             if (this.debugMode) {
-                console.log('[MusicEventBus] Hourly stats reset:', stats);
+                logger.info('MusicEventBus', `Hourly stats reset: ${JSON.stringify(stats)}`);
             }
             this.eventCounts.clear();
         }, this.STATS_RESET_INTERVAL_MS);
@@ -64,10 +65,7 @@ class MusicEventBus extends EventEmitter {
 
         // Debug logging
         if (this.debugMode) {
-            console.log(`[MusicEventBus] Emitting: ${event}`, {
-                guildId: data.guildId,
-                timestamp: new Date().toISOString()
-            });
+            logger.debug('MusicEventBus', `Emitting: ${event} guildId=${data.guildId}`);
         }
 
         // Emit global event
@@ -145,7 +143,7 @@ class MusicEventBus extends EventEmitter {
         this.guildListeners.delete(guildId);
 
         if (this.debugMode) {
-            console.log(`[MusicEventBus] Removed all listeners for guild ${guildId}`);
+            logger.debug('MusicEventBus', `Removed all listeners for guild ${guildId}`);
         }
     }
 
@@ -163,7 +161,7 @@ class MusicEventBus extends EventEmitter {
         this.removeAllListeners();
         this.guildListeners.clear();
         this.eventCounts.clear();
-        console.log('[MusicEventBus] Shutdown complete');
+        logger.info('MusicEventBus', 'Shutdown complete');
     }
     // CONVENIENCE EMITTERS
     /**

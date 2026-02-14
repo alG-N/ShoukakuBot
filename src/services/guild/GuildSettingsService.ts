@@ -6,16 +6,8 @@
 
 import type { GuildMember, Snowflake, Role } from 'discord.js';
 import cacheService from '../../cache/CacheService.js';
-
-// Use require for database module
-const _dbMod = require('../../database/postgres.js');
-const db = (_dbMod.default || _dbMod) as {
-    query: (sql: string, params?: unknown[]) => Promise<{ rows: unknown[] }>;
-    getOne: (sql: string, params?: unknown[]) => Promise<unknown>;
-    insert: (table: string, data: Record<string, unknown>) => Promise<unknown>;
-    update: (table: string, data: Record<string, unknown>, where: Record<string, unknown>) => Promise<unknown>;
-    upsert: (table: string, data: Record<string, unknown>, conflictKey: string) => Promise<unknown>;
-};
+import logger from '../../core/Logger.js';
+import db from '../../database/postgres.js';
 // TYPES
 export interface GuildSettings {
     guild_id: Snowflake;
@@ -118,7 +110,7 @@ export async function getGuildSettings(guildId: Snowflake): Promise<GuildSetting
         await cacheService.setGuildSettings(guildId, defaultSettings);
         return defaultSettings;
     } catch (error) {
-        console.error('[GuildSettings] Error getting settings:', (error as Error).message);
+        logger.error('GuildSettings', `Error getting settings: ${(error as Error).message}`);
         return { ...DEFAULT_GUILD_SETTINGS, guild_id: guildId };
     }
 }
@@ -135,7 +127,7 @@ export async function updateGuildSettings(
         await cacheService.invalidateGuildSettings(guildId);
         return true;
     } catch (error) {
-        console.error('[GuildSettings] Error updating settings:', (error as Error).message);
+        logger.error('GuildSettings', `Error updating settings: ${(error as Error).message}`);
         return false;
     }
 }

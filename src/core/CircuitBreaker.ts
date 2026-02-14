@@ -226,6 +226,14 @@ export class CircuitBreaker extends EventEmitter {
     private _onFailure(error: Error): unknown {
         this.metrics.failedRequests++;
         this.lastFailureTime = Date.now();
+
+        // Check if this error type should count as a circuit-tripping failure.
+        // Non-failure errors (business logic, validation, rate limits) should NOT
+        // increment the failure counter or trip the circuit.
+        if (!this.isFailure(error)) {
+            throw error;
+        }
+
         this.failureCount++;
 
         if (this.state === CircuitState.HALF_OPEN) {
@@ -236,12 +244,7 @@ export class CircuitBreaker extends EventEmitter {
             this._setState(CircuitState.OPEN);
         }
 
-        // Check if error should trigger fallback
-        if (this.isFailure(error)) {
-            return this._executeFallback(error);
-        }
-
-        throw error;
+        return this._executeFallback(error);
     }
 
     /**

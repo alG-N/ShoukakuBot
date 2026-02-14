@@ -4,6 +4,7 @@
  */
 
 import postgres from '../../database/postgres.js';
+import logger from '../../core/Logger.js';
 // Interfaces
 interface NHentaiGallery {
     id: number;
@@ -37,12 +38,7 @@ interface ToggleFavouriteResult {
     removed: boolean;
 }
 
-// Simple logger fallback
-const logger = {
-    info: (tag: string, msg: string): void => console.log(`[${tag}] ${msg}`),
-    warn: (tag: string, msg: string): void => console.warn(`[${tag}] ${msg}`),
-    error: (tag: string, msg: string): void => console.error(`[${tag}] ${msg}`)
-};
+
 // NHentaiRepository Class
 class NHentaiRepository {
     private initialized: boolean;

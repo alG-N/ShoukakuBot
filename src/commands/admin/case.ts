@@ -12,8 +12,8 @@ import {
     User
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
-
-import { getDefault } from '../../utils/common/moduleHelper.js';
+import logger from '../../core/Logger.js';
+import { infractionService as _infractionSvc } from '../../services/moderation/index.js';
 interface Infraction {
     id: number;
     guild_id: string;
@@ -32,14 +32,8 @@ interface InfractionService {
 }
 
 
-let infractionService: InfractionService | undefined;
-
-try {
-    const mod = getDefault(require('../../services/moderation'));
-    infractionService = mod.InfractionService;
-} catch {
-    // Service not available
-}
+// SERVICE IMPORTS — static ESM imports (converted from CJS require())
+const infractionService: InfractionService = _infractionSvc as any;
 
 class CaseCommand extends BaseCommand {
     constructor() {
@@ -91,7 +85,7 @@ class CaseCommand extends BaseCommand {
             await interaction.editReply({ embeds: [embed] });
 
         } catch (error) {
-            console.error('[CaseCommand] Error:', error);
+            logger.error('Case', `Error: ${(error as Error).message}`);
             await interaction.editReply({
                 content: `❌ Failed to fetch case: ${(error as Error).message}`
             });

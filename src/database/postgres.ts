@@ -8,10 +8,7 @@
 import { Pool, PoolClient, QueryResult, PoolConfig } from 'pg';
 import gracefulDegradation, { ServiceState } from '../core/GracefulDegradation.js';
 import { databasePoolSize, databaseQueriesTotal, databaseQueryDuration } from '../core/metrics.js';
-
-// Use require for internal modules to avoid circular dependency
-const _loggerMod = require('../core/Logger');
-const logger = _loggerMod.default || _loggerMod;
+import logger from '../core/Logger.js';
 // TYPES & INTERFACES
 /**
  * Allowed table names (whitelist for SQL injection prevention)
@@ -852,7 +849,7 @@ let isDbInitialized = false;
  */
 export async function initializeDatabase(): Promise<void> {
     if (isDbInitialized) {
-        console.log('⚠️ [Database] Already initialized');
+        logger.warn('Database', 'Already initialized');
         return;
     }
 
@@ -868,14 +865,14 @@ export async function initializeDatabase(): Promise<void> {
         `);
         
         if (result.rows.length < 3) {
-            console.warn('⚠️ [Database] Some tables missing. Ensure 01-schema.sql has been executed.');
+            logger.warn('Database', 'Some tables missing. Ensure 01-schema.sql has been executed.');
         }
         
         isDbInitialized = true;
-        console.log('✅ [Database] PostgreSQL initialized');
+        logger.info('Database', 'PostgreSQL initialized');
     } catch (error: unknown) {
         const errMsg = error instanceof Error ? error.message : String(error);
-        console.error('❌ [Database] PostgreSQL initialization failed:', errMsg);
+        logger.error('Database', `PostgreSQL initialization failed: ${errMsg}`);
         throw error; // Don't fail silently - DB is required
     }
 }

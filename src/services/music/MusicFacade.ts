@@ -1,114 +1,40 @@
 /**
  * Music Facade
- * Orchestrates all music sub-services
- * Provides backward-compatible API matching original MusicService
+ * Orchestrates all music sub-services.
+ * Split into focused modules (Phase P):
+ *   - MusicTypes.ts: Type definitions
+ *   - MusicUserDataService.ts: Favorites, history, preferences
+ *   - MusicNowPlayingManager.ts: Now-playing message lifecycle
+ *   - MusicSkipVoteManager.ts: Skip vote lifecycle
  * @module services/music/MusicFacade
  */
 
-import { ChatInputCommandInteraction, Message, Guild, TextBasedChannel, ActionRowComponent, TextChannel } from 'discord.js';
+import { ChatInputCommandInteraction, Message, Guild, GuildMember } from 'discord.js';
 import { queueService, QueueService } from './queue/index.js';
 import { playbackService, PlaybackService } from './playback/index.js';
 import { voiceConnectionService, VoiceConnectionService } from './voice/index.js';
 import { autoPlayService, AutoPlayService } from './autoplay/index.js';
 import { musicEventBus, MusicEvents, playbackEventHandler } from './events/index.js';
 import musicCache from '../../cache/music/MusicCacheFacade.js';
-import type { MessageRef } from '../../cache/music/QueueCache.js';
 import trackHandler from '../../handlers/music/trackHandler.js';
 import { TRACK_TRANSITION_DELAY } from '../../config/features/music.js';
 import { updateMusicMetrics, musicTracksPlayedTotal } from '../../core/metrics.js';
-// Types
-export interface Track {
-    track: {
-        encoded: string;
-    };
-    info?: TrackInfo;
-    url?: string;
-    requestedBy?: {
-        id: string;
-        username?: string;
-    };
-}
+import logger from '../../core/Logger.js';
+import { MusicNowPlayingManager } from './MusicNowPlayingManager.js';
+import { MusicUserDataService } from './MusicUserDataService.js';
+import { MusicSkipVoteManager } from './MusicSkipVoteManager.js';
 
-export interface TrackInfo {
-    title: string;
-    author?: string;
-    duration?: number;
-    uri?: string;
-    artworkUrl?: string;
-    sourceName?: string;
-}
+// Re-export all types from MusicTypes for backward compatibility
+export type {
+    Track, TrackInfo, PlayNextResult, SkipResult, VoteSkipResult,
+    NowPlayingOptions, ControlButtonOptions, QueueState, MusicStats,
+    LoopMode, PlayerEventHandlers
+} from './MusicTypes.js';
+import type {
+    Track, PlayNextResult, SkipResult, VoteSkipResult,
+    QueueState, MusicStats, LoopMode, PlayerEventHandlers
+} from './MusicTypes.js';
 
-export interface PlayNextResult {
-    track: Track;
-    isLooped: boolean;
-}
-
-export interface SkipResult {
-    skipped: number;
-    previousTrack: Track | null;
-}
-
-export interface VoteSkipResult {
-    success?: boolean;
-    added?: boolean;
-    voteCount?: number;
-    required?: number;
-    message?: string;
-}
-
-export interface NowPlayingOptions {
-    volume: number;
-    isPaused: boolean;
-    loopMode: LoopMode;
-    isShuffled: boolean;
-    queueLength: number;
-    nextTrack: Track | null;
-    loopCount: number;
-    voteSkipCount: number;
-    voteSkipRequired: number;
-    listenerCount: number;
-}
-
-export interface ControlButtonOptions {
-    isPaused: boolean;
-    loopMode: LoopMode;
-    isShuffled: boolean;
-    autoPlay: boolean;
-    trackUrl: string;
-    userId: string;
-    listenerCount: number;
-}
-
-export interface QueueState {
-    tracks: Track[];
-    currentTrack: Track | null;
-    volume: number;
-    loopMode: LoopMode;
-    isShuffled: boolean;
-    autoPlay: boolean;
-    isPaused: boolean;
-    textChannel: TextBasedChannel | null;
-    eventsBound: boolean;
-    skipVoteActive: boolean;
-    lastPlayedTracks: string[];
-}
-
-export interface MusicStats {
-    queue: QueueService;
-    playback: PlaybackService;
-    voice: VoiceConnectionService;
-    events: ReturnType<typeof musicEventBus.getStats>;
-}
-
-export type LoopMode = 'off' | 'track' | 'queue';
-
-export interface PlayerEventHandlers {
-    onStart: (data: unknown) => void;
-    onEnd: (data: unknown) => void;
-    onException: (data: unknown) => void;
-    onStuck: (data: unknown) => void;
-    onClosed: (data: unknown) => void;
-}
 // MusicFacade Class
 export class MusicFacade {
     public readonly queueService: QueueService;
@@ -117,6 +43,9 @@ export class MusicFacade {
     public readonly autoPlayService: AutoPlayService;
     public readonly eventBus: typeof musicEventBus;
     private eventHandlerInitialized: boolean;
+    private readonly nowPlayingManager: MusicNowPlayingManager;
+    private readonly userDataService: MusicUserDataService;
+    private readonly skipVoteManager: MusicSkipVoteManager;
 
     constructor() {
         this.queueService = queueService;
@@ -125,6 +54,9 @@ export class MusicFacade {
         this.autoPlayService = autoPlayService;
         this.eventBus = musicEventBus;
         this.eventHandlerInitialized = false;
+        this.nowPlayingManager = new MusicNowPlayingManager();
+        this.userDataService = new MusicUserDataService();
+        this.skipVoteManager = new MusicSkipVoteManager();
     }
 
     /**
@@ -160,7 +92,7 @@ export class MusicFacade {
         });
 
         this.eventHandlerInitialized = true;
-        console.log('[MusicFacade] Event handler initialized');
+        logger.info('MusicFacade', 'Event handler initialized');
     }
     // QUEUE OPERATIONS (delegated to QueueService)
     getQueue(guildId: string): QueueState | null {
@@ -224,8 +156,7 @@ export class MusicFacade {
     }
     // PLAYBACK OPERATIONS (delegated to PlaybackService)
     async playTrack(guildId: string, track: Track): Promise<Track> {
-        // Cast: QueueCache returns typed queue but runtime adds dynamic fields (isReplacing, textChannel)
-        const queue = musicCache.getQueue(guildId) as any;
+        const queue = musicCache.getQueue(guildId);
         
         // Set replacing flag if a track is already playing
         // This prevents the exception handler from skipping when we're just replacing
@@ -244,8 +175,7 @@ export class MusicFacade {
         try {
             await player.playTrack({ track: { encoded } });
             // Track metrics - track played
-            // Cast: Track.info may have sourceName from Lavalink but not declared in our TrackInfo interface
-            const source = (track as any)?.info?.sourceName || 'unknown';
+            const source = track?.info?.sourceName || 'unknown';
             musicTracksPlayedTotal.inc({ source });
             this.updateMetrics();
         } finally {
@@ -389,8 +319,7 @@ export class MusicFacade {
     // VOICE CONNECTION OPERATIONS
     async connect(interaction: ChatInputCommandInteraction): Promise<any> {
         const guildId = interaction.guild!.id;
-        // Cast: interaction.member is GuildMember | APIInteractionGuildMember — need .voice.channel
-        const member = interaction.member as any;
+        const member = interaction.member as GuildMember;
         const voiceChannel = member?.voice?.channel;
 
         if (!voiceChannel) throw new Error('NO_VOICE_CHANNEL');
@@ -428,8 +357,7 @@ export class MusicFacade {
         const player = playbackService.getPlayer(guildId);
         if (!player) return;
 
-        // Cast: QueueService.get() returns typed queue but we need dynamic textChannel field
-        const queue = queueService.get(guildId) as any;
+        const queue = queueService.get(guildId);
         if (queue) {
             queue.eventsBound = true;
             queue.textChannel = interaction.channel;
@@ -442,7 +370,7 @@ export class MusicFacade {
                     // Update metrics when track starts
                     this.updateMetrics();
                 } catch (error: any) {
-                    console.error(`[MusicFacade] Error in start handler:`, error.message);
+                    logger.error('MusicFacade', `Error in start handler: ${error.message}`, error);
                 }
             },
 
@@ -467,7 +395,7 @@ export class MusicFacade {
                         }
                     }
                 } catch (error: any) {
-                    console.error(`[MusicFacade] Error in end handler:`, error.message);
+                    logger.error('MusicFacade', `Error in end handler: ${error.message}`, error);
                 } finally {
                     playbackService.releaseTransitionLock(guildId);
                 }
@@ -478,13 +406,13 @@ export class MusicFacade {
                 
                 // Check if we're in the process of replacing a track
                 // If so, ignore the exception as it's expected
-                const queue = musicCache.getQueue(guildId) as any;
+                const queue = musicCache.getQueue(guildId);
                 if (queue?.isReplacing) {
-                    console.log(`[MusicFacade] Ignoring exception during track replacement in guild ${guildId}`);
+                    logger.info('MusicFacade', `Ignoring exception during track replacement in guild ${guildId}`);
                     return;
                 }
                 
-                console.error(`[MusicFacade] Track exception:`, excData?.message || 'Unknown error');
+                logger.error('MusicFacade', `Track exception: ${excData?.message || 'Unknown error'}`);
 
                 const lockAcquired = await playbackService.acquireTransitionLock(guildId, 3000);
                 if (!lockAcquired) return;
@@ -492,7 +420,7 @@ export class MusicFacade {
                 try {
                     await this.playNext(guildId);
                 } catch (error: any) {
-                    console.error(`[MusicFacade] Error handling exception:`, error.message);
+                    logger.error('MusicFacade', `Error handling exception: ${error.message}`, error);
                 } finally {
                     playbackService.releaseTransitionLock(guildId);
                 }
@@ -503,10 +431,10 @@ export class MusicFacade {
                 if (!lockAcquired) return;
 
                 try {
-                    console.warn(`[MusicFacade] Track stuck in guild ${guildId}, skipping...`);
+                    logger.warn('MusicFacade', `Track stuck in guild ${guildId}, skipping...`);
                     await this.playNext(guildId);
                 } catch (error: any) {
-                    console.error(`[MusicFacade] Error in stuck handler:`, error.message);
+                    logger.error('MusicFacade', `Error in stuck handler: ${error.message}`, error);
                 } finally {
                     playbackService.releaseTransitionLock(guildId);
                 }
@@ -516,7 +444,7 @@ export class MusicFacade {
                 try {
                     await this.cleanup(guildId);
                 } catch (error: any) {
-                    console.error(`[MusicFacade] Error in closed handler:`, error.message);
+                    logger.error('MusicFacade', `Error in closed handler: ${error.message}`, error);
                 }
             }
         };
@@ -554,24 +482,22 @@ export class MusicFacade {
     // AUTO-PLAY
     async handleQueueEnd(guildId: string, providedLastTrack: Track | null = null): Promise<void> {
         const lastTrack = providedLastTrack || this.getCurrentTrack(guildId);
-        // Cast: queue has runtime-added autoPlay, textChannel, lastPlayedTracks fields
-        const queue = musicCache.getQueue(guildId) as any;
+        const queue = musicCache.getQueue(guildId);
 
         // Check auto-play
         if (queue?.autoPlay && lastTrack) {
-            console.log(`[AutoPlay] Queue ended, searching for similar tracks...`);
+            logger.info('AutoPlay', 'Queue ended, searching for similar tracks...');
 
             try {
                 const similarTrack = await autoPlayService.findSimilarTrack(guildId, lastTrack);
 
                 if (similarTrack) {
-                    console.log(`[AutoPlay] Found similar track: ${similarTrack.info?.title}`);
+                    logger.info('AutoPlay', `Found similar track: ${similarTrack.info?.title}`);
 
                     // Store in history
-                    const trackInfo = lastTrack.info || lastTrack;
+                    const trackTitle = lastTrack.info?.title || 'Unknown';
                     if (!queue.lastPlayedTracks) queue.lastPlayedTracks = [];
-                    // Cast: trackInfo is Track.info|Track — title access needs unification
-                    queue.lastPlayedTracks.push((trackInfo as any).title);
+                    queue.lastPlayedTracks.push(trackTitle);
                     if (queue.lastPlayedTracks.length > 10) queue.lastPlayedTracks.shift();
 
                     // Play
@@ -580,9 +506,7 @@ export class MusicFacade {
 
                     // Notify
                     if (queue?.textChannel) {
-                        // Cast: trackHandler methods (createAutoPlayEmbed, createInfoEmbed) not in its TS interface
-                        const autoPlayEmbed = (trackHandler as any).createAutoPlayEmbed?.(similarTrack) ||
-                            (trackHandler as any).createInfoEmbed?.('🎵 Auto-Play', `Now playing: **${similarTrack.info?.title}**`);
+                        const autoPlayEmbed = trackHandler.createInfoEmbed('🎵 Auto-Play', `Now playing: **${similarTrack.info?.title}**`);
                         await queue.textChannel.send({ embeds: [autoPlayEmbed] }).catch(() => {});
                     }
 
@@ -590,7 +514,7 @@ export class MusicFacade {
                     return;
                 }
             } catch (error: any) {
-                console.error(`[AutoPlay] Error:`, error.message);
+                logger.error('AutoPlay', `Error: ${error.message}`, error);
             }
         }
 
@@ -605,11 +529,7 @@ export class MusicFacade {
         }
 
         if (queue?.textChannel) {
-            // Cast: trackHandler methods not in TS interface (createQueueFinishedEmbed, createInfoEmbed)
-            const finishedEmbed = (trackHandler as any).createQueueFinishedEmbed?.(lastTrack) ||
-                (trackHandler as any).createInfoEmbed?.('Queue Finished', 'All songs have been played!') ||
-                { description: '✅ Queue finished!' };
-
+            const finishedEmbed = trackHandler.createQueueFinishedEmbed(lastTrack as any);
             await queue.textChannel.send({ embeds: [finishedEmbed] }).catch(() => {});
         }
 
@@ -621,8 +541,7 @@ export class MusicFacade {
     }
 
     toggleAutoPlay(guildId: string): boolean {
-        // Cast: queue has runtime autoPlay/loopMode fields not in typed interface
-        const queue = musicCache.getQueue(guildId) as any;
+        const queue = musicCache.getQueue(guildId);
         if (!queue) return false;
 
         queue.autoPlay = !queue.autoPlay;
@@ -657,237 +576,99 @@ export class MusicFacade {
         
         musicEventBus.emitEvent(MusicEvents.CLEANUP_COMPLETE, { guildId });
     }
-    // SKIP VOTE
+    // SKIP VOTE (delegated to MusicSkipVoteManager)
     startSkipVote(guildId: string, userId: string, listenerCount: number): VoteSkipResult {
-        const result = musicCache.startSkipVote(guildId, userId, listenerCount);
-        musicEventBus.emitEvent(MusicEvents.SKIPVOTE_START, { guildId, userId, listenerCount });
-        return result as VoteSkipResult;
+        return this.skipVoteManager.startSkipVote(guildId, userId, listenerCount);
     }
 
     addSkipVote(guildId: string, userId: string): VoteSkipResult | null {
-        const result = musicCache.addSkipVote(guildId, userId);
-        musicEventBus.emitEvent(MusicEvents.SKIPVOTE_ADD, { guildId, userId });
-        return result as VoteSkipResult | null;
+        return this.skipVoteManager.addSkipVote(guildId, userId);
     }
 
     endSkipVote(guildId: string): void {
-        musicCache.endSkipVote(guildId);
+        this.skipVoteManager.endSkipVote(guildId);
     }
 
     hasEnoughSkipVotes(guildId: string): boolean {
-        // Cast: hasEnoughSkipVotes returns boolean | { success } depending on implementation
-        const result = musicCache.hasEnoughSkipVotes(guildId) as any;
-        if (typeof result === 'boolean') return result;
-        return result?.success ?? false;
+        return this.skipVoteManager.hasEnoughSkipVotes(guildId);
     }
 
     isSkipVoteActive(guildId: string): boolean {
-        return musicCache.hasActiveSkipVote(guildId);
+        return this.skipVoteManager.isSkipVoteActive(guildId);
     }
-    // NOW PLAYING MESSAGE
+    // NOW PLAYING MESSAGE (delegated to MusicNowPlayingManager)
 
-    /**
-     * Resolve a MessageRef to a full Discord Message by fetching from the channel.
-     * Returns null if the channel or message is unavailable.
-     */
-    private async _resolveMessage(ref: MessageRef | null, guildId: string): Promise<Message | null> {
-        if (!ref) return null;
-        try {
-            const queue = musicCache.getQueue(guildId) as any;
-            const channel = queue?.textChannel as TextBasedChannel | null;
-            if (!channel || !('messages' in channel)) return null;
-            return await (channel as TextChannel).messages.fetch(ref.messageId);
-        } catch {
-            return null;
-        }
+    private async _resolveMessage(ref: any, guildId: string): Promise<Message | null> {
+        return this.nowPlayingManager.resolveMessage(ref, guildId);
     }
 
     setNowPlayingMessage(guildId: string, message: Message): void {
-        musicCache.setNowPlayingMessage(guildId, message);
+        this.nowPlayingManager.setNowPlayingMessage(guildId, message);
     }
 
-    getNowPlayingMessageRef(guildId: string): MessageRef | null {
-        return musicCache.getNowPlayingMessage(guildId);
+    getNowPlayingMessageRef(guildId: string): any {
+        return this.nowPlayingManager.getNowPlayingMessageRef(guildId);
     }
 
     /** @deprecated Use getNowPlayingMessageRef() + _resolveMessage() */
-    getNowPlayingMessage(guildId: string): MessageRef | null {
-        return musicCache.getNowPlayingMessage(guildId);
+    getNowPlayingMessage(guildId: string): any {
+        return this.nowPlayingManager.getNowPlayingMessage(guildId);
     }
 
     async updateNowPlayingMessage(guildId: string, payload: any): Promise<Message | null> {
-        const ref = this.getNowPlayingMessageRef(guildId);
-        const message = await this._resolveMessage(ref, guildId);
-        if (!message) return null;
-
-        try {
-            await message.edit(payload);
-            return message;
-        } catch (error: any) {
-            if (error.code === 10008) {
-                musicCache.setNowPlayingMessage(guildId, null);
-            }
-            return null;
-        }
+        return this.nowPlayingManager.updateNowPlayingMessage(guildId, payload);
     }
 
     async disableNowPlayingControls(guildId: string): Promise<void> {
-        const ref = this.getNowPlayingMessageRef(guildId);
-        const message = await this._resolveMessage(ref, guildId);
-        if (!message?.components?.length) return;
-
-        try {
-            const disabledRows = message.components.map((row: any) => ({
-                type: row.type,
-                components: row.components.map((c: any) => ({
-                    ...c.data,
-                    disabled: true
-                }))
-            }));
-
-            // Cast: manually-constructed component objects don't match MessageActionRowComponentData
-            await message.edit({ components: disabledRows as any });
-        } catch (error: any) {
-            if (error.code === 10008) {
-                musicCache.setNowPlayingMessage(guildId, null);
-            }
-        }
+        return this.nowPlayingManager.disableNowPlayingControls(guildId);
     }
 
     async sendNowPlayingEmbed(guildId: string): Promise<void> {
-        // Cast: queue has runtime textChannel, isPaused fields not in typed interface
-        const queue = musicCache.getQueue(guildId) as any;
-        if (!queue?.textChannel) return;
-
-        const currentTrack = this.getCurrentTrack(guildId);
-        if (!currentTrack) return;
-
-        try {
-            await this.disableNowPlayingControls(guildId);
-
-            const queueList = this.getQueueList(guildId);
-            const listenerCount = this.getListenerCount(guildId, queue.textChannel?.guild);
-            const voteSkipStatus = musicCache.getVoteSkipStatus(guildId, listenerCount);
-
-            // Cast: trackHandler methods (createNowPlayingEmbed, createControlButtons) not in TS interface
-            const embed = (trackHandler as any).createNowPlayingEmbed(currentTrack, {
-                volume: this.getVolume(guildId),
-                isPaused: queue.isPaused || false,
-                loopMode: this.getLoopMode(guildId),
-                isShuffled: this.isShuffled(guildId),
-                queueLength: queueList.length,
-                nextTrack: queueList[0] || null,
-                loopCount: 0,
-                voteSkipCount: voteSkipStatus.count,
-                voteSkipRequired: voteSkipStatus.required,
-                listenerCount: listenerCount
-            });
-
-            const rows = (trackHandler as any).createControlButtons(guildId, {
-                isPaused: queue.isPaused || false,
-                loopMode: this.getLoopMode(guildId),
-                isShuffled: this.isShuffled(guildId),
-                autoPlay: this.isAutoPlayEnabled(guildId),
-                trackUrl: currentTrack.url,
-                userId: currentTrack.requestedBy?.id || '',
-                listenerCount: listenerCount
-            });
-
-            const nowMessage = await queue.textChannel.send({ embeds: [embed], components: rows });
-            this.setNowPlayingMessage(guildId, nowMessage);
-        } catch (error) {
-            // Silent fail
-        }
+        return this.nowPlayingManager.sendNowPlayingEmbed(guildId);
     }
 
     async updateNowPlayingForLoop(guildId: string, loopCount: number): Promise<void> {
-        const ref = this.getNowPlayingMessageRef(guildId);
-        const message = await this._resolveMessage(ref, guildId);
-        if (!message) return;
-
-        const currentTrack = this.getCurrentTrack(guildId);
-        if (!currentTrack) return;
-
-        // Cast: queue has runtime textChannel, isPaused fields not in typed interface
-        const queue = musicCache.getQueue(guildId) as any;
-        if (!queue) return;
-
-        try {
-            const queueList = this.getQueueList(guildId);
-            const listenerCount = this.getListenerCount(guildId, queue.textChannel?.guild);
-            const voteSkipStatus = musicCache.getVoteSkipStatus(guildId, listenerCount);
-
-            // Cast: trackHandler methods (createNowPlayingEmbed, createControlButtons) not in TS interface
-            const embed = (trackHandler as any).createNowPlayingEmbed(currentTrack, {
-                volume: this.getVolume(guildId),
-                isPaused: queue.isPaused || false,
-                loopMode: this.getLoopMode(guildId),
-                isShuffled: this.isShuffled(guildId),
-                queueLength: queueList.length,
-                nextTrack: queueList[0] || null,
-                loopCount: loopCount,
-                voteSkipCount: voteSkipStatus.count,
-                voteSkipRequired: voteSkipStatus.required,
-                listenerCount: listenerCount
-            });
-
-            const rows = (trackHandler as any).createControlButtons(guildId, {
-                isPaused: queue.isPaused || false,
-                loopMode: this.getLoopMode(guildId),
-                isShuffled: this.isShuffled(guildId),
-                autoPlay: this.isAutoPlayEnabled(guildId),
-                trackUrl: currentTrack.url,
-                userId: currentTrack.requestedBy?.id || '',
-                listenerCount: listenerCount
-            });
-
-            await message.edit({ embeds: [embed], components: rows });
-        } catch (error: any) {
-            if (error.code === 10008) {
-                musicCache.setNowPlayingMessage(guildId, null);
-                await this.sendNowPlayingEmbed(guildId);
-            }
-        }
+        return this.nowPlayingManager.updateNowPlayingForLoop(guildId, loopCount);
     }
-    // USER DATA (favorites, history, preferences)
+    // USER DATA (delegated to MusicUserDataService)
     async addFavorite(userId: string, track: Track): Promise<any> {
-        return musicCache.addFavorite(userId, track);
+        return this.userDataService.addFavorite(userId, track);
     }
 
     async removeFavorite(userId: string, trackUrl: string): Promise<any> {
-        return musicCache.removeFavorite(userId, trackUrl);
+        return this.userDataService.removeFavorite(userId, trackUrl);
     }
 
     async getFavorites(userId: string): Promise<any[]> {
-        return musicCache.getFavorites(userId);
+        return this.userDataService.getFavorites(userId);
     }
 
     async isFavorited(userId: string, trackUrl: string): Promise<boolean> {
-        return musicCache.isFavorited(userId, trackUrl);
+        return this.userDataService.isFavorited(userId, trackUrl);
     }
 
     async addToHistory(userId: string, track: Track): Promise<void> {
-        await musicCache.addToHistory(userId, track);
+        return this.userDataService.addToHistory(userId, track);
     }
 
     async getHistory(userId: string, limit?: number): Promise<any[]> {
-        return musicCache.getHistory(userId, limit);
+        return this.userDataService.getHistory(userId, limit);
     }
 
     async clearHistory(userId: string): Promise<void> {
-        await musicCache.clearHistory(userId);
+        return this.userDataService.clearHistory(userId);
     }
 
     async getPreferences(userId: string): Promise<any> {
-        return musicCache.getPreferences(userId);
+        return this.userDataService.getPreferences(userId);
     }
 
     async setPreferences(userId: string, prefs: any): Promise<void> {
-        await musicCache.setPreferences(userId, prefs);
+        return this.userDataService.setPreferences(userId, prefs);
     }
 
     getRecentlyPlayed(guildId: string): any[] {
-        return musicCache.getRecentlyPlayed(guildId);
+        return this.userDataService.getRecentlyPlayed(guildId);
     }
     // LOOP COUNT
     getLoopCount(guildId: string): number {
@@ -971,9 +752,8 @@ export class MusicFacade {
     }
 
     // Expose transitionMutex for backward compatibility
-    // Cast: transitionMutex is a private field on PlaybackService — exposed for legacy compat
-    get transitionMutex(): any {
-        return (playbackService as any).transitionMutex;
+    get transitionMutex() {
+        return playbackService.getTransitionMutex();
     }
 }
 

@@ -7,6 +7,7 @@
 
 import postgres from '../../database/postgres.js';
 import cacheService from '../CacheService.js';
+import logger from '../../core/Logger.js';
 // Types
 export interface UserPreferences {
     defaultVolume: number;
@@ -134,7 +135,7 @@ class UserMusicCache {
                 return prefs;
             }
         } catch (error) {
-            console.error('[UserMusicCache] Failed to load preferences from DB:', (error as Error).message);
+            logger.error('UserMusicCache', `Failed to load preferences from DB: ${(error as Error).message}`);
         }
 
         return this.getDefaultPreferences();
@@ -179,7 +180,7 @@ class UserMusicCache {
                 ]
             );
         } catch (error) {
-            console.error('[UserMusicCache] Failed to save preferences to DB:', (error as Error).message);
+            logger.error('UserMusicCache', `Failed to save preferences to DB: ${(error as Error).message}`);
         }
 
         const cacheKey = `user_prefs:${userId}`;
@@ -194,7 +195,7 @@ class UserMusicCache {
         try {
             await postgres.query('DELETE FROM user_music_preferences WHERE user_id = $1', [userId]);
         } catch (error) {
-            console.error('[UserMusicCache] Failed to delete preferences from DB:', (error as Error).message);
+            logger.error('UserMusicCache', `Failed to delete preferences from DB: ${(error as Error).message}`);
         }
         await cacheService.delete(this.CACHE_NS, `user_prefs:${userId}`);
         return this.getDefaultPreferences();
@@ -226,7 +227,7 @@ class UserMusicCache {
             await cacheService.set(this.CACHE_NS, cacheKey, tracks, this.FAVS_TTL);
             return tracks;
         } catch (error) {
-            console.error('[UserMusicCache] Failed to load favorites from DB:', (error as Error).message);
+            logger.error('UserMusicCache', `Failed to load favorites from DB: ${(error as Error).message}`);
             return [];
         }
     }
@@ -271,7 +272,7 @@ class UserMusicCache {
             await cacheService.delete(this.CACHE_NS, `user_favs:${userId}`);
             return { success: true, count: currentCount + 1 };
         } catch (error) {
-            console.error('[UserMusicCache] Failed to add favorite:', (error as Error).message);
+            logger.error('UserMusicCache', `Failed to add favorite: ${(error as Error).message}`);
             return { success: false, message: 'Database error' };
         }
     }
@@ -288,7 +289,7 @@ class UserMusicCache {
             );
             dbSuccess = true;
         } catch (error) {
-            console.error('[UserMusicCache] Failed to remove favorite:', (error as Error).message);
+            logger.error('UserMusicCache', `Failed to remove favorite: ${(error as Error).message}`);
         }
 
         if (dbSuccess) {
@@ -340,7 +341,7 @@ class UserMusicCache {
             dbSuccess = true;
             // Trim trigger handles size limit in DB
         } catch (error) {
-            console.error('[UserMusicCache] Failed to add to history:', (error as Error).message);
+            logger.error('UserMusicCache', `Failed to add to history: ${(error as Error).message}`);
         }
 
         if (dbSuccess) {
@@ -408,7 +409,7 @@ class UserMusicCache {
             await cacheService.set(this.CACHE_NS, cacheKey, tracks, this.HISTORY_TTL);
             return tracks.slice(0, limit);
         } catch (error) {
-            console.error('[UserMusicCache] Failed to load history from DB:', (error as Error).message);
+            logger.error('UserMusicCache', `Failed to load history from DB: ${(error as Error).message}`);
             return [];
         }
     }
@@ -420,7 +421,7 @@ class UserMusicCache {
         try {
             await postgres.query('DELETE FROM user_music_history WHERE user_id = $1', [userId]);
         } catch (error) {
-            console.error('[UserMusicCache] Failed to clear history:', (error as Error).message);
+            logger.error('UserMusicCache', `Failed to clear history: ${(error as Error).message}`);
         }
         await cacheService.delete(this.CACHE_NS, `user_history:${userId}`);
     }
@@ -483,7 +484,7 @@ class UserMusicCache {
             await cacheService.set(this.CACHE_NS, `user_favs:${userId}`, tracks, this.FAVS_TTL);
             return tracks;
         } catch (error) {
-            console.error('[UserMusicCache] Failed to load favorites from DB:', (error as Error).message);
+            logger.error('UserMusicCache', `Failed to load favorites from DB: ${(error as Error).message}`);
             return [];
         }
     }
@@ -511,7 +512,7 @@ class UserMusicCache {
             await cacheService.set(this.CACHE_NS, `user_history:${userId}`, tracks, this.HISTORY_TTL);
             return tracks;
         } catch (error) {
-            console.error('[UserMusicCache] Failed to load history from DB:', (error as Error).message);
+            logger.error('UserMusicCache', `Failed to load history from DB: ${(error as Error).message}`);
             return [];
         }
     }

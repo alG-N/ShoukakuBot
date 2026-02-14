@@ -408,7 +408,7 @@ export class RedditService {
 
             return response.data?.data?.children?.map(child => (child.data as any).display_name) || [];
         } catch (error: any) {
-            console.error('Error fetching similar subreddits:', error.message);
+            logger.error('Reddit', `Error fetching similar subreddits: ${error.message}`);
             return [];
         }
     }

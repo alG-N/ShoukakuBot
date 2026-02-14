@@ -45,7 +45,7 @@ export function initialize(options: SentryInitOptions = {}): boolean {
     if (!dsn) {
         logger.warn('Sentry', '⚠️ SENTRY_DSN not set - ERROR TRACKING DISABLED');
         logger.warn('Sentry', 'Production errors will NOT be tracked remotely!');
-        console.warn('\n⚠️  WARNING: Sentry error tracking is DISABLED (no SENTRY_DSN)\n');
+        logger.warn('Sentry', 'Sentry error tracking is DISABLED (no SENTRY_DSN)');
         return false;
     }
 
@@ -94,9 +94,7 @@ export function initialize(options: SentryInitOptions = {}): boolean {
         initializationFailed = true;
         logger.error('Sentry', `❌ CRITICAL: Failed to initialize error tracking: ${(error as Error).message}`);
         logger.error('Sentry', 'Production errors will NOT be tracked remotely!');
-        console.error('\n❌ CRITICAL: Sentry initialization failed!\n');
-        console.error('   Error:', (error as Error).message);
-        console.error('   Production errors will go untracked.\n');
+        logger.error('Sentry', `Sentry initialization failed: ${(error as Error).message}. Production errors will go untracked.`);
         return false;
     }
 }
@@ -120,14 +118,6 @@ export function setShardId(shardId: number): void {
  */
 export function isEnabled(): boolean {
     return isInitialized;
-}
-
-/**
- * Check if Sentry initialization failed (vs just not configured)
- * @returns Whether initialization explicitly failed
- */
-export function hasFailed(): boolean {
-    return initializationFailed;
 }
 
 /**

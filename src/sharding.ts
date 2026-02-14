@@ -17,11 +17,14 @@ import 'dotenv/config';
 import { ShardingManager, ShardingManagerOptions } from 'discord.js';
 import { ChildProcess } from 'child_process';
 import path from 'path';
+import { readFileSync } from 'fs';
+
+// Read version from package.json
+const VERSION = JSON.parse(readFileSync(path.resolve(__dirname, '../package.json'), 'utf-8')).version;
 
 // Configuration
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const TOTAL_SHARDS = process.env.SHARD_COUNT ? parseInt(process.env.SHARD_COUNT) : 'auto';
-const SHARDS_PER_CLUSTER = parseInt(process.env.SHARDS_PER_CLUSTER || '1');
 const RESPAWN_DELAY = parseInt(process.env.SHARD_RESPAWN_DELAY || '5000');
 const SPAWN_TIMEOUT = parseInt(process.env.SHARD_SPAWN_TIMEOUT || '30000');
 
@@ -274,7 +277,7 @@ const healthServer = require('http').createServer(async (req: { url?: string }, 
 
 async function start() {
     console.log('╔══════════════════════════════════════════════════════════════╗');
-    console.log('║           alterGolden Sharding Manager v4.0                  ║');
+    console.log('║           alterGolden Sharding Manager v' + VERSION + ' '.repeat(Math.max(0, 22 - VERSION.length)) + '║');
     console.log('╠══════════════════════════════════════════════════════════════╣');
     console.log(`║  Total Shards: ${String(TOTAL_SHARDS).padEnd(46)}║`);
     console.log(`║  Respawn Delay: ${String(RESPAWN_DELAY + 'ms').padEnd(45)}║`);
@@ -299,10 +302,11 @@ async function start() {
         console.log(`[Sharding] ✅ All ${manager.shards.size} shards spawned successfully!`);
 
         // Log aggregate stats every 5 minutes
-        setInterval(async () => {
+        const statsTimer = setInterval(async () => {
             const stats = await getAggregateStats();
-            console.log(`[Sharding] 📊 Stats: ${stats.totalGuilds} guilds, ${stats.totalUsers} users across ${stats.shardCount} shards`);
+            console.log(`[Sharding] \ud83d\udcca Stats: ${stats.totalGuilds} guilds, ${stats.totalUsers} users across ${stats.shardCount} shards`);
         }, 5 * 60 * 1000);
+        statsTimer.unref(); // Don't prevent process exit
 
     } catch (error) {
         console.error('[Sharding] ❌ Failed to spawn shards:', error);
@@ -311,7 +315,15 @@ async function start() {
 }
 
 // Export for external use
-export { manager, getAggregateStats, shardStates };
+export { manager, getAggregateStats, shardStates, start };
 
-// Start the sharding manager
-start();
+// Guard: only start sharding when this file is the entry point
+// Prevents accidental shard spawning when imported by tests or tools
+const isEntryPoint = typeof require !== 'undefined'
+    ? require.main === module
+    : process.argv[1]?.replace(/\\/g, '/').endsWith('/sharding.js') ||
+      process.argv[1]?.replace(/\\/g, '/').endsWith('/sharding.ts');
+
+if (isEntryPoint || process.env.SHARD_START === 'true') {
+    start();
+}

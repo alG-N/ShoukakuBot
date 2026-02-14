@@ -17,8 +17,9 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { formatDuration } from '../../utils/common/time.js';
-
-import { getDefault } from '../../utils/common/moduleHelper.js';
+import logger from '../../core/Logger.js';
+import { infractionService as _infractionSvc } from '../../services/moderation/index.js';
+import _moderationConfigModule from '../../config/features/moderation/index.js';
 const WARNINGS_PER_PAGE = 5;
 
 interface Infraction {
@@ -46,16 +47,9 @@ interface ModerationConfig {
 }
 
 
-let infractionService: InfractionService | undefined;
-let moderationConfig: ModerationConfig | undefined;
-
-try {
-    const mod = getDefault(require('../../services/moderation'));
-    infractionService = mod.InfractionService;
-    moderationConfig = getDefault(require('../../config/features/moderation'));
-} catch {
-    // Service not available
-}
+// SERVICE IMPORTS — static ESM imports (converted from CJS require())
+const infractionService: InfractionService = _infractionSvc as any;
+const moderationConfig: ModerationConfig = _moderationConfigModule as any;
 
 class WarningsCommand extends BaseCommand {
     constructor() {
@@ -165,7 +159,7 @@ class WarningsCommand extends BaseCommand {
             });
 
         } catch (error) {
-            console.error('[WarningsCommand] Error:', error);
+            logger.error('WarningsCommand', `Error: ${(error as Error).message}`);
             await interaction.editReply({
                 content: `❌ Failed to fetch warnings: ${(error as Error).message}`
             });

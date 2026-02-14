@@ -328,13 +328,13 @@ class PixivService {
             let allItems: PixivIllust[] = [];
             let lastNextUrl: string | null = null;
 
-            console.log(`[Pixiv Search] Query: "${query}" | Offset: ${offset} | NSFW: ${showNsfw} | R18Only: ${r18Only}`);
+            logger.info('Pixiv Search', `Query: "${query}" | Offset: ${offset} | NSFW: ${showNsfw} | R18Only: ${r18Only}`);
 
             if (r18Only) {
                 const results = await this._searchUnfiltered(query, { offset, contentType, sort, pagesToFetch, token, isNovel });
                 allItems = results.items.filter(item => item.x_restrict > 0);
                 lastNextUrl = results.nextUrl;
-                console.log(`[Pixiv R18 Only] Extracted ${allItems.length} R18 items from ${results.items.length} total`);
+                logger.info('Pixiv R18 Only', `Extracted ${allItems.length} R18 items from ${results.items.length} total`);
             } else if (showNsfw) {
                 const results = await this._searchUnfiltered(query, { offset, contentType, sort, pagesToFetch, token, isNovel });
                 allItems = results.items;
@@ -349,7 +349,7 @@ class PixivService {
                 const r18Count = allItems.filter(i => i.x_restrict > 0).length;
                 const sfwCount = allItems.filter(i => i.x_restrict === 0).length;
                 const aiCount = allItems.filter(i => i.illust_ai_type === 2).length;
-                console.log(`[Pixiv Search] Total: ${allItems.length} items | ${r18Count} R18 | ${sfwCount} SFW | ${aiCount} AI`);
+                logger.info('Pixiv Search', `Total: ${allItems.length} items | ${r18Count} R18 | ${sfwCount} SFW | ${aiCount} AI`);
             }
 
             return this._filterResults(
@@ -389,7 +389,7 @@ class PixivService {
             url.searchParams.append('offset', currentOffset.toString());
 
             if (page === 0) {
-                console.log(`[Pixiv Unfiltered] Query: "${query}" | BaseOffset: ${offset} | Sort: ${sort} | Pages: ${pagesToFetch}`);
+                logger.info('Pixiv Unfiltered', `Query: "${query}" | BaseOffset: ${offset} | Sort: ${sort} | Pages: ${pagesToFetch}`);
             }
 
             try {
@@ -406,11 +406,11 @@ class PixivService {
                 const items = isNovel ? data.novels : data.illusts;
 
                 if (!items || items.length === 0) {
-                    console.log(`[Pixiv Unfiltered] Page ${page} returned no items, stopping`);
+                    logger.info('Pixiv Unfiltered', `Page ${page} returned no items, stopping`);
                     break;
                 }
 
-                console.log(`[Pixiv Unfiltered] Page ${page} (offset ${currentOffset}): Got ${items.length} items`);
+                logger.info('Pixiv Unfiltered', `Page ${page} (offset ${currentOffset}): Got ${items.length} items`);
                 allItems.push(...(items as PixivIllust[]));
                 lastNextUrl = data.next_url || null;
 
@@ -425,7 +425,7 @@ class PixivService {
 
         const r18Count = allItems.filter(i => i.x_restrict > 0).length;
         const sfwCount = allItems.filter(i => i.x_restrict === 0).length;
-        console.log(`[Pixiv Unfiltered] Total: ${allItems.length} items (${r18Count} R18, ${sfwCount} SFW)`);
+        logger.info('Pixiv Unfiltered', `Total: ${allItems.length} items (${r18Count} R18, ${sfwCount} SFW)`);
         return { items: allItems, nextUrl: lastNextUrl };
     }
 
@@ -455,7 +455,7 @@ class PixivService {
             url.searchParams.append('filter', 'for_android');
 
             if (page === 0) {
-                console.log(`[Pixiv SFW] Query: "${query}" | BaseOffset: ${offset} | Sort: ${sort} | Pages: ${pagesToFetch}`);
+                logger.info('Pixiv SFW', `Query: "${query}" | BaseOffset: ${offset} | Sort: ${sort} | Pages: ${pagesToFetch}`);
             }
 
             try {
@@ -473,7 +473,7 @@ class PixivService {
 
                 if (!items || items.length === 0) break;
 
-                console.log(`[Pixiv SFW] Page ${page} (offset ${currentOffset}): Got ${items.length} items`);
+                logger.info('Pixiv SFW', `Page ${page} (offset ${currentOffset}): Got ${items.length} items`);
                 allItems.push(...(items as PixivIllust[]));
                 lastNextUrl = data.next_url || null;
 
@@ -486,7 +486,7 @@ class PixivService {
             }
         }
 
-        console.log(`[Pixiv SFW] Total: ${allItems.length} items`);
+        logger.info('Pixiv SFW', `Total: ${allItems.length} items`);
         return { items: allItems, nextUrl: lastNextUrl };
     }
 
@@ -523,7 +523,7 @@ class PixivService {
                 url.searchParams.append('filter', 'for_android');
             }
 
-            console.log(`[Pixiv Ranking] Mode: ${rankingMode}, NSFW: ${showNsfw}`);
+            logger.info('Pixiv Ranking', `Mode: ${rankingMode}, NSFW: ${showNsfw}`);
 
             const response = await fetch(url.toString(), {
                 headers: {
@@ -583,7 +583,7 @@ class PixivService {
             items = items.filter(item => item.illust_ai_type !== 2);
             const removed = beforeAI - items.length;
             if (removed > 0) {
-                console.log(`[Pixiv Filter] AI filter removed ${removed} items`);
+                logger.info('Pixiv Filter', `AI filter removed ${removed} items`);
             }
         }
 
@@ -593,7 +593,7 @@ class PixivService {
             items = items.filter(item => (item.total_view || 0) >= 1000);
             const removed = beforeQuality - items.length;
             if (removed > 0) {
-                console.log(`[Pixiv Filter] Quality filter removed ${removed} items`);
+                logger.info('Pixiv Filter', `Quality filter removed ${removed} items`);
             }
         }
 
@@ -603,7 +603,7 @@ class PixivService {
             items = items.filter(item => (item.total_bookmarks || 0) >= minBookmarks);
             const removed = beforeBookmarks - items.length;
             if (removed > 0) {
-                console.log(`[Pixiv Filter] Bookmark filter removed ${removed} items`);
+                logger.info('Pixiv Filter', `Bookmark filter removed ${removed} items`);
             }
         }
 
@@ -622,7 +622,7 @@ class PixivService {
         // Final stats
         const finalR18 = items.filter(i => i.x_restrict > 0).length;
         const finalSFW = items.filter(i => i.x_restrict === 0).length;
-        console.log(`[Pixiv Filter] Final: ${items.length}/${originalCount} | R18: ${finalR18}/${originalR18} | SFW: ${finalSFW}/${originalSFW}`);
+        logger.info('Pixiv Filter', `Final: ${items.length}/${originalCount} | R18: ${finalR18}/${originalR18} | SFW: ${finalSFW}/${originalSFW}`);
 
         return { items, nextUrl: data.next_url };
     }

@@ -13,8 +13,8 @@ import {
     TextChannel
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
-
-import { getDefault } from '../../utils/common/moduleHelper.js';
+import _lockdownModule from '../../services/moderation/LockdownService.js';
+import _moderationConfigModule from '../../config/features/moderation/index.js';
 interface ModerationConfig {
     COLORS: Record<string, number>;
     EMOJIS: Record<string, string>;
@@ -46,15 +46,9 @@ interface LockdownService {
 }
 
 
-let lockdownService: LockdownService | undefined;
-let moderationConfig: ModerationConfig | undefined;
-
-try {
-    lockdownService = getDefault(require('../../services/moderation/LockdownService'));
-    moderationConfig = getDefault(require('../../config/features/moderation'));
-} catch {
-    // Service not available
-}
+// SERVICE IMPORTS — static ESM imports (converted from CJS require())
+const lockdownService: LockdownService = _lockdownModule as any;
+const moderationConfig: ModerationConfig = _moderationConfigModule as any;
 
 class LockdownCommand extends BaseCommand {
     constructor() {

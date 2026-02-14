@@ -14,7 +14,9 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
-import { getDefault } from '../../utils/common/moduleHelper.js';
+import logger from '../../core/Logger.js';
+import _wikipediaServiceModule from '../../services/api/wikipediaService.js';
+import _wikipediaHandlerModule from '../../handlers/api/wikipediaHandler.js';
 // TYPES
 interface WikiArticle {
     title: string;
@@ -46,17 +48,9 @@ interface WikipediaHandler {
     createArticleButtons: (article: WikiArticle) => ActionRowBuilder<ButtonBuilder>;
     createOnThisDayEmbed: (events: WikiEvent[]) => EmbedBuilder;
 }
-// SERVICE IMPORTS
-let wikipediaService: WikipediaService | undefined;
-let wikipediaHandler: WikipediaHandler | undefined;
-
-
-try {
-    wikipediaService = getDefault(require('../../services/api/wikipediaService'));
-    wikipediaHandler = getDefault(require('../../handlers/api/wikipediaHandler'));
-} catch (e) {
-    console.warn('[Wikipedia] Could not load services:', (e as Error).message);
-}
+// SERVICE IMPORTS — static ESM imports (converted from CJS require())
+const wikipediaService: WikipediaService = _wikipediaServiceModule as any;
+const wikipediaHandler: WikipediaHandler = _wikipediaHandlerModule as any;
 // COMMAND
 class WikipediaCommand extends BaseCommand {
     constructor() {
@@ -153,7 +147,7 @@ class WikipediaCommand extends BaseCommand {
                     break;
             }
         } catch (error) {
-            console.error('[Wikipedia]', error);
+            logger.error('Wikipedia', `Error: ${(error as Error).message}`);
             await this.errorReply(interaction, 'An error occurred while fetching Wikipedia data.');
         }
     }

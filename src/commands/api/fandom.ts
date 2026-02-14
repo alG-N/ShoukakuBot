@@ -15,7 +15,8 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
-import { getDefault } from '../../utils/common/moduleHelper.js';
+import logger from '../../core/Logger.js';
+import _fandomServiceModule from '../../services/api/fandomService.js';
 // TYPES
 interface WikiInfo {
     name?: string;
@@ -68,15 +69,8 @@ interface FandomService {
     searchWikis: (query: string) => Promise<WikiSuggestion[]>;
     autocomplete: (wiki: string, query: string) => Promise<AutocompleteSuggestion[]>;
 }
-// SERVICE IMPORTS
-let fandomService: FandomService | undefined;
-
-
-try {
-    fandomService = getDefault(require('../../services/api/fandomService'));
-} catch (e) {
-    console.warn('[Fandom] Could not load service:', (e as Error).message);
-}
+// SERVICE IMPORTS — static ESM imports (converted from CJS require())
+const fandomService: FandomService = _fandomServiceModule as any;
 // COMMAND
 class FandomCommand extends BaseCommand {
     constructor() {
@@ -172,7 +166,7 @@ class FandomCommand extends BaseCommand {
                     break;
             }
         } catch (error) {
-            console.error('[Fandom]', error);
+            logger.error('Fandom', `Error: ${(error as Error).message}`);
             await this.safeReply(interaction, { embeds: [this.errorEmbed('An error occurred while fetching Fandom data.')], ephemeral: true });
         }
     }

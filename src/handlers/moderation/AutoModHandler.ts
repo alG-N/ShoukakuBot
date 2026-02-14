@@ -6,12 +6,8 @@
 
 import { EmbedBuilder, Message, Guild, GuildTextBasedChannel } from 'discord.js';
 import { logger } from '../../core/Logger.js';
-
-import { getDefault } from '../../utils/common/moduleHelper.js';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const AutoModService = getDefault(require('../../services/moderation/AutoModService'));
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const moderationConfig = getDefault(require('../../config/features/moderation'));
+import AutoModService from '../../services/moderation/AutoModService.js';
+import moderationConfig from '../../config/features/moderation/index.js';
 /**
  * Violation types
  */
@@ -106,15 +102,15 @@ export async function handleMessage(client: unknown, message: Message): Promise<
 
     try {
         // Process through auto-mod
-        const violation: Violation | null = await AutoModService.processMessage(message);
+        const violation = await AutoModService.processMessage(message);
 
         if (violation) {
             // Execute action
-            const result: ActionResult = await AutoModService.executeAction(message, violation);
+            const result = await AutoModService.executeAction(message, violation);
 
             // Send soft warn notification for warn actions (including delete_warn)
             if (result.warned) {
-                await sendViolationNotice(message, violation, result);
+                await sendViolationNotice(message, violation as any, result);
             }
 
             // Log violation

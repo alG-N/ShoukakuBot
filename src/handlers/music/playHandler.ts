@@ -10,6 +10,7 @@ import musicCache from '../../cache/music/MusicCacheFacade.js';
 import { checkVoiceChannelSync, checkVoicePermissionsSync } from '../../middleware/voiceChannelCheck.js';
 import { music } from '../../config/index.js';
 import { musicFacade as musicService } from '../../services/music/MusicFacade.js';
+import logger from '../../core/Logger.js';
 
 // Use any for Track type - different but runtime compatible
 type Track = any;
@@ -35,11 +36,9 @@ export interface VoteSkipStatus {
     count: number;
     required: number;
 }
-// Store pending long track confirmations
-export const pendingLongTracks = new Map<string, PendingLongTrack>();
+// Store pending long track confirmations (internal only — not used externally despite prior export)
+const pendingLongTracks = new Map<string, PendingLongTrack>();
 export const playHandler = {
-    // Expose pendingLongTracks for buttonHandler
-    pendingLongTracks,
     
     async handlePlay(interaction: ChatInputCommandInteraction, guildId: string, userId: string): Promise<void> {
         // IMMEDIATELY defer to prevent interaction timeout (3s limit)
@@ -185,7 +184,7 @@ export const playHandler = {
                 await this.refreshNowPlayingMessage(guildId, interaction.user.id, interaction.guild);
             }
         } catch (error) {
-            console.error('[Play Error]', error);
+            logger.error('Play', `Error: ${(error as Error).message}`);
             const errorMessage = error instanceof Error ? error.message : 'Failed to play track';
             await interaction.editReply({
                 embeds: [trackHandler.createErrorEmbed(errorMessage)]
@@ -246,7 +245,7 @@ export const playHandler = {
                 await this.refreshNowPlayingMessage(guildId, interaction.user.id, interaction.guild);
             }
         } catch (error) {
-            console.error('[Playlist Error]', error);
+            logger.error('Play', `Playlist error: ${(error as Error).message}`);
             const errorMessage = error instanceof Error ? error.message : 'Failed to load playlist';
             await interaction.editReply({
                 embeds: [trackHandler.createErrorEmbed(errorMessage)]
@@ -357,7 +356,7 @@ export const playHandler = {
                 });
             }
         } catch (error) {
-            console.error('[Play] Error handling long track button:', error);
+            logger.error('Play', `Error handling long track button: ${(error as Error).message}`);
             await interaction.editReply({
                 content: '❌ An error occurred. Please try again.',
                 embeds: [],

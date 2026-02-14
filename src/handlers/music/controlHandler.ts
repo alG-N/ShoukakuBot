@@ -10,6 +10,7 @@ import musicCache from '../../cache/music/MusicCacheFacade.js';
 import { checkSameVoiceChannel } from '../../middleware/voiceChannelCheck.js';
 import { music } from '../../config/index.js';
 import { musicFacade as musicService } from '../../services/music/MusicFacade.js';
+import logger from '../../core/Logger.js';
 
 // Use any for Track type - different but runtime compatible
 type Track = any;
@@ -129,7 +130,7 @@ export const controlHandler = {
                     components: []
                 }).catch(() => {});
             } catch (error) {
-                console.error('Error in skip vote timeout:', error);
+                logger.error('MusicControl', `Error in skip vote timeout: ${(error as Error).message}`);
             }
         }, SKIP_VOTE_TIMEOUT);
         musicCache.setSkipVoteTimeout(guildId, voteTimeout);

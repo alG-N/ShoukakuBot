@@ -7,6 +7,7 @@
 
 import lavalinkService from '../LavalinkService.js';
 import { queueService } from '../queue/index.js';
+import logger from '../../../core/Logger.js';
 import type { MusicTrack, TrackInfo } from '../events/MusicEvents.js';
 // TYPES
 interface SearchStrategy {
@@ -31,7 +32,7 @@ class AutoPlayService {
 
         // Rate limiting
         if (queue?.lastAutoplaySearch && (now - queue.lastAutoplaySearch) < this.MIN_SEARCH_INTERVAL) {
-            console.log('[AutoPlay] Rate limited, skipping search');
+            logger.info('AutoPlay', 'Rate limited, skipping search');
             return null;
         }
         if (queue) queue.lastAutoplaySearch = now;
@@ -43,13 +44,13 @@ class AutoPlayService {
         const uri = (trackInfo as TrackInfo)?.uri || lastTrack?.url;
 
         if (!title) {
-            console.log('[AutoPlay] No track title available');
+            logger.info('AutoPlay', 'No track title available');
             return null;
         }
 
         const recentTitles = queue?.lastPlayedTracks || [];
 
-        console.log(`[AutoPlay] Finding similar to: "${title}" by "${author}"`);
+        logger.info('AutoPlay', `Finding similar to: "${title}" by "${author}"`);
 
         // Clean up title
         const cleanTitle = this._cleanTitle(title);
@@ -63,7 +64,7 @@ class AutoPlayService {
         // Try strategies
         for (const strategy of shuffledStrategies.slice(0, 5)) {
             try {
-                console.log(`[AutoPlay] Trying strategy: ${strategy.name} - "${strategy.query}"`);
+                logger.info('AutoPlay', `Trying strategy: ${strategy.name} - "${strategy.query}"`);
 
                 const results = await this._searchWithLimit(strategy.query, 5);
 
@@ -73,7 +74,7 @@ class AutoPlayService {
                     if (validTracks.length > 0) {
                         const randomIndex = Math.floor(Math.random() * Math.min(validTracks.length, 3));
                         const selectedTrack = validTracks[randomIndex]!;
-                        console.log(`[AutoPlay] Selected: ${selectedTrack.info?.title ?? 'Unknown'} (strategy: ${strategy.name})`);
+                        logger.info('AutoPlay', `Selected: ${selectedTrack.info?.title ?? 'Unknown'} (strategy: ${strategy.name})`);
                         return selectedTrack;
                     }
                 }
@@ -238,7 +239,7 @@ class AutoPlayService {
             return [];
         } catch (error) {
             const err = error as Error;
-            console.error('[AutoPlay] Search error:', err.message);
+            logger.error('AutoPlay', `Search error: ${err.message}`);
             return [];
         }
     }
@@ -269,7 +270,7 @@ class AutoPlayService {
                 `best ${cleanAuthor?.split(' ')[0] || 'music'} songs`
             ];
             const randomFallback = fallbackQueries[Math.floor(Math.random() * fallbackQueries.length)] ?? 'popular music';
-            console.log(`[AutoPlay] Fallback search: "${randomFallback}"`);
+            logger.info('AutoPlay', `Fallback search: "${randomFallback}"`);
 
             const results = await (lavalinkService as { searchMultiple: (q: string, l: number) => Promise<MusicTrack[]> }).searchMultiple(randomFallback, 5);
             if (results && results.length > 0) {
@@ -278,17 +279,17 @@ class AutoPlayService {
                 if (validTracks.length > 0) {
                     const randomIndex = Math.floor(Math.random() * Math.min(validTracks.length, 3));
                     const selectedTrack = validTracks[randomIndex]!;
-                    console.log(`[AutoPlay] Fallback selected: ${selectedTrack.info?.title ?? 'Unknown'}`);
+                    logger.info('AutoPlay', `Fallback selected: ${selectedTrack.info?.title ?? 'Unknown'}`);
                     return selectedTrack;
                 }
 
                 const selectedTrack = results[0]!;
-                console.log(`[AutoPlay] Fallback (no filter): ${selectedTrack.info?.title ?? 'Unknown'}`);
+                logger.info('AutoPlay', `Fallback (no filter): ${selectedTrack.info?.title ?? 'Unknown'}`);
                 return selectedTrack;
             }
         } catch (e) {
             const error = e as Error;
-            console.error('[AutoPlay] Fallback search error:', error.message);
+            logger.error('AutoPlay', `Fallback search error: ${error.message}`);
         }
 
         return null;

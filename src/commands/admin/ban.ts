@@ -15,11 +15,8 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
-
-
-import { getDefault } from '../../utils/common/moduleHelper.js';
-// Logger for debugging
-const logger = getDefault(require('../../core/Logger'));
+import logger from '../../core/Logger.js';
+import { moderationService } from '../../services/moderation/index.js';
 
 /**
  * Validation result interface
@@ -135,13 +132,12 @@ class BanCommand extends BaseCommand {
 
             // Log to ModerationService
             try {
-                const { ModerationService } = require('../../services');
-                await ModerationService.logAction(interaction.guild.id, {
-                    type: 'ban',
+                await moderationService.logModAction(interaction.guild, {
+                    type: 'BAN',
                     target: targetUser,
-                    moderator: interaction.user,
+                    moderator: interaction.member as GuildMember,
                     reason,
-                    extra: { deleteDays }
+                    deleteMessageDays: deleteDays
                 });
             } catch {
                 // Service not available
@@ -198,11 +194,10 @@ class BanCommand extends BaseCommand {
 
             // Log to ModerationService
             try {
-                const { ModerationService } = require('../../services');
-                await ModerationService.logAction(interaction.guild.id, {
-                    type: 'unban',
-                    target: banned.user,
-                    moderator: interaction.user,
+                await moderationService.logModAction(interaction.guild, {
+                    type: 'UNBAN',
+                    target: { id: banned.user.id },
+                    moderator: interaction.member as GuildMember,
                     reason
                 });
             } catch {

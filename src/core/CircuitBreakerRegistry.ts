@@ -103,9 +103,17 @@ export const CIRCUIT_CONFIGS: Record<string, CircuitBreakerOptions> = {
         successThreshold: 3,
         timeout: 15000,       // 15s
         resetTimeout: 30000,  // 30s
-        isFailure: (err: Error & { code?: number; httpStatus?: number }): boolean => {
-            // Don't trip on rate limits, only on actual failures
-            return err.code !== 429 && err.httpStatus !== 429;
+        isFailure: (err: Error & { code?: string | number; httpStatus?: number }): boolean => {
+            // Don't trip on rate limits — discord.js uses string error codes
+            // (e.g., 'RateLimited'), not HTTP status 429
+            if (err.code === 'RateLimited' || err.code === 429 || err.httpStatus === 429) {
+                return false;
+            }
+            // Also ignore transient Discord API errors
+            if (typeof err.code === 'string' && ['ECONNRESET', 'ETIMEDOUT', 'UND_ERR_CONNECT_TIMEOUT'].includes(err.code)) {
+                return true; // These ARE real failures that should count
+            }
+            return true;
         }
     },
 

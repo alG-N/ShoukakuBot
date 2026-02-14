@@ -6,6 +6,7 @@
 
 import axios, { AxiosRequestConfig } from 'axios';
 import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
+import logger from '../../core/Logger.js';
 import cacheService from '../../cache/CacheService.js';
 // TYPES & INTERFACES
 interface RequestConfig extends AxiosRequestConfig {
@@ -267,7 +268,7 @@ class FandomService {
                 return result;
             } catch (error) {
                 const err = error as { response?: { status: number }; code?: string; message: string };
-                console.error('[Fandom Search Error]', err.message);
+                logger.error('Fandom', `Search error: ${err.message}`);
 
                 // Check if wiki doesn't exist
                 if (err.response?.status === 404 || err.code === 'ENOTFOUND') {
@@ -350,7 +351,7 @@ class FandomService {
                 await cacheService.set(this.CACHE_NS, cacheKey, result, this.CACHE_TTL);
                 return result;
             } catch (error) {
-                console.error('[Fandom Article Error]', (error as Error).message);
+                logger.error('Fandom', `Article error: ${(error as Error).message}`);
                 return { success: false, error: 'Failed to fetch article. Please try again.' };
             }
         });
@@ -391,7 +392,7 @@ class FandomService {
                 // Get full article details
                 return await this.getArticle(wiki, firstPage.title);
             } catch (error) {
-                console.error('[Fandom Random Error]', (error as Error).message);
+                logger.error('Fandom', `Random article error: ${(error as Error).message}`);
                 return { success: false, error: 'Failed to get random article. Please try again.' };
             }
         });
@@ -450,7 +451,7 @@ class FandomService {
                 await cacheService.set(this.CACHE_NS, cacheKey, result, this.CACHE_TTL);
                 return result;
             } catch (error) {
-                console.error('[Fandom Wiki Info Error]', (error as Error).message);
+                logger.error('Fandom', `Wiki info error: ${(error as Error).message}`);
                 return { success: false, error: 'Failed to fetch wiki info.' };
             }
         });

@@ -4,49 +4,8 @@
  * @module services/moderation/FilterService
  */
 
-// Use require for CommonJS repository module
-const FilterRepository = require('../../repositories/moderation/FilterRepository.js') as {
-    getAll: (guildId: string) => Promise<unknown[]>;
-    getById: (id: number) => Promise<unknown>;
-    getByPattern: (guildId: string, pattern: string) => Promise<unknown>;
-    add: (data: Record<string, unknown>) => Promise<unknown>;
-    addBulk: (guildId: string, filters: unknown[], createdBy: string) => Promise<number>;
-    remove: (id: number) => Promise<boolean>;
-    removeByPattern: (guildId: string, pattern: string) => Promise<boolean>;
-    removeAll: (guildId: string) => Promise<number>;
-    count: (guildId: string) => Promise<number>;
-    search: (guildId: string, searchTerm: string) => Promise<unknown[]>;
-};
-
-// Use require for config
-const filterConfigModule = require('../../config/features/moderation/filters.js') as {
-    default?: {
-        settings?: {
-            stripZalgo?: boolean;
-            normalizeUnicode?: boolean;
-            checkLeetspeak?: boolean;
-            minWordLength?: number;
-        };
-        zalgoPattern?: RegExp;
-        unicodeMap?: Record<string, string>;
-        leetspeak?: Record<string, string>;
-        exemptPatterns?: RegExp[];
-        presets?: Record<string, { words: Partial<Filter>[] }>;
-    };
-    settings?: {
-        stripZalgo?: boolean;
-        normalizeUnicode?: boolean;
-        checkLeetspeak?: boolean;
-        minWordLength?: number;
-    };
-    zalgoPattern?: RegExp;
-    unicodeMap?: Record<string, string>;
-    leetspeak?: Record<string, string>;
-    exemptPatterns?: RegExp[];
-    presets?: Record<string, { words: Partial<Filter>[] }>;
-};
-// Handle both ESM default export and direct export
-const filterConfig = filterConfigModule.default || filterConfigModule;
+import FilterRepository from '../../repositories/moderation/FilterRepository.js';
+import filterConfig from '../../config/features/moderation/filters.js';
 // TYPES
 export interface Filter {
     id: number;
@@ -111,7 +70,8 @@ export function normalizeText(text: string): string {
     // Convert leetspeak
     if (filterConfig.settings?.checkLeetspeak && filterConfig.leetspeak) {
         for (const [char, replacement] of Object.entries(filterConfig.leetspeak)) {
-            normalized = normalized.replace(new RegExp(`\\${char}`, 'g'), replacement);
+            const escapedChar = char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            normalized = normalized.replace(new RegExp(escapedChar, 'g'), replacement);
         }
     }
 
@@ -197,7 +157,7 @@ export async function checkMessage(guildId: string, content: string): Promise<Fi
  * Add a filter
  */
 export async function addFilter(data: Partial<Filter> & { guildId: string }): Promise<Filter> {
-    const filter = await FilterRepository.add(data as Record<string, unknown>) as Filter;
+    const filter = await FilterRepository.add(data as any) as Filter;
     await invalidateCache(data.guildId);
     return filter;
 }
@@ -210,7 +170,7 @@ export async function addFilters(
     filters: Partial<Filter>[],
     createdBy: string
 ): Promise<number> {
-    const count = await FilterRepository.addBulk(guildId, filters, createdBy);
+    const count = await FilterRepository.addBulk(guildId, filters as any, createdBy);
     await invalidateCache(guildId);
     return count;
 }

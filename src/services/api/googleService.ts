@@ -6,6 +6,7 @@
 
 import axios, { AxiosError } from 'axios';
 import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
+import logger from '../../core/Logger.js';
 import cacheService from '../../cache/CacheService.js';
 // TYPES & INTERFACES
 /**
@@ -171,10 +172,10 @@ class GoogleService {
             };
         } catch (error) {
             const axiosError = error as AxiosError;
-            console.error('[Google Search Error]', axiosError.message, `Status: ${axiosError.response?.status || 'N/A'}`);
+            logger.error('Google', `Search error: ${axiosError.message}, Status: ${axiosError.response?.status || 'N/A'}`);
 
             // Fallback to DuckDuckGo on ANY Google API error (403, 429, quota, etc.)
-            console.log(`[Google] API error (${axiosError.response?.status || 'unknown'}), falling back to DuckDuckGo`);
+            logger.info('Google', `API error (${axiosError.response?.status || 'unknown'}), falling back to DuckDuckGo`);
             return this.searchDuckDuckGo(query);
         }
     }
@@ -191,7 +192,7 @@ class GoogleService {
                     return htmlResults;
                 }
             } catch (htmlError) {
-                console.log('[DuckDuckGo HTML] Fallback to Instant Answer API:', (htmlError as Error).message);
+                logger.info('DuckDuckGo', `HTML fallback to Instant Answer API: ${(htmlError as Error).message}`);
             }
 
             // Fallback to Instant Answer API
@@ -256,7 +257,7 @@ class GoogleService {
                 searchEngine: 'DuckDuckGo'
             };
         } catch (error) {
-            console.error('[DuckDuckGo Search Error]', (error as Error).message);
+            logger.error('DuckDuckGo', `Search error: ${(error as Error).message}`);
             return {
                 success: false,
                 error: 'Search failed. Please try again.',

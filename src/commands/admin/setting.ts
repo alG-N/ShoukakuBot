@@ -26,65 +26,9 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
-
-interface GuildSettings {
-    announcements_enabled?: boolean;
-    announcement_channel?: string | null;
-}
-
-interface AutoModSettings {
-    enabled: boolean;
-    spam_enabled?: boolean;
-    duplicate_enabled?: boolean;
-    links_enabled?: boolean;
-    invites_enabled?: boolean;
-    mention_enabled?: boolean;
-    caps_enabled?: boolean;
-    filter_enabled?: boolean;
-}
-
-interface LockdownStatus {
-    lockedCount: number;
-}
-
-interface RaidStatus {
-    active: boolean;
-}
-
-interface ModLogSettings {
-    log_channel_id?: string | null;
-}
-
-interface GuildSettingsService {
-    getGuildSettings: (guildId: string) => Promise<GuildSettings>;
-    getSnipeLimit: (guildId: string) => Promise<number>;
-    getDeleteLimit: (guildId: string) => Promise<number>;
-    getAdminRoles: (guildId: string) => Promise<string[]>;
-    getModRoles: (guildId: string) => Promise<string[]>;
-    resetGuildSettings: (guildId: string) => Promise<void>;
-    updateGuildSettings: (guildId: string, settings: Partial<GuildSettings>) => Promise<void>;
-    setSnipeLimit: (guildId: string, limit: number) => Promise<void>;
-    setDeleteLimit: (guildId: string, limit: number) => Promise<void>;
-    setAdminRoles: (guildId: string, roles: string[]) => Promise<void>;
-    setModRoles: (guildId: string, roles: string[]) => Promise<void>;
-}
-
-interface AutoModServiceType {
-    getSettings: (guildId: string) => Promise<AutoModSettings>;
-}
-
-interface LockdownServiceType {
-    getLockStatus: (guildId: string) => Promise<LockdownStatus>;
-}
-
-interface AntiRaidServiceType {
-    getRaidModeState: (guildId: string) => Promise<RaidStatus | null>;
-}
-
-interface ModLogServiceType {
-    getSettings: (guildId: string) => Promise<ModLogSettings | null>;
-    setLogChannel: (guildId: string, channelId: string | null) => Promise<void>;
-}
+import logger from '../../core/Logger.js';
+import _GuildSettingsService, { DEFAULT_GUILD_SETTINGS } from '../../services/guild/GuildSettingsService.js';
+import { autoModService as _autoModService, lockdownService as _lockdownService, antiRaidService as _antiRaidService, modLogService as _modLogService, type AutoModSettings } from '../../services/moderation/index.js';
 
 class SettingCommand extends BaseCommand {
     constructor() {
@@ -120,21 +64,13 @@ class SettingCommand extends BaseCommand {
      * Show main settings panel
      */
     private async _showMainPanel(interaction: ChatInputCommandInteraction, isUpdate = false): Promise<void> {
-        let GuildSettingsService: GuildSettingsService | undefined;
-        let AutoModService: AutoModServiceType | undefined;
-        let LockdownService: LockdownServiceType | undefined;
-        let AntiRaidService: AntiRaidServiceType | undefined;
-        let ModLogService: ModLogServiceType | undefined;
+        const GuildSettingsService = _GuildSettingsService;
+        const AutoModService = _autoModService;
+        const LockdownService = _lockdownService;
+        const AntiRaidService = _antiRaidService;
+        const ModLogService = _modLogService;
         
-        try {
-            const services = require('../../services');
-            GuildSettingsService = services.GuildSettingsService;
-            const modServices = require('../../services/moderation');
-            AutoModService = modServices.autoModService;
-            LockdownService = modServices.lockdownService;
-            AntiRaidService = modServices.antiRaidService;
-            ModLogService = modServices.modLogService;
-        } catch {
+        if (!GuildSettingsService) {
             await interaction.reply({
                 content: '❌ Settings service unavailable.',
                 ephemeral: true
@@ -143,11 +79,15 @@ class SettingCommand extends BaseCommand {
         }
 
         const guildId = interaction.guildId!;
-        const settings = await GuildSettingsService!.getGuildSettings(guildId);
-        const snipeLimit = await GuildSettingsService!.getSnipeLimit(guildId);
-        const deleteLimit = await GuildSettingsService!.getDeleteLimit(guildId);
-        const adminRoles = await GuildSettingsService!.getAdminRoles(guildId);
-        const modRoles = await GuildSettingsService!.getModRoles(guildId);
+        const settings = await GuildSettingsService.getGuildSettings(guildId);
+        const snipeLimit = await GuildSettingsService.getSnipeLimit(guildId);
+        const deleteLimit = await GuildSettingsService.getDeleteLimit(guildId);
+        const adminRoles = await GuildSettingsService.getAdminRoles(guildId);
+        const modRoles = await GuildSettingsService.getModRoles(guildId);
+
+        // Get announcement settings from the settings JSON field
+        const announceEnabled = (settings.settings?.announcements_enabled as boolean) !== false;
+        const announceChannelId = (settings.settings?.announcement_channel as string | null) ?? null;
 
         // Get mod log channel from ModLogService
         let modLogChannel: string | null = null;
@@ -157,9 +97,9 @@ class SettingCommand extends BaseCommand {
         } catch {}
 
         // Get moderation status
-        let automodSettings: AutoModSettings = { enabled: false };
-        let lockdownStatus: LockdownStatus = { lockedCount: 0 };
-        let raidStatus: RaidStatus | null = null;
+        let automodSettings: Partial<AutoModSettings> & { enabled: boolean } = { enabled: false };
+        let lockdownStatus = { lockedCount: 0, channelIds: [] as string[] };
+        let raidStatus: { active: boolean } | null = null;
         
         try { automodSettings = await AutoModService!.getSettings(guildId); } catch {}
         try { lockdownStatus = await LockdownService!.getLockStatus(guildId); } catch {}
@@ -189,9 +129,8 @@ class SettingCommand extends BaseCommand {
             : '❌ Disabled';
 
         // Announcement status
-        const announceEnabled = settings.announcements_enabled !== false;
         const announceStatus = announceEnabled
-            ? (settings.announcement_channel ? `✅ <#${settings.announcement_channel}>` : '⚠️ No channel set')
+            ? (announceChannelId ? `✅ <#${announceChannelId}>` : '⚠️ No channel set')
             : '❌ Disabled';
 
         const embed = new EmbedBuilder()
@@ -293,7 +232,7 @@ class SettingCommand extends BaseCommand {
             } catch (error: unknown) {
                 const err = error as { code?: number };
                 if (err.code === 10062) return; // Unknown interaction
-                console.error('[Setting] Error:', error);
+                logger.error('Setting', `Error: ${error}`);
                 if (!i.replied && !i.deferred) {
                     await i.reply({ content: '❌ An error occurred.', ephemeral: true }).catch(() => {});
                 }
@@ -308,18 +247,19 @@ class SettingCommand extends BaseCommand {
     }
 
     private async _handleSettingMenu(interaction: StringSelectMenuInteraction, value: string): Promise<void> {
-        let GuildSettingsService: GuildSettingsService | undefined;
-        try {
-            const services = require('../../services');
-            GuildSettingsService = services.GuildSettingsService;
-        } catch {
-            return;
-        }
+        const GuildSettingsService = _GuildSettingsService;
+        if (!GuildSettingsService) return;
 
         const guildId = interaction.guildId!;
 
         if (value === 'reset') {
-            await GuildSettingsService!.resetGuildSettings(guildId);
+            await GuildSettingsService.updateGuildSettings(guildId, {
+                snipe_limit: DEFAULT_GUILD_SETTINGS.snipe_limit,
+                delete_limit: DEFAULT_GUILD_SETTINGS.delete_limit,
+                admin_roles: DEFAULT_GUILD_SETTINGS.admin_roles,
+                mod_roles: DEFAULT_GUILD_SETTINGS.mod_roles,
+                settings: {}
+            });
             await interaction.update({
                 content: '✅ All settings have been reset to defaults!',
                 embeds: [],
@@ -329,10 +269,10 @@ class SettingCommand extends BaseCommand {
         }
 
         if (value === 'toggle_announce') {
-            const settings = await GuildSettingsService!.getGuildSettings(guildId);
-            const currentEnabled = settings.announcements_enabled !== false;
-            await GuildSettingsService!.updateGuildSettings(guildId, { 
-                announcements_enabled: !currentEnabled 
+            const currentSettings = await GuildSettingsService.getGuildSettings(guildId);
+            const currentEnabled = (currentSettings.settings?.announcements_enabled as boolean) !== false;
+            await GuildSettingsService.updateGuildSettings(guildId, {
+                settings: { ...currentSettings.settings, announcements_enabled: !currentEnabled }
             });
             
             await interaction.reply({
@@ -379,13 +319,13 @@ class SettingCommand extends BaseCommand {
                     await modalSubmit.reply({ content: '❌ Snipe limit must be 1-50!', ephemeral: true });
                     return;
                 }
-                await GuildSettingsService!.setSnipeLimit(guildId, newValue);
+                await GuildSettingsService.setSnipeLimit(guildId, newValue);
             } else {
                 if (newValue < 1 || newValue > 500) {
                     await modalSubmit.reply({ content: '❌ Delete limit must be 1-500!', ephemeral: true });
                     return;
                 }
-                await GuildSettingsService!.setDeleteLimit(guildId, newValue);
+                await GuildSettingsService.setDeleteLimit(guildId, newValue);
             }
 
             await modalSubmit.reply({ 
@@ -398,17 +338,12 @@ class SettingCommand extends BaseCommand {
     }
 
     private async _handleModLogChannel(interaction: ChannelSelectMenuInteraction): Promise<void> {
-        let ModLogService: ModLogServiceType | undefined;
-        try {
-            const modServices = require('../../services/moderation');
-            ModLogService = modServices.modLogService;
-        } catch {
-            return;
-        }
+        const ModLogService = _modLogService;
+        if (!ModLogService) return;
 
         const channelId = interaction.values[0] || null;
         
-        await ModLogService!.setLogChannel(interaction.guildId!, channelId);
+        await ModLogService.setLogChannel(interaction.guildId!, channelId);
         
         await interaction.reply({
             content: channelId 
@@ -419,18 +354,15 @@ class SettingCommand extends BaseCommand {
     }
 
     private async _handleAnnounceChannel(interaction: ChannelSelectMenuInteraction): Promise<void> {
-        let GuildSettingsService: GuildSettingsService | undefined;
-        try {
-            const services = require('../../services');
-            GuildSettingsService = services.GuildSettingsService;
-        } catch {
-            return;
-        }
+        const GuildSettingsService = _GuildSettingsService;
+        if (!GuildSettingsService) return;
 
         const channelId = interaction.values[0] || null;
+        const guildId = interaction.guildId!;
         
-        await GuildSettingsService!.updateGuildSettings(interaction.guildId!, { 
-            announcement_channel: channelId 
+        const currentSettings = await GuildSettingsService.getGuildSettings(guildId);
+        await GuildSettingsService.updateGuildSettings(guildId, { 
+            settings: { ...currentSettings.settings, announcement_channel: channelId }
         });
         
         await interaction.reply({
@@ -442,17 +374,12 @@ class SettingCommand extends BaseCommand {
     }
 
     private async _handleAdminRoles(interaction: RoleSelectMenuInteraction): Promise<void> {
-        let GuildSettingsService: GuildSettingsService | undefined;
-        try {
-            const services = require('../../services');
-            GuildSettingsService = services.GuildSettingsService;
-        } catch {
-            return;
-        }
+        const GuildSettingsService = _GuildSettingsService;
+        if (!GuildSettingsService) return;
 
         const newRoles = interaction.values;
         
-        await GuildSettingsService!.setAdminRoles(interaction.guildId!, newRoles);
+        await GuildSettingsService.updateGuildSettings(interaction.guildId!, { admin_roles: newRoles });
         
         await interaction.reply({
             content: newRoles.length 
@@ -463,17 +390,12 @@ class SettingCommand extends BaseCommand {
     }
 
     private async _handleModRoles(interaction: RoleSelectMenuInteraction): Promise<void> {
-        let GuildSettingsService: GuildSettingsService | undefined;
-        try {
-            const services = require('../../services');
-            GuildSettingsService = services.GuildSettingsService;
-        } catch {
-            return;
-        }
+        const GuildSettingsService = _GuildSettingsService;
+        if (!GuildSettingsService) return;
 
         const newRoles = interaction.values;
         
-        await GuildSettingsService!.setModRoles(interaction.guildId!, newRoles);
+        await GuildSettingsService.updateGuildSettings(interaction.guildId!, { mod_roles: newRoles });
         
         await interaction.reply({
             content: newRoles.length 

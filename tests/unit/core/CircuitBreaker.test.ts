@@ -339,6 +339,84 @@ describe('CircuitBreaker', () => {
             });
             expect(result).toBe('fallback-value');
         });
+
+        it('should NOT increment failureCount for non-failure errors (counting bug fix)', async () => {
+            // This test verifies the fix for the counting bug where non-failure errors
+            // were incrementing failureCount before the isFailure check
+            const customBreaker = new CircuitBreaker({
+                name: 'counting-fix-test',
+                failureThreshold: 3,
+                isFailure: (err) => err.message.includes('real-failure'),
+            });
+
+            // Throw many non-failure errors — should NOT trip the circuit
+            for (let i = 0; i < 10; i++) {
+                try {
+                    await customBreaker.execute(async () => { throw new Error('business-error'); });
+                } catch {}
+            }
+
+            // Circuit should still be CLOSED — non-failure errors don't count
+            expect(customBreaker.isClosed()).toBe(true);
+            expect(customBreaker.getMetrics().failureCount).toBe(0);
+        });
+
+        it('should only trip circuit from errors that pass isFailure', async () => {
+            const customBreaker = new CircuitBreaker({
+                name: 'selective-trip',
+                failureThreshold: 2,
+                isFailure: (err) => err.message.includes('server-error'),
+            });
+
+            // Mix of non-failure and real failures
+            try { await customBreaker.execute(async () => { throw new Error('validation-error'); }); } catch {}
+            try { await customBreaker.execute(async () => { throw new Error('rate-limit'); }); } catch {}
+            expect(customBreaker.isClosed()).toBe(true); // Still closed
+
+            // Now real failures
+            try { await customBreaker.execute(async () => { throw new Error('server-error 500'); }); } catch {}
+            expect(customBreaker.isClosed()).toBe(true); // 1/2 failures
+
+            try { await customBreaker.execute(async () => { throw new Error('server-error 503'); }); } catch {}
+            expect(customBreaker.isOpen()).toBe(true); // 2/2 failures — tripped
+        });
+
+        it('should not count rate limit errors toward tripping (Discord scenario)', async () => {
+            // Simulates the Discord rate limit scenario from SYSTEM_REVIEW_V3
+            const discordBreaker = new CircuitBreaker({
+                name: 'discord-ratelimit',
+                failureThreshold: 5,
+                isFailure: (err) => {
+                    const errorWithCode = err as Error & { code?: number | string };
+                    if (errorWithCode.code === 429 || errorWithCode.code === 'RateLimited') {
+                        return false;
+                    }
+                    return true;
+                },
+            });
+
+            // 20 rate limit errors — should NOT trip
+            for (let i = 0; i < 20; i++) {
+                try {
+                    await discordBreaker.execute(async () => {
+                        const err = Object.assign(new Error('rate limited'), { code: 429 });
+                        throw err;
+                    });
+                } catch {}
+            }
+            expect(discordBreaker.isClosed()).toBe(true);
+            expect(discordBreaker.getMetrics().failureCount).toBe(0);
+
+            // Real server errors DO trip
+            for (let i = 0; i < 5; i++) {
+                try {
+                    await discordBreaker.execute(async () => {
+                        throw Object.assign(new Error('Internal Server Error'), { code: 500 });
+                    });
+                } catch {}
+            }
+            expect(discordBreaker.isOpen()).toBe(true);
+        });
     });
 
     describe('getMetrics()', () => {

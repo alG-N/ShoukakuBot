@@ -33,4 +33,8 @@ export type {
     ModLogSettings 
 } from './ModLogService.js';
 
+export type { 
+    TrackedMessage 
+} from './SnipeService.js';
+
 

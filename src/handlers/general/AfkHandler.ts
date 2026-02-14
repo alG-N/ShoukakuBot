@@ -8,6 +8,7 @@
 import { EmbedBuilder, Message, Client } from 'discord.js';
 import afkRepository from '../../repositories/general/AfkRepository.js';
 import { formatDuration } from '../../commands/general/afk.js';
+import logger from '../../core/Logger.js';
 
 /**
  * Handle message events for AFK system
@@ -71,6 +72,6 @@ export async function handleAfkMessage(message: Message, client: Client): Promis
         }
     } catch (error: unknown) {
         const err = error as Error;
-        console.error('[AFK] handleAfkMessage error:', err.message);
+        logger.error('AFK', `handleAfkMessage error: ${err.message}`);
     }
 }

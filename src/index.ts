@@ -403,12 +403,23 @@ class AlterGoldenBot {
     }
 }
 // ENTRY POINT
-const bot_instance = new AlterGoldenBot();
-bot_instance.start().catch(error => {
-    console.error('Fatal error:', error);
-    process.exit(1);
-});
+// Guard: only start the bot when this file is the entry point
+// Prevents accidental startup when imported by tests or tools
+let bot_instance: AlterGoldenBot | undefined;
+
+const isEntryPoint = typeof require !== 'undefined'
+    ? require.main === module
+    : process.argv[1]?.replace(/\\/g, '/').endsWith('/index.js') ||
+      process.argv[1]?.replace(/\\/g, '/').endsWith('/index.ts');
+
+if (isEntryPoint || process.env.BOT_START === 'true') {
+    bot_instance = new AlterGoldenBot();
+    bot_instance.start().catch(error => {
+        console.error('Fatal error:', error);
+        process.exit(1);
+    });
+}
 
 // Export for external access
-export { bot_instance as bot };
+export { bot_instance as bot, AlterGoldenBot };
 export default { bot: bot_instance };

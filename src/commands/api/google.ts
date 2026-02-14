@@ -15,7 +15,10 @@ import {
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import { checkAccess, AccessType } from '../../services/index.js';
-import { getDefault } from '../../utils/common/moduleHelper.js';
+import logger from '../../core/Logger.js';
+import _googleServiceModule from '../../services/api/googleService.js';
+import _googleHandlerModule from '../../handlers/api/googleHandler.js';
+import { globalCooldownManager } from '../../utils/common/cooldown.js';
 // TYPES
 interface SearchResult {
     title: string;
@@ -51,22 +54,13 @@ interface GoogleHandler {
 interface CooldownManager {
     check: (userId: string, command: string, settings: number) => CooldownResult;
 }
-// SERVICE IMPORTS
-let googleService: GoogleService | undefined;
-let googleHandler: GoogleHandler | undefined;
-let cooldownManager: CooldownManager | undefined;
-let COOLDOWN_SETTINGS: Record<string, number> | undefined;
-
-
-try {
-    googleService = getDefault(require('../../services/api/googleService'));
-    googleHandler = getDefault(require('../../handlers/api/googleHandler'));
-    const cooldown = getDefault(require('../../utils/common/cooldown'));
-    cooldownManager = cooldown.cooldownManager;
-    COOLDOWN_SETTINGS = cooldown.COOLDOWN_SETTINGS;
-} catch (e) {
-    console.warn('[Google] Could not load services:', (e as Error).message);
-}
+// SERVICE IMPORTS — static ESM imports (converted from CJS require())
+const googleService: GoogleService = _googleServiceModule as any;
+const googleHandler: GoogleHandler = _googleHandlerModule as any;
+// NOTE: cooldownManager/COOLDOWN_SETTINGS were never populated (wrong export names).
+// BaseCommand already handles cooldowns. These are kept as undefined for compatibility.
+const cooldownManager: CooldownManager | undefined = undefined;
+const COOLDOWN_SETTINGS: Record<string, number> | undefined = undefined;
 // COMMAND
 class GoogleCommand extends BaseCommand {
     constructor() {
@@ -183,7 +177,7 @@ class GoogleCommand extends BaseCommand {
 
             await interaction.editReply({ embeds: [embed], components: [buttons] });
         } catch (error) {
-            console.error('[Google Command]', error);
+            logger.error('Google', `Command error: ${(error as Error).message}`);
             await interaction.editReply({
                 embeds: [new EmbedBuilder()
                     .setColor(COLORS.ERROR)

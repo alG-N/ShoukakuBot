@@ -39,19 +39,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     
-    // Path aliases (for cleaner imports)
-    "baseUrl": "./src",
-    "paths": {
-      "@core/*": ["core/*"],
-      "@errors/*": ["errors/*"],
-      "@services/*": ["services/*"],
-      "@commands/*": ["commands/*"],
-      "@handlers/*": ["handlers/*"],
-      "@utils/*": ["utils/*"],
-      "@config/*": ["config/*"],
-      "@cache/*": ["cache/*"],
-      "@database/*": ["database/*"]
-    },
+
     
     // Skip lib check for faster builds
     "skipLibCheck": true,

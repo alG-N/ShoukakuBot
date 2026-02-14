@@ -350,7 +350,7 @@ export abstract class BaseCommand {
         // Log error
         logger.error(commandName, `Error: ${error.message}`);
         if (error.stack && !AppError.isOperationalError(error)) {
-            console.error(error.stack);
+            logger.error('BaseCommand', `Unhandled error: ${error.message}`);
         }
 
         // Determine error message

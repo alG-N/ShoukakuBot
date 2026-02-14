@@ -190,8 +190,8 @@ class Rule34Cache {
         if (this.cleanupInterval.unref) this.cleanupInterval.unref();
     }
 
-    /** Evict oldest entries from a Map when it exceeds maxSize. */
-    private _evictOldest<K, V>(map: Map<K, V>, maxSize: number): void {
+    /** FIFO eviction — removes the first inserted keys when map exceeds maxSize. */
+    private _evictFifo<K, V>(map: Map<K, V>, maxSize: number): void {
         if (map.size <= maxSize) return;
         const excess = map.size - maxSize;
         const iter = map.keys();
@@ -214,7 +214,7 @@ class Rule34Cache {
             updatedAt: Date.now(),
         };
         this.userSessions.set(userId, session);
-        this._evictOldest(this.userSessions, this.MAX_SESSIONS);
+        this._evictFifo(this.userSessions, this.MAX_SESSIONS);
         persist(NS.SESSION, userId, session, TTL.SESSION);
         return session;
     }
@@ -254,7 +254,7 @@ class Rule34Cache {
     setSearchResults(cacheKey: string, data: Partial<SearchCacheEntry>): void {
         const entry: SearchCacheEntry = { ...data, timestamp: Date.now() };
         this.searchCache.set(cacheKey, entry);
-        this._evictOldest(this.searchCache, this.MAX_SEARCH_CACHE);
+        this._evictFifo(this.searchCache, this.MAX_SEARCH_CACHE);
         persist(NS.SEARCH, cacheKey, entry, TTL.SEARCH);
     }
 
@@ -290,7 +290,7 @@ class Rule34Cache {
         const newTags = Array.isArray(tags) ? tags : [tags];
         const updated = [...new Set([...current, ...newTags])];
         this.userBlacklists.set(userId, updated);
-        this._evictOldest(this.userBlacklists, this.MAX_USER_BLACKLISTS);
+        this._evictFifo(this.userBlacklists, this.MAX_USER_BLACKLISTS);
         persist(NS.BLACKLIST, userId, updated, TTL.BLACKLIST);
         return updated;
     }
@@ -346,7 +346,7 @@ class Rule34Cache {
         const current = this.getPreferences(userId);
         const updated = { ...current, ...preferences };
         this.userPreferences.set(userId, updated);
-        this._evictOldest(this.userPreferences, this.MAX_USER_PREFERENCES);
+        this._evictFifo(this.userPreferences, this.MAX_USER_PREFERENCES);
         persist(NS.PREFERENCES, userId, updated, TTL.PREFERENCES);
         return updated;
     }
@@ -365,7 +365,7 @@ class Rule34Cache {
         const key = query.toLowerCase();
         const entry: AutocompleteEntry = { suggestions, timestamp: Date.now() };
         this.autocompleteCache.set(key, entry);
-        this._evictOldest(this.autocompleteCache, this.MAX_AUTOCOMPLETE);
+        this._evictFifo(this.autocompleteCache, this.MAX_AUTOCOMPLETE);
         persist(NS.AUTOCOMPLETE, key, entry, TTL.AUTOCOMPLETE);
     }
 
@@ -400,7 +400,7 @@ class Rule34Cache {
         favorites.unshift({ id: postId, ...postInfo, addedAt: Date.now() });
         if (favorites.length > 100) favorites.pop();
         this.userFavorites.set(userId, favorites);
-        this._evictOldest(this.userFavorites, this.MAX_USER_FAVORITES);
+        this._evictFifo(this.userFavorites, this.MAX_USER_FAVORITES);
         persist(NS.FAVORITES, userId, favorites, TTL.FAVORITES);
         return { success: true, favorites };
     }
@@ -429,7 +429,7 @@ class Rule34Cache {
             history = history.slice(0, this.HISTORY_MAX_SIZE);
         }
         this.viewHistory.set(userId, history);
-        this._evictOldest(this.viewHistory, this.MAX_USER_HISTORY);
+        this._evictFifo(this.viewHistory, this.MAX_USER_HISTORY);
         persist(NS.HISTORY, userId, history, TTL.HISTORY);
         return history;
     }

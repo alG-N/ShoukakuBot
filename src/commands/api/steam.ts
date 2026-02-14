@@ -7,19 +7,12 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
-import { getDefault } from '../../utils/common/moduleHelper.js';
+import logger from '../../core/Logger.js';
+import * as _steamHandler from '../../handlers/api/steamSaleHandler.js';
 // TYPES
 type SaleHandler = (interaction: ChatInputCommandInteraction) => Promise<void>;
 // SERVICE IMPORTS
-let handleSaleCommand: SaleHandler | undefined;
-
-
-try {
-    const steamHandler = getDefault(require('../../handlers/api/steamSaleHandler'));
-    handleSaleCommand = steamHandler.handleSaleCommand;
-} catch (e) {
-    console.warn('[Steam] Could not load handler:', (e as Error).message);
-}
+const handleSaleCommand: SaleHandler | undefined = (_steamHandler as any)?.handleSaleCommand;
 // COMMAND
 class SteamCommand extends BaseCommand {
     constructor() {

@@ -6,6 +6,7 @@
 
 import logger from './Logger.js';
 import container from '../container.js';
+import * as readline from 'readline';
 // TYPES
 interface ShutdownHandler {
     name: string;
@@ -149,7 +150,7 @@ async function runShutdownSequence(client: { destroy: () => void } | null): Prom
 
     // 4. Cleanup static resources (not managed by container)
     try {
-        const { PaginationState } = require('../utils/common/pagination');
+        const { PaginationState } = await import('../utils/common/pagination.js');
         PaginationState.destroyAll();
         logger.info('Shutdown', 'Pagination state cleanup complete');
         results.push({ name: 'PaginationState', success: true });
@@ -171,7 +172,6 @@ export function initializeShutdownHandlers(client: { destroy: () => void }): voi
     
     // Windows-specific handling
     if (process.platform === 'win32') {
-        const readline = require('readline');
         const rl = readline.createInterface({
             input: process.stdin,
             output: process.stdout

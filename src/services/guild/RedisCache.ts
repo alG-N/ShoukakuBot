@@ -11,6 +11,7 @@
  */
 
 import Redis from 'ioredis';
+import logger from '../../core/Logger.js';
 
 // TYPES
 interface CacheTTL {
@@ -167,13 +168,13 @@ export class RedisCache {
             });
 
             this._client.on('connect', () => {
-                console.log('[Redis] ✅ Connected');
+                logger.info('Redis', 'Connected');
                 this._isConnected = true;
             });
 
             this._client.on('error', (err: Error) => {
                 if (this._isConnected) {
-                    console.warn('[Redis] ⚠️ Error:', err.message);
+                    logger.warn('Redis', `Error: ${err.message}`);
                 }
                 this._isConnected = false;
             });
@@ -185,7 +186,7 @@ export class RedisCache {
             await this._client.connect();
             return true;
         } catch {
-            console.log('[Redis] Using in-memory cache (Redis not available)');
+            logger.info('Redis', 'Using in-memory cache (Redis not available)');
             this._isConnected = false;
             return false;
         }
@@ -204,7 +205,7 @@ export class RedisCache {
             }
             return (this._fbGet(key) as T) || null;
         } catch (error) {
-            console.error('[Redis] Get error:', (error as Error).message);
+            logger.error('Redis', `Get error: ${(error as Error).message}`);
             return (this._fbGet(key) as T) || null;
         }
     }
@@ -223,7 +224,7 @@ export class RedisCache {
             // Always set in fallback for redundancy
             this._fbSet(key, value, ttl);
         } catch (error) {
-            console.error('[Redis] Set error:', (error as Error).message);
+            logger.error('Redis', `Set error: ${(error as Error).message}`);
             this._fbSet(key, value, ttl);
         }
     }
@@ -238,7 +239,7 @@ export class RedisCache {
             }
             this._fbDelete(key);
         } catch (error) {
-            console.error('[Redis] Delete error:', (error as Error).message);
+            logger.error('Redis', `Delete error: ${(error as Error).message}`);
         }
     }
 
@@ -262,7 +263,7 @@ export class RedisCache {
                 }
             }
         } catch (error) {
-            console.error('[Redis] DeletePattern error:', (error as Error).message);
+            logger.error('Redis', `DeletePattern error: ${(error as Error).message}`);
         }
     }
 
@@ -323,7 +324,7 @@ export class RedisCache {
             this._fbSet(key, current + 1, 3600); // default 1h TTL for counters
             return current + 1;
         } catch (error) {
-            console.error('[Redis] Increment error:', (error as Error).message);
+            logger.error('Redis', `Increment error: ${(error as Error).message}`);
             return 0;
         }
     }
@@ -359,7 +360,7 @@ export class RedisCache {
             this._fbSet(key, tracker, windowSeconds);
             return tracker.count;
         } catch (error) {
-            console.error('[Redis] trackSpamMessage error:', (error as Error).message);
+            logger.error('Redis', `trackSpamMessage error: ${(error as Error).message}`);
             return 1;
         }
     }
@@ -410,7 +411,7 @@ export class RedisCache {
             this._fbSet(cacheKey, tracker, windowSeconds);
             return { count: tracker.count, isNew: false };
         } catch (error) {
-            console.error('[Redis] trackDuplicateMessage error:', (error as Error).message);
+            logger.error('Redis', `trackDuplicateMessage error: ${(error as Error).message}`);
             return { count: 1, isNew: true };
         }
     }
@@ -438,7 +439,7 @@ export class RedisCache {
             this._fbSet(key, current, ttlSeconds);
             return current;
         } catch (error) {
-            console.error('[Redis] trackAutomodWarn error:', (error as Error).message);
+            logger.error('Redis', `trackAutomodWarn error: ${(error as Error).message}`);
             return 1;
         }
     }
@@ -506,7 +507,7 @@ export class RedisCache {
                 resetIn: windowMs - (now - tracker.start),
             };
         } catch (error) {
-            console.error('[Redis] checkRateLimit error:', (error as Error).message);
+            logger.error('Redis', `checkRateLimit error: ${(error as Error).message}`);
             return { allowed: true, remaining: limit, resetIn: 0 };
         }
     }
@@ -524,7 +525,7 @@ export class RedisCache {
         if (this._client) {
             await this._client.quit();
             this._isConnected = false;
-            console.log('[Redis] Disconnected');
+            logger.info('Redis', 'Disconnected');
         }
     }
 }

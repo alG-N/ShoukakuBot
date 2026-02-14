@@ -12,7 +12,10 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
-import { getDefault } from '../../utils/common/moduleHelper.js';
+import logger from '../../core/Logger.js';
+import _pixivServiceModule from '../../services/api/pixivService.js';
+import _pixivCacheModule from '../../repositories/api/pixivCache.js';
+import * as _contentHandlerModule from '../../handlers/api/pixivContentHandler.js';
 // TYPES
 interface Artwork {
     id: number;
@@ -81,19 +84,10 @@ interface ContentHandler {
     createNoResultsEmbed: (query: string) => import('discord.js').EmbedBuilder;
     createErrorEmbed?: (error: Error) => import('discord.js').EmbedBuilder;
 }
-// SERVICE IMPORTS
-let pixivService: PixivService | undefined;
-let pixivCache: PixivCache | undefined;
-let contentHandler: ContentHandler | undefined;
-
-
-try {
-    pixivService = getDefault(require('../../services/api/pixivService'));
-    pixivCache = getDefault(require('../../repositories/api/pixivCache'));
-    contentHandler = getDefault(require('../../handlers/api/pixivContentHandler'));
-} catch (e) {
-    console.warn('[Pixiv] Could not load services:', (e as Error).message);
-}
+// SERVICE IMPORTS — static ESM imports (converted from CJS require())
+const pixivService: PixivService = _pixivServiceModule as any;
+const pixivCache: PixivCache = _pixivCacheModule as any;
+const contentHandler: ContentHandler = _contentHandlerModule as any;
 // COMMAND
 class PixivCommand extends BaseCommand {
     constructor() {
@@ -222,7 +216,7 @@ class PixivCommand extends BaseCommand {
                 minBookmarks
             });
         } catch (error) {
-            console.error('[Pixiv]', error);
+            logger.error('Pixiv', `Search error: ${(error as Error).message}`);
             const embed = contentHandler?.createErrorEmbed?.(error as Error) || this.errorEmbed('An error occurred while searching Pixiv.');
             await this.safeReply(interaction, { embeds: [embed], ephemeral: true });
         }
@@ -404,7 +398,7 @@ class PixivCommand extends BaseCommand {
 
             await interaction.editReply({ embeds: [embed], components: rows });
         } catch (error) {
-            console.error('[Pixiv Button Error]', error);
+            logger.error('Pixiv', `Button error: ${(error as Error).message}`);
             await interaction.followUp({
                 content: '❌ An error occurred. Please try again.',
                 ephemeral: true
@@ -454,7 +448,7 @@ class PixivCommand extends BaseCommand {
 
             await interaction.editReply({ embeds: [embed], components: rows });
         } catch (error) {
-            console.error('[Pixiv LoadPage Error]', error);
+            logger.error('Pixiv', `LoadPage error: ${(error as Error).message}`);
             await interaction.followUp({
                 content: '❌ Failed to load next page.',
                 ephemeral: true

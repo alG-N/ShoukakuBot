@@ -13,10 +13,9 @@ import {
     StringSelectMenuOptionBuilder
 } from 'discord.js';
 
-const rule34Service = getDefault(require('../../services/api/rule34Service'));
+import rule34Service from '../../services/api/rule34Service.js';
 import { rule34Cache, UserPreferences as CacheUserPreferences } from '../../repositories/api/rule34Cache.js';
 import { truncateText, formatNumber } from '../../utils/common/embed.js';
-import { getDefault } from '../../utils/common/moduleHelper.js';
 /**
  * Post rating types
  */

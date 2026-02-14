@@ -8,6 +8,7 @@
 
 import { EmbedBuilder } from 'discord.js';
 import { DEVELOPER_ID } from './owner.js';
+import logger from '../core/Logger.js';
 
 import { getDefault } from '../utils/common/moduleHelper.js';
 // Lazy-load cacheService to avoid circular dependency at module init
@@ -99,7 +100,7 @@ export async function loadMaintenanceState(): Promise<MaintenanceState> {
             }
         }
     } catch (error) {
-        console.error('[Maintenance] Failed to load state from Redis:', (error as Error).message);
+        logger.error('Maintenance', `Failed to load state from Redis: ${(error as Error).message}`);
     }
     return maintenanceState;
 }

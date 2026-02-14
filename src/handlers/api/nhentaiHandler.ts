@@ -17,9 +17,8 @@ import {
 } from 'discord.js';
 import nhentaiRepository, { NHentaiGallery, NHentaiFavourite } from '../../repositories/api/nhentaiRepository.js';
 import cacheService from '../../cache/CacheService.js';
-
-import { getDefault } from '../../utils/common/moduleHelper.js';
-const nhentaiService = getDefault(require('../../services/api/nhentaiService'));
+import logger from '../../core/Logger.js';
+import nhentaiService from '../../services/api/nhentaiService.js';
 // TYPES & INTERFACES
 interface GalleryTitle {
     english?: string;
@@ -276,7 +275,7 @@ class NHentaiHandler {
             const result = await nhentaiRepository.toggleFavourite(userId, gallery);
             return result;
         } catch (error) {
-            console.error('[NHentai] Error toggling favourite:', error);
+            logger.error('NHentai', `Error toggling favourite: ${(error as Error).message}`);
             return { added: false, removed: false, error: (error as Error).message };
         }
     }
@@ -843,7 +842,7 @@ class NHentaiHandler {
                         ? Math.max(1, (searchSession.currentPage || 1) - 1)
                         : Math.min(searchSession.numPages || 1, (searchSession.currentPage || 1) + 1);
                     
-                    const searchResult = await nhentaiService.search(searchSession.query || '', newPage, searchSession.sort || 'popular');
+                    const searchResult = await nhentaiService.searchGalleries(searchSession.query || '', newPage, searchSession.sort as 'popular' | 'recent' || 'popular');
                     if (!searchResult.success || !searchResult.data || searchResult.data.results.length === 0) {
                         await interaction.editReply({ 
                             embeds: [this.createErrorEmbed('No results found')], 
@@ -951,7 +950,7 @@ class NHentaiHandler {
                     await interaction.followUp({ content: '❌ Unknown action', ephemeral: true });
             }
         } catch (error) {
-            console.error('[NHentai Button Error]', error);
+            logger.error('NHentai', `Button error: ${(error as Error).message}`);
             await interaction.followUp?.({ 
                 content: '❌ An error occurred. Please try again.', 
                 ephemeral: true 
@@ -1012,7 +1011,7 @@ class NHentaiHandler {
 
             await interaction.editReply({ embeds: [embed], components: buttons });
         } catch (error) {
-            console.error('[NHentai Modal Error]', error);
+            logger.error('NHentai', `Modal error: ${(error as Error).message}`);
             await interaction.followUp?.({ 
                 content: '❌ Failed to jump to page. Please try again.', 
                 ephemeral: true 

@@ -11,6 +11,11 @@ import { COLORS } from '../../constants.js';
 import { isOwner } from '../../config/owner.js';
 import { formatUptime } from '../../utils/common/time.js';
 import shardBridge from '../../services/guild/ShardBridge.js';
+import _commandRegistry from '../../services/registry/CommandRegistry.js';
+import _postgres from '../../database/postgres.js';
+import _lavalinkService from '../../services/music/LavalinkService.js';
+import * as _coreExports from '../../core/index.js';
+import _cacheService from '../../cache/CacheService.js';
 
 // Helper to get service status
 const getServiceStatus = async (name: string, checkFn: () => Promise<boolean> | boolean): Promise<{ name: string; healthy: boolean; error?: string }> => {
@@ -91,8 +96,7 @@ class BotCheckCommand extends BaseCommand {
         // Get commands from registry
         let commandCount = 0;
         try {
-            const registry = require('../../services/registry/CommandRegistry.js');
-            const commandRegistry = registry.default || registry;
+            const commandRegistry = _commandRegistry as any;
             commandCount = commandRegistry.commands?.size ?? commandRegistry.getAll?.()?.length ?? 0;
         } catch {
             commandCount = client.application?.commands.cache.size ?? 0;
@@ -123,8 +127,7 @@ class BotCheckCommand extends BaseCommand {
 
         // PostgreSQL
         try {
-            const pg = require('../../database/postgres.js');
-            const postgres = pg.default || pg;
+            const postgres = _postgres as any;
             await postgres.query('SELECT 1');
             services.push({ name: 'PostgreSQL', healthy: true });
         } catch (e) {
@@ -171,8 +174,7 @@ class BotCheckCommand extends BaseCommand {
 
         // Lavalink
         try {
-            const lavalink = require('../../services/music/LavalinkService.js');
-            const lavalinkService = lavalink.default || lavalink;
+            const lavalinkService = _lavalinkService as any;
             const status = lavalinkService.getNodeStatus?.();
             services.push({
                 name: 'Lavalink',
@@ -185,8 +187,7 @@ class BotCheckCommand extends BaseCommand {
 
         // Circuit Breakers
         try {
-            const cb = require('../../core/index.js');
-            const circuitBreakerRegistry = cb.circuitBreakerRegistry || cb.default?.circuitBreakerRegistry;
+            const circuitBreakerRegistry = (_coreExports as any).circuitBreakerRegistry;
             if (circuitBreakerRegistry) {
                 const summary = circuitBreakerRegistry.getSummary?.();
                 services.push({
@@ -257,8 +258,7 @@ class BotCheckCommand extends BaseCommand {
         let redisInfo = 'N/A';
         
         try {
-            const pg = require('../../database/postgres.js');
-            const postgres = pg.default || pg;
+            const postgres = _postgres as any;
             const dbStatus = postgres.getStatus?.();
             if (dbStatus) {
                 dbPoolInfo = [
@@ -276,8 +276,7 @@ class BotCheckCommand extends BaseCommand {
         }
 
         try {
-            const cache = require('../../cache/CacheService.js');
-            const cacheService = cache.default || cache;
+            const cacheService = _cacheService as any;
             const stats = cacheService.getStats?.();
             if (stats) {
                 const hitRate = (stats.hitRate * 100).toFixed(1);

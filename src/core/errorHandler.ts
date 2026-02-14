@@ -40,7 +40,7 @@ export function initializeErrorHandlers(client: Client): void {
             logger.error('ErrorHandler', `Operational Error: ${error.message}`);
         } else {
             logger.critical('ErrorHandler', `Uncaught Exception: ${error.message}`);
-            console.error('Stack:', error.stack);
+            logger.error('ErrorHandler', `Stack: ${error.stack}`);
             
             // Log detailed error to Discord
             logger.logErrorDetailed({
@@ -75,7 +75,7 @@ export function initializeErrorHandlers(client: Client): void {
             logger.error('ErrorHandler', `Unhandled Rejection (Operational): ${error.message}`);
         } else {
             logger.critical('ErrorHandler', `Unhandled Rejection: ${error.message}`);
-            console.error('Stack:', error.stack);
+            logger.error('ErrorHandler', `Stack: ${error.stack}`);
             
             // Log detailed error to Discord
             logger.logErrorDetailed({

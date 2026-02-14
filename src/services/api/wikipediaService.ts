@@ -6,6 +6,7 @@
 
 import axios, { AxiosRequestConfig } from 'axios';
 import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
+import logger from '../../core/Logger.js';
 import cacheService from '../../cache/CacheService.js';
 // TYPES & INTERFACES
 export interface WikiSearchResult {
@@ -142,7 +143,7 @@ class WikipediaService {
 
                 return result;
             } catch (error) {
-                console.error('[Wikipedia Search Error]', (error as Error).message);
+                logger.error('Wikipedia', `Search error: ${(error as Error).message}`);
                 return { success: false, error: 'Failed to search Wikipedia. Please try again.' };
             }
         });
@@ -193,7 +194,7 @@ class WikipediaService {
                 if (axiosError.response?.status === 404) {
                     return { success: false, error: 'Article not found.', code: 'NOT_FOUND' };
                 }
-                console.error('[Wikipedia Article Error]', (error as Error).message);
+                logger.error('Wikipedia', `Article error: ${(error as Error).message}`);
                 return { success: false, error: 'Failed to fetch article. Please try again.' };
             }
         });
@@ -228,7 +229,7 @@ class WikipediaService {
                     }
                 };
             } catch (error) {
-                console.error('[Wikipedia Random Error]', (error as Error).message);
+                logger.error('Wikipedia', `Random article error: ${(error as Error).message}`);
                 return { success: false, error: 'Failed to fetch random article. Please try again.' };
             }
         });
@@ -262,7 +263,7 @@ class WikipediaService {
 
                 return { success: true, events, date: { month, day } };
             } catch (error) {
-                console.error('[Wikipedia OnThisDay Error]', (error as Error).message);
+                logger.error('Wikipedia', `OnThisDay error: ${(error as Error).message}`);
                 return { success: false, error: 'Failed to fetch events. Please try again.' };
             }
         });
@@ -303,7 +304,7 @@ class WikipediaService {
                     }
                 };
             } catch (error) {
-                console.error('[Wikipedia Featured Error]', (error as Error).message);
+                logger.error('Wikipedia', `Featured article error: ${(error as Error).message}`);
                 return { success: false, error: 'Failed to fetch featured article.' };
             }
         });

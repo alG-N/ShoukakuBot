@@ -10,49 +10,8 @@ import * as InfractionService from './InfractionService.js';
 import logger from '../../core/Logger.js';
 import cacheService from '../../cache/CacheService.js';
 import { trackAutomodViolation } from '../../core/metrics.js';
-
-// Use require for CommonJS modules
-const AutoModRepository = require('../../repositories/moderation/AutoModRepository.js') as {
-    get: (guildId: string) => Promise<unknown>;
-    create: (guildId: string) => Promise<unknown>;
-    getOrCreate: (guildId: string) => Promise<unknown>;
-    update: (guildId: string, updates: Record<string, unknown>) => Promise<unknown>;
-    toggleFeature: (guildId: string, feature: string, enabled: boolean) => Promise<unknown>;
-};
-
-const automodConfigModule = require('../../config/features/moderation/automod.js') as {
-    default?: {
-        SPAM?: Record<string, unknown>;
-        DUPLICATE?: Record<string, unknown>;
-        LINKS?: Record<string, unknown>;
-        INVITES?: Record<string, unknown>;
-        MENTIONS?: Record<string, unknown>;
-        CAPS?: Record<string, unknown>;
-        PATTERNS?: Record<string, unknown>;
-        links?: {
-            allowMedia?: boolean;
-            mediaExtensions?: string[];
-            blacklist?: string[];
-            whitelistMode?: boolean;
-        };
-    };
-    SPAM?: Record<string, unknown>;
-    DUPLICATE?: Record<string, unknown>;
-    LINKS?: Record<string, unknown>;
-    INVITES?: Record<string, unknown>;
-    MENTIONS?: Record<string, unknown>;
-    CAPS?: Record<string, unknown>;
-    PATTERNS?: Record<string, unknown>;
-    links?: {
-        allowMedia?: boolean;
-        mediaExtensions?: string[];
-        blacklist?: string[];
-        whitelistMode?: boolean;
-    };
-};
-
-// Handle both ESM default export and direct export
-const automodConfig = automodConfigModule.default || automodConfigModule;
+import AutoModRepository from '../../repositories/moderation/AutoModRepository.js';
+import automodConfig from '../../config/features/moderation/automod.js';
 // TYPES
 export interface AutoModSettings {
     enabled: boolean;

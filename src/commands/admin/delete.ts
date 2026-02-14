@@ -11,24 +11,14 @@ import {
     ChatInputCommandInteraction,
     TextChannel,
     Collection,
-    Message
+    Message,
+    GuildMember
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
-
-interface GuildSettingsService {
-    getDeleteLimit?: (guildId: string) => Promise<number>;
-}
-
-interface ModerationService {
-    logModAction?: (guild: ChatInputCommandInteraction['guild'], data: {
-        type: string;
-        moderator: ChatInputCommandInteraction['user'];
-        channel: string;
-        count: number;
-        filters: string;
-    }) => Promise<void>;
-}
+import logger from '../../core/Logger.js';
+import { GuildSettingsService } from '../../services/guild/index.js';
+import { moderationService } from '../../services/moderation/index.js';
 
 class DeleteCommand extends BaseCommand {
     constructor() {
@@ -80,8 +70,7 @@ class DeleteCommand extends BaseCommand {
         // Get delete limit from guild settings
         let maxDeleteLimit = 100;
         try {
-            const { GuildSettingsService } = require('../../services') as { GuildSettingsService: GuildSettingsService };
-            maxDeleteLimit = await GuildSettingsService.getDeleteLimit?.(interaction.guildId!) || 100;
+            maxDeleteLimit = await GuildSettingsService.getDeleteLimit(interaction.guildId!) || 100;
         } catch {
             // Use default
         }
@@ -139,10 +128,11 @@ class DeleteCommand extends BaseCommand {
 
             // Log to ModerationService
             try {
-                const { ModerationService } = require('../../services') as { ModerationService: ModerationService };
-                await ModerationService.logModAction?.(interaction.guild, {
+                await moderationService.logModAction(interaction.guild, {
                     type: 'DELETE',
-                    moderator: interaction.user,
+                    target: { id: interaction.user.id },
+                    moderator: interaction.member as GuildMember,
+                    reason: `Deleted ${deleted.size} messages`,
                     channel: `<#${channel.id}>`,
                     count: deleted.size,
                     filters: filters.join(', ') || 'None'
@@ -165,7 +155,7 @@ class DeleteCommand extends BaseCommand {
             await this.safeReply(interaction, { embeds: [embed] });
 
         } catch (error) {
-            console.error('[Delete] Error:', error);
+            logger.error('Delete', `Error: ${(error as Error).message}`);
             
             const err = error as Error & { code?: number };
             if (err.code === 50034) {

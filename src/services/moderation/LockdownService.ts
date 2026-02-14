@@ -7,6 +7,7 @@
 
 import { PermissionFlagsBits, ChannelType, type Guild, type TextChannel, type Snowflake } from 'discord.js';
 import cacheService from '../../cache/CacheService.js';
+import logger from '../../core/Logger.js';
 // TYPES
 interface SavedPermissions {
     allow: string; // bigint as string for JSON serialization
@@ -304,7 +305,7 @@ class LockdownService {
             // Delete the index
             await cacheService.delete(LOCKDOWN_NAMESPACE, `index:${guildId}`);
         } catch (error) {
-            console.error('[LockdownService] Error clearing guild data:', error);
+            logger.error('LockdownService', `Error clearing guild data: ${(error as Error).message}`);
         }
     }
 }

@@ -17,7 +17,11 @@ import {
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import { checkAccess, AccessType } from '../../services/index.js';
-import { getDefault } from '../../utils/common/moduleHelper.js';
+import _anilistService from '../../services/api/anilistService.js';
+import _myAnimeListService from '../../services/api/myAnimeListService.js';
+import * as _animeHandler from '../../handlers/api/animeHandler.js';
+import _animeRepository from '../../repositories/api/animeRepository.js';
+import logger from '../../core/Logger.js';
 // TYPES
 interface AnimeTitle {
     english?: string;
@@ -72,21 +76,11 @@ interface AutocompleteCache {
     results: Array<{ name: string; value: string }>;
     timestamp: number;
 }
-// SERVICE IMPORTS
-let anilistService: AnilistService | undefined;
-let myAnimeListService: MyAnimeListService | undefined;
-let animeHandler: AnimeHandler | undefined;
-let animeRepository: AnimeRepository | undefined;
-
-
-try {
-    anilistService = getDefault(require('../../services/api/anilistService'));
-    myAnimeListService = getDefault(require('../../services/api/myAnimeListService'));
-    animeHandler = getDefault(require('../../handlers/api/animeHandler'));
-    animeRepository = getDefault(require('../../repositories/api/animeRepository'));
-} catch (e) {
-    console.warn('[Anime] Could not load services:', (e as Error).message);
-}
+// SERVICE IMPORTS — static ESM imports (converted from CJS require())
+const anilistService: AnilistService = _anilistService as any;
+const myAnimeListService: MyAnimeListService = _myAnimeListService as any;
+const animeHandler: AnimeHandler = _animeHandler as any;
+const animeRepository: AnimeRepository = _animeRepository as any;
 // CACHE
 const autocompleteCache = new Map<string, AutocompleteCache>();
 const searchResultCache = new Map<string, CachedAnime>();
@@ -94,7 +88,7 @@ const AUTOCOMPLETE_CACHE_DURATION = 60000;
 const SEARCH_CACHE_DURATION = 600000;
 
 // Cleanup
-setInterval(() => {
+const cacheCleanupTimer = setInterval(() => {
     const now = Date.now();
     for (const [key, value] of autocompleteCache) {
         if (now - value.timestamp > AUTOCOMPLETE_CACHE_DURATION) {
@@ -107,6 +101,7 @@ setInterval(() => {
         }
     }
 }, 120000);
+cacheCleanupTimer.unref(); // Don't prevent process exit
 
 // MAL media types
 const MAL_TYPES: Record<string, { emoji: string; label: string; endpoint: string }> = {
@@ -213,7 +208,7 @@ class AnimeCommand extends BaseCommand {
 
             await this.safeReply(interaction, { embeds: [embed], components: [row] });
         } catch (error) {
-            console.error('[Anime Search]', error);
+            logger.error('Anime', `Search error: ${(error as Error).message}`);
             await this.errorReply(interaction, `Could not find anime: **${animeName}**`);
         }
     }
@@ -242,7 +237,7 @@ class AnimeCommand extends BaseCommand {
 
             await this.safeReply(interaction, { embeds: [embed], components: [row] });
         } catch (error) {
-            console.error('[MAL Search]', error);
+            logger.error('Anime', `MAL search error: ${(error as Error).message}`);
             const typeLabel = MAL_TYPES[mediaType]?.label || 'anime';
             await this.errorReply(interaction, `Could not find ${typeLabel}: **${name}** on MyAnimeList`);
         }
@@ -267,7 +262,7 @@ class AnimeCommand extends BaseCommand {
 
             await this.safeReply(interaction, { embeds: [embed] });
         } catch (error) {
-            console.error('[Anime Favourites]', error);
+            logger.error('Anime', `Favourites error: ${(error as Error).message}`);
             await this.errorReply(interaction, 'Failed to fetch favourites.');
         }
     }
@@ -357,7 +352,7 @@ class AnimeCommand extends BaseCommand {
             autocompleteCache.set(cacheKey, { results, timestamp: Date.now() });
             await interaction.respond(results);
         } catch (error) {
-            console.error('[Anime Autocomplete]', error);
+            logger.error('Anime', `Autocomplete error: ${(error as Error).message}`);
             await interaction.respond([]);
         }
     }
@@ -419,7 +414,7 @@ class AnimeCommand extends BaseCommand {
                     });
                 }
             } catch (error) {
-                console.error('[Anime Favourite]', error);
+                logger.error('Anime', `Favourite toggle error: ${(error as Error).message}`);
                 await interaction.followUp({ 
                     content: '❌ Failed to update favourites. Please try again.', 
                     ephemeral: true 

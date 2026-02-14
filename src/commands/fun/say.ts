@@ -16,17 +16,8 @@ import {
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import { checkAccess, AccessType } from '../../services/index.js';
-
-import { getDefault } from '../../utils/common/moduleHelper.js';
-// Import services
-let sayService: { validateChannel: (ch: unknown) => boolean; sanitizeMessage: (msg: string) => string } | undefined;
-
-
-try {
-    sayService = getDefault(require('../../services/fun/say/SayService'));
-} catch (e) {
-    console.warn('[Say] Could not load services:', (e as Error).message);
-}
+import logger from '../../core/Logger.js';
+import sayService from '../../services/fun/say/SayService.js';
 
 // Message type colors
 const TYPE_COLORS: Record<string, number> = {
@@ -160,7 +151,7 @@ class SayCommand extends BaseCommand {
             });
 
         } catch (error) {
-            console.error('[Say]', error);
+            logger.error('Say', `Error: ${error}`);
             
             if (interaction.replied || interaction.deferred) {
                 await interaction.followUp({ content: '❌ Failed to send the message.', ephemeral: true });

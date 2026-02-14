@@ -14,6 +14,7 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import afkRepository, { type AfkInfo } from '../../repositories/general/AfkRepository.js';
+import logger from '../../core/Logger.js';
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -180,7 +181,7 @@ export async function onMessage(message: Message, client: Client): Promise<void>
         }
     } catch (error: unknown) {
         const err = error as Error;
-        console.error('[AFK] onMessage error:', err.message);
+        logger.error('AFK', `onMessage error: ${err.message}`);
     }
 }
 

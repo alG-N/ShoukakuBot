@@ -5,6 +5,7 @@
  */
 
 import { CACHE_LIMITS } from '../../constants.js';
+import logger from '../../core/Logger.js';
 
 /**
  * Lightweight reference to a Discord message.
@@ -446,7 +447,7 @@ class QueueCache {
         }
         
         if (oldestKey) {
-            console.log(`[QueueCache] Evicting inactive guild: ${oldestKey}`);
+            logger.info('QueueCache', `Evicting inactive guild: ${oldestKey}`);
             this.delete(oldestKey);
         }
     }
@@ -470,7 +471,7 @@ class QueueCache {
         }
         
         if (cleaned > 0) {
-            console.log(`[QueueCache] Cleaned ${cleaned} stale queues`);
+            logger.info('QueueCache', `Cleaned ${cleaned} stale queues`);
         }
     }
 
@@ -502,7 +503,7 @@ class QueueCache {
         for (const guildId of this.guildQueues.keys()) {
             this.delete(guildId);
         }
-        console.log('[QueueCache] Shutdown complete');
+        logger.info('QueueCache', 'Shutdown complete');
     }
 }
 

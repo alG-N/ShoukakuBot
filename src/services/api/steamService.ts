@@ -7,6 +7,7 @@
 import * as path from 'path';
 import * as dotenv from 'dotenv';
 import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
+import logger from '../../core/Logger.js';
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
 // TYPES & INTERFACES
@@ -142,7 +143,7 @@ export class SteamService {
                     }
                 } catch (error) {
                     const errorMessage = error instanceof Error ? error.message : String(error);
-                    console.error(`[Steam Search] Failed to fetch page ${page + 1}:`, errorMessage);
+                    logger.error('Steam', `Failed to fetch page ${page + 1}: ${errorMessage}`);
                     break;
                 }
             }
@@ -217,7 +218,7 @@ export class SteamService {
         const originalPriceMatches = [...html.matchAll(/<div class="discount_original_price">([^<]+)<\/div>/g)];
         const finalPriceMatches = [...html.matchAll(/<div class="discount_final_price">([^<]+)<\/div>/g)];
 
-        console.log(`[Steam Search] Page ${page + 1}: Found ${gameMatches.length} games`);
+        logger.info('Steam', `Page ${page + 1}: Found ${gameMatches.length} games`);
 
         for (let i = 0; i < gameMatches.length; i++) {
             const gameMatch = gameMatches[i];
@@ -327,7 +328,7 @@ export class SteamService {
                 }
             } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : String(error);
-                console.log(`[Steam USD Price] Batch fetch error:`, errorMessage);
+                logger.info('Steam', `USD Price batch fetch error: ${errorMessage}`);
             }
         }
 
@@ -378,7 +379,7 @@ export class SteamService {
                 return [];
             } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : String(error);
-                console.error('[Featured API Error]', errorMessage);
+                logger.error('Steam', `Featured API error: ${errorMessage}`);
                 return [];
             }
         });
@@ -397,7 +398,7 @@ export class SteamService {
                 return await response.json() as SteamSpyData;
             } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : String(error);
-                console.error(`[SteamSpy Error for ${appId}]`, errorMessage);
+                logger.error('Steam', `SteamSpy error for ${appId}: ${errorMessage}`);
                 return null;
             }
         });

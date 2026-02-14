@@ -7,28 +7,8 @@
 
 import { type GuildMember, type Snowflake } from 'discord.js';
 import cacheService from '../../cache/CacheService.js';
-
-// Use require for CommonJS config
-const automodConfigModule = require('../../config/features/moderation/automod.js') as {
-    default?: {
-        ANTI_RAID?: {
-            JOIN_RATE: { WINDOW_SECONDS: number; THRESHOLD: number };
-            ACCOUNT_AGE: { MIN_DAYS: number };
-            ACTIONS: { ON_RAID: string };
-        };
-        SPAM?: Record<string, unknown>;
-        DUPLICATE?: Record<string, unknown>;
-    };
-    ANTI_RAID?: {
-        JOIN_RATE: { WINDOW_SECONDS: number; THRESHOLD: number };
-        ACCOUNT_AGE: { MIN_DAYS: number };
-        ACTIONS: { ON_RAID: string };
-    };
-    SPAM?: Record<string, unknown>;
-    DUPLICATE?: Record<string, unknown>;
-};
-// Handle both ESM default export and direct export
-const automodConfig = automodConfigModule.default || automodConfigModule;
+import logger from '../../core/Logger.js';
+import automodConfig from '../../config/features/moderation/automod.js';
 
 // Cache namespace and TTLs
 const CACHE_NAMESPACE = 'antiraid';
@@ -134,8 +114,8 @@ class AntiRaidService {
         });
 
         // Clean old entries
-        const ANTI_RAID = automodConfig.ANTI_RAID || { JOIN_RATE: { WINDOW_SECONDS: 30, THRESHOLD: 10 }, ACCOUNT_AGE: { MIN_DAYS: 7 }, ACTIONS: { ON_RAID: 'lockdown' } };
-        const windowStart = now - ANTI_RAID.JOIN_RATE.WINDOW_SECONDS * 1000;
+        const raidConfig = automodConfig.raid;
+        const windowStart = now - (raidConfig.windowMs || 30000);
         const recentJoins = joins.filter(j => j.timestamp > windowStart);
         
         // Save back to Redis
@@ -148,7 +128,7 @@ class AntiRaidService {
      * Analyze joins for raid patterns
      */
     private async _analyzeJoins(guildId: Snowflake, recentJoins: JoinEntry[], newMember: GuildMember): Promise<JoinAnalysis> {
-        const ANTI_RAID = automodConfig.ANTI_RAID || { JOIN_RATE: { WINDOW_SECONDS: 30, THRESHOLD: 10 }, ACCOUNT_AGE: { MIN_DAYS: 7 }, ACTIONS: { ON_RAID: 'lockdown' } };
+        const raidConfig = automodConfig.raid;
         
         const result: JoinAnalysis = {
             isRaid: false,
@@ -171,7 +151,7 @@ class AntiRaidService {
         }
 
         // Count new accounts
-        const newAccountThreshold = ANTI_RAID.ACCOUNT_AGE.MIN_DAYS * 24 * 60 * 60 * 1000;
+        const newAccountThreshold = (raidConfig.minAccountAgeDays || 7) * 24 * 60 * 60 * 1000;
         result.stats.newAccounts = recentJoins.filter(j =>
             j.accountAge < newAccountThreshold
         ).length;
@@ -181,7 +161,7 @@ class AntiRaidService {
         result.stats.similarNames = usernamePatterns.count;
 
         // Trigger 1: Too many joins in window
-        if (recentJoins.length >= ANTI_RAID.JOIN_RATE.THRESHOLD) {
+        if (recentJoins.length >= (raidConfig.joinThreshold || 10)) {
             result.triggers.push('high_join_rate');
             result.isRaid = true;
         }
@@ -210,7 +190,7 @@ class AntiRaidService {
 
         // Set recommendation
         if (result.isRaid) {
-            result.recommendation = ANTI_RAID.ACTIONS.ON_RAID;
+            result.recommendation = raidConfig.action || 'lockdown';
         } else if (result.isSuspicious) {
             result.recommendation = 'monitor';
         }
@@ -279,7 +259,7 @@ class AntiRaidService {
             reason
         };
         await cacheService.set(CACHE_NAMESPACE, this._raidModeKey(guildId), state, RAID_MODE_TTL);
-        console.log(`[AntiRaidService] Raid mode activated for guild ${guildId}: ${reason}`);
+        logger.info('AntiRaidService', `Raid mode activated for guild ${guildId}: ${reason}`);
     }
 
     /**
@@ -297,7 +277,7 @@ class AntiRaidService {
 
         await cacheService.delete(CACHE_NAMESPACE, this._raidModeKey(guildId));
         await cacheService.delete(CACHE_NAMESPACE, this._flaggedKey(guildId));
-        console.log(`[AntiRaidService] Raid mode deactivated for guild ${guildId}`);
+        logger.info('AntiRaidService', `Raid mode deactivated for guild ${guildId}`);
 
         return result;
     }
@@ -336,13 +316,12 @@ class AntiRaidService {
      * @returns Whether the account is suspicious and what action to take
      */
     checkAccountAge(member: GuildMember): { isSuspicious: boolean; action: string; accountAgeDays: number } {
-        const ANTI_RAID = automodConfig.ANTI_RAID || { ACCOUNT_AGE: { MIN_DAYS: 7 }, ACTIONS: { ON_SUSPICIOUS: 'flag' } };
+        const ANTI_RAID_CONFIG = automodConfig.raid;
         const accountAge = Date.now() - member.user.createdTimestamp;
-        const minAgeDays = ANTI_RAID.ACCOUNT_AGE?.MIN_DAYS || 7;
+        const minAgeDays = ANTI_RAID_CONFIG?.minAccountAgeDays || 7;
         const accountAgeDays = Math.floor(accountAge / (24 * 60 * 60 * 1000));
         const isSuspicious = accountAgeDays < minAgeDays;
-        const actions = ANTI_RAID.ACTIONS as Record<string, string> | undefined;
-        const action = isSuspicious ? (actions?.ON_SUSPICIOUS || 'flag') : 'none';
+        const action = isSuspicious ? 'flag' : 'none';
         return { isSuspicious, action, accountAgeDays };
     }
 
@@ -375,7 +354,7 @@ class AntiRaidService {
         this.cleanupInterval = setInterval(async () => {
             // Redis handles TTL automatically
             // This interval is kept for potential monitoring/logging needs
-            console.log('[AntiRaidService] Cleanup cycle (Redis TTL handles expiration)');
+            logger.debug('AntiRaidService', 'Cleanup cycle (Redis TTL handles expiration)');
         }, 5 * 60 * 1000); // Every 5 minutes
         
         // Allow process to exit even if interval is running
@@ -390,7 +369,7 @@ class AntiRaidService {
             clearInterval(this.cleanupInterval);
             this.cleanupInterval = null;
         }
-        console.log('[AntiRaidService] Shutdown complete');
+        logger.info('AntiRaidService', 'Shutdown complete');
     }
 }
 

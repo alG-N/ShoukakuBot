@@ -7,46 +7,9 @@
 import { EmbedBuilder, type Guild, type User, type Snowflake } from 'discord.js';
 import * as ModLogService from './ModLogService.js';
 import { formatDuration } from '../../utils/common/time.js';
-
-// Use require for CommonJS modules
-const InfractionRepository = require('../../repositories/moderation/InfractionRepository.js') as {
-    create: (data: Record<string, unknown>) => Promise<unknown>;
-    countActiveWarnings: (guildId: string, userId: string) => Promise<number>;
-    getByGuildAndUser: (guildId: string, userId: string) => Promise<unknown[]>;
-    getByCase: (guildId: string, caseId: number) => Promise<unknown>;
-    update: (id: number, data: Record<string, unknown>) => Promise<unknown>;
-    deactivate: (id: number) => Promise<unknown>;
-    getRecent: (guildId: string, limit: number) => Promise<unknown[]>;
-    search: (guildId: string, query: string) => Promise<unknown[]>;
-    countByType: (guildId: string) => Promise<Record<string, number>>;
-    expireOld: () => Promise<number>;
-};
-
-const moderationConfigModule = require('../../config/features/moderation/index.js') as {
-    default?: {
-        INFRACTION_TYPES: Record<string, string>;
-        COLORS: Record<string, number>;
-        EMOJIS: Record<string, string>;
-        punishments?: {
-            defaultReasons?: Record<string, string>;
-            warnings?: { defaultExpiryDays?: number; escalation?: { thresholds?: { count: number; action: string; durationMs?: number }[] } };
-        };
-    };
-    INFRACTION_TYPES?: Record<string, string>;
-    COLORS?: Record<string, number>;
-    EMOJIS?: Record<string, string>;
-    punishments?: {
-        defaultReasons?: Record<string, string>;
-        warnings?: { defaultExpiryDays?: number; escalation?: { thresholds?: { count: number; action: string; durationMs?: number }[] } };
-    };
-};
-
-// Handle both ESM default export and direct export
-const moderationConfig = moderationConfigModule.default || moderationConfigModule;
-
-const db = require('../../database/index.js') as {
-    query: (sql: string, params?: unknown[]) => Promise<{ rows: unknown[] }>;
-};
+import InfractionRepository from '../../repositories/moderation/InfractionRepository.js';
+import moderationConfig from '../../config/features/moderation/index.js';
+import db from '../../database/index.js';
 // TYPES
 export interface Infraction {
     id: number;
@@ -111,7 +74,7 @@ export async function createInfraction(options: CreateInfractionOptions): Promis
         guildId: guild.id,
         userId: user.id,
         moderatorId: moderator.id,
-        type,
+        type: type as any,
         reason: reason || (moderationConfig.punishments?.defaultReasons as Record<string, string> | undefined)?.[type] || 'No reason provided',
         durationMs,
         expiresAt,
@@ -293,7 +256,7 @@ export async function logFilter(
  * Get infraction by case ID
  */
 export async function getCase(guildId: string, caseId: number): Promise<Infraction | null> {
-    return InfractionRepository.getByCase(guildId, caseId) as Promise<Infraction | null>;
+    return InfractionRepository.getByCaseId(guildId, caseId) as Promise<Infraction | null>;
 }
 
 /**
@@ -304,7 +267,7 @@ export async function getUserHistory(
     userId: string,
     options: { limit?: number; type?: string } = {}
 ): Promise<Infraction[]> {
-    return InfractionRepository.getByGuildAndUser(guildId, userId) as Promise<Infraction[]>;
+    return InfractionRepository.getByUser(guildId, userId) as Promise<Infraction[]>;
 }
 
 /**
@@ -333,14 +296,14 @@ export async function updateReason(
     caseId: number,
     newReason: string
 ): Promise<Infraction | null> {
-    return InfractionRepository.update(caseId, { reason: newReason }) as Promise<Infraction | null>;
+    return InfractionRepository.update(guildId, caseId, { reason: newReason }) as Promise<Infraction | null>;
 }
 
 /**
  * Delete (deactivate) a case
  */
 export async function deleteCase(guildId: string, caseId: number): Promise<boolean> {
-    const result = await InfractionRepository.deactivate(caseId);
+    const result = await InfractionRepository.deactivate(guildId, caseId);
     return !!result;
 }
 
@@ -364,13 +327,13 @@ export async function checkEscalation(
         reason?: string;
     }
 
-    let thresholds = result.rows as ThresholdRow[];
+    let thresholds = result.rows as unknown as ThresholdRow[];
 
     if (thresholds.length === 0) {
         // Use default thresholds from warnings escalation config
-        const defaultThresholds = moderationConfig.punishments?.warnings?.escalation?.thresholds || [];
-        thresholds = defaultThresholds.map((t: { count: number; action: string; durationMs?: number }) => ({
-            warn_count: t.count,
+        const defaultThresholds = (moderationConfig.punishments as any)?.defaultThresholds || [];
+        thresholds = defaultThresholds.map((t: { warnCount: number; action: string; durationMs?: number }) => ({
+            warn_count: t.warnCount,
             action: t.action,
             duration_ms: t.durationMs,
             reason: undefined
@@ -399,7 +362,7 @@ export async function getRecentCases(guildId: string, limit: number = 20): Promi
  * Get guild statistics
  */
 export async function getStats(guildId: string): Promise<Record<string, number>> {
-    return InfractionRepository.countByType(guildId) as Promise<Record<string, number>>;
+    return InfractionRepository.getStats(guildId) as unknown as Promise<Record<string, number>>;
 }
 
 /**

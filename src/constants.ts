@@ -234,18 +234,4 @@ export const LIMITS = {
     FAVORITES_SIZE: 200,
     HISTORY_SIZE: 100,
 } as const;
-// TYPE EXPORTS
-/**
- * All constants bundled together
- */
-export interface Constants {
-    COLORS: typeof COLORS;
-    CACHE_LIMITS: typeof CACHE_LIMITS;
-    TIMEOUTS: typeof TIMEOUTS;
-    PAGINATION: typeof PAGINATION;
-    RATE_LIMITS: typeof RATE_LIMITS;
-    COOLDOWNS: typeof COOLDOWNS;
-    EMOJIS: typeof EMOJIS;
-    PATTERNS: typeof PATTERNS;
-    LIMITS: typeof LIMITS;
-}
+

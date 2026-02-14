@@ -13,9 +13,8 @@ import {
     ChatInputCommandInteraction,
     Message
 } from 'discord.js';
-import { getDefault } from '../../utils/common/moduleHelper.js';
-
-const steamService = getDefault(require('../../services/api/steamService'));
+import logger from '../../core/Logger.js';
+import steamService from '../../services/api/steamService.js';
 // TYPES & INTERFACES
 interface SteamGame {
     id: number;
@@ -66,7 +65,7 @@ async function handleSaleCommand(interaction: ChatInputCommandInteraction): Prom
             return;
         }
 
-        console.log(`[Steam Sale] Found ${allGames.length} total games on sale`);
+        logger.info('SteamSale', `Found ${allGames.length} total games on sale`);
 
         const filteredGames = steamService.filterGamesByDiscount(allGames, minDiscount);
 
@@ -119,7 +118,7 @@ async function handleSaleCommand(interaction: ChatInputCommandInteraction): Prom
         setupCollector(message, interaction.user.id, state);
 
     } catch (error) {
-        console.error('[Steam Sale Command Error]', error);
+        logger.error('SteamSale', `Command error: ${(error as Error).message}`);
         await interaction.editReply({
             content: '❌ An error occurred while fetching Steam sales. Please try again later.'
         });

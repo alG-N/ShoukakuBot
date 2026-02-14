@@ -5,6 +5,7 @@
  */
 
 import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
+import logger from '../../core/Logger.js';
 import cacheService from '../../cache/CacheService.js';
 // TYPES & INTERFACES
 // Jikan API v4 (unofficial MAL API)
@@ -402,7 +403,7 @@ class MyAnimeListService {
 
                 return media;
             } catch (error) {
-                console.error('[MAL Search Error]', (error as Error).message);
+                logger.error('MAL', `Search error: ${(error as Error).message}`);
                 return null;
             }
         });
@@ -468,7 +469,7 @@ class MyAnimeListService {
                 }
                 return results;
             } catch (error) {
-                console.error('[MAL Autocomplete Error]', (error as Error).message);
+                logger.error('MAL', `Autocomplete error: ${(error as Error).message}`);
                 return [];
             }
         });
@@ -503,7 +504,7 @@ class MyAnimeListService {
 
                 return anime;
             } catch (error) {
-                console.error('[MAL GetById Error]', (error as Error).message);
+                logger.error('MAL', `GetById error: ${(error as Error).message}`);
                 return null;
             }
         });

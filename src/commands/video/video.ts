@@ -18,7 +18,12 @@ import { COLORS } from '../../constants.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import fs from 'fs';
 import path from 'path';
-import { getDefault } from '../../utils/common/moduleHelper.js';
+import _videoDownloadService from '../../services/video/VideoDownloadService.js';
+import _platformDetector from '../../utils/video/platformDetector.js';
+import _videoEmbedBuilder from '../../utils/video/videoEmbedBuilder.js';
+import urlValidatorModule from '../../middleware/urlValidator.js';
+import _videoConfig from '../../config/features/video.js';
+import logger from '../../core/Logger.js';
 // TYPES
 interface VideoConfig {
     USER_COOLDOWN_SECONDS?: number;
@@ -91,24 +96,12 @@ interface VideoEmbedBuilder {
 interface UrlValidator {
     validateUrl: (interaction: ChatInputCommandInteraction, url: string) => Promise<boolean>;
 }
-// SERVICE IMPORTS
-let videoDownloadService: VideoDownloadService | undefined;
-let platformDetector: PlatformDetector | undefined;
-let videoEmbedBuilder: VideoEmbedBuilder | undefined;
-let validateUrl: ((interaction: ChatInputCommandInteraction, url: string) => Promise<boolean>) | undefined;
-let videoConfig: VideoConfig | undefined;
-
-
-try {
-    videoDownloadService = getDefault(require('../../services/video/VideoDownloadService'));
-    platformDetector = getDefault(require('../../utils/video/platformDetector'));
-    videoEmbedBuilder = getDefault(require('../../utils/video/videoEmbedBuilder'));
-    const urlValidator = getDefault(require('../../middleware/urlValidator')) as UrlValidator;
-    validateUrl = urlValidator.validateUrl;
-    videoConfig = getDefault(require('../../config/features/video'));
-} catch (e) {
-    console.warn('[Video] Could not load services:', (e as Error).message);
-}
+// SERVICE IMPORTS — static ESM imports (converted from CJS require())
+const videoDownloadService: VideoDownloadService = _videoDownloadService as any;
+const platformDetector: PlatformDetector = _platformDetector as any;
+const videoEmbedBuilder: VideoEmbedBuilder = _videoEmbedBuilder as any;
+const videoConfig: VideoConfig = _videoConfig as any;
+const { validateUrl } = urlValidatorModule;
 // RATE LIMITING
 const userCooldowns = new Map<string, number>();
 const activeDownloads = new Set<string>();
@@ -221,12 +214,13 @@ function checkConcurrentLimit(): boolean {
 }
 
 // Cleanup old cooldowns periodically
-setInterval(() => {
+const cooldownCleanupTimer = setInterval(() => {
     const now = Date.now();
     for (const [userId, expiry] of userCooldowns.entries()) {
         if (now > expiry) userCooldowns.delete(userId);
     }
 }, 60000);
+cooldownCleanupTimer.unref(); // Don't prevent process exit
 // COMMAND
 class VideoCommand extends BaseCommand {
     constructor() {
@@ -396,7 +390,7 @@ class VideoCommand extends BaseCommand {
                     .setFooter({ text: '🎬 Video Downloader • Processing your request' });
             await interaction.editReply({ embeds: [loadingEmbed] });
         } catch (e) {
-            console.error('[Video] Failed to show loading embed:', (e as Error).message);
+            logger.error('Video', 'Failed to show loading embed: ' + (e as Error).message);
         }
 
         // Validate URL
@@ -462,7 +456,7 @@ class VideoCommand extends BaseCommand {
                     
                     // Log discrepancy if reported vs actual size differs significantly
                     if (Math.abs(actualSizeMB - result.size) > 0.5) {
-                        console.log(`⚠️ Size discrepancy: reported=${result.size.toFixed(2)}MB, actual=${actualSizeMB.toFixed(2)}MB`);
+                        logger.info('Video', `Size discrepancy: reported=${result.size.toFixed(2)}MB, actual=${actualSizeMB.toFixed(2)}MB`);
                     }
                 }
                 
@@ -564,8 +558,8 @@ class VideoCommand extends BaseCommand {
                 
                 // Log file details before upload
                 const uploadFileSize = fs.statSync(result.path).size / (1024 * 1024);
-                console.log(`📤 Attempting upload: ${result.path} (${uploadFileSize.toFixed(2)} MB)`);
-                console.log(`📋 File details: ${fileExtension} format, name: ${platformId}_${isGif ? 'gif' : 'video'}.${fileExtension}`);
+                logger.info('Video', `Attempting upload: ${result.path} (${uploadFileSize.toFixed(2)} MB)`);
+                logger.info('Video', `File details: ${fileExtension} format, name: ${platformId}_${isGif ? 'gif' : 'video'}.${fileExtension}`);
                 
                 // Upload with retry logic for aborted operations
                 let uploadSuccess = false;
@@ -575,7 +569,7 @@ class VideoCommand extends BaseCommand {
                 while (!uploadSuccess && retryCount <= maxRetries) {
                     try {
                         if (retryCount > 0) {
-                            console.log(`🔄 Retry attempt ${retryCount}/${maxRetries} for upload...`);
+                            logger.info('Video', `Retry attempt ${retryCount}/${maxRetries} for upload`);
                             await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s before retry
                         }
                         
@@ -587,16 +581,10 @@ class VideoCommand extends BaseCommand {
                         });
                         
                         uploadSuccess = true;
-                        console.log(`✅ Upload successful (${uploadFileSize.toFixed(2)} MB)`);
+                        logger.info('Video', `Upload successful (${uploadFileSize.toFixed(2)} MB)`);
                     } catch (uploadErr) {
                         const uploadError = uploadErr as Error & { code?: number };
-                        console.error(`❌ Upload attempt ${retryCount + 1} failed:`, {
-                            message: uploadError.message,
-                            code: uploadError.code,
-                            name: uploadError.name,
-                            fileSize: `${uploadFileSize.toFixed(2)} MB`,
-                            platform: platformName
-                        });
+                        logger.error('Video', `Upload attempt ${retryCount + 1} failed: ${uploadError.message} (code: ${uploadError.code}, size: ${uploadFileSize.toFixed(2)} MB, platform: ${platformName})`);
                         
                         if (retryCount === maxRetries) {
                             throw uploadErr; // Re-throw on final failure
@@ -609,10 +597,10 @@ class VideoCommand extends BaseCommand {
                 if (downloadedFilePath && fs.existsSync(downloadedFilePath)) {
                     try {
                         fs.unlinkSync(downloadedFilePath);
-                        console.log(`🗑️ Deleted uploaded file: ${downloadedFilePath}`);
+                        logger.info('Video', `Deleted uploaded file: ${downloadedFilePath}`);
                         downloadedFilePath = null;
                     } catch (e) {
-                        console.warn(`⚠️ Failed to delete file: ${(e as Error).message}`);
+                        logger.warn('Video', `Failed to delete file: ${(e as Error).message}`);
                     }
                 }
 
@@ -628,25 +616,16 @@ class VideoCommand extends BaseCommand {
             const err = error as Error & { code?: number };
             
             // DETAILED ERROR LOGGING
-            console.error('═══════════════════════════════════════════');
-            console.error('🚨 [Video] Error Details:');
-            console.error('═══════════════════════════════════════════');
-            console.error('Message:', err.message);
-            console.error('Error Code:', err.code || 'N/A');
-            console.error('Error Name:', err.name || 'N/A');
-            console.error('URL:', url);
-            console.error('Quality:', quality);
+            let errorDetails = `Message: ${err.message}, Code: ${err.code || 'N/A'}, Name: ${err.name || 'N/A'}, URL: ${url}, Quality: ${quality}`;
             if (downloadedFilePath) {
                 try {
                     const fileSize = fs.existsSync(downloadedFilePath) 
                         ? (fs.statSync(downloadedFilePath).size / (1024 * 1024)).toFixed(2) + ' MB'
                         : 'File not found';
-                    console.error('Downloaded File Size:', fileSize);
-                    console.error('Downloaded File Path:', downloadedFilePath);
+                    errorDetails += `, File Size: ${fileSize}, File Path: ${downloadedFilePath}`;
                 } catch { /* ignore */ }
             }
-            console.error('Stack Trace:', err.stack?.split('\n').slice(0, 5).join('\n'));
-            console.error('═══════════════════════════════════════════');
+            logger.error('Video', errorDetails);
             
             // Clean up file on error
             if (downloadedFilePath && fs.existsSync(downloadedFilePath)) {
@@ -753,7 +732,7 @@ class VideoCommand extends BaseCommand {
             if (downloadedFilePath && fs.existsSync(downloadedFilePath)) {
                 try {
                     fs.unlinkSync(downloadedFilePath);
-                    console.log(`🗑️ [Finally] Cleaned up leftover file: ${downloadedFilePath}`);
+                    logger.info('Video', `Cleaned up leftover file: ${downloadedFilePath}`);
                 } catch { /* ignore */ }
             }
         }

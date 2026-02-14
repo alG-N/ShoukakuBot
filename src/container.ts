@@ -64,6 +64,13 @@ export class Container {
 
     /**
      * Register a service factory
+     * 
+     * ⚠️  RESERVED — Not currently used in production.
+     * All services are registered via `container.instance()` in `bootstrap/services.ts`.
+     * Do NOT use `register()` for new services — it creates factory-based singletons
+     * separate from module-level singletons, causing the dual-instance problem.
+     * See SYSTEM_REVIEW_V3 §4.1 for details.
+     * 
      * @param name - Service name
      * @param factory - Factory function (container) => instance
      * @param options - Registration options
@@ -159,6 +166,10 @@ export class Container {
 
     /**
      * Get all services with a specific tag
+     * 
+     * ⚠️  RESERVED — Not currently used. Tags are only set via `register()`,
+     * which is also unused. See `register()` comment.
+     * 
      * @param tag - Tag name
      * @returns Array of service instances
      */
@@ -190,7 +201,10 @@ export class Container {
 
     /**
      * Boot all services (initialize singletons)
-     * Call this after all registrations
+     * 
+     * ⚠️  RESERVED — Not currently used. Services are initialized directly
+     * by their own module-level init patterns, not through container.boot().
+     * 
      * @param serviceNames - Specific services to boot, or all if empty
      */
     async boot(serviceNames: string[] = []): Promise<void> {

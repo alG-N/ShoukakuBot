@@ -13,40 +13,9 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
-
-interface DeletedMessage {
-    author: {
-        id: string;
-        tag: string;
-        displayName: string;
-        avatarURL: string;
-    };
-    content: string;
-    createdAt: number;
-    deletedAt: number;
-    channel: {
-        id: string;
-    };
-    attachments?: Array<{
-        name: string;
-        url: string;
-        proxyUrl?: string;
-        type?: string;
-    }>;
-    embeds?: Array<{
-        title?: string;
-        description?: string;
-    }>;
-}
-
-interface SnipeService {
-    getDeletedMessages?: (guildId: string, count: number, channelId?: string) => DeletedMessage[];
-    getDeletedMessagesByUser?: (guildId: string, userId: string, count: number) => DeletedMessage[];
-}
-
-interface GuildSettingsService {
-    getSnipeLimit?: (guildId: string) => Promise<number>;
-}
+import logger from '../../core/Logger.js';
+import { GuildSettingsService } from '../../services/guild/index.js';
+import { snipeService, type TrackedMessage } from '../../services/moderation/index.js';
 
 /**
  * Format time ago from timestamp
@@ -77,12 +46,12 @@ function formatTimeAgo(timestamp: number): string {
 /**
  * Create snipe embed for a deleted message
  */
-function createSnipeEmbed(msg: DeletedMessage, index: number, total: number): EmbedBuilder {
+function createSnipeEmbed(msg: TrackedMessage, index: number, total: number): EmbedBuilder {
     const embed = new EmbedBuilder()
         .setColor((COLORS as Record<string, number>).SNIPE || 0x9B59B6)
         .setAuthor({
             name: `${msg.author.displayName} (${msg.author.tag})`,
-            iconURL: msg.author.avatarURL
+            iconURL: msg.author.avatarURL || undefined
         })
         .setFooter({ 
             text: `Message ${index}/${total} • Deleted ${formatTimeAgo(msg.deletedAt)}` 
@@ -190,8 +159,7 @@ class SnipeCommand extends BaseCommand {
             // Get snipe limit from settings
             let snipeLimit = 10;
             try {
-                const { GuildSettingsService } = require('../../services') as { GuildSettingsService: GuildSettingsService };
-                snipeLimit = await GuildSettingsService.getSnipeLimit?.(interaction.guild.id) || 10;
+                snipeLimit = await GuildSettingsService.getSnipeLimit(interaction.guild.id) || 10;
             } catch {
                 // Use default
             }
@@ -199,30 +167,27 @@ class SnipeCommand extends BaseCommand {
             const effectiveCount = Math.min(count, snipeLimit);
 
             // Get deleted messages from SnipeService
-            let messages: DeletedMessage[] = [];
+            let messages: TrackedMessage[] = [];
             try {
-                const { snipeService } = require('../../services') as { snipeService: SnipeService };
-                
                 if (!snipeService) {
                     await this.errorReply(interaction, 'SnipeService is not available.');
                     return;
                 }
                 
+                let allMessages = await snipeService.getDeletedMessages(
+                    interaction.guild.id,
+                    targetChannel.id
+                );
+
+                // Filter by user if specified
                 if (targetUser) {
-                    messages = snipeService.getDeletedMessagesByUser?.(
-                        interaction.guild.id, 
-                        targetUser.id, 
-                        effectiveCount
-                    ) || [];
-                } else {
-                    messages = snipeService.getDeletedMessages?.(
-                        interaction.guild.id, 
-                        effectiveCount, 
-                        targetChannel.id
-                    ) || [];
+                    allMessages = allMessages.filter(m => m.author.id === targetUser.id);
                 }
+
+                // Limit to requested count
+                messages = allMessages.slice(0, effectiveCount);
             } catch (e) {
-                console.error('[Snipe] Service import error:', e);
+                logger.error('Snipe', `Service error: ${(e as Error).message}`);
                 await this.errorReply(interaction, 'SnipeService is not available.');
                 return;
             }
@@ -250,7 +215,7 @@ class SnipeCommand extends BaseCommand {
             await this.safeReply(interaction, { embeds });
 
         } catch (error) {
-            console.error('[Snipe] Error:', error);
+            logger.error('Snipe', `Error: ${(error as Error).message}`);
             await this.errorReply(interaction, `Failed to retrieve deleted messages: ${(error as Error).message}`);
         }
     }

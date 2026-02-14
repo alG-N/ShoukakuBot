@@ -23,6 +23,11 @@ export { playbackService, PlaybackService } from './playback/index.js';
 export { voiceConnectionService, VoiceConnectionService } from './voice/index.js';
 export { autoPlayService, AutoPlayService } from './autoplay/index.js';
 
+// Extracted modules (Phase P)
+export { MusicNowPlayingManager } from './MusicNowPlayingManager.js';
+export { MusicUserDataService } from './MusicUserDataService.js';
+export { MusicSkipVoteManager } from './MusicSkipVoteManager.js';
+
 // Event system (Week 7)
 export { musicEventBus, MusicEventBus, MusicEvents, playbackEventHandler, PlaybackEventHandler } from './events/index.js';
 

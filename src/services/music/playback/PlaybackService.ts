@@ -8,6 +8,7 @@
 import lavalinkService from '../LavalinkService.js';
 import { queueService } from '../queue/index.js';
 import musicCache from '../../../cache/music/MusicCacheFacade.js';
+import logger from '../../../core/Logger.js';
 import { Result } from '../../../core/Result.js';
 import { ErrorCodes } from '../../../core/ErrorCodes.js';
 import { TRACK_TRANSITION_DELAY } from '../../../config/features/music.js';
@@ -50,7 +51,7 @@ class GuildMutex {
         
         while (this.locks.get(guildId)) {
             if (Date.now() - startTime > timeout) {
-                console.warn(`[PlaybackMutex] Lock timeout for guild ${guildId}`);
+                logger.warn('PlaybackMutex', `Lock timeout for guild ${guildId}`);
                 return false;
             }
             await new Promise(r => setTimeout(r, 50));
@@ -125,7 +126,7 @@ class PlaybackService {
             
             return Result.ok({ track });
         } catch (error) {
-            console.error('[PlaybackService] Play error:', error);
+            logger.error('PlaybackService', `Play error: ${(error as Error).message}`);
             return Result.fromError(error as Error, ErrorCodes.LAVALINK_ERROR);
         }
     }
@@ -166,7 +167,7 @@ class PlaybackService {
             
             return Result.ok({ track: nextTrack, isLooped: false });
         } catch (error) {
-            console.error('[PlaybackService] PlayNext error:', error);
+            logger.error('PlaybackService', `PlayNext error: ${(error as Error).message}`);
             return Result.fromError(error as Error);
         }
     }
@@ -201,7 +202,7 @@ class PlaybackService {
             
             return Result.ok({ skipped: count, previousTrack: currentTrack });
         } catch (error) {
-            console.error('[PlaybackService] Skip error:', error);
+            logger.error('PlaybackService', `Skip error: ${(error as Error).message}`);
             return Result.fromError(error as Error);
         }
     }
@@ -221,7 +222,7 @@ class PlaybackService {
             
             return Result.ok({ paused: newPausedState });
         } catch (error) {
-            console.error('[PlaybackService] Toggle pause error:', error);
+            logger.error('PlaybackService', `Toggle pause error: ${(error as Error).message}`);
             return Result.fromError(error as Error);
         }
     }
@@ -239,7 +240,7 @@ class PlaybackService {
             await player.setPaused(paused);
             return Result.ok({ paused });
         } catch (error) {
-            console.error('[PlaybackService] Set paused error:', error);
+            logger.error('PlaybackService', `Set paused error: ${(error as Error).message}`);
             return Result.fromError(error as Error);
         }
     }
@@ -268,7 +269,7 @@ class PlaybackService {
 
             return Result.ok({ stopped: true });
         } catch (error) {
-            console.error('[PlaybackService] Stop error:', error);
+            logger.error('PlaybackService', `Stop error: ${(error as Error).message}`);
             return Result.fromError(error as Error);
         }
     }
@@ -294,7 +295,7 @@ class PlaybackService {
             await player.seekTo(clampedPosition);
             return Result.ok({ position: clampedPosition });
         } catch (error) {
-            console.error('[PlaybackService] Seek error:', error);
+            logger.error('PlaybackService', `Seek error: ${(error as Error).message}`);
             return Result.fromError(error as Error);
         }
     }
@@ -322,7 +323,7 @@ class PlaybackService {
 
             return Result.ok({ volume: clampedVolume });
         } catch (error) {
-            console.error('[PlaybackService] Set volume error:', error);
+            logger.error('PlaybackService', `Set volume error: ${(error as Error).message}`);
             return Result.fromError(error as Error);
         }
     }
@@ -346,7 +347,7 @@ class PlaybackService {
             }
             return Result.ok({ tracks: [result as unknown as MusicTrack] });
         } catch (error) {
-            console.error('[PlaybackService] Search error:', error);
+            logger.error('PlaybackService', `Search error: ${(error as Error).message}`);
             return Result.fromError(error as Error, ErrorCodes.SEARCH_FAILED);
         }
     }
@@ -365,7 +366,7 @@ class PlaybackService {
                 tracks: result.tracks as unknown as MusicTrack[]
             });
         } catch (error) {
-            console.error('[PlaybackService] Search playlist error:', error);
+            logger.error('PlaybackService', `Search playlist error: ${(error as Error).message}`);
             return Result.fromError(error as Error, ErrorCodes.PLAYLIST_ERROR);
         }
     }
@@ -406,6 +407,13 @@ class PlaybackService {
      */
     isTransitionLocked(guildId: string): boolean {
         return this.transitionMutex.isLocked(guildId);
+    }
+
+    /**
+     * Expose transition mutex for backward compatibility
+     */
+    getTransitionMutex(): GuildMutex {
+        return this.transitionMutex;
     }
 }
 

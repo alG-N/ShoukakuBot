@@ -12,6 +12,7 @@
 
 import { EventEmitter } from 'events';
 import type { Client } from 'discord.js';
+import logger from '../../core/Logger.js';
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES
@@ -89,7 +90,7 @@ class ShardBridge extends EventEmitter {
 
         // Skip Redis setup if not sharded or Redis not available
         if (this.totalShards <= 1) {
-            console.log('[ShardBridge] Single shard mode, Redis pub/sub disabled');
+            logger.info('ShardBridge', 'Single shard mode, Redis pub/sub disabled');
             this.isInitialized = true;
             return;
         }
@@ -104,7 +105,7 @@ class ShardBridge extends EventEmitter {
             const isConnected = stats.redis.connected;
 
             if (!isConnected) {
-                console.warn('[ShardBridge] Redis not connected, using fallback mode');
+                logger.warn('ShardBridge', 'Redis not connected, using fallback mode');
                 this.isInitialized = true;
                 return;
             }
@@ -129,11 +130,11 @@ class ShardBridge extends EventEmitter {
                 this.handleMessage(channel as string, message as string);
             });
 
-            console.log(`[ShardBridge] ✅ Initialized for shard ${this.shardId}/${this.totalShards}`);
+            logger.info('ShardBridge', `Initialized for shard ${this.shardId}/${this.totalShards}`);
             this.isInitialized = true;
 
         } catch (error) {
-            console.error('[ShardBridge] Failed to initialize Redis pub/sub:', error);
+            logger.error('ShardBridge', `Failed to initialize Redis pub/sub: ${(error as Error).message}`);
             this.isInitialized = true; // Continue without pub/sub
         }
     }
@@ -162,7 +163,7 @@ class ShardBridge extends EventEmitter {
                     break;
             }
         } catch (error) {
-            console.error('[ShardBridge] Error parsing message:', error);
+            logger.error('ShardBridge', `Error parsing message: ${(error as Error).message}`);
         }
     }
 
@@ -217,13 +218,9 @@ class ShardBridge extends EventEmitter {
                     } : null;
                     break;
                 case 'eval':
-                    // Dangerous - only for trusted internal use
-                    if (process.env.ALLOW_SHARD_EVAL === 'true') {
-                        const evalFn = new Function('client', message.data as string);
-                        responseData = await evalFn(this.client);
-                    } else {
-                        error = 'Eval disabled';
-                    }
+                    // Eval handler removed — RCE vector (see SYSTEM_REVIEW_V3 §2 BLOCKER 2).
+                    // Use purpose-built diagnostic commands instead.
+                    error = 'Eval is permanently disabled for security';
                     break;
                 default:
                     // Emit for custom handlers
@@ -504,7 +501,7 @@ class ShardBridge extends EventEmitter {
         }
 
         this.isInitialized = false;
-        console.log('[ShardBridge] Shutdown complete');
+        logger.info('ShardBridge', 'Shutdown complete');
     }
 }
 

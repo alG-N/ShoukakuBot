@@ -116,6 +116,7 @@ export function validateOrExit(): void {
 
     // Print warnings for optional missing vars
     if (result.warnings.length > 0) {
+        // console intentional: Logger may not be initialized
         console.warn('\n⚠️  Missing optional environment variables:');
         const byCategory = groupByCategory(result.warnings);
         for (const [category, vars] of Object.entries(byCategory)) {
@@ -129,6 +130,7 @@ export function validateOrExit(): void {
 
     // Fatal error for required missing vars
     if (!result.valid) {
+        // console intentional: Logger may not be initialized
         console.error('\n❌ FATAL: Missing required environment variables:');
         const byCategory = groupByCategory(result.missing);
         for (const [category, vars] of Object.entries(byCategory)) {
@@ -154,4 +156,4 @@ function groupByCategory<T extends { category: string }>(items: T[]): Record<str
     return groups;
 }
 
-export default { validateEnvironment, validateOrExit };
+// Named exports only — use `import { validateEnvironment, validateOrExit } from '...'`

@@ -4,6 +4,7 @@
  */
 
 import postgres from '../../database/postgres.js';
+import logger from '../../core/Logger.js';
 // Interfaces
 interface AnimeFavourite {
     anime_id: number;
@@ -22,12 +23,7 @@ interface AnimeNotification {
     updated_at?: Date;
 }
 
-// Simple logger fallback
-const logger = {
-    info: (tag: string, msg: string): void => console.log(`[${tag}] ${msg}`),
-    warn: (tag: string, msg: string): void => console.warn(`[${tag}] ${msg}`),
-    error: (tag: string, msg: string): void => console.error(`[${tag}] ${msg}`)
-};
+
 // AnimeRepository Class
 class AnimeRepository {
     private initialized: boolean;

@@ -5,6 +5,7 @@
  */
 
 import type { Client as DiscordClient } from 'discord.js';
+import logger from '../../core/Logger.js';
 // TYPES
 interface Event {
     name: string;
@@ -20,12 +21,12 @@ class EventRegistry {
      * Load events from presentation layer
      */
     async loadEvents(): Promise<Map<string, Event>> {
-        console.log('[EventRegistry] Loading events...');
+        logger.info('EventRegistry', 'Loading events...');
 
         // Load presentation layer events
         await this._loadPresentationEvents();
 
-        console.log(`[EventRegistry] Loaded ${this.events.size} events`);
+        logger.info('EventRegistry', `Loaded ${this.events.size} events`);
         return this.events;
     }
 
@@ -44,10 +45,10 @@ class EventRegistry {
 
                 if (event?.name) {
                     this.events.set(event.name, event);
-                    console.log(`[EventRegistry] Loaded: ${event.name}`);
+                    logger.info('EventRegistry', `Loaded: ${event.name}`);
                 }
             } catch (error) {
-                console.error(`[EventRegistry] Error loading ${eventFile}:`, (error as Error).message);
+                logger.error('EventRegistry', `Error loading ${eventFile}: ${(error as Error).message}`);
             }
         }
     }
@@ -67,7 +68,7 @@ class EventRegistry {
             } else {
                 client.on(name, handler);
             }
-            console.log(`[EventRegistry] Registered: ${name} (once: ${event.once || false})`);
+            logger.info('EventRegistry', `Registered: ${name} (once: ${event.once || false})`);
         }
     }
 

@@ -6,6 +6,7 @@
 
 import { CACHE_LIMITS } from '../../constants.js';
 import { MusicTrack } from './QueueCache.js';
+import logger from '../../core/Logger.js';
 // Types
 export interface GuildMusicSettings {
     defaultVolume: number;
@@ -303,7 +304,7 @@ class GuildMusicCache {
         }
         
         if (cleaned > 0) {
-            console.log(`[GuildMusicCache] Cleaned ${cleaned} stale entries`);
+            logger.info('GuildMusicCache', `Cleaned ${cleaned} stale entries`);
         }
     }
 

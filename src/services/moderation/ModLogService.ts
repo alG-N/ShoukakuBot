@@ -8,23 +8,8 @@ import { EmbedBuilder, type Guild, type User, type Snowflake, type Message } fro
 import { formatDuration } from '../../utils/common/time.js';
 import logger from '../../core/Logger.js';
 import type { Infraction } from './InfractionService.js';
-
-// Use require for CommonJS modules
-const ModLogRepository = require('../../repositories/moderation/ModLogRepository.js') as {
-    get: (guildId: string) => Promise<Record<string, unknown> | null>;
-    update: (guildId: string, data: Record<string, unknown>) => Promise<unknown>;
-    create: (guildId: string) => Promise<unknown>;
-};
-
-const moderationConfigModule = require('../../config/features/moderation/index.js') as {
-    default?: {
-        COLORS: Record<string, number>;
-        EMOJIS: Record<string, string>;
-    };
-    COLORS?: Record<string, number>;
-    EMOJIS?: Record<string, string>;
-};
-const moderationConfig = moderationConfigModule.default || moderationConfigModule;
+import ModLogRepository from '../../repositories/moderation/ModLogRepository.js';
+import moderationConfig from '../../config/features/moderation/index.js';
 
 // Re-export from config
 const COLORS = moderationConfig.COLORS || {} as Record<string, number>;

@@ -18,10 +18,7 @@ import {
 } from 'discord.js';
 import { logger } from '../../core/Logger.js';
 import { formatDuration } from '../../utils/common/time.js';
-
-import { getDefault } from '../../utils/common/moduleHelper.js';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const ModLogService = getDefault(require('../../services/moderation/ModLogService'));
+import ModLogService from '../../services/moderation/ModLogService.js';
 /**
  * Moderation action types
  */

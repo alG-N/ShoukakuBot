@@ -6,6 +6,7 @@
 
 import axios, { AxiosRequestConfig } from 'axios';
 import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
+import logger from '../../core/Logger.js';
 import cacheService from '../../cache/CacheService.js';
 import { nhentai as nhentaiConfig } from '../../config/services.js';
 // TYPES & INTERFACES
@@ -342,7 +343,7 @@ class NHentaiService {
 
                 return suggestions;
             } catch (error) {
-                console.error('[NHentai Autocomplete Error]', (error as Error).message);
+                logger.error('NHentai', `Autocomplete error: ${(error as Error).message}`);
                 return [];
             }
         });
@@ -444,7 +445,7 @@ class NHentaiService {
                     if (attempt < maxRetries) {
                         // Exponential backoff with jitter: 1-2s, 2-4s
                         const delay = (1000 * Math.pow(2, attempt)) + Math.random() * 1000;
-                        console.warn(`[NHentai] 403/503 on attempt ${attempt + 1}, retrying in ${Math.round(delay)}ms...`);
+                        logger.warn('NHentai', `403/503 on attempt ${attempt + 1}, retrying in ${Math.round(delay)}ms...`);
                         await new Promise(r => setTimeout(r, delay));
                         continue;
                     }
@@ -480,7 +481,7 @@ class NHentaiService {
             return { success: false, error: 'Request timed out. Please try again.', code: 'TIMEOUT' };
         }
 
-        console.error('[NHentai Service Error]', err.message);
+        logger.error('NHentai', `Service error: ${err.message}`);
         return { success: false, error: 'Failed to fetch gallery. Please try again later.', code: 'UNKNOWN' };
     }
 

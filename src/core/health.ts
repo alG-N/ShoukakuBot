@@ -68,7 +68,7 @@ export function registerHealthCheck(name: string, checkFn: () => Promise<HealthC
 }
 
 /**
- * Run all health checks
+ * Run all health checks (in parallel)
  * @returns Health status
  */
 export async function runHealthChecks(): Promise<HealthResponse> {
@@ -79,7 +79,9 @@ export async function runHealthChecks(): Promise<HealthResponse> {
         checks: {}
     };
 
-    for (const [name, checkFn] of healthChecks) {
+    // Run all checks in parallel with individual timeouts
+    const entries = [...healthChecks.entries()];
+    const checkPromises = entries.map(async ([name, checkFn]): Promise<[string, HealthCheckEntry]> => {
         try {
             const startTime = Date.now();
             const result = await Promise.race([
@@ -89,21 +91,28 @@ export async function runHealthChecks(): Promise<HealthResponse> {
                 )
             ]);
             
-            results.checks[name] = {
+            return [name, {
                 status: result.healthy ? 'healthy' : 'unhealthy',
                 latency: Date.now() - startTime,
                 ...result.details
-            };
-
-            if (!result.healthy) {
-                results.status = 'unhealthy';
-            }
+            }];
         } catch (error) {
-            results.checks[name] = {
+            return [name, {
                 status: 'unhealthy',
                 error: (error as Error).message
-            };
-            results.status = 'unhealthy';
+            }];
+        }
+    });
+
+    const settled = await Promise.allSettled(checkPromises);
+    
+    for (const outcome of settled) {
+        if (outcome.status === 'fulfilled') {
+            const [name, entry] = outcome.value;
+            results.checks[name] = entry;
+            if (entry.status === 'unhealthy') {
+                results.status = 'unhealthy';
+            }
         }
     }
 

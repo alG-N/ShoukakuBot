@@ -168,4 +168,4 @@ export function registerServices(): void {
     logger.info('Container', `All services registered (${container.getDebugInfo().instantiated.length} instances)`);
 }
 
-export default { registerServices };
+// Named export only — use `import { registerServices } from '...'`

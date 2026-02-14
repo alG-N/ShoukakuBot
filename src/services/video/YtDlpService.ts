@@ -8,6 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { EventEmitter } from 'events';
 import * as videoConfig from '../../config/features/video.js';
+import logger from '../../core/Logger.js';
 
 // ── Types ──
 interface VideoInfo {
@@ -111,13 +112,13 @@ class YtDlpService extends EventEmitter {
             if (resp.ok) {
                 const data = await resp.json() as ApiHealthResponse;
                 this.initialized = true;
-                console.log(`✅ yt-dlp API available (version: ${data.version}, max concurrent: ${data.max_concurrent})`);
+                logger.info('YtDlpService', `yt-dlp API available (version: ${data.version}, max concurrent: ${data.max_concurrent})`);
                 return true;
             }
-            console.warn('⚠️ yt-dlp API returned non-OK status');
+            logger.warn('YtDlpService', 'yt-dlp API returned non-OK status');
             return false;
         } catch (error) {
-            console.warn('⚠️ yt-dlp API not reachable:', (error as Error).message);
+            logger.warn('YtDlpService', `yt-dlp API not reachable: ${(error as Error).message}`);
             return false;
         }
     }
@@ -159,15 +160,15 @@ class YtDlpService extends EventEmitter {
                 if (videoInfo.filesize) {
                     const fileSizeMB = videoInfo.filesize / (1024 * 1024);
                     if (fileSizeMB > maxFileSizeMB) {
-                        console.log(`🚫 File size ${fileSizeMB.toFixed(1)}MB exceeds ${maxFileSizeMB}MB limit`);
+                        logger.info('YtDlpService', `File size ${fileSizeMB.toFixed(1)}MB exceeds ${maxFileSizeMB}MB limit`);
                         throw new Error(`FILE_TOO_LARGE:${fileSizeMB.toFixed(1)}MB`);
                     }
-                    console.log(`📊 Pre-download size check: ${fileSizeMB.toFixed(1)}MB (limit: ${maxFileSizeMB}MB) ✓`);
+                    logger.info('YtDlpService', `Pre-download size check: ${fileSizeMB.toFixed(1)}MB (limit: ${maxFileSizeMB}MB) ✓`);
                 } else if (videoInfo.duration) {
                     const bitrateMultiplier = quality === '1080' ? 2.5 : (quality === '480' ? 0.5 : 1.2);
                     const estimatedSizeMB = (videoInfo.duration / 60) * bitrateMultiplier * 8;
                     if (estimatedSizeMB > maxFileSizeMB * 2) {
-                        console.log(`🚫 Estimated size ${estimatedSizeMB.toFixed(1)}MB exceeds safety limit`);
+                        logger.info('YtDlpService', `Estimated size ${estimatedSizeMB.toFixed(1)}MB exceeds safety limit`);
                         throw new Error(`FILE_TOO_LARGE:~${estimatedSizeMB.toFixed(0)}MB (estimated)`);
                     }
                 }
@@ -177,11 +178,11 @@ class YtDlpService extends EventEmitter {
             if (errorMsg.startsWith('DURATION_TOO_LONG') || errorMsg.startsWith('FILE_TOO_LARGE')) {
                 throw infoError;
             }
-            console.warn('⚠️ Could not get video info, proceeding with download:', errorMsg);
+            logger.warn('YtDlpService', `Could not get video info, proceeding with download: ${errorMsg}`);
         }
 
         // ── Download via API ──
-        console.log(`📥 yt-dlp API downloading (${quality}p): ${url.substring(0, 50)}...`);
+        logger.info('YtDlpService', `yt-dlp API downloading (${quality}p): ${url.substring(0, 50)}...`);
         this.emit('stage', { stage: 'downloading', message: 'Downloading with yt-dlp...' } as StageData);
 
         const resp = await fetch(`${this.apiUrl}/download`, {
@@ -220,7 +221,7 @@ class YtDlpService extends EventEmitter {
         }
 
         const fileSizeInMB = stats.size / (1024 * 1024);
-        console.log(`✅ yt-dlp downloaded ${fileSizeInMB.toFixed(2)} MB via API → ${finalPath}`);
+        logger.info('YtDlpService', `yt-dlp downloaded ${fileSizeInMB.toFixed(2)} MB via API → ${finalPath}`);
         // NOTE: Pre-download size vs actual download size discrepancy explained:
         // - Pre-download size is YouTube's reported filesize (videoInfo.filesize)
         // - Actual size can differ due to:

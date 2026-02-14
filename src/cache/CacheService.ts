@@ -8,11 +8,7 @@
 
 import type { Redis } from 'ioredis';
 import gracefulDegradation from '../core/GracefulDegradation.js';
-
-
-import { getDefault } from '../utils/common/moduleHelper.js';
-// Use require for internal modules to avoid circular dependency issues
-const logger = getDefault(require('../core/Logger'));
+import logger from '../core/Logger.js';
 // TYPES & INTERFACES
 /**
  * Cache namespace configuration
@@ -393,7 +389,7 @@ export class CacheService {
             
             // Evict if at capacity
             if (memNs.size >= config.maxSize) {
-                this._evictLRU(namespace);
+                this._evictFifo(namespace);
             }
             
             memNs.set(key, {
@@ -637,13 +633,15 @@ export class CacheService {
     }
 
     /**
-     * Evict least recently used entry from namespace
+     * Evict first-in entry from namespace (FIFO eviction)
+     * Note: This is FIFO, not LRU — it removes the oldest inserted key.
+     * For true LRU, entries would need to be re-inserted on access.
      */
-    private _evictLRU(namespace: string): void {
+    private _evictFifo(namespace: string): void {
         const memNs = this.memoryCache.get(namespace);
         if (!memNs || memNs.size === 0) return;
 
-        // Simple: just delete the first (oldest) entry
+        // FIFO: delete the first (oldest inserted) entry
         const firstKey = memNs.keys().next().value;
         if (firstKey) {
             memNs.delete(firstKey);

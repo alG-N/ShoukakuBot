@@ -7,6 +7,7 @@
 import * as path from 'path';
 import * as dotenv from 'dotenv';
 import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
+import logger from '../../core/Logger.js';
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
 // TYPES & INTERFACES
@@ -238,7 +239,7 @@ class Rule34Service {
                 url.searchParams.append('api_key', this.auth.apiKey);
             }
 
-            console.log(`[Rule34] Searching: "${searchTags}" | Page: ${page} | Limit: ${limit}`);
+            logger.info('Rule34', `Searching: "${searchTags}" | Page: ${page} | Limit: ${limit}`);
 
             try {
                 const response = await fetch(url.toString(), { headers: this.headers });
@@ -260,7 +261,7 @@ class Rule34Service {
                     excludeLowQuality
                 });
 
-                console.log(`[Rule34] Found ${posts.length} posts (pre-filter: ${data.length})`);
+                logger.info('Rule34', `Found ${posts.length} posts (pre-filter: ${data.length})`);
 
                 return {
                     posts,
@@ -269,7 +270,7 @@ class Rule34Service {
                     query: searchTags
                 };
             } catch (error) {
-                console.error('[Rule34 Search Error]', error);
+                logger.error('Rule34', `Search error: ${(error as Error).message}`);
                 throw error;
             }
         });
@@ -312,7 +313,7 @@ class Rule34Service {
 
                 return this._enrichPost(firstPost);
             } catch (error) {
-                console.error('[Rule34 GetById Error]', error);
+                logger.error('Rule34', `GetById error: ${(error as Error).message}`);
                 throw error;
             }
         });
@@ -411,7 +412,7 @@ class Rule34Service {
                     count: item.count || 0
                 }));
             } catch (error) {
-                console.log('[Rule34 Autocomplete] Error:', (error as Error).message);
+                logger.error('Rule34', `Autocomplete error: ${(error as Error).message}`);
                 return [];
             }
         });

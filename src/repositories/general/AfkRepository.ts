@@ -6,6 +6,7 @@
  */
 
 import db from '../../database/postgres.js';
+import logger from '../../core/Logger.js';
 
 // ============================================================================
 // TYPES
@@ -82,7 +83,7 @@ class AfkRepository {
 
             return null;
         } catch (error) {
-            console.error('[AfkRepository] getAfk error:', error);
+            logger.error('AfkRepository', `getAfk error: ${error}`);
             return null;
         }
     }
@@ -138,7 +139,7 @@ class AfkRepository {
 
             return true;
         } catch (error) {
-            console.error('[AfkRepository] setAfk error:', error);
+            logger.error('AfkRepository', `setAfk error: ${error}`);
             return false;
         }
     }
@@ -169,7 +170,7 @@ class AfkRepository {
 
             return currentAfk;
         } catch (error) {
-            console.error('[AfkRepository] removeAfk error:', error);
+            logger.error('AfkRepository', `removeAfk error: ${error}`);
             return null;
         }
     }
@@ -185,7 +186,7 @@ class AfkRepository {
             );
             return result.rows;
         } catch (error) {
-            console.error('[AfkRepository] getGuildAfkUsers error:', error);
+            logger.error('AfkRepository', `getGuildAfkUsers error: ${error}`);
             return [];
         }
     }
@@ -219,7 +220,7 @@ class AfkRepository {
 
             return afkMap;
         } catch (error) {
-            console.error('[AfkRepository] getMultipleAfk error:', error);
+            logger.error('AfkRepository', `getMultipleAfk error: ${error}`);
             return new Map();
         }
     }
@@ -239,7 +240,7 @@ class AfkRepository {
 
             return result.rowCount || 0;
         } catch (error) {
-            console.error('[AfkRepository] cleanupOldAfk error:', error);
+            logger.error('AfkRepository', `cleanupOldAfk error: ${error}`);
             return 0;
         }
     }

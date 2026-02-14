@@ -83,7 +83,7 @@ class PixivCache {
 
     setSearchSuggestions(query: string, results: any[]): void {
         const key = query.toLowerCase();
-        if (this.searchMap.size >= MAX.SEARCH) this._evictOldest(this.searchMap);
+        if (this.searchMap.size >= MAX.SEARCH) this._evictFifo(this.searchMap);
         this.searchMap.set(key, results);
         persist(NS.SEARCH, key, results, TTL.SEARCH);
     }
@@ -100,7 +100,7 @@ class PixivCache {
     }
 
     setResults(cacheKey: string, data: PixivResultData): void {
-        if (this.resultMap.size >= MAX.RESULTS) this._evictOldest(this.resultMap);
+        if (this.resultMap.size >= MAX.RESULTS) this._evictFifo(this.resultMap);
         this.resultMap.set(cacheKey, data);
         persist(NS.RESULTS, cacheKey, data, TTL.RESULTS);
     }
@@ -141,7 +141,8 @@ class PixivCache {
 
     // ── Internal helpers ─────────────────────────────────────────────
 
-    private _evictOldest(map: Map<string, unknown>): void {
+    /** FIFO eviction — removes the first inserted key, not the least recently used. */
+    private _evictFifo(map: Map<string, unknown>): void {
         const firstKey = map.keys().next().value;
         if (firstKey !== undefined) map.delete(firstKey);
     }
@@ -149,7 +150,7 @@ class PixivCache {
     private _hydrateSearch(key: string): void {
         cacheService.peek<any[]>(NS.SEARCH, key).then(val => {
             if (val && !this.searchMap.has(key)) {
-                if (this.searchMap.size >= MAX.SEARCH) this._evictOldest(this.searchMap);
+                if (this.searchMap.size >= MAX.SEARCH) this._evictFifo(this.searchMap);
                 this.searchMap.set(key, val);
             }
         }).catch(() => {});
@@ -158,7 +159,7 @@ class PixivCache {
     private _hydrateResult(key: string): void {
         cacheService.peek<PixivResultData>(NS.RESULTS, key).then(val => {
             if (val && !this.resultMap.has(key)) {
-                if (this.resultMap.size >= MAX.RESULTS) this._evictOldest(this.resultMap);
+                if (this.resultMap.size >= MAX.RESULTS) this._evictFifo(this.resultMap);
                 this.resultMap.set(key, val);
             }
         }).catch(() => {});

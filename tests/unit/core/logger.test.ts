@@ -274,27 +274,4 @@ describe('Logger', () => {
             expect(mockClient.channels.fetch).toHaveBeenCalled();
         });
     });
-
-    describe('MetaWithMeta convenience methods', () => {
-        it('debugWithMeta should pass metadata', () => {
-            const spy = jest.spyOn(logger, 'console');
-            logger.debugWithMeta('Cat', 'msg', { userId: 'u1' });
-            expect(spy).toHaveBeenCalledWith('DEBUG', 'Cat', 'msg', { userId: 'u1' });
-            spy.mockRestore();
-        });
-
-        it('infoWithMeta should pass metadata', () => {
-            const spy = jest.spyOn(logger, 'console');
-            logger.infoWithMeta('Cat', 'msg', { guildId: 'g1' });
-            expect(spy).toHaveBeenCalledWith('INFO', 'Cat', 'msg', { guildId: 'g1' });
-            spy.mockRestore();
-        });
-
-        it('errorWithMeta should pass metadata', () => {
-            const spy = jest.spyOn(logger, 'console');
-            logger.errorWithMeta('Cat', 'msg', { error: 'oops' });
-            expect(spy).toHaveBeenCalledWith('ERROR', 'Cat', 'msg', { error: 'oops' });
-            spy.mockRestore();
-        });
-    });
 });

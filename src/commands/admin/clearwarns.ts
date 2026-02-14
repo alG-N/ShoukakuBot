@@ -13,8 +13,8 @@ import {
     Guild
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
-
-import { getDefault } from '../../utils/common/moduleHelper.js';
+import logger from '../../core/Logger.js';
+import { infractionService as _infractionSvc } from '../../services/moderation/index.js';
 interface InfractionService {
     getWarningCount?: (guildId: string, userId: string) => Promise<number>;
     clearWarnings?: (guildId: string, userId: string) => Promise<number>;
@@ -29,14 +29,8 @@ interface InfractionService {
 }
 
 
-let infractionService: InfractionService | undefined;
-
-try {
-    const mod = getDefault(require('../../services/moderation'));
-    infractionService = mod.InfractionService;
-} catch {
-    // Service not available
-}
+// SERVICE IMPORTS — static ESM imports (converted from CJS require())
+const infractionService: InfractionService = _infractionSvc as any;
 
 class ClearWarnsCommand extends BaseCommand {
     constructor() {
@@ -120,7 +114,7 @@ class ClearWarnsCommand extends BaseCommand {
             await interaction.editReply({ embeds: [embed] });
 
         } catch (error) {
-            console.error('[ClearWarnsCommand] Error:', error);
+            logger.error('ClearWarns', `Error: ${(error as Error).message}`);
             await interaction.editReply({
                 content: `❌ Failed to clear warnings: ${(error as Error).message}`
             });

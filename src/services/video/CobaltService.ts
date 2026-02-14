@@ -10,6 +10,7 @@ import fs from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
 import * as videoConfig from '../../config/features/video.js';
+import logger from '../../core/Logger.js';
 // TYPES
 interface DownloadInfo {
     url?: string;
@@ -63,7 +64,7 @@ class CobaltService extends EventEmitter {
 
     switchApi(): void {
         this.currentApiIndex = (this.currentApiIndex + 1) % this.apiUrls.length;
-        console.log(`🔄 Switching to Cobalt API: ${this.apiUrl}`);
+        logger.info('CobaltService', `Switching to Cobalt API: ${this.apiUrl}`);
         this.emit('apiSwitch', { api: this.apiUrl });
     }
 
@@ -76,7 +77,7 @@ class CobaltService extends EventEmitter {
         let lastError: Error | null = null;
         this.currentQuality = options.quality || (videoConfig as { COBALT_VIDEO_QUALITY?: string }).COBALT_VIDEO_QUALITY || '720';
         
-        console.log(`🎯 Cobalt quality requested: ${this.currentQuality}p`);
+        logger.info('CobaltService', `Cobalt quality requested: ${this.currentQuality}p`);
 
         this.emit('stage', { stage: 'connecting', message: 'Connecting to Cobalt API...' });
 
@@ -88,7 +89,7 @@ class CobaltService extends EventEmitter {
                 return result;
             } catch (error) {
                 lastError = error as Error;
-                console.log(`⚠️ Cobalt failed: ${lastError.message}`);
+                logger.info('CobaltService', `Cobalt failed: ${lastError.message}`);
                 this.emit('error', { api: this.apiUrl, error: lastError.message });
                 this.switchApi();
             }
@@ -159,7 +160,7 @@ class CobaltService extends EventEmitter {
                 timeout: (videoConfig as { network?: { downloadTimeout?: number } }).network?.downloadTimeout || 120000
             };
 
-            console.log(`🔗 Requesting from Cobalt: ${this.apiUrl}`);
+            logger.info('CobaltService', `Requesting from Cobalt: ${this.apiUrl}`);
 
             const req = protocol.request(options, (res) => {
                 let data = '';
@@ -177,7 +178,7 @@ class CobaltService extends EventEmitter {
                         }
 
                         const parsed = JSON.parse(data) as CobaltResponse;
-                        console.log(`📦 Cobalt response status: ${parsed.status}`);
+                        logger.info('CobaltService', `Cobalt response status: ${parsed.status}`);
                         
                         // Handle error responses
                         if (parsed.status === 'error' || parsed.error) {
@@ -281,12 +282,12 @@ class CobaltService extends EventEmitter {
                         const fileSizeMB = totalBytes / (1024 * 1024);
                         // Only reject if significantly over limit (2x buffer) since header may be inaccurate
                         if (fileSizeMB > sizeLimit * 2) {
-                            console.log(`🚫 File size ${fileSizeMB.toFixed(1)}MB greatly exceeds ${sizeLimit}MB limit (pre-download check)`);
+                            logger.info('CobaltService', `File size ${fileSizeMB.toFixed(1)}MB greatly exceeds ${sizeLimit}MB limit (pre-download check)`);
                             req.destroy();
                             reject(new Error(`FILE_TOO_LARGE:${fileSizeMB.toFixed(1)}MB`));
                             return;
                         }
-                        console.log(`📊 Pre-download size hint: ${fileSizeMB.toFixed(1)}MB (limit: ${sizeLimit}MB) — will verify after download`);
+                        logger.info('CobaltService', `Pre-download size hint: ${fileSizeMB.toFixed(1)}MB (limit: ${sizeLimit}MB) — will verify after download`);
                     }
 
                     const file = fs.createWriteStream(outputPath);
@@ -325,7 +326,7 @@ class CobaltService extends EventEmitter {
                             eta: 0
                         } as ProgressData);
                         
-                        console.log(`✅ Downloaded ${(downloadedBytes / 1024 / 1024).toFixed(2)} MB`);
+                        logger.info('CobaltService', `Downloaded ${(downloadedBytes / 1024 / 1024).toFixed(2)} MB`);
                         resolve();
                     });
 

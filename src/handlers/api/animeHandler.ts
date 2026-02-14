@@ -5,9 +5,7 @@
  */
 
 import { EmbedBuilder } from 'discord.js';
-
-import { getDefault } from '../../utils/common/moduleHelper.js';
-const anilistService = getDefault(require('../../services/api/anilistService'));
+import anilistService from '../../services/api/anilistService.js';
 // TYPES & INTERFACES
 interface MediaConfig {
     emoji: string;
@@ -16,9 +14,9 @@ interface MediaConfig {
 }
 
 interface MediaDate {
-    year?: number;
-    month?: number;
-    day?: number;
+    year?: number | null;
+    month?: number | null;
+    day?: number | null;
 }
 
 interface MediaTitle {
@@ -33,8 +31,8 @@ interface MediaImage {
 }
 
 interface MediaTrailer {
-    id?: string;
-    site?: string;
+    id?: string | null;
+    site?: string | null;
 }
 
 interface MediaStudio {
@@ -43,8 +41,12 @@ interface MediaStudio {
 
 interface MediaRelation {
     node: {
+        id?: number;
         title: MediaTitle;
         siteUrl: string;
+        type?: string;
+        status?: string;
+        averageScore?: number | null;
     };
     relationType: string;
 }
@@ -156,9 +158,9 @@ async function createAniListEmbed(anime: AnimeMedia): Promise<EmbedBuilder> {
         ? anilistService.truncate(anime.description.replace(/<\/?[^>]+(>|$)/g, ''), 500)
         : 'No description available.';
 
-    const startDate = anilistService.formatDate(anime.startDate);
+    const startDate = anilistService.formatDate(anime.startDate as any);
     const endDate = anime.endDate?.year
-        ? anilistService.formatDate(anime.endDate)
+        ? anilistService.formatDate(anime.endDate as any)
         : anime.status === 'RELEASING' ? 'Ongoing' : 'Unknown';
 
     const totalMinutes = anime.episodes && anime.duration ? anime.episodes * anime.duration : 0;
@@ -183,13 +185,13 @@ async function createAniListEmbed(anime: AnimeMedia): Promise<EmbedBuilder> {
         episodeStatus = `${anime.episodes} / ${anime.episodes}`;
     }
 
-    const relatedEntries = anilistService.formatRelatedEntries(anime.relations?.edges);
+    const relatedEntries = anilistService.formatRelatedEntries(anime.relations?.edges as any);
     const mainCharacters = anime.characters?.edges?.map((c: MediaCharacter) => c.node.name.full).join(', ') || 'N/A';
 
     const rankingObj = anime.rankings?.find((r: MediaRanking) => r.type === 'RATED' && r.allTime);
     const rankings = rankingObj ? `#${rankingObj.rank}` : '#??? (No Info)';
 
-    const trailerUrl = anilistService.getTrailerUrl(anime.trailer);
+    const trailerUrl = anilistService.getTrailerUrl(anime.trailer as any);
 
     return new EmbedBuilder()
         .setTitle(`📘 ${title} (${anime.format || 'Unknown'})`)
@@ -225,9 +227,9 @@ async function createMALAnimeEmbed(anime: AnimeMedia): Promise<EmbedBuilder> {
         ? anilistService.truncate(anime.description.replace(/<\/?[^>]+(>|$)/g, ''), 400)
         : 'No description available.';
 
-    const startDate = anilistService.formatDate(anime.startDate);
+    const startDate = anilistService.formatDate(anime.startDate as any);
     const endDate = anime.endDate?.year
-        ? anilistService.formatDate(anime.endDate)
+        ? anilistService.formatDate(anime.endDate as any)
         : anime.status === 'RELEASING' ? 'Ongoing' : 'Unknown';
 
     const episodeText = anime.episodes ? `${anime.episodes} episodes` : 'Unknown';
@@ -278,9 +280,9 @@ async function createMALMangaEmbed(manga: AnimeMedia, mediaType: MediaType = 'ma
         ? anilistService.truncate(manga.description.replace(/<\/?[^>]+(>|$)/g, ''), 400)
         : 'No description available.';
 
-    const startDate = anilistService.formatDate(manga.startDate);
+    const startDate = anilistService.formatDate(manga.startDate as any);
     const endDate = manga.endDate?.year
-        ? anilistService.formatDate(manga.endDate)
+        ? anilistService.formatDate(manga.endDate as any)
         : manga.status === 'RELEASING' ? 'Ongoing' : 'Unknown';
 
     // Progress info

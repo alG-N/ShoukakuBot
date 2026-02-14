@@ -14,24 +14,13 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
-
-
-import { getDefault } from '../../utils/common/moduleHelper.js';
-const logger = getDefault(require('../../core/Logger'));
+import logger from '../../core/Logger.js';
+import { moderationService } from '../../services/moderation/index.js';
 
 interface ValidationResult {
     valid: boolean;
     error?: string;
     member?: GuildMember | null;
-}
-
-interface ModerationService {
-    logAction?: (guildId: string, data: {
-        type: string;
-        target: User;
-        moderator: User;
-        reason: string;
-    }) => Promise<void>;
 }
 
 class KickCommand extends BaseCommand {
@@ -101,11 +90,10 @@ class KickCommand extends BaseCommand {
 
             // Log to ModerationService if available
             try {
-                const { ModerationService } = require('../../services') as { ModerationService: ModerationService };
-                await ModerationService.logAction?.(interaction.guild.id, {
-                    type: 'kick',
+                await moderationService.logModAction(interaction.guild, {
+                    type: 'KICK',
                     target: targetUser,
-                    moderator: interaction.user,
+                    moderator: interaction.member as GuildMember,
                     reason
                 });
             } catch {
@@ -127,7 +115,7 @@ class KickCommand extends BaseCommand {
             await this.safeReply(interaction, { embeds: [embed] });
 
         } catch (error) {
-            logger.error('Kick', 'Error:', error);
+            logger.error('Kick', `Error: ${error instanceof Error ? error.message : String(error)}`);
             await this.errorReply(interaction, 'Failed to kick the user. Make sure I have the proper permissions.');
         }
     }

@@ -9,6 +9,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { EventEmitter } from 'events';
 import * as videoConfig from '../../config/features/video.js';
+import logger from '../../core/Logger.js';
 // TYPES
 interface VideoAnalysis {
     needsReencoding: boolean;
@@ -86,11 +87,11 @@ class VideoProcessingService extends EventEmitter {
             execSync('ffmpeg -version', { stdio: 'pipe', windowsHide: true });
             execSync('ffprobe -version', { stdio: 'pipe', windowsHide: true });
             this.initialized = true;
-            console.log('✅ VideoProcessingService initialized (FFmpeg available)');
+            logger.info('VideoProcessingService', 'Initialized (FFmpeg available)');
             return true;
         } catch {
-            console.warn('⚠️ FFmpeg not found - video processing disabled');
-            console.warn('   Install FFmpeg for mobile-compatible video encoding');
+            logger.warn('VideoProcessingService', 'FFmpeg not found - video processing disabled');
+            logger.warn('VideoProcessingService', 'Install FFmpeg for mobile-compatible video encoding');
             return false;
         }
     }
@@ -122,7 +123,7 @@ class VideoProcessingService extends EventEmitter {
                 });
                 
                 this.hardwareEncoder = encoder;
-                console.log(`🎮 Hardware encoder detected: ${encoder}`);
+                logger.info('VideoProcessingService', `Hardware encoder detected: ${encoder}`);
                 return encoder;
             } catch {
                 // Try next encoder
@@ -130,7 +131,7 @@ class VideoProcessingService extends EventEmitter {
             }
         }
         
-        console.log('💻 No hardware encoder available, using software encoding');
+        logger.info('VideoProcessingService', 'No hardware encoder available, using software encoding');
         return null;
     }
 
@@ -175,7 +176,7 @@ class VideoProcessingService extends EventEmitter {
 
             ffprobe.on('close', (code: number | null) => {
                 if (code !== 0) {
-                    console.error('FFprobe error:', errorOutput);
+                    logger.error('VideoProcessingService', `FFprobe error: ${errorOutput}`);
                     resolve({ needsReencoding: false, reason: 'Analysis failed' });
                     return;
                 }
@@ -219,16 +220,16 @@ class VideoProcessingService extends EventEmitter {
                             : 'Already mobile-compatible'
                     };
 
-                    console.log(`📊 Video analysis: ${result.reason}`);
+                    logger.info('VideoProcessingService', `Video analysis: ${result.reason}`);
                     resolve(result);
                 } catch (parseError) {
-                    console.error('FFprobe parse error:', (parseError as Error).message);
+                    logger.error('VideoProcessingService', `FFprobe parse error: ${(parseError as Error).message}`);
                     resolve({ needsReencoding: false, reason: 'Parse failed' });
                 }
             });
 
             ffprobe.on('error', (err: Error) => {
-                console.error('FFprobe spawn error:', err.message);
+                logger.error('VideoProcessingService', `FFprobe spawn error: ${err.message}`);
                 resolve({ needsReencoding: false, reason: 'Spawn failed' });
             });
         });
@@ -243,7 +244,7 @@ class VideoProcessingService extends EventEmitter {
     async processForMobile(inputPath: string, options: ProcessingOptions = {}): Promise<string> {
         // Check if mobile processing is enabled
         if (config.ENABLE_MOBILE_PROCESSING === false) {
-            console.log('⏭️ Mobile processing disabled in config');
+            logger.info('VideoProcessingService', 'Mobile processing disabled in config');
             return inputPath;
         }
 
@@ -252,7 +253,7 @@ class VideoProcessingService extends EventEmitter {
         }
 
         if (!this.initialized) {
-            console.log('⚠️ FFmpeg not available, skipping processing');
+            logger.warn('VideoProcessingService', 'FFmpeg not available, skipping processing');
             return inputPath;
         }
 
@@ -260,12 +261,12 @@ class VideoProcessingService extends EventEmitter {
         const analysis = await this.analyzeVideo(inputPath);
 
         if (!analysis.needsReencoding) {
-            console.log('✅ Video is already mobile-compatible');
+            logger.info('VideoProcessingService', 'Video is already mobile-compatible');
             return inputPath;
         }
 
         this.emit('stage', { stage: 'processing', message: 'Converting for mobile compatibility...' } as StageData);
-        console.log(`🔄 Re-encoding video for mobile: ${analysis.reason}`);
+        logger.info('VideoProcessingService', `Re-encoding video for mobile: ${analysis.reason}`);
 
         return new Promise(async (resolve) => {
             const timestamp = Date.now();
@@ -283,7 +284,7 @@ class VideoProcessingService extends EventEmitter {
                 const hwEncoder = await this.detectHardwareEncoder();
                 if (hwEncoder) {
                     videoCodec = hwEncoder;
-                    console.log(`🚀 Using hardware encoder: ${hwEncoder}`);
+                    logger.info('VideoProcessingService', `Using hardware encoder: ${hwEncoder}`);
                 }
             }
             
@@ -333,8 +334,8 @@ class VideoProcessingService extends EventEmitter {
                 args.splice(2, 0, '-t', String(maxDuration));
             }
 
-            console.log(`🎬 FFmpeg processing: ${inputPath} -> ${outputPath}`);
-            console.log(`   Codec: ${videoCodec}, Preset: ${preset}, CRF: ${crf}`);
+            logger.info('VideoProcessingService', `FFmpeg processing: ${inputPath} -> ${outputPath}`);
+            logger.info('VideoProcessingService', `Codec: ${videoCodec}, Preset: ${preset}, CRF: ${crf}`);
 
             const ffmpeg = spawn(this.ffmpegPath, args, {
                 stdio: ['pipe', 'pipe', 'pipe'],
@@ -371,7 +372,7 @@ class VideoProcessingService extends EventEmitter {
 
             ffmpeg.on('close', (code: number | null) => {
                 if (code !== 0) {
-                    console.error('❌ FFmpeg error:', errorOutput.slice(-500));
+                    logger.error('VideoProcessingService', `FFmpeg error: ${errorOutput.slice(-500)}`);
                     // Return original file if processing fails
                     resolve(inputPath);
                     return;
@@ -381,13 +382,13 @@ class VideoProcessingService extends EventEmitter {
                 if (fs.existsSync(outputPath)) {
                     const stats = fs.statSync(outputPath);
                     if (stats.size > 0) {
-                        console.log(`✅ Video processed: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
+                        logger.info('VideoProcessingService', `Video processed: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
                         
                         // Delete original file
                         try {
                             fs.unlinkSync(inputPath);
                         } catch (e) {
-                            console.warn('Could not delete original file:', (e as Error).message);
+                            logger.warn('VideoProcessingService', `Could not delete original file: ${(e as Error).message}`);
                         }
 
                         this.emit('progress', { percent: 100, stage: 'processing', message: 'Processing complete!' } as ProgressData);
@@ -397,7 +398,7 @@ class VideoProcessingService extends EventEmitter {
                 }
 
                 // Output file invalid, return original
-                console.warn('⚠️ Processed file invalid, using original');
+                logger.warn('VideoProcessingService', 'Processed file invalid, using original');
                 try {
                     if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
                 } catch {
@@ -407,13 +408,13 @@ class VideoProcessingService extends EventEmitter {
             });
 
             ffmpeg.on('error', (err: Error) => {
-                console.error('FFmpeg spawn error:', err.message);
+                logger.error('VideoProcessingService', `FFmpeg spawn error: ${err.message}`);
                 resolve(inputPath);
             });
 
             // Timeout for processing (5 minutes max)
             const timeout = setTimeout(() => {
-                console.warn('⚠️ FFmpeg processing timeout');
+                logger.warn('VideoProcessingService', 'FFmpeg processing timeout');
                 ffmpeg.kill('SIGKILL');
             }, 5 * 60 * 1000);
 

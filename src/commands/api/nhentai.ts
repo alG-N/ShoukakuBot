@@ -15,7 +15,9 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
-import { getDefault } from '../../utils/common/moduleHelper.js';
+import logger from '../../core/Logger.js';
+import _nhentaiServiceModule from '../../services/api/nhentaiService.js';
+import _nhentaiHandlerModule from '../../handlers/api/nhentaiHandler.js';
 // TYPES
 interface GalleryData {
     id: number;
@@ -53,16 +55,9 @@ interface NHentaiHandler {
     handleButton?: (interaction: ButtonInteraction) => Promise<void>;
     handleModal?: (interaction: ModalSubmitInteraction) => Promise<void>;
 }
-// SERVICE IMPORTS
-let nhentaiService: NHentaiService | undefined;
-let nhentaiHandler: NHentaiHandler | undefined;
-
-try {
-    nhentaiService = getDefault(require('../../services/api/nhentaiService'));
-    nhentaiHandler = getDefault(require('../../handlers/api/nhentaiHandler'));
-} catch (e) {
-    console.warn('[NHentai] Could not load services:', (e as Error).message);
-}
+// SERVICE IMPORTS — static ESM imports (converted from CJS require())
+const nhentaiService: NHentaiService = _nhentaiServiceModule as any;
+const nhentaiHandler: NHentaiHandler = _nhentaiHandlerModule as any;
 // COMMAND
 class NHentaiCommand extends BaseCommand {
     constructor() {
@@ -170,7 +165,7 @@ class NHentaiCommand extends BaseCommand {
                     break;
             }
         } catch (error) {
-            console.error('[NHentai]', error);
+            logger.error('NHentai', `Error: ${(error as Error).message}`);
             await this.safeReply(interaction, { 
                 embeds: [this.errorEmbed('An error occurred while fetching data from nhentai.')], 
                 ephemeral: true 

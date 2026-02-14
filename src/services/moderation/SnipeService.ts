@@ -8,6 +8,7 @@
 import type { Client, Message, Snowflake } from 'discord.js';
 import GuildSettingsService from '../guild/GuildSettingsService.js';
 import cacheService from '../../cache/CacheService.js';
+import logger from '../../core/Logger.js';
 // TYPES
 interface TrackedAttachment {
     url: string;
@@ -64,7 +65,7 @@ let isInitialized = false;
  */
 export function initialize(client: Client): void {
     if (isInitialized) {
-        console.log('⚠️ Snipe service already initialized, skipping...');
+        logger.info('SnipeService', 'Already initialized, skipping');
         return;
     }
 
@@ -76,7 +77,7 @@ export function initialize(client: Client): void {
         try {
             await trackDeletedMessage(message as Message);
         } catch (error) {
-            console.error('[SnipeService] Error tracking deleted message:', error);
+            logger.error('SnipeService', `Error tracking deleted message: ${(error as Error).message}`);
         }
     });
 
@@ -89,14 +90,14 @@ export function initialize(client: Client): void {
             try {
                 await trackDeletedMessage(message as Message);
             } catch (error) {
-                console.error('[SnipeService] Error tracking bulk deleted message:', error);
+                logger.error('SnipeService', `Error tracking bulk deleted message: ${(error as Error).message}`);
             }
         }
     });
 
     // No cleanup interval needed - Redis TTL handles expiration
     isInitialized = true;
-    console.log('✅ Snipe service initialized (shard-safe with Redis)');
+    logger.info('SnipeService', 'Initialized (shard-safe with Redis)');
 }
 
 /**
@@ -105,7 +106,7 @@ export function initialize(client: Client): void {
 export function shutdown(): void {
     // No local state to clean up - Redis handles everything
     isInitialized = false;
-    console.log('✅ Snipe service shutdown');
+    logger.info('SnipeService', 'Shutdown complete');
 }
 // MESSAGE TRACKING
 /**

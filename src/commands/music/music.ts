@@ -7,6 +7,8 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, ButtonInteraction } from 'discord.js';
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
+import logger from '../../core/Logger.js';
+import _musicHandlers from '../../handlers/music/index.js';
 // TYPES
 type MusicHandler = (interaction: ChatInputCommandInteraction, guildId: string, userId: string) => Promise<void>;
 
@@ -24,7 +26,7 @@ interface MusicHandlers {
     handleMove?: MusicHandler;
     handleClear?: MusicHandler;
     handleSeek?: MusicHandler;
-    fetchLyrics?: MusicHandler;
+    fetchLyrics?: (title: string, artist?: string) => Promise<string | null>;
     handleRecent?: MusicHandler;
     handleAutoPlay?: MusicHandler;
     handleButton?: (interaction: ButtonInteraction) => Promise<void>;
@@ -47,12 +49,7 @@ class MusicCommand extends BaseCommand {
 
     get handlers(): MusicHandlers {
         if (!this._handlers) {
-            try {
-                this._handlers = this.getDefault(require('../../handlers/music'));
-            } catch (e) {
-                console.warn('[Music] Could not load handlers:', (e as Error).message);
-                this._handlers = {} as MusicHandlers;
-            }
+            this._handlers = _musicHandlers as MusicHandlers;
         }
         return this._handlers!;
     }
@@ -269,7 +266,7 @@ class MusicCommand extends BaseCommand {
                 'move': handlers.handleMove,
                 'clear': handlers.handleClear,
                 'seek': handlers.handleSeek,
-                'lyrics': handlers.fetchLyrics,
+                'lyrics': handlers.fetchLyrics as any,
                 'history': handlers.handleRecent,
                 'autoplay': handlers.handleAutoPlay,
                 'grab': handlers.handleNowPlaying, // Grab uses now playing info
@@ -286,7 +283,7 @@ class MusicCommand extends BaseCommand {
                 ephemeral: true 
             });
         } catch (error) {
-            console.error(`[Music/${subcommand}] Error:`, error);
+            logger.error('Music', `${subcommand} error: ${(error as Error).message}`);
             await this.safeReply(interaction, { 
                 embeds: [this.errorEmbed('An error occurred while processing the music command.')], 
                 ephemeral: true 
@@ -302,7 +299,7 @@ class MusicCommand extends BaseCommand {
                 return;
             }
         } catch (error) {
-            console.error('[Music Button] Error:', error);
+            logger.error('Music', `Button error: ${(error as Error).message}`);
             if (!interaction.replied && !interaction.deferred) {
                 await interaction.reply({ content: '❌ An error occurred.', ephemeral: true });
             }

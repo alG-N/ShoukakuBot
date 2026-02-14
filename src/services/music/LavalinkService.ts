@@ -6,6 +6,7 @@
 
 import { Shoukaku, Connectors } from 'shoukaku';
 import type { Client } from 'discord.js';
+import logger from '../../core/Logger.js';
 import * as lavalinkConfig from '../../config/features/lavalink.js';
 import circuitBreakerRegistry from '../../core/CircuitBreakerRegistry.js';
 import gracefulDegradation from '../../core/GracefulDegradation.js';
@@ -145,7 +146,7 @@ class LavalinkService {
             this.setupEventHandlers();
         } catch (error) {
             const err = error as Error;
-            console.error('[Lavalink] ❌ Initialization error:', err.message);
+            logger.error('Lavalink', `Initialization error: ${(err as Error).message}`);
             throw error;
         }
 
@@ -160,7 +161,7 @@ class LavalinkService {
 
         // Shoukaku v4.x 'ready' event signature: (name, lavalinkResume, libraryResume)
         this.shoukaku.on('ready', (name: string) => {
-            console.log(`[Lavalink] ✅ Node "${name}" ready`);
+            logger.info('Lavalink', `Node "${name}" ready`);
             this.readyNodes.add(name);
             this.isReady = true;
             
@@ -172,12 +173,12 @@ class LavalinkService {
         });
 
         this.shoukaku.on('error', (name: string, error: Error) => {
-            console.error(`[Lavalink] ❌ Node "${name}" error:`, error.message);
+            logger.error('Lavalink', `Node "${name}" error: ${error.message}`);
             gracefulDegradation.markDegraded('lavalink', error.message);
         });
 
         this.shoukaku.on('close', (name: string, code: number) => {
-            console.log(`[Lavalink] Node "${name}" closed (${code})`);
+            logger.info('Lavalink', `Node "${name}" closed (${code})`);
             this.readyNodes.delete(name);
             if (this.readyNodes.size === 0) {
                 this.isReady = false;
@@ -197,7 +198,7 @@ class LavalinkService {
         });
 
         this.shoukaku.on('reconnecting', (name: string, reconnectsLeft: number) => {
-            console.log(`[Lavalink] 🔄 Reconnecting "${name}" (${reconnectsLeft} left)`);
+            logger.info('Lavalink', `Reconnecting "${name}" (${reconnectsLeft} left)`);
         });
 
         this.shoukaku.on('debug', () => {});
@@ -249,7 +250,7 @@ class LavalinkService {
 
         } catch (error) {
             const err = error as Error;
-            console.error(`[Lavalink] ❌ Failed to create player:`, err.message);
+            logger.error('Lavalink', `Failed to create player: ${err.message}`);
             throw error;
         }
     }
@@ -279,12 +280,12 @@ class LavalinkService {
      */
     private async _searchInternal(query: string, requester?: unknown): Promise<SearchResult> {
         if (!this.shoukaku) {
-            console.error('[Lavalink] Cannot search: Shoukaku not initialized');
+            logger.error('Lavalink', 'Cannot search: Shoukaku not initialized');
             throw new Error('Shoukaku not initialized');
         }
 
         if (!this.isReady) {
-            console.error('[Lavalink] Cannot search: Lavalink not ready');
+            logger.error('Lavalink', 'Cannot search: Lavalink not ready');
             throw new Error('Lavalink not ready');
         }
 
@@ -309,7 +310,7 @@ class LavalinkService {
         const node = [...(this.shoukaku.nodes as Map<string, ShoukakuNode>).values()].find(n => n.state === 1);
 
         if (!node) {
-            console.error('[Lavalink] No available nodes');
+            logger.error('Lavalink', 'No available nodes');
             throw new Error('No available nodes');
         }
 
@@ -379,7 +380,7 @@ class LavalinkService {
 
         } catch (error) {
             const err = error as Error;
-            console.error('[Lavalink] Search error:', err.message);
+            logger.error('Lavalink', `Search error: ${err.message}`);
             throw new Error(err.message === 'NO_RESULTS' ? 'NO_RESULTS' : 'SEARCH_FAILED');
         }
     }
@@ -406,7 +407,7 @@ class LavalinkService {
      */
     async searchMultiple(query: string, limit: number = 5): Promise<MusicTrack[]> {
         if (!this.shoukaku || !this.isReady) {
-            console.log('[Lavalink] SearchMultiple: Not ready - shoukaku:', !!this.shoukaku, 'isReady:', this.isReady);
+            logger.info('Lavalink', `SearchMultiple: Not ready - shoukaku: ${!!this.shoukaku}, isReady: ${this.isReady}`);
             return [];
         }
 
@@ -416,19 +417,19 @@ class LavalinkService {
 
             if (!node) {
                 const nodeStates = [...(this.shoukaku.nodes as Map<string, ShoukakuNode>).values()].map(n => ({ name: n.name, state: n.state }));
-                console.log('[Lavalink] SearchMultiple: No ready node. States:', nodeStates);
+                logger.info('Lavalink', `SearchMultiple: No ready node. States: ${JSON.stringify(nodeStates)}`);
                 return [];
             }
 
-            console.log(`[Lavalink] SearchMultiple: Searching "${searchQuery}" on node ${node.name}`);
+            logger.info('Lavalink', `SearchMultiple: Searching "${searchQuery}" on node ${node.name}`);
             const result = await node.rest.resolve(searchQuery);
 
             if (!result || result.loadType === 'error' || result.loadType === 'empty') {
-                console.log('[Lavalink] SearchMultiple: No results, loadType:', result?.loadType);
+                logger.info('Lavalink', `SearchMultiple: No results, loadType: ${result?.loadType}`);
                 return [];
             }
 
-            console.log(`[Lavalink] SearchMultiple: loadType=${result.loadType}, tracks found`);
+            logger.info('Lavalink', `SearchMultiple: loadType=${result.loadType}, tracks found`);
             let tracks: Array<{ encoded?: string; info?: { uri?: string; title?: string; length?: number; artworkUrl?: string; author?: string; sourceName?: string; identifier?: string } }> = [];
             if (result.loadType === 'search' && Array.isArray(result.data)) {
                 tracks = (result.data as typeof tracks).slice(0, limit);
@@ -455,7 +456,7 @@ class LavalinkService {
             });
         } catch (error) {
             const err = error as Error;
-            console.error('[Lavalink] SearchMultiple error:', err.message);
+            logger.error('Lavalink', `SearchMultiple error: ${err.message}`);
             return [];
         }
     }
@@ -547,7 +548,7 @@ class LavalinkService {
 
         } catch (error) {
             const err = error as Error;
-            console.error('[Lavalink] Playlist search error:', err.message);
+            logger.error('Lavalink', `Playlist search error: ${err.message}`);
             throw error;
         }
     }
@@ -591,7 +592,7 @@ class LavalinkService {
                     // Ignore cleanup errors
                 }
             }
-            console.log('[Lavalink] Shutdown complete');
+            logger.info('Lavalink', 'Shutdown complete');
         }
     }
 
@@ -619,14 +620,14 @@ class LavalinkService {
                 await cacheService.preserveQueueState(guildId, state);
                 preservedCount++;
                 
-                console.log(`[Lavalink] 📦 Preserved state for guild ${guildId}`);
+                logger.info('Lavalink', `Preserved state for guild ${guildId}`);
             } catch (error) {
                 const err = error as Error;
-                console.error(`[Lavalink] Failed to preserve queue for ${guildId}:`, err.message);
+                logger.error('Lavalink', `Failed to preserve queue for ${guildId}: ${err.message}`);
             }
         }
         
-        console.log(`[Lavalink] 📦 Preserved ${preservedCount} guild states to Redis`);
+        logger.info('Lavalink', `Preserved ${preservedCount} guild states to Redis`);
     }
 
     /**
@@ -647,17 +648,17 @@ class LavalinkService {
                 
                 // Skip stale queues
                 if (now - state.timestamp > staleThreshold) {
-                    console.log(`[Lavalink] ⏰ Skipping stale queue for guild ${guildId}`);
+                    logger.info('Lavalink', `Skipping stale queue for guild ${guildId}`);
                     await cacheService.clearPreservedQueueState(guildId);
                     continue;
                 }
                 
                 // Emit event for QueueService to handle restoration
                 // The actual restoration will be handled by the music event system
-                console.log(`[Lavalink] 🔄 Queue restoration available for guild ${guildId}`);
+                logger.info('Lavalink', `Queue restoration available for guild ${guildId}`);
             }
         } catch (error) {
-            console.error('[Lavalink] Error restoring preserved queues:', (error as Error).message);
+            logger.error('Lavalink', `Error restoring preserved queues: ${(error as Error).message}`);
         }
     }
 

@@ -5,6 +5,7 @@
  */
 
 import { Collection, type Client as DiscordClient } from 'discord.js';
+import logger from '../../core/Logger.js';
 // TYPES
 interface Command {
     data: {
@@ -26,12 +27,12 @@ class CommandRegistry {
      * Load commands from all sources
      */
     async loadCommands(): Promise<Collection<string, Command>> {
-        console.log('[CommandRegistry] Loading commands...');
+        logger.info('CommandRegistry', 'Loading commands...');
 
         // Load all commands from commands/ folder
         await this._loadPresentationCommands();
 
-        console.log(`[CommandRegistry] Loaded ${this.commands.size} commands`);
+        logger.info('CommandRegistry', `Loaded ${this.commands.size} commands`);
         return this.commands;
     }
 
@@ -52,7 +53,7 @@ class CommandRegistry {
                     const cmd = (command as { default?: Command }).default || command as Command;
                     if (cmd?.data?.name) {
                         this.commands.set(cmd.data.name, cmd);
-                        console.log(`[CommandRegistry] Loaded: ${cmd.data.name} (${category})`);
+                        logger.info('CommandRegistry', `Loaded: ${cmd.data.name} (${category})`);
 
                         // Register modal handlers if present
                         if (cmd.modalHandler) {
@@ -61,7 +62,7 @@ class CommandRegistry {
                     }
                 }
             } catch (error) {
-                console.error(`[CommandRegistry] Error loading ${category}:`, (error as Error).message);
+                logger.error('CommandRegistry', `Error loading ${category}: ${(error as Error).message}`);
             }
         }
     }
@@ -128,7 +129,7 @@ class CommandRegistry {
     async shutdown(): Promise<void> {
         this.commands.clear();
         this.modalHandlers.clear();
-        console.log('[CommandRegistry] Shutdown complete');
+        logger.info('CommandRegistry', 'Shutdown complete');
     }
 }
 

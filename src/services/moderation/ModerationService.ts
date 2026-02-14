@@ -9,6 +9,7 @@ import GuildSettingsService from '../guild/GuildSettingsService.js';
 import { formatDuration } from '../../utils/common/time.js';
 import { Result } from '../../core/Result.js';
 import { ErrorCodes } from '../../core/ErrorCodes.js';
+import logger from '../../core/Logger.js';
 // TYPES
 interface ModAction {
     type: string;
@@ -119,7 +120,7 @@ export async function kickUser(
 
         return Result.ok({ userId: target.id, userTag: target.user.tag, action: 'kick' });
     } catch (error) {
-        console.error('[ModerationService] Kick error:', error);
+        logger.error('ModerationService', `Kick error: ${(error as Error).message}`);
         return Result.fromError(error as Error, ErrorCodes.CANNOT_KICK);
     }
 }
@@ -172,7 +173,7 @@ export async function muteUser(
             wasClamped: durationMs > MAX_SAFE_TIMEOUT
         });
     } catch (error) {
-        console.error('[ModerationService] Mute error:', error);
+        logger.error('ModerationService', `Mute error: ${(error as Error).message}`);
         return Result.fromError(error as Error, ErrorCodes.CANNOT_MUTE);
     }
 }
@@ -195,7 +196,7 @@ export async function unmuteUser(
 
         return Result.ok({ userId: target.id, userTag: target.user.tag, action: 'unmute' });
     } catch (error) {
-        console.error('[ModerationService] Unmute error:', error);
+        logger.error('ModerationService', `Unmute error: ${(error as Error).message}`);
         return Result.fromError(error as Error, ErrorCodes.CANNOT_MUTE);
     }
 }
@@ -255,7 +256,7 @@ export async function banUser(
         const targetTag = isMember ? (target as GuildMember).user.tag : (target as User).tag;
         return Result.ok({ userId: target.id, userTag: targetTag, action: 'ban', deleteMessageDays });
     } catch (error) {
-        console.error('[ModerationService] Ban error:', error);
+        logger.error('ModerationService', `Ban error: ${(error as Error).message}`);
         return Result.fromError(error as Error, ErrorCodes.CANNOT_BAN);
     }
 }
@@ -281,7 +282,7 @@ export async function unbanUser(
 
         return Result.ok({ userId, action: 'unban' });
     } catch (error) {
-        console.error('[ModerationService] Unban error:', error);
+        logger.error('ModerationService', `Unban error: ${(error as Error).message}`);
         return Result.fromError(error as Error, ErrorCodes.CANNOT_BAN);
     }
 }
@@ -300,7 +301,7 @@ export async function logModAction(guild: Guild, action: ModAction): Promise<voi
         const embed = createLogEmbed(action);
         await logChannel.send({ embeds: [embed] });
     } catch (error) {
-        console.error('[ModerationService] Logging error:', error);
+        logger.error('ModerationService', `Logging error: ${(error as Error).message}`);
     }
 }
 

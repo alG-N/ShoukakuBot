@@ -14,7 +14,10 @@ import {
 import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import { checkAccess, AccessType } from '../../services/index.js';
-import { getDefault } from '../../utils/common/moduleHelper.js';
+import _redditService from '../../services/api/redditService.js';
+import _redditCache from '../../repositories/api/redditCache.js';
+import * as _postHandler from '../../handlers/api/redditPostHandler.js';
+import logger from '../../core/Logger.js';
 // TYPES
 interface RedditPost {
     nsfw?: boolean;
@@ -59,19 +62,10 @@ interface PostHandler {
     sendPostListEmbed: (interaction: ChatInputCommandInteraction | ButtonInteraction, subreddit: string, posts: RedditPost[], sortBy: string, page: number, isNsfw: boolean) => Promise<void>;
     showPostDetails: (interaction: ButtonInteraction, post: RedditPost, postIndex: number, userId: string) => Promise<void>;
 }
-// SERVICE IMPORTS
-let redditService: RedditService | undefined;
-let redditCache: RedditCache | undefined;
-let postHandler: PostHandler | undefined;
-
-
-try {
-    redditService = getDefault(require('../../services/api/redditService'));
-    redditCache = getDefault(require('../../repositories/api/redditCache'));
-    postHandler = getDefault(require('../../handlers/api/redditPostHandler'));
-} catch (e) {
-    console.warn('[Reddit] Could not load services:', (e as Error).message);
-}
+// SERVICE IMPORTS — static ESM imports (converted from CJS require())
+const redditService: RedditService = _redditService as any;
+const redditCache: RedditCache = _redditCache as any;
+const postHandler: PostHandler = _postHandler as any;
 // COMMAND
 class RedditCommand extends BaseCommand {
     constructor() {
@@ -364,7 +358,7 @@ class RedditCommand extends BaseCommand {
                 await postHandler!.sendPostListEmbed(interaction, subreddit, posts, sortBy, currentPage, isNsfw);
             }
         } catch (error) {
-            console.error('[Reddit Button Error]', error);
+            logger.error('Reddit', `Button error: ${(error as Error).message}`);
         }
     }
 

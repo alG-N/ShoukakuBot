@@ -5,9 +5,8 @@
  */
 
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-
-import { getDefault } from '../../utils/common/moduleHelper.js';
-const pixivService = getDefault(require('../../services/api/pixivService'));
+import logger from '../../core/Logger.js';
+import pixivService from '../../services/api/pixivService.js';
 // TYPES & INTERFACES
 interface PixivTag {
     name: string;
@@ -263,10 +262,10 @@ async function buildNovelEmbed(
 
     if (item.image_urls?.large) {
         try {
-            const proxyImageUrl = await pixivService.getProxyImageUrl(item, 0);
+            const proxyImageUrl = await pixivService.getProxyImageUrl(item as any, 0);
             embed.setThumbnail(proxyImageUrl);
         } catch (err) {
-            console.error('Failed to set thumbnail:', (err as Error).message);
+            logger.error('PixivContent', `Failed to set thumbnail: ${(err as Error).message}`);
         }
     }
 }
@@ -286,7 +285,7 @@ async function buildIllustEmbed(
     const typeText = item.type === 'manga' ? 'Manga' : item.type === 'ugoira' ? 'Animated' : 'Illustration';
 
     try {
-        const proxyImageUrl = await pixivService.getProxyImageUrl(item, mangaPageIndex);
+        const proxyImageUrl = await pixivService.getProxyImageUrl(item as any, mangaPageIndex);
 
         embed
             .setTitle(item.title)
@@ -309,7 +308,7 @@ async function buildIllustEmbed(
             })
             .setTimestamp(new Date(item.create_date));
     } catch (err) {
-        console.error('Failed to load image:', (err as Error).message);
+        logger.error('PixivContent', `Failed to load image: ${(err as Error).message}`);
 
         embed
             .setTitle(item.title)

@@ -6,6 +6,7 @@
 
 import { GraphQLClient, gql } from 'graphql-request';
 import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
+import logger from '../../core/Logger.js';
 import cacheService from '../../cache/CacheService.js';
 import gracefulDegradation from '../../core/GracefulDegradation.js';
 // TYPES & INTERFACES
@@ -211,7 +212,7 @@ class AnilistService {
             // Check if we have stale cached data to return
             const staleResult = await this._getStaleCache<T>(cacheKey);
             if (staleResult) {
-                console.log(`[AniList] Returning stale cache for: ${cacheKey}`);
+                logger.info('AniList', `Returning stale cache for: ${cacheKey}`);
                 gracefulDegradation.markDegraded('anilist', err.message);
                 return {
                     ...staleResult,
@@ -311,7 +312,7 @@ class AnilistService {
             const data = await this.client.request<MediaResponse>(query, { search: searchTerm });
             return data.Media;
         } catch (error) {
-            console.error('[AniList Search Error]', (error as Error).message);
+            logger.error('AniList', `Search error: ${(error as Error).message}`);
             return null;
         }
     }
@@ -342,7 +343,7 @@ class AnilistService {
             });
             return data.Page?.media || [];
         } catch (error) {
-            console.error('[AniList Autocomplete Error]', (error as Error).message);
+            logger.error('AniList', `Autocomplete error: ${(error as Error).message}`);
             return [];
         }
     }
@@ -378,7 +379,7 @@ class AnilistService {
             const data = await this.client.request<MediaResponse>(query, { id });
             return data.Media;
         } catch (error) {
-            console.error('[AniList GetById Error]', (error as Error).message);
+            logger.error('AniList', `GetById error: ${(error as Error).message}`);
             return null;
         }
     }

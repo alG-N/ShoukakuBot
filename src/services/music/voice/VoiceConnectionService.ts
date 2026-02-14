@@ -8,6 +8,7 @@
 import type { ChatInputCommandInteraction, Guild, GuildMember, VoiceBasedChannel, Collection, Snowflake } from 'discord.js';
 import lavalinkService from '../LavalinkService.js';
 import { queueService } from '../queue/index.js';
+import logger from '../../../core/Logger.js';
 import { Result } from '../../../core/Result.js';
 import { ErrorCodes } from '../../../core/ErrorCodes.js';
 import { INACTIVITY_TIMEOUT, VC_CHECK_INTERVAL } from '../../../config/features/music.js';
@@ -89,7 +90,7 @@ class VoiceConnectionService {
                 const { musicEventBus, MusicEvents } = getEventBus();
                 
                 for (const guildId of expiredGuildIds) {
-                    console.log(`[VoiceConnectionService] Inactivity timeout for guild ${guildId}`);
+                    logger.info('VoiceConnectionService', `Inactivity timeout for guild ${guildId}`);
                     musicEventBus.emitEvent(MusicEvents.INACTIVITY_TIMEOUT, { guildId });
                     
                     // Clear local timer if exists
@@ -100,7 +101,7 @@ class VoiceConnectionService {
                     }
                 }
             } catch (error) {
-                console.error('[VoiceConnectionService] Inactivity checker error:', (error as Error).message);
+                logger.error('VoiceConnectionService', `Inactivity checker error: ${(error as Error).message}`);
             }
         }, 10000); // Check every 10 seconds
     }
@@ -147,7 +148,7 @@ class VoiceConnectionService {
                 textChannelId: interaction.channel!.id 
             });
         } catch (error) {
-            console.error('[VoiceConnectionService] Connect error:', error);
+            logger.error('VoiceConnectionService', `Connect error: ${(error as Error).message}`);
             return Result.fromError(error as Error, ErrorCodes.LAVALINK_ERROR);
         }
     }
@@ -171,7 +172,7 @@ class VoiceConnectionService {
             
             return Result.ok({ disconnected: true });
         } catch (error) {
-            console.error('[VoiceConnectionService] Disconnect error:', error);
+            logger.error('VoiceConnectionService', `Disconnect error: ${(error as Error).message}`);
             return Result.fromError(error as Error);
         }
     }
