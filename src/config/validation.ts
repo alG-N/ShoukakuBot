@@ -23,7 +23,6 @@ const ENV_RULES: EnvRule[] = [
     // ── Core (required) ──
     { name: 'BOT_TOKEN', required: true, description: 'Discord bot token', category: 'core' },
     { name: 'CLIENT_ID', required: true, description: 'Discord application client ID', category: 'core' },
-    { name: 'OWNER_ID', required: false, description: 'Bot owner Discord user ID', category: 'core' },
 
     // ── Database (required) ──
     { name: 'DB_HOST', required: true, description: 'PostgreSQL host', category: 'database' },
@@ -36,8 +35,6 @@ const ENV_RULES: EnvRule[] = [
     { name: 'REDIS_URL', required: false, description: 'Redis connection URL', category: 'database' },
 
     // ── API Keys (optional — features disabled if missing) ──
-    { name: 'GOOGLE_API_KEY', required: false, description: 'Google Custom Search API key', category: 'api' },
-    { name: 'GOOGLE_SEARCH_CX', required: false, description: 'Google Custom Search engine ID', category: 'api' },
     { name: 'STEAM_API_KEY', required: false, description: 'Steam Web API key', category: 'api' },
     { name: 'REDDIT_CLIENT_ID', required: false, description: 'Reddit API client ID', category: 'api' },
     { name: 'REDDIT_SECRET_KEY', required: false, description: 'Reddit API secret', category: 'api' },
@@ -47,7 +44,6 @@ const ENV_RULES: EnvRule[] = [
 
     // ── Owner/Logging (optional — features degrade if missing) ──
     { name: 'OWNER_IDS', required: false, description: 'Comma-separated owner Discord user IDs', category: 'core' },
-    { name: 'DEVELOPER_ID', required: false, description: 'Primary developer Discord user ID', category: 'core' },
     { name: 'GUILD_LOG_CHANNEL_ID', required: false, description: 'Guild join/leave log channel', category: 'core' },
     { name: 'REPORT_CHANNEL_ID', required: false, description: 'User report channel', category: 'core' },
     { name: 'SYSTEM_LOG_CHANNEL_ID', required: false, description: 'System log channel', category: 'core' },

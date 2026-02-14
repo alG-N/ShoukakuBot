@@ -17,31 +17,31 @@
  */
 
 // New architecture (Phase 2)
-export { default as musicFacade, musicFacade as MusicFacade } from './MusicFacade.js';
+export { default as musicFacade, musicFacade as MusicFacade } from './core/MusicFacade.js';
 export { queueService, QueueService } from './queue/index.js';
 export { playbackService, PlaybackService } from './playback/index.js';
 export { voiceConnectionService, VoiceConnectionService } from './voice/index.js';
 export { autoPlayService, AutoPlayService } from './autoplay/index.js';
 
-// Extracted modules (Phase P)
-export { MusicNowPlayingManager } from './MusicNowPlayingManager.js';
-export { MusicUserDataService } from './MusicUserDataService.js';
-export { MusicSkipVoteManager } from './MusicSkipVoteManager.js';
+// Core modules
+export { MusicNowPlayingManager } from './core/MusicNowPlayingManager.js';
+export { MusicUserDataService } from './core/MusicUserDataService.js';
+export { MusicSkipVoteManager } from './core/MusicSkipVoteManager.js';
 
 // Event system (Week 7)
 export { musicEventBus, MusicEventBus, MusicEvents, playbackEventHandler, PlaybackEventHandler } from './events/index.js';
 
 // Core services
-export { default as lavalinkService, LavalinkService } from './LavalinkService.js';
+export { default as lavalinkService, LavalinkService } from './core/LavalinkService.js';
 
 // Re-export MusicFacade as MusicService for backward compatibility
-export { musicFacade as MusicService } from './MusicFacade.js';
+export { musicFacade as MusicService } from './core/MusicFacade.js';
 
 // Type exports
 export type { MusicQueue, QueueState } from './queue/index.js';
 export type { PlaybackState, PlayNextResult } from './playback/index.js';
 export type { ConnectionState, PlayerEventHandlers } from './voice/index.js';
-export type { SearchResult, PlaylistResult, PreservedState, NodeStatus } from './LavalinkService.js';
+export type { SearchResult, PlaylistResult, PreservedState, NodeStatus } from './core/LavalinkService.js';
 export type {
     MusicEventName,
     TrackEventData,

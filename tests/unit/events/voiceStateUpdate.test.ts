@@ -38,7 +38,7 @@ jest.mock('../../../src/cache/CacheService', () => ({
 
 // Mock MusicFacade
 const mockCleanup = jest.fn().mockResolvedValue(undefined);
-jest.mock('../../../src/services/music/MusicFacade', () => ({
+jest.mock('../../../src/services/music/core/MusicFacade', () => ({
     __esModule: true,
     musicFacade: {
         cleanup: mockCleanup,

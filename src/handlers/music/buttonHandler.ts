@@ -11,7 +11,7 @@ import musicCache from '../../cache/music/MusicCacheFacade.js';
 import { checkSameVoiceChannel } from '../../middleware/voiceChannelCheck.js';
 import { music } from '../../config/index.js';
 import { logger } from '../../core/Logger.js';
-import { musicFacade as musicService } from '../../services/music/MusicFacade.js';
+import { musicFacade as musicService } from '../../services/music/core/MusicFacade.js';
 
 // Use any for Track type - MusicFacade.Track and trackHandler.Track are different but runtime compatible
 type Track = any;

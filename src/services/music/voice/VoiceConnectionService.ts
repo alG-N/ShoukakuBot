@@ -6,7 +6,7 @@
  */
 
 import type { ChatInputCommandInteraction, Guild, GuildMember, VoiceBasedChannel, Collection, Snowflake } from 'discord.js';
-import lavalinkService from '../LavalinkService.js';
+import lavalinkService from '../core/LavalinkService.js';
 import { queueService } from '../queue/index.js';
 import logger from '../../../core/Logger.js';
 import { Result } from '../../../core/Result.js';

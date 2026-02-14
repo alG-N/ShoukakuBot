@@ -1,8 +1,8 @@
 # Build stage
 FROM node:20-alpine AS builder
 
-# Install python3 for yt-dlp-exec postinstall
-RUN apk add --no-cache python3
+# Install build tools for native modules (@discordjs/opus requires C++ toolchain)
+RUN apk add --no-cache python3 make gcc g++ libc-dev
 
 WORKDIR /app
 
@@ -19,17 +19,22 @@ COPY src ./src
 # Compile TypeScript to JavaScript
 RUN npx tsc
 
+# Prune devDependencies from builder (keeps compiled native modules intact)
+RUN npm prune --omit=dev
+
 # Production stage
 FROM node:20-alpine
 
-# Install ffmpeg for mobile video processing (yt-dlp is in separate API container)
+# Install runtime dependencies only (ffmpeg for video, no build tools needed)
 RUN apk add --no-cache ffmpeg
 
 WORKDIR /app
 
-# Copy package files and install production dependencies only
+# Copy package files (for metadata only, no install needed)
 COPY package*.json ./
-RUN npm ci --only=production
+
+# Copy pre-built node_modules from builder (includes compiled native modules)
+COPY --from=builder /app/node_modules ./node_modules
 
 # Copy compiled JavaScript from builder
 COPY --from=builder /app/dist ./dist
@@ -45,8 +50,8 @@ RUN mkdir -p /app/logs /app/dist/services/video/temp && \
 # Switch to non-root user
 USER altergolden
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+# Health check — uses the actual /health endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))" || exit 1
 
 # Expose health check port

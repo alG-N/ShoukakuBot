@@ -28,8 +28,7 @@ import gracefulDegradation from '../core/GracefulDegradation.js';
 
 // ── API SERVICES ─────────────────────────────────────────────────────
 import anilistService from '../services/api/anilistService.js';
-import fandomService from '../services/api/fandomService.js';
-import googleService from '../services/api/googleService.js';
+import embedService from '../services/api/embedService.js';
 import myAnimeListService from '../services/api/myAnimeListService.js';
 import nhentaiService from '../services/api/nhentaiService.js';
 import pixivService from '../services/api/pixivService.js';
@@ -39,8 +38,8 @@ import steamService from '../services/api/steamService.js';
 import wikipediaService from '../services/api/wikipediaService.js';
 
 // ── MUSIC SERVICES ───────────────────────────────────────────────────
-import lavalinkService from '../services/music/LavalinkService.js';
-import musicFacade from '../services/music/MusicFacade.js';
+import lavalinkService from '../services/music/core/LavalinkService.js';
+import musicFacade from '../services/music/core/MusicFacade.js';
 import voiceConnectionService from '../services/music/voice/VoiceConnectionService.js';
 import queueService from '../services/music/queue/QueueService.js';
 import playbackService from '../services/music/playback/PlaybackService.js';
@@ -108,8 +107,7 @@ export function registerServices(): void {
 
     // ── API SERVICES ─────────────────────────────────────────────────
     container.instance('anilistService', anilistService);
-    container.instance('fandomService', fandomService);
-    container.instance('googleService', googleService);
+    container.instance('embedService', embedService);
     container.instance('myAnimeListService', myAnimeListService);
     container.instance('nhentaiService', nhentaiService);
     container.instance('pixivService', pixivService);

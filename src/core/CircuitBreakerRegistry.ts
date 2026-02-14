@@ -145,20 +145,6 @@ export const CIRCUIT_CONFIGS: Record<string, CircuitBreakerOptions> = {
         })
     },
 
-    // Google/Search API
-    google: {
-        name: 'google',
-        failureThreshold: 3,
-        successThreshold: 2,
-        timeout: 10000,
-        resetTimeout: 30000,
-        fallback: (_error: Error): FallbackResult => ({
-            success: false,
-            error: 'Search service temporarily unavailable',
-            code: 'SEARCH_API_UNAVAILABLE'
-        })
-    },
-
     // Wikipedia API
     wikipedia: {
         name: 'wikipedia',
@@ -184,20 +170,6 @@ export const CIRCUIT_CONFIGS: Record<string, CircuitBreakerOptions> = {
             success: false,
             error: 'Pixiv service temporarily unavailable',
             code: 'PIXIV_API_UNAVAILABLE'
-        })
-    },
-
-    // Fandom/Wikia API
-    fandom: {
-        name: 'fandom',
-        failureThreshold: 3,
-        successThreshold: 2,
-        timeout: 10000,
-        resetTimeout: 30000,
-        fallback: (_error: Error): FallbackResult => ({
-            success: false,
-            error: 'Fandom service temporarily unavailable',
-            code: 'FANDOM_API_UNAVAILABLE'
         })
     },
 

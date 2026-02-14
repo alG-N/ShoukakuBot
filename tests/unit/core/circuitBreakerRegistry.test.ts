@@ -32,7 +32,7 @@ describe('CircuitBreakerRegistry', () => {
         it('should have pre-configured breakers for all expected services', () => {
             const expected = [
                 'lavalink', 'externalApi', 'database', 'redis', 'discord',
-                'anime', 'nsfw', 'google', 'wikipedia', 'pixiv', 'fandom', 'steam',
+                'anime', 'nsfw', 'wikipedia', 'pixiv', 'steam',
             ];
 
             for (const name of expected) {

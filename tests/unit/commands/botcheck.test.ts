@@ -73,7 +73,7 @@ jest.mock('../../../src/database/postgres', () => ({
 }));
 
 // Mock LavalinkService
-jest.mock('../../../src/services/music/LavalinkService', () => ({
+jest.mock('../../../src/services/music/core/LavalinkService', () => ({
     __esModule: true,
     default: {
         getNodeStatus: jest.fn().mockReturnValue({ ready: true, nodes: [{}] }),
@@ -345,7 +345,7 @@ describe('BotCheckCommand', () => {
         });
 
         it('should handle Lavalink check failure gracefully', async () => {
-            const lavalink = require('../../../src/services/music/LavalinkService').default;
+            const lavalink = require('../../../src/services/music/core/LavalinkService').default;
             lavalink.getNodeStatus.mockImplementationOnce(() => { throw new Error('No nodes'); });
 
             const interaction = makeInteraction();

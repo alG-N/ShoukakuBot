@@ -30,14 +30,8 @@ class ReadyEvent extends BaseEvent {
         // Initialize logger with client
         logger.initialize(client);
         
-        // Set presence from config
-        const presenceConfig = bot.presence;
-        setPresence(
-            client, 
-            (presenceConfig.status || 'online') as PresenceStatusData, 
-            presenceConfig.activity || '/help | alterGolden', 
-            ActivityType.Playing
-        );
+        // Set presence with member count
+        this._updatePresence(client);
         
         // Log statistics
         logger.info('Ready', `Serving ${client.guilds.cache.size} guilds`);
@@ -66,15 +60,31 @@ class ReadyEvent extends BaseEvent {
             redisConnectionStatus.set(stats.redisConnected ? 1 : 0);
         };
         collectMetrics();
-        this._metricsInterval = setInterval(collectMetrics, 15000); // Update every 15s
+        this._metricsInterval = setInterval(() => {
+            collectMetrics();
+            this._updatePresence(client);
+        }, 15000); // Update every 15s
         
-        // Log startup to Discord
-        await logger.logSystemEvent(
-            'Bot Started', 
-            `alterGolden is now online with ${client.guilds.cache.size} guilds`
-        );
+        // NOTE: Detailed startup embed is sent from index.ts (ClientReady handler)
+        // to avoid duplicate "Bot Started" messages in Discord.
         
         logger.success('Ready', '🚀 alterGolden is fully operational!');
+    }
+
+    /**
+     * Update presence with dynamic member count
+     */
+    private _updatePresence(client: Client): void {
+        const totalMembers = client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0);
+        const presenceConfig = bot.presence;
+        const activity = (presenceConfig.activity || 'Teasing {members} shikkans with /help')
+            .replace('{members}', totalMembers.toLocaleString());
+        setPresence(
+            client,
+            (presenceConfig.status || 'online') as PresenceStatusData,
+            activity,
+            ActivityType.Custom
+        );
     }
 
     /**

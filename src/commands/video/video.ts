@@ -519,13 +519,13 @@ class VideoCommand extends BaseCommand {
                                   `💡 **Try instead:**\n` +
                                   `• Use a lower quality (480p)\n` +
                                   `• Use 🔗 **Link mode** for a direct download link`
-                                : `Video **${actualSizeMB.toFixed(2)} MB** exceeds Discord's upload limit for non-Nitro users (**10 MB**).\n\n` +
+                                : `Video **${actualSizeMB.toFixed(2)} MB** exceeds Discord's upload limit for non-Nitro users in this server (**10 MB**).\n\n` +
                                   `💡 **Options:**\n` +
                                   `• Use 🔗 **Link mode** for a direct download link\n` +
                                   `• Use a lower quality (480p)\n` +
                                   `• Subscribe to **Discord Nitro** to upload files up to 500 MB`
                         )
-                        .setFooter({ text: hasNitro ? `Max capacity: ${maxFileSizeMB} MB` : 'Non-Nitro limit: 10 MB • Get Nitro for up to 500 MB' });
+                        .setFooter({ text: hasNitro ? `Max capacity: ${maxFileSizeMB} MB` : 'Non-Nitro server limit: 10 MB • Get Nitro for up to 500 MB' });
                     
                     activeDownloads.delete(userId);
                     await interaction.editReply({ embeds: [discordLimitEmbed], components: [] });

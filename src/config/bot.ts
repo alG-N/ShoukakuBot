@@ -10,8 +10,8 @@ export const autoDeploy = process.env.AUTO_DEPLOY !== 'false';
 
 export const presence = {
     status: 'online' as const,
-    activity: '/help | alterGolden',
-    activityType: 'PLAYING' as const
+    activity: 'Teasing {members} shikkans with /help',
+    activityType: 'CUSTOM' as const
 };
 
 export default {

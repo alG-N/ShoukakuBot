@@ -8,7 +8,7 @@ import { ChatInputCommandInteraction } from 'discord.js';
 import { trackHandler } from './trackHandler.js';
 import musicCache from '../../cache/music/MusicCacheFacade.js';
 import { checkSameVoiceChannel } from '../../middleware/voiceChannelCheck.js';
-import { musicFacade as musicService } from '../../services/music/MusicFacade.js';
+import { musicFacade as musicService } from '../../services/music/core/MusicFacade.js';
 
 // Use any for Track type since MusicFacade.Track and trackHandler.Track have different structures
 // but are compatible at runtime

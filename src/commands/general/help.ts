@@ -100,6 +100,14 @@ class HelpCommand extends BaseCommand {
                             ].join('\n'),
                             inline: false 
                         },
+                        {
+                            name: '🔗 Embed Fix',
+                            value: [
+                                '`/media fix [url]` - Fix embed for Twitter, TikTok, Instagram, Reddit',
+                                '`/media platforms` - Show all supported platforms'
+                            ].join('\n'),
+                            inline: false
+                        },
                         { 
                             name: '🎨 Image & Content', 
                             value: [

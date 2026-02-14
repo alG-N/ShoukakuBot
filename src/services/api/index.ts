@@ -4,13 +4,13 @@
  * @module services/api
  */
 // GENERAL API SERVICES
-// Google Service
-export { googleService, GoogleService } from './googleService.js';
-export type { 
-    SearchResultItem, 
-    SearchResponse, 
-    SearchOptions as GoogleSearchOptions 
-} from './googleService.js';
+// Embed Service
+export { default as embedService, EmbedService, EMBED_FIX_RULES } from './embedService.js';
+export type {
+    EmbedFixRule,
+    EmbedFixResult,
+    EmbedFixStats
+} from './embedService.js';
 
 // Wikipedia Service
 export { wikipediaService, WikipediaService } from './wikipediaService.js';
@@ -24,19 +24,6 @@ export type {
     OnThisDayPage,
     SearchOptions as WikiSearchOptions
 } from './wikipediaService.js';
-
-// Fandom Wiki Service
-export { fandomService, FandomService, POPULAR_WIKIS } from './fandomService.js';
-export type {
-    SearchResult as FandomSearchResult,
-    SearchResponse as FandomSearchResponse,
-    ArticleData,
-    ArticleResponse,
-    WikiInfo,
-    WikiInfoResponse,
-    PopularWiki,
-    WikiSuggestion
-} from './fandomService.js';
 // ANIME/MANGA SERVICES
 // AniList Service
 export { anilistService, AnilistService } from './anilistService.js';

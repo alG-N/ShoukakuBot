@@ -624,7 +624,9 @@ class Rule34Command extends BaseCommand {
             type: 'trending',
             posts: filteredPosts,
             currentIndex: 0,
-            timeframe
+            currentPage: 1,
+            timeframe,
+            options: { timeframe, excludeAi: aiFilter ?? prefs.aiFilter } as any
         });
 
         const post = filteredPosts[0];

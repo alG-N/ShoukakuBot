@@ -18,6 +18,7 @@ import { checkAccess, AccessType } from '../../services/index.js';
 import logger from '../../core/Logger.js';
 import _nhentaiServiceModule from '../../services/api/nhentaiService.js';
 import _nhentaiHandlerModule from '../../handlers/api/nhentaiHandler.js';
+import type { AttachmentBuilder } from 'discord.js';
 // TYPES
 interface GalleryData {
     id: number;
@@ -40,17 +41,33 @@ interface SearchResult {
     data?: GalleryData[];
 }
 
+interface SearchData {
+    results: GalleryData[];
+    numPages: number;
+    perPage: number;
+    totalResults: number;
+}
+
+interface SearchGalleriesResult {
+    success: boolean;
+    data?: SearchData;
+    error?: string;
+}
+
 interface NHentaiService {
     fetchGallery: (code: number) => Promise<GalleryResult>;
     fetchRandomGallery: () => Promise<GalleryResult>;
     fetchPopularGallery: () => Promise<GalleryResult>;
-    search: (query: string, options: { sort: string; page: number }) => Promise<SearchResult>;
+    searchGalleries: (query: string, page?: number, sort?: 'popular' | 'recent') => Promise<SearchGalleriesResult>;
 }
 
 interface NHentaiHandler {
     createGalleryEmbed: (data: GalleryData, options?: { isRandom?: boolean; isPopular?: boolean }) => EmbedBuilder;
+    createGalleryResponse: (data: GalleryData, options?: { isRandom?: boolean; isPopular?: boolean }) => Promise<{ embed: EmbedBuilder; files: AttachmentBuilder[] }>;
     createMainButtons: (id: number, userId: string, numPages: number, data: GalleryData) => Promise<ActionRowBuilder<ButtonBuilder>[]>;
-    createSearchResultsEmbed?: (data: GalleryData[], query: string, options: { page: number; sort: string }) => EmbedBuilder;
+    createSearchResultsEmbed?: (query: string, data: SearchData, page: number, sort: string) => EmbedBuilder;
+    createSearchButtons?: (query: string, data: SearchData, page: number, userId: string) => ActionRowBuilder<ButtonBuilder>[];
+    setSearchSession?: (userId: string, data: any) => Promise<void>;
     createFavouritesEmbed: (userId: string) => Promise<{ embed?: EmbedBuilder; buttons?: ActionRowBuilder<ButtonBuilder>[] }>;
     handleButton?: (interaction: ButtonInteraction) => Promise<void>;
     handleModal?: (interaction: ModalSubmitInteraction) => Promise<void>;
@@ -185,7 +202,7 @@ class NHentaiCommand extends BaseCommand {
             return;
         }
 
-        const embed = nhentaiHandler!.createGalleryEmbed(result.data);
+        const { embed, files } = await nhentaiHandler!.createGalleryResponse(result.data);
         const buttons = await nhentaiHandler!.createMainButtons(
             result.data.id, 
             interaction.user.id, 
@@ -193,7 +210,7 @@ class NHentaiCommand extends BaseCommand {
             result.data
         );
         
-        await this.safeReply(interaction, { embeds: [embed], components: buttons });
+        await this.safeReply(interaction, { embeds: [embed], components: buttons, files });
     }
 
     private async _handleRandom(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -207,7 +224,7 @@ class NHentaiCommand extends BaseCommand {
             return;
         }
 
-        const embed = nhentaiHandler!.createGalleryEmbed(result.data, { isRandom: true });
+        const { embed, files } = await nhentaiHandler!.createGalleryResponse(result.data, { isRandom: true });
         const buttons = await nhentaiHandler!.createMainButtons(
             result.data.id, 
             interaction.user.id, 
@@ -215,7 +232,7 @@ class NHentaiCommand extends BaseCommand {
             result.data
         );
         
-        await this.safeReply(interaction, { embeds: [embed], components: buttons });
+        await this.safeReply(interaction, { embeds: [embed], components: buttons, files });
     }
 
     private async _handlePopular(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -229,7 +246,7 @@ class NHentaiCommand extends BaseCommand {
             return;
         }
 
-        const embed = nhentaiHandler!.createGalleryEmbed(result.data, { isPopular: true });
+        const { embed, files } = await nhentaiHandler!.createGalleryResponse(result.data, { isPopular: true });
         const buttons = await nhentaiHandler!.createMainButtons(
             result.data.id, 
             interaction.user.id, 
@@ -237,17 +254,20 @@ class NHentaiCommand extends BaseCommand {
             result.data
         );
         
-        await this.safeReply(interaction, { embeds: [embed], components: buttons });
+        await this.safeReply(interaction, { embeds: [embed], components: buttons, files });
     }
 
     private async _handleSearch(interaction: ChatInputCommandInteraction): Promise<void> {
         const query = interaction.options.getString('query', true);
-        const sort = interaction.options.getString('sort') || 'recent';
+        const sortRaw = interaction.options.getString('sort') || 'recent';
         const page = interaction.options.getInteger('page') || 1;
 
-        const result = await nhentaiService!.search(query, { sort, page });
+        // Map sort options to service's expected values
+        const sort: 'popular' | 'recent' = sortRaw.startsWith('popular') ? 'popular' : 'recent';
 
-        if (!result?.success || !result?.data?.length) {
+        const result = await nhentaiService!.searchGalleries(query, page, sort);
+
+        if (!result?.success || !result?.data || result.data.results.length === 0) {
             await this.safeReply(interaction, { 
                 embeds: [this.errorEmbed(`No results found for **${query}**.`)], 
                 ephemeral: true 
@@ -255,14 +275,29 @@ class NHentaiCommand extends BaseCommand {
             return;
         }
 
-        // Show first result with navigation
-        const embed = nhentaiHandler!.createSearchResultsEmbed?.(result.data, query, { page, sort }) 
-            || nhentaiHandler!.createGalleryEmbed(result.data[0]);
-        const buttons = await nhentaiHandler!.createMainButtons(
-            result.data[0].id,
+        const searchData = result.data;
+
+        // Store search session for pagination
+        await nhentaiHandler!.setSearchSession?.(interaction.user.id, {
+            query,
+            sort: sortRaw,
+            results: searchData.results,
+            currentPage: page,
+            numPages: searchData.numPages,
+        });
+
+        // Show search results with navigation
+        const embed = nhentaiHandler!.createSearchResultsEmbed?.(
+            query, searchData, page, sortRaw
+        ) || nhentaiHandler!.createGalleryEmbed(searchData.results[0]);
+
+        const buttons = nhentaiHandler!.createSearchButtons?.(
+            query, searchData, page, interaction.user.id
+        ) || await nhentaiHandler!.createMainButtons(
+            searchData.results[0].id,
             interaction.user.id,
-            result.data[0].num_pages,
-            result.data[0]
+            searchData.results[0].num_pages,
+            searchData.results[0]
         );
 
         await this.safeReply(interaction, { embeds: [embed], components: buttons });

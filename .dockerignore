@@ -28,24 +28,12 @@ logs/
 # Test
 coverage/
 .nyc_output/
+tests/
+jest.config.js
 
-# Docker
-docker/init/*.sql.bak
-
-# Database files (SQLite)
-*.db
-*.sqlite
-*.sqlite3
-
-# Temporary files
-temp/
-tmp/
-*.tmp
-
-# Git
-.git/
-.gitignore
-
-# Documentation
-*.md
-!README.md
+# Docker (not needed in build context for bot image)
+docker/
+monitoring/
+docs/
+docker-compose*.yml
+*.ps1

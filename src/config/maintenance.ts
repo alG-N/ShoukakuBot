@@ -7,7 +7,7 @@
  */
 
 import { EmbedBuilder } from 'discord.js';
-import { DEVELOPER_ID } from './owner.js';
+import { isOwner, OWNER_IDS } from './owner.js';
 import logger from '../core/Logger.js';
 
 import { getDefault } from '../utils/common/moduleHelper.js';
@@ -125,8 +125,11 @@ export function enableMaintenance(options: MaintenanceOptions = {}): Maintenance
     maintenanceState.partialMode = options.partialMode || false;
     maintenanceState.disabledFeatures = options.disabledFeatures || [];
 
-    if (!maintenanceState.allowedUsers.includes(DEVELOPER_ID)) {
-        maintenanceState.allowedUsers.push(DEVELOPER_ID);
+    // Auto-allow all owners during maintenance
+    for (const ownerId of OWNER_IDS) {
+        if (!maintenanceState.allowedUsers.includes(ownerId)) {
+            maintenanceState.allowedUsers.push(ownerId);
+        }
     }
 
     persistState();
@@ -159,7 +162,7 @@ export function isInMaintenance(): boolean {
  * Check if user can bypass maintenance
  */
 export function canBypassMaintenance(userId: string): boolean {
-    return userId === DEVELOPER_ID || maintenanceState.allowedUsers.includes(userId);
+    return isOwner(userId) || maintenanceState.allowedUsers.includes(userId);
 }
 
 /**

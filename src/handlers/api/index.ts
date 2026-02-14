@@ -5,9 +5,6 @@
  */
 
 // TypeScript handlers
-export { googleHandler, GoogleHandler } from './googleHandler.js';
-export type { SearchResult, SearchOptions } from './googleHandler.js';
-
 export { wikipediaHandler, WikipediaHandler } from './wikipediaHandler.js';
 export type { 
     WikipediaArticle, 

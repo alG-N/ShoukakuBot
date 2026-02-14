@@ -1,6 +1,9 @@
 # ═══════════════════════════════════════════════════════════════
 # AlterGolden - Stop All Services
+# Usage: .\stop.ps1 [-RemoveNetwork]
 # ═══════════════════════════════════════════════════════════════
+
+param([switch]$RemoveNetwork)
 
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
@@ -26,11 +29,16 @@ Write-Host "`n[4/4] Stopping Lavalink..." -ForegroundColor Yellow
 docker compose -f docker-compose.lavalink.yml down
 Write-Host "  ✅ Lavalink stopped" -ForegroundColor Green
 
-# Optionally remove network
-$removeNet = Read-Host "`nRemove shared network? (y/N)"
-if ($removeNet -eq 'y') {
+# Remove network if flag passed or user confirms interactively
+if ($RemoveNetwork) {
     docker network rm altergolden-net 2>$null
     Write-Host "  ✅ Network removed" -ForegroundColor Green
+} elseif ([Environment]::UserInteractive) {
+    $removeNet = Read-Host "`nRemove shared network? (y/N)"
+    if ($removeNet -eq 'y') {
+        docker network rm altergolden-net 2>$null
+        Write-Host "  ✅ Network removed" -ForegroundColor Green
+    }
 }
 
 Write-Host "`n═══════════════════════════════════════════" -ForegroundColor Red

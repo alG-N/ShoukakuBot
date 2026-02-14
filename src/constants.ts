@@ -35,7 +35,6 @@ export const COLORS = {
     RULE34: 0xAAE5A4,
     ANILIST: 0x02A9FF,
     STEAM: 0x1B2838,
-    GOOGLE: 0x4285F4,
     WIKIPEDIA: 0xFFFFFF,
     MAL: 0x2E51A2,
 } as const;

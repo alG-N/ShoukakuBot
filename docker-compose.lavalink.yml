@@ -18,7 +18,7 @@ services:
       - altergolden-net
     volumes:
       - ./docker/lavalink/application.yml:/opt/Lavalink/application.yml:ro
-      - ./docker/lavalink/plugins:/opt/Lavalink/plugins
+      - ./docker/lavalink/plugins:/opt/Lavalink/plugins:ro
     ports:
       - "2333:2333"
     dns:
@@ -38,6 +38,12 @@ services:
       options:
         max-size: "3m"
         max-file: "2"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null --header='Authorization: youshallnotpass' http://127.0.0.1:2333/version || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   lavalink-2:
     image: ghcr.io/lavalink-devs/lavalink:latest
@@ -47,7 +53,7 @@ services:
       - altergolden-net
     volumes:
       - ./docker/lavalink/application.yml:/opt/Lavalink/application.yml:ro
-      - ./docker/lavalink/plugins:/opt/Lavalink/plugins
+      - ./docker/lavalink/plugins:/opt/Lavalink/plugins:ro
     ports:
       - "2334:2333"
     dns:
@@ -67,6 +73,12 @@ services:
       options:
         max-size: "3m"
         max-file: "2"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null --header='Authorization: youshallnotpass' http://127.0.0.1:2333/version || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   lavalink-3:
     image: ghcr.io/lavalink-devs/lavalink:latest
@@ -76,7 +88,7 @@ services:
       - altergolden-net
     volumes:
       - ./docker/lavalink/application.yml:/opt/Lavalink/application.yml:ro
-      - ./docker/lavalink/plugins:/opt/Lavalink/plugins
+      - ./docker/lavalink/plugins:/opt/Lavalink/plugins:ro
     ports:
       - "2335:2333"
     dns:
@@ -96,3 +108,9 @@ services:
       options:
         max-size: "3m"
         max-file: "2"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null --header='Authorization: youshallnotpass' http://127.0.0.1:2333/version || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s

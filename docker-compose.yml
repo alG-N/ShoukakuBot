@@ -76,7 +76,7 @@ services:
     networks:
       - altergolden-net
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "${REDIS_PORT:-6380}:6379"
     volumes:
       - redis_data:/data
     command: >
@@ -151,6 +151,8 @@ services:
     restart: on-failure:5
     networks:
       - altergolden-net
+    ports:
+      - "3000:3000"
     volumes:
       - video_temp:/app/dist/services/video/temp
     depends_on:
@@ -162,27 +164,24 @@ services:
         condition: service_healthy
       # Lavalink nodes are in separate compose - bot auto-reconnects (30 retries)
     environment:
-      # ── Core (required) ──
-      BOT_TOKEN: ${BOT_TOKEN}
-      CLIENT_ID: ${CLIENT_ID}
+      # ── Core (required — compose will fail if missing) ──
+      BOT_TOKEN: ${BOT_TOKEN:?BOT_TOKEN is required in .env}
+      CLIENT_ID: ${CLIENT_ID:?CLIENT_ID is required in .env}
       # ── Database ──
       DB_HOST: postgres
       DB_PORT: "5432"
       DB_USER: ${DB_USER:-altergolden}
-      DB_PASSWORD: ${DB_PASSWORD}
+      DB_PASSWORD: ${DB_PASSWORD:-altergolden_secret}
       DB_NAME: ${DB_NAME:-altergolden_db}
       # ── Redis ──
       REDIS_URL: redis://redis:6379
       # ── Owner / Logging (optional) ──
       OWNER_IDS: ${OWNER_IDS:-}
-      DEVELOPER_ID: ${DEVELOPER_ID:-}
       GUILD_LOG_CHANNEL_ID: ${GUILD_LOG_CHANNEL_ID:-}
       REPORT_CHANNEL_ID: ${REPORT_CHANNEL_ID:-}
       SYSTEM_LOG_CHANNEL_ID: ${SYSTEM_LOG_CHANNEL_ID:-}
       SUPPORT_GUILD_ID: ${SUPPORT_GUILD_ID:-}
       # ── API Keys (optional) ──
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
-      GOOGLE_SEARCH_CX: ${GOOGLE_SEARCH_CX:-}
       STEAM_API_KEY: ${STEAM_API_KEY:-}
       REDDIT_CLIENT_ID: ${REDDIT_CLIENT_ID:-}
       REDDIT_SECRET_KEY: ${REDDIT_SECRET_KEY:-}
@@ -220,7 +219,7 @@ services:
         max-size: "5m"
         max-file: "3"
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"process.exit(0)\""]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/health || exit 1"]
       interval: 60s
       timeout: 10s
       retries: 3

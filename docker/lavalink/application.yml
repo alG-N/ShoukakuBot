@@ -48,8 +48,8 @@ logging:
 
   logback:
     rollingpolicy:
-      max-file-size: 1GB
-      max-history: 30
+      max-file-size: 10MB
+      max-history: 3
 
 plugins:
   lavasrc:
@@ -64,8 +64,8 @@ plugins:
       flowerytts: false
       youtube: true
     spotify:
-      clientId: "YOUR_SPOTIFY_CLIENT_ID"
-      clientSecret: "YOUR_SPOTIFY_CLIENT_SECRET"
+      clientId: ${SPOTIFY_CLIENT_ID:""}
+      clientSecret: ${SPOTIFY_CLIENT_SECRET:""}
       countryCode: "US"
       playlistLoadLimit: 6
       albumLoadLimit: 6

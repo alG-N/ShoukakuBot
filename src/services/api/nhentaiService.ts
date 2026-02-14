@@ -16,6 +16,12 @@ const GALLERY_ENDPOINT = '/gallery';
 const THUMBNAIL_BASE = 'https://t.nhentai.net/galleries';
 const IMAGE_BASE = 'https://i.nhentai.net/galleries';
 
+// Alternative API mirrors to try when main API is Cloudflare-blocked
+const API_MIRRORS = [
+    'https://nhentai.net/api',        // Primary
+    'https://nhentai.to/api',         // Mirror 1
+];
+
 // Image type mapping
 const IMAGE_TYPES: Record<string, string> = {
     'j': 'jpg',
@@ -41,8 +47,17 @@ function buildRequestHeaders(): Record<string, string> {
         'User-Agent': nhentaiConfig.userAgent,
         'Accept': 'application/json, text/html, */*',
         'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
         'Referer': 'https://nhentai.net/',
         'Origin': 'https://nhentai.net',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-CH-UA': '"Chromium";v="131", "Not_A Brand";v="24"',
+        'Sec-CH-UA-Mobile': '?0',
+        'Sec-CH-UA-Platform': '"Windows"',
     };
 
     // Add cf_clearance cookie if configured (obtained from real browser session)
@@ -424,7 +439,7 @@ class NHentaiService {
     /**
      * Retry wrapper for requests that may get 403'd by Cloudflare.
      * Retries up to 2 times with exponential backoff + jitter and slightly
-     * varied headers on each attempt to reduce fingerprint consistency.
+     * varied headers on each attempt. Also tries alternative mirrors.
      */
     private async _fetchWithRetry(
         url: string,
@@ -435,7 +450,13 @@ class NHentaiService {
 
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
             try {
-                return await fetchFn(url);
+                // On retry, try using a mirror URL
+                let targetUrl = url;
+                if (attempt > 0 && API_MIRRORS.length > attempt) {
+                    targetUrl = url.replace(API_BASE, API_MIRRORS[attempt] || API_BASE);
+                    logger.info('NHentai', `Trying mirror: ${API_MIRRORS[attempt]}`);
+                }
+                return await fetchFn(targetUrl);
             } catch (error) {
                 lastError = error;
                 const err = error as { response?: { status: number } };
@@ -445,7 +466,7 @@ class NHentaiService {
                     if (attempt < maxRetries) {
                         // Exponential backoff with jitter: 1-2s, 2-4s
                         const delay = (1000 * Math.pow(2, attempt)) + Math.random() * 1000;
-                        logger.warn('NHentai', `403/503 on attempt ${attempt + 1}, retrying in ${Math.round(delay)}ms...`);
+                        logger.warn('NHentai', `${err.response.status} on attempt ${attempt + 1}, retrying in ${Math.round(delay)}ms...`);
                         await new Promise(r => setTimeout(r, delay));
                         continue;
                     }
@@ -469,7 +490,7 @@ class NHentaiService {
             return { success: false, error: 'Gallery not found. Please check the code.', code: 'NOT_FOUND' };
         }
         if (err.response?.status === 403) {
-            return { success: false, error: 'Access denied by Cloudflare. Try setting NHENTAI_CF_CLEARANCE env var from a browser session.', code: 'FORBIDDEN' };
+            return { success: false, error: 'Access denied by Cloudflare protection. To fix:\n1. Open nhentai.net in your browser\n2. Complete the Cloudflare challenge\n3. Copy `cf_clearance` cookie from DevTools (F12 → Application → Cookies)\n4. Set `NHENTAI_CF_CLEARANCE=<value>` in .env\n5. Restart the bot\n\nNote: cf_clearance expires after ~30 minutes.', code: 'FORBIDDEN' };
         }
         if (err.response?.status === 503) {
             return { success: false, error: 'Cloudflare challenge active. Set NHENTAI_CF_CLEARANCE env var to bypass.', code: 'CF_CHALLENGE' };

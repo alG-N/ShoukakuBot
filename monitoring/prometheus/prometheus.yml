@@ -53,8 +53,8 @@ scrape_configs:
   - job_name: 'altergolden'
     static_configs:
       - targets: 
-        # Single instance (development)
-        - 'host.docker.internal:3000'
+        # Use container name on shared altergolden-net network
+        - 'altergolden-bot:3000'
         labels:
           instance: 'main'
           app: 'altergolden'

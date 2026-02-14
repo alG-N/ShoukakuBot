@@ -166,6 +166,21 @@ class AlterGoldenBot {
                 }
                 
                 logger.info('Ready', `🚀 alterGolden is fully operational!`);
+
+                // Send startup summary to Discord log channel
+                const guilds = this.client.guilds.cache.size;
+                const users = this.client.guilds.cache.reduce((a, g) => a + g.memberCount, 0);
+                const commands = commandReg.size;
+                const shardLabel = this.client.shard ? `Shard ${shardId}/${this.client.shard.count}` : 'No sharding';
+                await logger.discord('SUCCESS', '🚀 Bot Started', 
+                    `**alterGolden v4.1** is now online and ready!`, {
+                    'Guilds': `${guilds}`,
+                    'Users': `~${users.toLocaleString()}`,
+                    'Commands': `${commands}`,
+                    'Shard': shardLabel,
+                    'Node.js': process.version,
+                    'Uptime': `Started at <t:${Math.floor(Date.now() / 1000)}:F>`
+                });
             });
 
         } catch (error) {
@@ -224,7 +239,7 @@ class AlterGoldenBot {
         // Dynamic import LavalinkService
         let lavalinkService: { getNodeStatus?: () => { ready?: boolean; nodes?: unknown[]; activeConnections?: number } } | undefined;
         if (music.enabled) {
-            const lavalinkModule = await import('./services/music/LavalinkService.js');
+            const lavalinkModule = await import('./services/music/core/LavalinkService.js');
             const mod = lavalinkModule.default as Record<string, unknown>;
             lavalinkService = ((mod && typeof mod === 'object' && 'default' in mod) ? mod.default : mod) as typeof lavalinkService;
         }
@@ -362,7 +377,7 @@ class AlterGoldenBot {
      */
     private async initializeLavalink(): Promise<void> {
         try {
-            const lavalinkModule = await import('./services/music/LavalinkService.js');
+            const lavalinkModule = await import('./services/music/core/LavalinkService.js');
             const mod = lavalinkModule.default as Record<string, unknown>;
             const lavalinkService = ((mod && typeof mod === 'object' && 'default' in mod) ? mod.default : mod) as { preInitialize: (client: unknown) => void };
             lavalinkService.preInitialize(this.client);

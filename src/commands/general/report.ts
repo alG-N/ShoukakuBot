@@ -72,6 +72,10 @@ class ReportCommand extends BaseCommand {
 
         await interaction.showModal(modal);
     }
+
+    async handleModal(interaction: ModalSubmitInteraction): Promise<void> {
+        await handleModal(interaction);
+    }
 }
 
 /**

@@ -9,7 +9,7 @@ import { trackHandler } from './trackHandler.js';
 import musicCache from '../../cache/music/MusicCacheFacade.js';
 import { checkVoiceChannelSync, checkVoicePermissionsSync } from '../../middleware/voiceChannelCheck.js';
 import { music } from '../../config/index.js';
-import { musicFacade as musicService } from '../../services/music/MusicFacade.js';
+import { musicFacade as musicService } from '../../services/music/core/MusicFacade.js';
 import logger from '../../core/Logger.js';
 
 // Use any for Track type - different but runtime compatible
@@ -222,15 +222,39 @@ export const playHandler = {
                     musicService.removeTrack(guildId, 0);
                     await musicService.playTrack(guildId, nextTrack);
 
-                    const embed = trackHandler.createPlaylistEmbed(
+                    // Show playlist info as the interaction reply
+                    const playlistEmbed = trackHandler.createPlaylistEmbed(
                         playlistData.name,
                         playlistData.tracks.length,
                         interaction.user,
                         nextTrack
                     );
+                    await interaction.editReply({ embeds: [playlistEmbed] });
 
-                    const message = await interaction.editReply({ embeds: [embed] });
-                    musicService.setNowPlayingMessage(guildId, message);
+                    // Send a proper now-playing embed with controls in the channel
+                    const listenerCount = musicService.getListenerCount(guildId, interaction.guild!);
+                    const voteSkipStatus = musicCache.getVoteSkipStatus(guildId, listenerCount) as VoteSkipStatus;
+
+                    const nowPlayingEmbed = trackHandler.createNowPlayingEmbed(nextTrack, {
+                        volume: musicService.getVolume(guildId),
+                        queueLength: musicService.getQueueLength(guildId),
+                        voteSkipCount: voteSkipStatus.count,
+                        voteSkipRequired: voteSkipStatus.required,
+                        listenerCount: listenerCount
+                    });
+                    const rows = trackHandler.createControlButtons(guildId, {
+                        trackUrl: nextTrack.url,
+                        userId: interaction.user.id,
+                        autoPlay: musicService.isAutoPlayEnabled(guildId),
+                        listenerCount: listenerCount
+                    });
+
+                    const channel = interaction.channel;
+                    if (channel && 'send' in channel) {
+                        const nowPlayingMsg = await channel.send({ embeds: [nowPlayingEmbed], components: rows });
+                        musicService.setNowPlayingMessage(guildId, nowPlayingMsg);
+                    }
+
                     musicService.startVCMonitor(guildId, interaction.guild!);
                 }
             } else {

@@ -13,12 +13,15 @@ import {
     TextInputBuilder,
     TextInputStyle,
     ButtonInteraction,
-    ModalSubmitInteraction
+    ModalSubmitInteraction,
+    AttachmentBuilder
 } from 'discord.js';
 import nhentaiRepository, { NHentaiGallery, NHentaiFavourite } from '../../repositories/api/nhentaiRepository.js';
 import cacheService from '../../cache/CacheService.js';
 import logger from '../../core/Logger.js';
 import nhentaiService from '../../services/api/nhentaiService.js';
+import axios from 'axios';
+import { nhentai as nhentaiConfig } from '../../config/services.js';
 // TYPES & INTERFACES
 interface GalleryTitle {
     english?: string;
@@ -114,6 +117,110 @@ class NHentaiHandler {
 
     constructor() {
         // Sessions are now managed by CacheService with Redis TTL — no local cleanup needed
+    }
+
+    /**
+     * Download image from nhentai CDN with proper headers to bypass hotlink protection.
+     * Discord's image proxy gets blocked by nhentai CDN, so we download and re-attach.
+     */
+    private async _fetchImage(url: string): Promise<Buffer | null> {
+        try {
+            const headers: Record<string, string> = {
+                'User-Agent': nhentaiConfig.userAgent,
+                'Referer': 'https://nhentai.net/',
+                'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+                'Sec-Fetch-Dest': 'image',
+                'Sec-Fetch-Mode': 'no-cors',
+                'Sec-Fetch-Site': 'same-site',
+            };
+            // Include cf_clearance cookie for CDN access
+            if (nhentaiConfig.cfClearance) {
+                headers['Cookie'] = `cf_clearance=${nhentaiConfig.cfClearance}`;
+            }
+            const response = await axios.get(url, {
+                responseType: 'arraybuffer',
+                timeout: 10000,
+                headers,
+            });
+            return Buffer.from(response.data);
+        } catch (error) {
+            const err = error as { response?: { status: number }; message?: string };
+            logger.warn('NHentai', `Failed to fetch image (${err.response?.status || 'network'}): ${err.message} | URL: ${url}`);
+            return null;
+        }
+    }
+
+    /**
+     * Get file extension from nhentai image type code
+     */
+    private _getExt(typeCode: string): string {
+        const ext: Record<string, string> = { 'j': 'jpg', 'p': 'png', 'g': 'gif' };
+        return ext[typeCode] || 'jpg';
+    }
+
+    /**
+     * Build a page response (embed + attached image) for the page reader.
+     * Downloads the image from nhentai CDN and attaches it to bypass Discord hotlink blocking.
+     */
+    async createPageResponse(gallery: Gallery, pageNum: number): Promise<{ embed: EmbedBuilder; files: AttachmentBuilder[] }> {
+        const { id, media_id, title, num_pages, images } = gallery;
+        const pages = images?.pages || [];
+
+        if (pageNum < 1 || pageNum > pages.length) {
+            return { embed: this.createErrorEmbed('Invalid page number.'), files: [] };
+        }
+
+        const page = pages[pageNum - 1];
+        const ext = this._getExt(page.t);
+        const imageUrl = this._getPageImageUrl(media_id, pageNum, page.t);
+        const filename = `page_${pageNum}.${ext}`;
+
+        const embed = new EmbedBuilder()
+            .setColor(COLORS.NHENTAI)
+            .setAuthor({
+                name: this._truncate(this._getTitle(title), 100),
+                url: `https://nhentai.net/g/${id}/`
+            })
+            .setFooter({ text: `Page ${pageNum}/${num_pages} • ID: ${id}` });
+
+        const imageBuffer = await this._fetchImage(imageUrl);
+        const files: AttachmentBuilder[] = [];
+
+        if (imageBuffer) {
+            const attachment = new AttachmentBuilder(imageBuffer, { name: filename });
+            files.push(attachment);
+            embed.setImage(`attachment://${filename}`);
+        } else {
+            // Fallback: try direct URL (may not load, but better than nothing)
+            embed.setImage(imageUrl);
+        }
+
+        return { embed, files };
+    }
+
+    /**
+     * Build a gallery info response (embed + attached thumbnail).
+     * Downloads the cover image from nhentai CDN and attaches it.
+     */
+    async createGalleryResponse(gallery: Gallery, options: { isRandom?: boolean; isPopular?: boolean } = {}): Promise<{ embed: EmbedBuilder; files: AttachmentBuilder[] }> {
+        const embed = this.createGalleryEmbed(gallery, options);
+        const { media_id, images } = gallery;
+        const coverType = images?.cover?.t || 'j';
+        const ext = this._getExt(coverType);
+        const coverUrl = this._getThumbnailUrl(media_id, coverType);
+        const filename = `cover.${ext}`;
+
+        const imageBuffer = await this._fetchImage(coverUrl);
+        const files: AttachmentBuilder[] = [];
+
+        if (imageBuffer) {
+            const attachment = new AttachmentBuilder(imageBuffer, { name: filename });
+            files.push(attachment);
+            // Override the thumbnail set by createGalleryEmbed with our attachment
+            embed.setThumbnail(`attachment://${filename}`);
+        }
+
+        return { embed, files };
     }
 
 
@@ -725,9 +832,9 @@ class NHentaiHandler {
                         return;
                     }
                     const gallery = result.data;
-                    const embed = this.createGalleryEmbed(gallery);
+                    const { embed, files } = await this.createGalleryResponse(gallery);
                     const rows = await this.createMainButtons(gallery.id, userId, gallery.num_pages, gallery);
-                    await interaction.editReply({ embeds: [embed], components: rows });
+                    await interaction.editReply({ embeds: [embed], components: rows, files });
                     break;
                 }
 
@@ -749,9 +856,9 @@ class NHentaiHandler {
                         await this.setPageSession(userId, gallery, 1);
                     }
                     
-                    const pageEmbed = this.createPageEmbed(gallery!, 1);
+                    const { embed: pageEmbed, files: pageFiles } = await this.createPageResponse(gallery!, 1);
                     const pageRows = this.createPageButtons(parseInt(galleryId), userId, 1, gallery!.num_pages);
-                    await interaction.editReply({ embeds: [pageEmbed], components: pageRows });
+                    await interaction.editReply({ embeds: [pageEmbed], components: pageRows, files: pageFiles });
                     break;
                 }
 
@@ -775,9 +882,9 @@ class NHentaiHandler {
                     else if (action === 'last') newPage = session.totalPages;
                     
                     await this.updatePageSession(userId, newPage);
-                    const pageEmbed = this.createPageEmbed(session.gallery, newPage);
+                    const { embed: pageEmbed, files: pageFiles } = await this.createPageResponse(session.gallery, newPage);
                     const pageRows = this.createPageButtons(session.galleryId, userId, newPage, session.totalPages);
-                    await interaction.editReply({ embeds: [pageEmbed], components: pageRows });
+                    await interaction.editReply({ embeds: [pageEmbed], components: pageRows, files: pageFiles });
                     break;
                 }
 
@@ -792,9 +899,9 @@ class NHentaiHandler {
                         return;
                     }
                     const gallery = result.data;
-                    const embed = this.createGalleryEmbed(gallery);
+                    const { embed, files } = await this.createGalleryResponse(gallery);
                     const rows = await this.createMainButtons(parseInt(galleryId), userId, gallery.num_pages, gallery);
-                    await interaction.editReply({ embeds: [embed], components: rows });
+                    await interaction.editReply({ embeds: [embed], components: rows, files });
                     break;
                 }
 
@@ -889,9 +996,9 @@ class NHentaiHandler {
                         return;
                     }
                     const gallery = result.data;
-                    const embed = this.createGalleryEmbed(gallery, { isRandom: true });
+                    const { embed, files } = await this.createGalleryResponse(gallery, { isRandom: true });
                     const rows = await this.createMainButtons(gallery.id, userId, gallery.num_pages, gallery);
-                    await interaction.editReply({ embeds: [embed], components: rows });
+                    await interaction.editReply({ embeds: [embed], components: rows, files });
                     break;
                 }
 
@@ -905,9 +1012,9 @@ class NHentaiHandler {
                         return;
                     }
                     const gallery = result.data;
-                    const embed = this.createGalleryEmbed(gallery, { isPopular: true });
+                    const { embed, files } = await this.createGalleryResponse(gallery, { isPopular: true });
                     const rows = await this.createMainButtons(gallery.id, userId, gallery.num_pages, gallery);
-                    await interaction.editReply({ embeds: [embed], components: rows });
+                    await interaction.editReply({ embeds: [embed], components: rows, files });
                     break;
                 }
 
@@ -940,9 +1047,9 @@ class NHentaiHandler {
                         return;
                     }
                     const gallery = result.data;
-                    const embed = this.createGalleryEmbed(gallery);
+                    const { embed, files } = await this.createGalleryResponse(gallery);
                     const rows = await this.createMainButtons(gallery.id, userId, gallery.num_pages, gallery);
-                    await interaction.editReply({ embeds: [embed], components: rows });
+                    await interaction.editReply({ embeds: [embed], components: rows, files });
                     break;
                 }
 
@@ -1005,11 +1112,11 @@ class NHentaiHandler {
             const totalPages = gallery.num_pages || 1;
             const clampedPage = Math.max(1, Math.min(targetPage, totalPages));
 
-            // Create page embed
-            const embed = this.createPageEmbed(gallery, clampedPage);
+            // Create page embed with attached image
+            const { embed, files } = await this.createPageResponse(gallery, clampedPage);
             const buttons = this.createPageButtons(galleryId, userId, clampedPage, totalPages);
 
-            await interaction.editReply({ embeds: [embed], components: buttons });
+            await interaction.editReply({ embeds: [embed], components: buttons, files });
         } catch (error) {
             logger.error('NHentai', `Modal error: ${(error as Error).message}`);
             await interaction.followUp?.({ 

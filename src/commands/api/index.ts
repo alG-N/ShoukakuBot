@@ -5,8 +5,7 @@
  */
 
 export { default as anime } from './anime.js';
-export { default as fandom } from './fandom.js';
-export { default as google } from './google.js';
+export { default as media } from './media.js';
 export { default as nhentai } from './nhentai.js';
 export { default as pixiv } from './pixiv.js';
 export { default as reddit } from './reddit.js';

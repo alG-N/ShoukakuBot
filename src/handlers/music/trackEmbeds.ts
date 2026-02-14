@@ -24,7 +24,7 @@ import {
     PAUSED_EMOJI
 } from './trackTypes.js';
 
-// ─── Utility Functions ──────────────────────────────────────
+// Utility Functions
 
 /**
  * Get source info for a track
@@ -87,7 +87,7 @@ export function timeAgo(timestamp: number): string {
     return `${Math.floor(seconds / 604800)}w ago`;
 }
 
-// ─── Embed Builders ─────────────────────────────────────────
+// Embed Builders
 
 /**
  * Create now playing embed — Clean version with 3 fields per row

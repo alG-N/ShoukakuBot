@@ -3,7 +3,7 @@
  * @module config/say
  */
 
-import { DEVELOPER_ID } from '../owner.js';
+import { PRIMARY_OWNER_ID } from '../owner.js';
 // TYPE COLORS
 export const TYPE_COLORS: Record<string, number> = {
     default: 0x5865F2,
@@ -15,9 +15,9 @@ export const TYPE_COLORS: Record<string, number> = {
 };
 
 /**
- * @deprecated Use DEVELOPER_ID from config/owner.ts directly
+ * Primary owner ID for say command credit logic
  */
-export const OWNER_ID: string = DEVELOPER_ID;
+export const OWNER_ID: string = PRIMARY_OWNER_ID;
 export const LOG_CHANNEL_ID: string = process.env.SYSTEM_LOG_CHANNEL_ID || '';
 // DEFAULT EXPORT
 export default {

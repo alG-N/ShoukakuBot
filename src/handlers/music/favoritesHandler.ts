@@ -7,7 +7,7 @@
 import { ChatInputCommandInteraction } from 'discord.js';
 import { trackHandler } from './trackHandler.js';
 import { checkVoiceChannel, checkVoicePermissions } from '../../middleware/voiceChannelCheck.js';
-import { musicFacade as musicService } from '../../services/music/MusicFacade.js';
+import { musicFacade as musicService } from '../../services/music/core/MusicFacade.js';
 
 // Use any for Track type - different but runtime compatible
 type Track = any;

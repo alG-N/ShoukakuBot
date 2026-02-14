@@ -193,7 +193,7 @@ class Rule34Service {
     /**
      * Search for posts with advanced filtering and circuit breaker
      */
-    async search(query: string, options: SearchOptions = {}): Promise<SearchResult> {
+    async search(query: string, options: SearchOptions & { _silent?: boolean } = {}): Promise<SearchResult> {
         const {
             limit = 50,
             page = 0,
@@ -207,7 +207,8 @@ class Rule34Service {
             minWidth = 0,
             minHeight = 0,
             highQualityOnly = false,
-            excludeLowQuality = false
+            excludeLowQuality = false,
+            _silent = false
         } = options;
 
         return circuitBreakerRegistry.execute('nsfw', async () => {
@@ -239,7 +240,7 @@ class Rule34Service {
                 url.searchParams.append('api_key', this.auth.apiKey);
             }
 
-            logger.info('Rule34', `Searching: "${searchTags}" | Page: ${page} | Limit: ${limit}`);
+            if (!_silent) logger.info('Rule34', `Searching: "${searchTags}" | Page: ${page} | Limit: ${limit}`);
 
             try {
                 const response = await fetch(url.toString(), { headers: this.headers });
@@ -261,7 +262,7 @@ class Rule34Service {
                     excludeLowQuality
                 });
 
-                logger.info('Rule34', `Found ${posts.length} posts (pre-filter: ${data.length})`);
+                if (!_silent) logger.info('Rule34', `Found ${posts.length} posts (pre-filter: ${data.length})`);
 
                 return {
                     posts,
@@ -349,27 +350,69 @@ class Rule34Service {
     }
 
     /**
-     * Get trending/popular posts
+     * Get trending/popular posts filtered by actual timeframe
      */
-    async getTrending(options: TrendingOptions = {}): Promise<SearchResult> {
-        const { timeframe = 'day', limit = 50, excludeAi = false } = options;
+    async getTrending(options: TrendingOptions & { page?: number } = {}): Promise<SearchResult> {
+        const { timeframe = 'day', limit = 50, excludeAi = false, page: pageOffset = 0 } = options;
 
-        const minScore = timeframe === 'day' ? 50 : timeframe === 'week' ? 100 : 200;
+        // Calculate the cutoff date for the timeframe
+        const now = Date.now();
+        const cutoffMs = timeframe === 'day' ? 24 * 60 * 60 * 1000
+            : timeframe === 'week' ? 7 * 24 * 60 * 60 * 1000
+            : 30 * 24 * 60 * 60 * 1000; // month
+        const cutoffDate = new Date(now - cutoffMs);
 
-        // Use a time-bucketed random page offset so trending refreshes periodically
-        // Bucket changes every 30 minutes for 'day', every 2 hours for 'week', every 6 hours for 'month'
-        const bucketMs = timeframe === 'day' ? 30 * 60 * 1000 : timeframe === 'week' ? 2 * 60 * 60 * 1000 : 6 * 60 * 60 * 1000;
-        const timeBucket = Math.floor(Date.now() / bucketMs);
-        // Derive a pseudo-random page from the time bucket (0-9 range)
-        const pageOffset = timeBucket % 10;
+        // Minimum score varies by timeframe (less strict for shorter timeframes)
+        const minScore = timeframe === 'day' ? 10 : timeframe === 'week' ? 25 : 50;
 
-        return this.search('', {
-            limit,
-            page: pageOffset,
-            sort: 'score:desc',
-            minScore,
-            excludeAi
-        });
+        // Use sort:score:desc to get highest-scored posts directly
+        // Offset by pageOffset to support pagination
+        const startPage = pageOffset * 2; // each "trending page" spans 2 API pages
+
+        logger.info('Rule34', `Fetching trending (${timeframe}) | offset: ${pageOffset}`);
+
+        const allPosts: Rule34Post[] = [];
+        const maxPages = 2; // Only fetch 2 pages max per request to avoid spam
+        
+        for (let page = 0; page < maxPages && allPosts.length < limit; page++) {
+            const result = await this.search('', {
+                limit: 100,
+                page: startPage + page,
+                sort: 'score:desc',
+                minScore: 0,
+                excludeAi,
+                _silent: true // Suppress per-page logging
+            } as any);
+
+            if (result.posts.length === 0) break;
+
+            // Filter posts by created_at date and minimum score
+            for (const post of result.posts) {
+                if (post.createdAt) {
+                    const postDate = new Date(post.createdAt);
+                    if (postDate >= cutoffDate && post.score >= minScore) {
+                        allPosts.push(post);
+                    }
+                    // Don't break early — posts are sorted by score, not date
+                } else if (post.score >= minScore) {
+                    allPosts.push(post);
+                }
+            }
+        }
+
+        // Sort by score descending (highest score = most "trending")
+        allPosts.sort((a, b) => b.score - a.score);
+
+        // Take only the requested limit
+        const trendingPosts = allPosts.slice(0, limit);
+
+        logger.info('Rule34', `Trending: found ${trendingPosts.length} posts after filtering`);
+
+        return {
+            posts: trendingPosts,
+            totalCount: trendingPosts.length,
+            hasMore: trendingPosts.length >= limit
+        };
     }
 
     /**

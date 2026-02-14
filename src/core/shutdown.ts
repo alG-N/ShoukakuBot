@@ -133,7 +133,7 @@ async function runShutdownSequence(client: { destroy: () => void } | null): Prom
     // 3. Shutdown DI container — handles ALL service lifecycle:
     //    - Database (postgres.close())
     //    - Redis/Cache (redisCache.shutdown(), cacheService.shutdown())
-    //    - API services (googleService.shutdown(), fandomService.destroy(), etc.)
+    //    - API services (wikipediaService.shutdown(), pixivService.destroy(), etc.)
     //    - Music services (lavalinkService.shutdown(), musicEventBus.shutdown(), etc.)
     //    - Handlers (nhentaiHandler.destroy())
     //    - Repositories (rule34Cache.destroy(), redditCache.destroy(), etc.)

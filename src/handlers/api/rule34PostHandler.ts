@@ -234,6 +234,13 @@ export async function createPostEmbed(
         description += `👤 **Uploader:** ${post.owner}\n`;
     }
 
+    // Upload date
+    if (post.createdAt) {
+        const uploadDate = new Date(post.createdAt);
+        const uploadTimestamp = Math.floor(uploadDate.getTime() / 1000);
+        description += `📅 **Uploaded:** <t:${uploadTimestamp}:R> (<t:${uploadTimestamp}:D>)\n`;
+    }
+
     // Source
     if (post.source && post.source.length > 0) {
         const sourceUrl = post.source.startsWith('http') ? post.source : 'https://' + post.source;

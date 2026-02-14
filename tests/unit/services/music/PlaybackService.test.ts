@@ -27,7 +27,7 @@ const mockLavalinkService = {
     searchPlaylist: jest.fn(),
 };
 
-jest.mock('../../../../src/services/music/LavalinkService', () => ({
+jest.mock('../../../../src/services/music/core/LavalinkService', () => ({
     __esModule: true,
     default: mockLavalinkService,
 }));

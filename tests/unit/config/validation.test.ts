@@ -123,7 +123,6 @@ describe('Config Validation', () => {
             process.env.DB_NAME = 'altergolden';
             // Deliberately don't set optional vars
             delete process.env.REDIS_URL;
-            delete process.env.GOOGLE_API_KEY;
             delete process.env.STEAM_API_KEY;
 
             const result = validateEnvironment();
@@ -177,12 +176,10 @@ describe('Config Validation', () => {
             process.env.DB_PASSWORD = 'secret';
             process.env.DB_NAME = 'altergolden';
             process.env.REDIS_URL = 'redis://localhost:6379';
-            process.env.GOOGLE_API_KEY = 'key-123';
 
             const result = validateEnvironment();
 
             expect(result.warnings.some(w => w.name === 'REDIS_URL')).toBe(false);
-            expect(result.warnings.some(w => w.name === 'GOOGLE_API_KEY')).toBe(false);
         });
 
         it('should return correct ValidationResult shape', () => {

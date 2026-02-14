@@ -13,7 +13,7 @@ import { formatUptime } from '../../utils/common/time.js';
 import shardBridge from '../../services/guild/ShardBridge.js';
 import _commandRegistry from '../../services/registry/CommandRegistry.js';
 import _postgres from '../../database/postgres.js';
-import _lavalinkService from '../../services/music/LavalinkService.js';
+import _lavalinkService from '../../services/music/core/LavalinkService.js';
 import * as _coreExports from '../../core/index.js';
 import _cacheService from '../../cache/CacheService.js';
 

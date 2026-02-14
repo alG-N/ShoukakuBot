@@ -9,12 +9,10 @@ export const OWNER_IDS: string[] = process.env.OWNER_IDS
     ? process.env.OWNER_IDS.split(',').map(id => id.trim()).filter(Boolean)
     : [
         '1128296349566251068',  // Primary Owner (fallback)
-        '1362450043939979378',  // Secondary Admin (fallback)
-        '1448912158367813662'   // Tertiary Admin (fallback)
     ];
 
-// Primary Developer ID (from environment or default)
-export const DEVELOPER_ID = process.env.DEVELOPER_ID || '1128296349566251068';
+// Primary Owner ID (first in the list)
+export const PRIMARY_OWNER_ID = OWNER_IDS[0] || '1128296349566251068';
 
 // Logging Channels (from environment or defaults)
 export const GUILD_LOG_CHANNEL_ID = process.env.GUILD_LOG_CHANNEL_ID || '';
@@ -54,17 +52,13 @@ export function isOwner(userId: string): boolean {
     return OWNER_IDS.includes(userId);
 }
 
-export function isDeveloper(userId: string): boolean {
-    return userId === DEVELOPER_ID;
-}
-
 export function isValidUserId(userId: string): boolean {
     return /^\d{17,19}$/.test(userId);
 }
 
 export default {
     OWNER_IDS,
-    DEVELOPER_ID,
+    PRIMARY_OWNER_ID,
     GUILD_LOG_CHANNEL_ID,
     REPORT_CHANNEL_ID,
     SYSTEM_LOG_CHANNEL_ID,
@@ -72,6 +66,5 @@ export default {
     GUILD_FEATURES_MAP,
     BOOST_TIERS,
     isOwner,
-    isDeveloper,
     isValidUserId
 };

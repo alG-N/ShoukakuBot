@@ -146,40 +146,49 @@ function generateSaleEmbed(state: SaleState): EmbedBuilder {
 
     const embed = new EmbedBuilder()
         .setColor(0x1b2838)
-        .setTitle(minDiscount === 0 ? '🆓 Free Games on Steam' : `💰 Steam Games (${minDiscount}%+ Off)`)
+        .setAuthor({ name: 'Steam Store', iconURL: 'https://store.steampowered.com/favicon.ico' })
+        .setTitle(minDiscount === 0 ? '🆓 Free Games on Steam' : `💰 Steam Sale — ${minDiscount}%+ Off`)
         .setDescription(
             minDiscount === 0
-                ? `Games that are currently free! (Page ${currentPage + 1}/${totalPages})`
-                : `Found ${games.length} game(s) with ${minDiscount}% or more discount (Page ${currentPage + 1}/${totalPages})`
+                ? `Found **${games.length}** free game(s)!`
+                : `Found **${games.length}** game(s) with **${minDiscount}%+** discount`
         )
         .setTimestamp()
         .setFooter({
-            text: `Steam Deal Hunter • Prices in USD • Page ${currentPage + 1}/${totalPages}${showDetailed && currentPage === 0 ? ' • Enhanced with SteamSpy' : ''}`
+            text: `Page ${currentPage + 1}/${totalPages} • ${games.length} games • Prices in USD${showDetailed && currentPage === 0 ? ' • SteamSpy Enhanced' : ''}`
         });
 
-    gamesOnPage.forEach(game => {
+    gamesOnPage.forEach((game, index) => {
         const usdPrice = game.usdPrice!;
         const originalPrice = usdPrice.initial.toFixed(2);
         const finalPrice = usdPrice.final.toFixed(2);
+        const gameIndex = start + index + 1;
+
+        // Discount badge
+        const discountBadge = usdPrice.discount_percent === 100 || finalPrice === '0.00'
+            ? '🆓'
+            : usdPrice.discount_percent >= 75 ? '🔥'
+            : usdPrice.discount_percent >= 50 ? '💰'
+            : '🏷️';
 
         let priceText = usdPrice.discount_percent === 100 || finalPrice === '0.00'
-            ? `~~$${originalPrice}~~ → **FREE** (100% OFF)`
-            : `~~$${originalPrice}~~ → **$${finalPrice}** (${usdPrice.discount_percent}% OFF)`;
+            ? `~~$${originalPrice}~~ → **FREE**`
+            : `~~$${originalPrice}~~ → **$${finalPrice}** (**-${usdPrice.discount_percent}%**)`;
 
         let additionalInfo = '';
         if (showDetailed && game.owners) {
             const totalReviews = (game.positive || 0) + (game.negative || 0);
             const rating = totalReviews > 0 ? Math.round((game.positive! / totalReviews) * 100) : 0;
 
-            additionalInfo += `\n📊 Owners: ${steamService.formatOwners(game.owners)}`;
+            additionalInfo += `\n📊 ${steamService.formatOwners(game.owners)} owners`;
             if (totalReviews > 0) {
                 const emoji = rating >= 80 ? '👍' : rating >= 60 ? '👌' : '👎';
-                additionalInfo += ` | ${emoji} ${rating}% (${totalReviews.toLocaleString()} reviews)`;
+                additionalInfo += ` • ${emoji} ${rating}%`;
             }
         }
 
         embed.addFields({
-            name: game.name,
+            name: `${discountBadge} ${gameIndex}. ${game.name}`,
             value: `${priceText}${additionalInfo}\n[View on Steam](https://store.steampowered.com/app/${game.id})`,
             inline: false
         });

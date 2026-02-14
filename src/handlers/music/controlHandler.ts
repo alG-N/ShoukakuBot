@@ -9,7 +9,7 @@ import { trackHandler, LoopMode } from './trackHandler.js';
 import musicCache from '../../cache/music/MusicCacheFacade.js';
 import { checkSameVoiceChannel } from '../../middleware/voiceChannelCheck.js';
 import { music } from '../../config/index.js';
-import { musicFacade as musicService } from '../../services/music/MusicFacade.js';
+import { musicFacade as musicService } from '../../services/music/core/MusicFacade.js';
 import logger from '../../core/Logger.js';
 
 // Use any for Track type - different but runtime compatible

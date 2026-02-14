@@ -52,13 +52,6 @@ export const nhentai = {
     userAgent: process.env.NHENTAI_USER_AGENT || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
 };
 
-export const google = {
-    apiKey: process.env.GOOGLE_API_KEY || '',
-    searchCx: process.env.GOOGLE_SEARCH_CX || '',
-    searchUrl: 'https://www.googleapis.com/customsearch/v1',
-    enabled: !!(process.env.GOOGLE_API_KEY && process.env.GOOGLE_SEARCH_CX)
-};
-
 export const anilist = {
     baseUrl: 'https://graphql.anilist.co',
     rateLimit: 90  // requests per minute
@@ -72,11 +65,6 @@ export const myanimelist = {
 export const wikipedia = {
     baseUrl: 'https://en.wikipedia.org/api/rest_v1',
     rateLimit: 100
-};
-
-export const fandom = {
-    baseUrl: 'https://community.fandom.com',
-    rateLimit: 60
 };
 
 export const cobalt = {
@@ -101,11 +89,9 @@ export default {
     pixiv,
     rule34,
     nhentai,
-    google,
     anilist,
     myanimelist,
     wikipedia,
-    fandom,
     cobalt,
     ytdlp
 };

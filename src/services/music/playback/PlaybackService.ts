@@ -5,7 +5,7 @@
  * @module services/music/playback/PlaybackService
  */
 
-import lavalinkService from '../LavalinkService.js';
+import lavalinkService from '../core/LavalinkService.js';
 import { queueService } from '../queue/index.js';
 import musicCache from '../../../cache/music/MusicCacheFacade.js';
 import logger from '../../../core/Logger.js';
