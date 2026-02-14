@@ -85,7 +85,7 @@ export const DEFAULT_NAMESPACES: Record<string, NamespaceConfig> = {
     'guild': { ttl: 300, maxSize: 1000, useRedis: true },      // Guild settings - 5min
     'api:nhentai': { ttl: 300, maxSize: 300, useRedis: true },   // nhentai galleries/search - 5min
     'api:anime': { ttl: 600, maxSize: 400, useRedis: true },     // AniList + MAL + stale fallback - 10min
-    'api:search': { ttl: 300, maxSize: 200, useRedis: true },    // Google, Wikipedia, Fandom - 5min
+    'api:search': { ttl: 300, maxSize: 200, useRedis: true },    // Wikipedia search - 5min
     'api:translate': { ttl: 1800, maxSize: 100, useRedis: true }, // Pixiv translations - 30min
     'music': { ttl: 3600, maxSize: 200, useRedis: true },      // Music queues - 1h
     'automod': { ttl: 60, maxSize: 5000, useRedis: true },     // AutoMod tracking - 1min
