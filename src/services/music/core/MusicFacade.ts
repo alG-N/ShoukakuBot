@@ -172,7 +172,7 @@ export class MusicFacade {
         // Handle both track.track.encoded (nested) and track.encoded (flat) structures
         const encoded = track?.track?.encoded || (track as unknown as { encoded?: string })?.encoded;
         if (!encoded) {
-            const trackTitle = track?.title || track?.info?.title || 'Unknown';
+            const trackTitle = track?.info?.title || 'Unknown';
             logger.error('MusicFacade', `Cannot play track "${trackTitle}": no encoded data (possibly unresolved Spotify track)`);
             throw new Error(`Cannot play this track. It may not be available for streaming.`);
         }
