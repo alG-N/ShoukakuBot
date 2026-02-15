@@ -1,5 +1,5 @@
 /**
- * alterGolden Logging System
+ * Shoukaku Logging System
  * Handles both console and Discord channel logging
  * Supports JSON structured logging for production
  * Optimized for high-volume logging at scale
@@ -145,7 +145,7 @@ export class Logger {
     constructor() {
         this.minPriority = LOG_LEVELS[MIN_LOG_LEVEL]?.priority ?? 1;
         this.format = LOG_FORMAT;
-        this.serviceName = process.env.SERVICE_NAME || 'alterGolden';
+        this.serviceName = process.env.SERVICE_NAME || 'Shoukaku';
         this.environment = process.env.NODE_ENV || 'development';
     }
 

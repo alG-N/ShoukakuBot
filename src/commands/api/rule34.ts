@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Rule34 Command - Presentation Layer
  * Search Rule34 for images and videos
  * @module presentation/commands/api/rule34

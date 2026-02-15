@@ -68,7 +68,7 @@ class ReadyEvent extends BaseEvent {
         // NOTE: Detailed startup embed is sent from index.ts (ClientReady handler)
         // to avoid duplicate "Bot Started" messages in Discord.
         
-        logger.success('Ready', '🚀 alterGolden is fully operational!');
+        logger.success('Ready', '🚀 Shoukaku Bot is fully operational!');
     }
 
     /**

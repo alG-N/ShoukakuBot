@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Kick Command - Presentation Layer
  * Kick a user from the server
  * @module presentation/commands/admin/kick

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Reddit Command - Presentation Layer
  * Fetch posts from Reddit
  * @module presentation/commands/api/reddit

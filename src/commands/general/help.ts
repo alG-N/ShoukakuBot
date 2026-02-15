@@ -65,9 +65,9 @@ class HelpCommand extends BaseCommand {
         switch (category) {
             case 'home':
                 embed
-                    .setTitle('📚 alterGolden - Help Menu')
+                    .setTitle('📚 Shoukaku - Help Menu')
                     .setDescription(
-                        '**Welcome to alterGolden!** 🎉\n\n' +
+                        '**Welcome to Shoukaku!** 🎉\n\n' +
                         'Use the buttons below to browse commands by category.\n\n' +
                         '**Quick Start:**\n' +
                         '> 🎬 `/video` - Download videos from social media\n' +
@@ -103,8 +103,7 @@ class HelpCommand extends BaseCommand {
                         {
                             name: '🔗 Embed Fix',
                             value: [
-                                '`/media fix [url]` - Fix embed for Twitter, TikTok, Instagram, Reddit',
-                                '`/media platforms` - Show all supported platforms'
+                                '`/media [url]` - Fix embed for Twitter, TikTok, Instagram, Reddit, Facebook, Bluesky, Threads'
                             ].join('\n'),
                             inline: false
                         },
@@ -117,11 +116,13 @@ class HelpCommand extends BaseCommand {
                             ].join('\n'),
                             inline: false 
                         },
-                        { 
-                            name: '📺 Info', 
+                        {
+                            name: '📺 Info & Search', 
                             value: [
                                 '`/anime [name]` - Search anime information',
-                                '`/steam` - Check Steam sales'
+                                '`/steam` - Check Steam sales',
+                                '`/wikipedia [query]` - Search Wikipedia',
+                                '`/nhentai [query]` - Search NHentai (NSFW)'
                             ].join('\n'),
                             inline: false 
                         }
@@ -184,8 +185,7 @@ class HelpCommand extends BaseCommand {
                         { 
                             name: '💬 Interactions', 
                             value: [
-                                '`/say [message]` - Make the bot speak',
-                                '`/8ball [question]` - Ask the magic 8-ball'
+                                '`/say [message]` - Make the bot speak'
                             ].join('\n'),
                             inline: false 
                         }
@@ -201,7 +201,6 @@ class HelpCommand extends BaseCommand {
                             name: '👤 User Info', 
                             value: [
                                 '`/avatar [user]` - View user avatar (full size)',
-                                '`/userinfo [@user]` - Detailed user information',
                                 '`/afk [reason]` - Set AFK status'
                             ].join('\n'),
                             inline: false 
@@ -252,8 +251,7 @@ class HelpCommand extends BaseCommand {
                         { 
                             name: '⚙️ Settings', 
                             value: [
-                                '`/setting` - Configure server settings',
-                                '`/setup` - Setup wizard for new servers'
+                                '`/setting` - Configure server settings'
                             ].join('\n'),
                             inline: false 
                         }
@@ -278,19 +276,9 @@ class HelpCommand extends BaseCommand {
                             inline: false 
                         },
                         { 
-                            name: '🚫 Filters', 
+                            name: '� Logging', 
                             value: [
-                                '`/filter add [word]` - Add word to filter',
-                                '`/filter remove [word]` - Remove from filter',
-                                '`/filter list` - View filtered words'
-                            ].join('\n'),
-                            inline: false 
-                        },
-                        { 
-                            name: '📝 Logs', 
-                            value: [
-                                '`/modlog channel [#channel]` - Set mod log channel',
-                                '`/modlog view [@user]` - View user infractions'
+                                '`/setting` - Configure mod log channel and other options'
                             ].join('\n'),
                             inline: false 
                         }

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Unified Cache Service
  * Single interface for all caching needs
  * Supports Redis (distributed) with in-memory fallback

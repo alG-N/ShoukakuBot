@@ -1,5 +1,5 @@
 /**
- * alterGolden Discord Bot
+ * Shoukaku Discord Bot
  * Main Entry Point
  * 
  * Professional utility bot with music, video download, API commands and moderation
@@ -14,7 +14,7 @@
  * - src/events/      - Discord event handlers
  * - src/services/    - Application services
  * 
- * @author alterGolden Team
+ * @author Shoukaku Team
  * @version 4.1.0
  */
 
@@ -79,7 +79,7 @@ interface ClientWithCommands extends Client {
     commands?: Map<string, Command>;
 }
 // APPLICATION INITIALIZATION
-class AlterGoldenBot {
+class ShoukakuBot {
     public client: ClientWithCommands;
     private rest: REST;
     private healthServer: http.Server | null = null;
@@ -94,12 +94,12 @@ class AlterGoldenBot {
      */
     async start(): Promise<void> {
         try {
-            logger.info('Startup', 'Initializing alterGolden v4.1...');
+            logger.info('Startup', 'Initializing Shoukaku v4.1...');
 
             // Initialize Sentry error tracking first
             sentry.initialize({
                 release: '4.1.0',
-                tags: { bot: 'alterGolden' }
+                tags: { bot: 'Shoukaku' }
             });
 
             // Start health check server
@@ -165,22 +165,31 @@ class AlterGoldenBot {
                     await this.deployCommands();
                 }
                 
-                logger.info('Ready', `🚀 alterGolden is fully operational!`);
+                logger.info('Ready', `🚀 Shoukaku Bot is fully operational!`);
 
-                // Send startup summary to Discord log channel
-                const guilds = this.client.guilds.cache.size;
-                const users = this.client.guilds.cache.reduce((a, g) => a + g.memberCount, 0);
-                const commands = commandReg.size;
-                const shardLabel = this.client.shard ? `Shard ${shardId}/${this.client.shard.count}` : 'No sharding';
-                await logger.discord('SUCCESS', '🚀 Bot Started', 
-                    `**alterGolden v4.1** is now online and ready!`, {
-                    'Guilds': `${guilds}`,
-                    'Users': `~${users.toLocaleString()}`,
-                    'Commands': `${commands}`,
-                    'Shard': shardLabel,
-                    'Node.js': process.version,
-                    'Uptime': `Started at <t:${Math.floor(Date.now() / 1000)}:F>`
-                });
+                // Send startup summary to Discord log channel (with Redis dedup guard)
+                const startupKey = `startup:${shardId}`;
+                const alreadySent = await cacheService.has('system', startupKey);
+                if (!alreadySent) {
+                    // Lock for 60s to prevent duplicate startup messages from concurrent instances
+                    await cacheService.set('system', startupKey, Date.now(), 60);
+
+                    const guilds = this.client.guilds.cache.size;
+                    const users = this.client.guilds.cache.reduce((a, g) => a + g.memberCount, 0);
+                    const commands = commandReg.size;
+                    const shardLabel = this.client.shard ? `Shard ${shardId}/${this.client.shard.count}` : 'No sharding';
+                    await logger.discord('SUCCESS', '🚀 Bot Started', 
+                        `**Shoukaku v4.1** is now online and ready!`, {
+                        'Guilds': `${guilds}`,
+                        'Users': `~${users.toLocaleString()}`,
+                        'Commands': `${commands}`,
+                        'Shard': shardLabel,
+                        'Node.js': process.version,
+                        'Uptime': `Started at <t:${Math.floor(Date.now() / 1000)}:F>`
+                    });
+                } else {
+                    logger.info('Ready', 'Skipped duplicate startup embed (already sent within 60s)');
+                }
             });
 
         } catch (error) {
@@ -420,7 +429,7 @@ class AlterGoldenBot {
 // ENTRY POINT
 // Guard: only start the bot when this file is the entry point
 // Prevents accidental startup when imported by tests or tools
-let bot_instance: AlterGoldenBot | undefined;
+let bot_instance: ShoukakuBot | undefined;
 
 const isEntryPoint = typeof require !== 'undefined'
     ? require.main === module
@@ -428,7 +437,7 @@ const isEntryPoint = typeof require !== 'undefined'
       process.argv[1]?.replace(/\\/g, '/').endsWith('/index.ts');
 
 if (isEntryPoint || process.env.BOT_START === 'true') {
-    bot_instance = new AlterGoldenBot();
+    bot_instance = new ShoukakuBot();
     bot_instance.start().catch(error => {
         console.error('Fatal error:', error);
         process.exit(1);
@@ -436,5 +445,5 @@ if (isEntryPoint || process.env.BOT_START === 'true') {
 }
 
 // Export for external access
-export { bot_instance as bot, AlterGoldenBot };
+export { bot_instance as bot, ShoukakuBot };
 export default { bot: bot_instance };

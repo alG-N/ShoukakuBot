@@ -1,4 +1,4 @@
-# 🤖 alterGolden Discord Bot
+# 🤖 Shoukaku Discord Bot
 
 <div align="center">
 
@@ -33,7 +33,7 @@
 ## 🏗️ Architecture
 
 ```
-alterGolden-backend/
+shoukaku-backend/
 ├── 📁 src/
 │   ├── 📁 commands/           # Slash commands (organized by category)
 │   │   ├── admin/             # 16 commands: automod, ban, case, clearwarns, delete,
@@ -133,7 +133,7 @@ alterGolden-backend/
 ```bash
 # 1. Clone repository
 git clone <repository-url>
-cd alterGolden-backend
+cd shoukaku-backend
 
 # 2. Install dependencies
 npm install
@@ -174,9 +174,9 @@ OWNER_ID=your_discord_user_id
 # ═══════════════════════════════════════════
 DB_HOST=localhost
 DB_PORT=5432
-DB_USER=altergolden
-DB_PASSWORD=altergolden_secret
-DB_NAME=altergolden_db
+DB_USER=shoukaku
+DB_PASSWORD=shoukaku_secret
+DB_NAME=shoukaku_db
 
 # ═══════════════════════════════════════════
 # Lavalink (Music)

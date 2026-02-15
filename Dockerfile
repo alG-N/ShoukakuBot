@@ -41,16 +41,16 @@ COPY --from=builder /app/dist ./dist
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S altergolden -u 1001 -G nodejs
+    adduser -S shoukaku -u 1001 -G nodejs
 
 # Create logs and temp directories
 RUN mkdir -p /app/logs /app/dist/services/video/temp && \
-    chown -R altergolden:nodejs /app/logs /app/dist/services/video/temp
+    chown -R shoukaku:nodejs /app/logs /app/dist/services/video/temp
 
 # Switch to non-root user
-USER altergolden
+USER shoukaku
 
-# Health check — uses the actual /health endpoint
+# Health check â€” uses the actual /health endpoint
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))" || exit 1
 

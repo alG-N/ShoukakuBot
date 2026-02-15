@@ -1,4 +1,4 @@
--- alterGolden Database Optimizations
+-- shoukaku Database Optimizations
 -- Performance improvements and missing indexes
 
 -- ==========================================

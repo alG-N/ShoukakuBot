@@ -12,9 +12,9 @@ module.exports = {
         connection: {
             host: process.env.DB_HOST || 'localhost',
             port: parseInt(process.env.DB_PORT) || 5432,
-            user: process.env.DB_USER || 'altergolden',
-            password: process.env.DB_PASSWORD || 'altergolden_secret',
-            database: process.env.DB_NAME || 'altergolden_db',
+            user: process.env.DB_USER || 'shoukaku',
+            password: process.env.DB_PASSWORD || 'shoukaku_secret',
+            database: process.env.DB_NAME || 'shoukaku_db',
         },
         pool: {
             min: 2,
@@ -56,9 +56,9 @@ module.exports = {
         connection: {
             host: 'postgres',
             port: 5432,
-            user: process.env.DB_USER || 'altergolden',
-            password: process.env.DB_PASSWORD || 'altergolden_secret',
-            database: process.env.DB_NAME || 'altergolden_db',
+            user: process.env.DB_USER || 'shoukaku',
+            password: process.env.DB_PASSWORD || 'shoukaku_secret',
+            database: process.env.DB_NAME || 'shoukaku_db',
         },
         pool: {
             min: 2,

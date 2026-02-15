@@ -18,7 +18,7 @@ export const TEST_CONFIG = {
     postgres: {
         host: process.env.TEST_PG_HOST || 'localhost',
         port: parseInt(process.env.TEST_PG_PORT || '5432', 10),
-        database: process.env.TEST_PG_DATABASE || 'altergolden_test',
+        database: process.env.TEST_PG_DATABASE || 'shoukaku_test',
         user: process.env.TEST_PG_USER || 'postgres',
         password: process.env.TEST_PG_PASSWORD || 'postgres',
     },
@@ -157,7 +157,7 @@ export const testUtils = {
 beforeAll(async () => {
     // Skip if no integration flag
     if (!process.env.RUN_INTEGRATION_TESTS) {
-        console.log('⏭️  Skipping integration tests (set RUN_INTEGRATION_TESTS=1 to enable)');
+        console.log('â­ï¸  Skipping integration tests (set RUN_INTEGRATION_TESTS=1 to enable)');
     }
 });
 

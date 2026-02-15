@@ -135,10 +135,10 @@ export class SetupWizardService {
      */
     private buildWelcomeEmbed(guild: Guild): EmbedBuilder {
         return new EmbedBuilder()
-            .setTitle('🎉 Thanks for adding alterGolden!')
+            .setTitle('🎉 Thanks for adding Shoukaku!')
             .setColor(COLORS.SUCCESS)
             .setDescription(
-                `Hey **${guild.name}**! I'm alterGolden, your new multi-purpose bot! 🤖\n\n` +
+                `Hey **${guild.name}**! I'm Shoukaku, your new multi-purpose bot! 🤖\n\n` +
                 '**What I can do:**\n' +
                 '> 🎬 Download videos from TikTok, YouTube, Twitter & more\n' +
                 '> 🎵 Play music in voice channels\n' +
@@ -495,11 +495,11 @@ export class SetupWizardService {
         const embed = new EmbedBuilder()
             .setTitle('🎯 Feature Overview')
             .setColor(COLORS.INFO)
-            .setDescription('Here\'s what alterGolden can do for your server:')
+            .setDescription('Here\'s what Shoukaku can do for your server:')
             .addFields(
                 {
                     name: '🎬 Media Downloads',
-                    value: '`/video [url]` - Download from TikTok, YouTube, Twitter, Instagram & more!\nSupports direct links and quality options.',
+                    value: '`/download [url]` - Download from TikTok, YouTube, Twitter, Instagram & more!\nSupports direct links and quality options.',
                     inline: false
                 },
                 {
@@ -559,15 +559,15 @@ export class SetupWizardService {
             .setTitle('🎉 Setup Complete!')
             .setColor(COLORS.SUCCESS)
             .setDescription(
-                '**alterGolden is ready to use!**\n\n' +
+                '**Shoukaku is ready to use!**\n\n' +
                 '**Quick Commands:**\n' +
                 '> `/help` - View all commands\n' +
-                '> `/video [url]` - Download a video\n' +
+                '> `/download [url]` - Download a video\n' +
                 '> `/music play [song]` - Play music\n' +
                 '> `/automod` - Adjust moderation settings\n\n' +
                 '**Need Help?**\n' +
                 '> Join our support server or use `/report`\n\n' +
-                '*Have fun using alterGolden!* 🤖✨'
+                '*Have fun using Shoukaku!* 🤖✨'
             )
             .setTimestamp();
 

@@ -363,22 +363,23 @@ class Rule34Service {
         const cutoffDate = new Date(now - cutoffMs);
 
         // Minimum score varies by timeframe (less strict for shorter timeframes)
-        const minScore = timeframe === 'day' ? 10 : timeframe === 'week' ? 25 : 50;
+        const minScore = timeframe === 'day' ? 5 : timeframe === 'week' ? 15 : 30;
 
-        // Use sort:score:desc to get highest-scored posts directly
-        // Offset by pageOffset to support pagination
-        const startPage = pageOffset * 2; // each "trending page" spans 2 API pages
+        // Sort by DATE (newest first) so we get recent posts, then filter by score
+        // Previously sorted by score which returned all-time top posts (years old)
+        const startPage = pageOffset * 4; // each "trending page" spans multiple API pages
 
         logger.info('Rule34', `Fetching trending (${timeframe}) | offset: ${pageOffset}`);
 
         const allPosts: Rule34Post[] = [];
-        const maxPages = 2; // Only fetch 2 pages max per request to avoid spam
+        // Fetch more pages to find enough high-scoring recent posts
+        const maxPages = timeframe === 'day' ? 6 : timeframe === 'week' ? 4 : 3;
         
         for (let page = 0; page < maxPages && allPosts.length < limit; page++) {
             const result = await this.search('', {
                 limit: 100,
                 page: startPage + page,
-                sort: 'score:desc',
+                sort: 'date:desc', // Newest first — critical for getting recent posts
                 minScore: 0,
                 excludeAi,
                 _silent: true // Suppress per-page logging
@@ -393,7 +394,12 @@ class Rule34Service {
                     if (postDate >= cutoffDate && post.score >= minScore) {
                         allPosts.push(post);
                     }
-                    // Don't break early — posts are sorted by score, not date
+                    // If post is older than cutoff, stop (posts are sorted newest first)
+                    if (postDate < cutoffDate) {
+                        // All subsequent posts will be even older, can stop fetching
+                        page = maxPages; // break outer loop
+                        break;
+                    }
                 } else if (post.score >= minScore) {
                     allPosts.push(post);
                 }

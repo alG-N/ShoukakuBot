@@ -21,7 +21,7 @@ describe('Config Validation', () => {
             process.env.DB_HOST = 'localhost';
             process.env.DB_USER = 'postgres';
             process.env.DB_PASSWORD = 'secret';
-            process.env.DB_NAME = 'altergolden';
+            process.env.DB_NAME = 'shoukaku';
 
             const result = validateEnvironment();
 
@@ -35,7 +35,7 @@ describe('Config Validation', () => {
             process.env.DB_HOST = 'localhost';
             process.env.DB_USER = 'postgres';
             process.env.DB_PASSWORD = 'secret';
-            process.env.DB_NAME = 'altergolden';
+            process.env.DB_NAME = 'shoukaku';
 
             const result = validateEnvironment();
 
@@ -49,7 +49,7 @@ describe('Config Validation', () => {
             process.env.DB_HOST = 'localhost';
             process.env.DB_USER = 'postgres';
             process.env.DB_PASSWORD = 'secret';
-            process.env.DB_NAME = 'altergolden';
+            process.env.DB_NAME = 'shoukaku';
 
             const result = validateEnvironment();
 
@@ -92,7 +92,7 @@ describe('Config Validation', () => {
             process.env.DB_HOST = 'localhost';
             process.env.DB_USER = 'postgres';
             process.env.DB_PASSWORD = 'secret';
-            process.env.DB_NAME = 'altergolden';
+            process.env.DB_NAME = 'shoukaku';
 
             const result = validateEnvironment();
 
@@ -106,7 +106,7 @@ describe('Config Validation', () => {
             process.env.DB_HOST = 'localhost';
             process.env.DB_USER = 'postgres';
             process.env.DB_PASSWORD = 'secret';
-            process.env.DB_NAME = 'altergolden';
+            process.env.DB_NAME = 'shoukaku';
 
             const result = validateEnvironment();
 
@@ -120,7 +120,7 @@ describe('Config Validation', () => {
             process.env.DB_HOST = 'localhost';
             process.env.DB_USER = 'postgres';
             process.env.DB_PASSWORD = 'secret';
-            process.env.DB_NAME = 'altergolden';
+            process.env.DB_NAME = 'shoukaku';
             // Deliberately don't set optional vars
             delete process.env.REDIS_URL;
             delete process.env.STEAM_API_KEY;
@@ -137,7 +137,7 @@ describe('Config Validation', () => {
             process.env.DB_HOST = 'localhost';
             process.env.DB_USER = 'postgres';
             process.env.DB_PASSWORD = 'secret';
-            process.env.DB_NAME = 'altergolden';
+            process.env.DB_NAME = 'shoukaku';
             delete process.env.REDIS_URL;
             delete process.env.LAVALINK_HOST_1;
 
@@ -158,7 +158,7 @@ describe('Config Validation', () => {
             process.env.DB_HOST = 'localhost';
             process.env.DB_USER = 'postgres';
             process.env.DB_PASSWORD = 'secret';
-            process.env.DB_NAME = 'altergolden';
+            process.env.DB_NAME = 'shoukaku';
 
             const result = validateEnvironment();
 
@@ -174,7 +174,7 @@ describe('Config Validation', () => {
             process.env.DB_HOST = 'localhost';
             process.env.DB_USER = 'postgres';
             process.env.DB_PASSWORD = 'secret';
-            process.env.DB_NAME = 'altergolden';
+            process.env.DB_NAME = 'shoukaku';
             process.env.REDIS_URL = 'redis://localhost:6379';
 
             const result = validateEnvironment();
@@ -188,7 +188,7 @@ describe('Config Validation', () => {
             process.env.DB_HOST = 'localhost';
             process.env.DB_USER = 'postgres';
             process.env.DB_PASSWORD = 'secret';
-            process.env.DB_NAME = 'altergolden';
+            process.env.DB_NAME = 'shoukaku';
 
             const result = validateEnvironment();
 
@@ -207,7 +207,7 @@ describe('Config Validation', () => {
             process.env.DB_HOST = 'localhost';
             process.env.DB_USER = 'postgres';
             process.env.DB_PASSWORD = 'secret';
-            process.env.DB_NAME = 'altergolden';
+            process.env.DB_NAME = 'shoukaku';
             delete process.env.DB_PORT;
 
             const result = validateEnvironment();
@@ -225,7 +225,7 @@ describe('Config Validation', () => {
             process.env.DB_HOST = 'localhost';
             process.env.DB_USER = 'postgres';
             process.env.DB_PASSWORD = 'secret';
-            process.env.DB_NAME = 'altergolden';
+            process.env.DB_NAME = 'shoukaku';
 
             const result = validateEnvironment();
 

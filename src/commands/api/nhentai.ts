@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NHentai Command - Presentation Layer
  * Search and browse doujinshi from nhentai
  * @module presentation/commands/api/nhentai

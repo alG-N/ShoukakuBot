@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Clear Warnings Command
  * Clear all warnings for a user
  * @module commands/admin/clearwarns

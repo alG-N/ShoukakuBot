@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Maintenance Configuration
  * Persistence via CacheService (Redis) instead of synchronous file I/O.
  * Falls back to in-memory-only state when Redis is unavailable.
@@ -21,7 +21,7 @@ const getCacheService = () => {
 };
 
 // Redis key for persistent maintenance state
-const REDIS_KEY = 'altergolden:maintenance:state';
+const REDIS_KEY = 'shoukaku:maintenance:state';
 const REDIS_NS = 'maintenance'; // Long-lived, Redis-backed namespace
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -271,7 +271,7 @@ export function createMaintenanceEmbed(): EmbedBuilder {
         .setColor(0xFFA500)
         .setTitle('🚧 Maintenance Mode')
         .setDescription(status.message || 'Bot is currently in maintenance mode.')
-        .setFooter({ text: 'alterGolden Bot' })
+        .setFooter({ text: 'Shoukaku Bot' })
         .setTimestamp();
 
     if (maintenanceState.estimatedEnd) {

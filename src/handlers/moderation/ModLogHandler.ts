@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Mod Log Handler
  * Formats and sends mod log messages
  * @module handlers/moderation/ModLogHandler

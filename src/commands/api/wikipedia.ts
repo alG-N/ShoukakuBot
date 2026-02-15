@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Wikipedia Command - Presentation Layer
  * Search and display Wikipedia articles
  * @module presentation/commands/api/wikipedia

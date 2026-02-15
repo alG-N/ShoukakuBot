@@ -1,4 +1,4 @@
-﻿/**
+/**
  * DeathBattle Command - Presentation Layer
  * Anime-themed death battle game
  * @module presentation/commands/fun/deathbattle

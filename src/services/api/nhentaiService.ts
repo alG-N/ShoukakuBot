@@ -22,6 +22,21 @@ const API_MIRRORS = [
     'https://nhentai.to/api',         // Mirror 1
 ];
 
+// Alternative CDN mirrors for images (try in order)
+const CDN_IMAGE_MIRRORS = [
+    'https://i.nhentai.net/galleries',  // Canonical (no number)
+    'https://i2.nhentai.net/galleries', // Mirror 2
+    'https://i3.nhentai.net/galleries', // Mirror 3
+    'https://i1.nhentai.net/galleries', // Mirror 1
+];
+
+const CDN_THUMB_MIRRORS = [
+    'https://t.nhentai.net/galleries',  // Canonical (no number)
+    'https://t2.nhentai.net/galleries', // Mirror 2
+    'https://t3.nhentai.net/galleries', // Mirror 3
+    'https://t1.nhentai.net/galleries', // Mirror 1
+];
+
 // Image type mapping
 const IMAGE_TYPES: Record<string, string> = {
     'j': 'jpg',

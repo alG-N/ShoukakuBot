@@ -21,9 +21,9 @@ import client, {
     collectDefaultMetrics
 } from 'prom-client';
 
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 // REGISTRY SETUP
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 
 // Create a custom registry
 const register = new Registry();
@@ -31,19 +31,19 @@ const register = new Registry();
 // Add default Node.js metrics (memory, CPU, event loop, etc.)
 collectDefaultMetrics({
     register,
-    prefix: 'altergolden_',
-    labels: { app: 'altergolden' }
+    prefix: 'shoukaku_',
+    labels: { app: 'shoukaku' }
 });
 
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 // DISCORD METRICS
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 
 /**
  * Discord gateway latency in milliseconds
  */
 export const discordGatewayLatency = new Gauge({
-    name: 'altergolden_discord_gateway_latency_ms',
+    name: 'shoukaku_discord_gateway_latency_ms',
     help: 'Discord WebSocket gateway latency in milliseconds',
     labelNames: ['shard_id'],
     registers: [register]
@@ -53,7 +53,7 @@ export const discordGatewayLatency = new Gauge({
  * Total guilds the bot is in
  */
 export const discordGuildsTotal = new Gauge({
-    name: 'altergolden_discord_guilds_total',
+    name: 'shoukaku_discord_guilds_total',
     help: 'Total number of guilds the bot is in',
     labelNames: ['shard_id'],
     registers: [register]
@@ -63,7 +63,7 @@ export const discordGuildsTotal = new Gauge({
  * Total users across all guilds
  */
 export const discordUsersTotal = new Gauge({
-    name: 'altergolden_discord_users_total',
+    name: 'shoukaku_discord_users_total',
     help: 'Total number of users across all guilds',
     labelNames: ['shard_id'],
     registers: [register]
@@ -73,7 +73,7 @@ export const discordUsersTotal = new Gauge({
  * Total channels across all guilds
  */
 export const discordChannelsTotal = new Gauge({
-    name: 'altergolden_discord_channels_total',
+    name: 'shoukaku_discord_channels_total',
     help: 'Total number of channels across all guilds',
     labelNames: ['shard_id'],
     registers: [register]
@@ -83,20 +83,20 @@ export const discordChannelsTotal = new Gauge({
  * Bot uptime in seconds
  */
 export const discordUptime = new Gauge({
-    name: 'altergolden_discord_uptime_seconds',
+    name: 'shoukaku_discord_uptime_seconds',
     help: 'Bot uptime in seconds',
     registers: [register]
 });
 
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 // COMMAND METRICS
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 
 /**
  * Total commands executed
  */
 export const commandsExecutedTotal = new Counter({
-    name: 'altergolden_commands_executed_total',
+    name: 'shoukaku_commands_executed_total',
     help: 'Total number of commands executed',
     labelNames: ['command', 'category', 'status'],
     registers: [register]
@@ -106,7 +106,7 @@ export const commandsExecutedTotal = new Counter({
  * Command execution duration
  */
 export const commandExecutionDuration = new Histogram({
-    name: 'altergolden_command_execution_duration_seconds',
+    name: 'shoukaku_command_execution_duration_seconds',
     help: 'Command execution duration in seconds',
     labelNames: ['command', 'category'],
     buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
@@ -117,7 +117,7 @@ export const commandExecutionDuration = new Histogram({
  * Command errors
  */
 export const commandErrorsTotal = new Counter({
-    name: 'altergolden_command_errors_total',
+    name: 'shoukaku_command_errors_total',
     help: 'Total number of command errors',
     labelNames: ['command', 'category', 'error_type'],
     registers: [register]
@@ -127,21 +127,21 @@ export const commandErrorsTotal = new Counter({
  * Active command executions (currently running)
  */
 export const commandsActive = new Gauge({
-    name: 'altergolden_commands_active',
+    name: 'shoukaku_commands_active',
     help: 'Number of commands currently being executed',
     labelNames: ['command'],
     registers: [register]
 });
 
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 // MUSIC METRICS
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 
 /**
  * Active music players
  */
 export const musicPlayersActive = new Gauge({
-    name: 'altergolden_music_players_active',
+    name: 'shoukaku_music_players_active',
     help: 'Number of active music players',
     registers: [register]
 });
@@ -150,7 +150,7 @@ export const musicPlayersActive = new Gauge({
  * Total tracks in all queues
  */
 export const musicQueueSize = new Gauge({
-    name: 'altergolden_music_queue_size_total',
+    name: 'shoukaku_music_queue_size_total',
     help: 'Total number of tracks across all queues',
     registers: [register]
 });
@@ -159,7 +159,7 @@ export const musicQueueSize = new Gauge({
  * Voice connections
  */
 export const musicVoiceConnections = new Gauge({
-    name: 'altergolden_music_voice_connections',
+    name: 'shoukaku_music_voice_connections',
     help: 'Number of active voice connections',
     registers: [register]
 });
@@ -168,7 +168,7 @@ export const musicVoiceConnections = new Gauge({
  * Tracks played total
  */
 export const musicTracksPlayedTotal = new Counter({
-    name: 'altergolden_music_tracks_played_total',
+    name: 'shoukaku_music_tracks_played_total',
     help: 'Total number of tracks played',
     labelNames: ['source'],
     registers: [register]
@@ -178,7 +178,7 @@ export const musicTracksPlayedTotal = new Counter({
  * Lavalink node status
  */
 export const lavalinkNodeStatus = new Gauge({
-    name: 'altergolden_lavalink_node_status',
+    name: 'shoukaku_lavalink_node_status',
     help: 'Lavalink node status (1=connected, 0=disconnected)',
     labelNames: ['node_name'],
     registers: [register]
@@ -188,21 +188,21 @@ export const lavalinkNodeStatus = new Gauge({
  * Lavalink node players
  */
 export const lavalinkNodePlayers = new Gauge({
-    name: 'altergolden_lavalink_node_players',
+    name: 'shoukaku_lavalink_node_players',
     help: 'Number of players on each Lavalink node',
     labelNames: ['node_name'],
     registers: [register]
 });
 
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 // CACHE METRICS
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 
 /**
  * Cache operations
  */
 export const cacheOperationsTotal = new Counter({
-    name: 'altergolden_cache_operations_total',
+    name: 'shoukaku_cache_operations_total',
     help: 'Total cache operations',
     labelNames: ['operation', 'namespace', 'result'],
     registers: [register]
@@ -212,7 +212,7 @@ export const cacheOperationsTotal = new Counter({
  * Cache hit ratio
  */
 export const cacheHitRatio = new Gauge({
-    name: 'altergolden_cache_hit_ratio',
+    name: 'shoukaku_cache_hit_ratio',
     help: 'Cache hit ratio (0-1)',
     labelNames: ['namespace'],
     registers: [register]
@@ -222,7 +222,7 @@ export const cacheHitRatio = new Gauge({
  * Redis connection status
  */
 export const redisConnectionStatus = new Gauge({
-    name: 'altergolden_redis_connection_status',
+    name: 'shoukaku_redis_connection_status',
     help: 'Redis connection status (1=connected, 0=disconnected)',
     registers: [register]
 });
@@ -231,22 +231,22 @@ export const redisConnectionStatus = new Gauge({
  * Redis latency
  */
 export const redisLatency = new Histogram({
-    name: 'altergolden_redis_latency_seconds',
+    name: 'shoukaku_redis_latency_seconds',
     help: 'Redis operation latency in seconds',
     labelNames: ['operation'],
     buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5],
     registers: [register]
 });
 
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 // DATABASE METRICS
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 
 /**
  * Database queries
  */
 export const databaseQueriesTotal = new Counter({
-    name: 'altergolden_database_queries_total',
+    name: 'shoukaku_database_queries_total',
     help: 'Total database queries',
     labelNames: ['operation', 'table', 'status'],
     registers: [register]
@@ -256,7 +256,7 @@ export const databaseQueriesTotal = new Counter({
  * Database query duration
  */
 export const databaseQueryDuration = new Histogram({
-    name: 'altergolden_database_query_duration_seconds',
+    name: 'shoukaku_database_query_duration_seconds',
     help: 'Database query duration in seconds',
     labelNames: ['operation', 'table'],
     buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1],
@@ -267,21 +267,21 @@ export const databaseQueryDuration = new Histogram({
  * Database connection pool
  */
 export const databasePoolSize = new Gauge({
-    name: 'altergolden_database_pool_size',
+    name: 'shoukaku_database_pool_size',
     help: 'Database connection pool size',
     labelNames: ['state'],
     registers: [register]
 });
 
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 // CIRCUIT BREAKER METRICS
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 
 /**
  * Circuit breaker state
  */
 export const circuitBreakerState = new Gauge({
-    name: 'altergolden_circuit_breaker_state',
+    name: 'shoukaku_circuit_breaker_state',
     help: 'Circuit breaker state (0=closed, 0.5=half-open, 1=open)',
     labelNames: ['service'],
     registers: [register]
@@ -291,21 +291,21 @@ export const circuitBreakerState = new Gauge({
  * Circuit breaker failures
  */
 export const circuitBreakerFailures = new Counter({
-    name: 'altergolden_circuit_breaker_failures_total',
+    name: 'shoukaku_circuit_breaker_failures_total',
     help: 'Total circuit breaker failures',
     labelNames: ['service'],
     registers: [register]
 });
 
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 // AUTOMOD METRICS
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 
 /**
  * AutoMod violations
  */
 export const automodViolationsTotal = new Counter({
-    name: 'altergolden_automod_violations_total',
+    name: 'shoukaku_automod_violations_total',
     help: 'Total AutoMod violations detected',
     labelNames: ['type', 'action'],
     registers: [register]
@@ -315,35 +315,35 @@ export const automodViolationsTotal = new Counter({
  * AutoMod actions taken
  */
 export const automodActionsTotal = new Counter({
-    name: 'altergolden_automod_actions_total',
+    name: 'shoukaku_automod_actions_total',
     help: 'Total AutoMod actions taken',
     labelNames: ['action'],
     registers: [register]
 });
 
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 // EVENT METRICS
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 
 /**
  * Discord events received
  */
 export const discordEventsTotal = new Counter({
-    name: 'altergolden_discord_events_total',
+    name: 'shoukaku_discord_events_total',
     help: 'Total Discord events received',
     labelNames: ['event_type'],
     registers: [register]
 });
 
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 // HTTP METRICS (for health endpoint)
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 
 /**
  * HTTP requests
  */
 export const httpRequestsTotal = new Counter({
-    name: 'altergolden_http_requests_total',
+    name: 'shoukaku_http_requests_total',
     help: 'Total HTTP requests to health/metrics endpoints',
     labelNames: ['method', 'path', 'status_code'],
     registers: [register]
@@ -353,16 +353,16 @@ export const httpRequestsTotal = new Counter({
  * HTTP request duration
  */
 export const httpRequestDuration = new Histogram({
-    name: 'altergolden_http_request_duration_seconds',
+    name: 'shoukaku_http_request_duration_seconds',
     help: 'HTTP request duration in seconds',
     labelNames: ['method', 'path'],
     buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1],
     registers: [register]
 });
 
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 // HELPER FUNCTIONS
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 
 /**
  * Get all metrics in Prometheus format
@@ -513,9 +513,9 @@ export function trackCircuitBreakerFailure(service: string): void {
     circuitBreakerFailures.inc({ service });
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 // EXPORTS
-// ═══════════════════════════════════════════════════════════════
+// ==========================================
 
 export { register, client as promClient };
 

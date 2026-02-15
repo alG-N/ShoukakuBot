@@ -11,6 +11,7 @@ import * as lavalinkConfig from '../../../config/features/lavalink.js';
 import circuitBreakerRegistry from '../../../core/CircuitBreakerRegistry.js';
 import gracefulDegradation from '../../../core/GracefulDegradation.js';
 import cacheService from '../../../cache/CacheService.js';
+import { updateLavalinkMetrics } from '../../../core/metrics.js';
 import type { MusicTrack } from '../events/MusicEvents.js';
 // TYPES
 interface NodeConfig {
@@ -251,6 +252,9 @@ class LavalinkService {
             this.readyNodes.add(name);
             this.isReady = true;
             
+            // Update Prometheus metrics
+            updateLavalinkMetrics(name, true, 0);
+            
             // Mark Lavalink as healthy
             gracefulDegradation.markHealthy('lavalink');
             
@@ -266,6 +270,10 @@ class LavalinkService {
         this.shoukaku.on('close', (name: string, code: number) => {
             logger.info('Lavalink', `Node "${name}" closed (${code})`);
             this.readyNodes.delete(name);
+            
+            // Update Prometheus metrics
+            updateLavalinkMetrics(name, false, 0);
+            
             if (this.readyNodes.size === 0) {
                 this.isReady = false;
                 gracefulDegradation.markUnavailable('lavalink', 'All nodes disconnected');
@@ -277,6 +285,10 @@ class LavalinkService {
 
         this.shoukaku.on('disconnect', (name: string) => {
             this.readyNodes.delete(name);
+            
+            // Update Prometheus metrics
+            updateLavalinkMetrics(name, false, 0);
+            
             if (this.readyNodes.size === 0) {
                 this.isReady = false;
                 gracefulDegradation.markUnavailable('lavalink', 'All nodes disconnected');

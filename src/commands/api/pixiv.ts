@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Pixiv Command - Presentation Layer
  * Search for artwork, manga, or novels on Pixiv
  * @module presentation/commands/api/pixiv

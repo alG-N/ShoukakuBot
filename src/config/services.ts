@@ -14,7 +14,7 @@ export const steam = {
 export const reddit = {
     clientId: process.env.REDDIT_CLIENT_ID || '',
     secretKey: process.env.REDDIT_SECRET_KEY || '',
-    userAgent: 'alterGolden/2.0 (Discord Bot)',
+    userAgent: 'Shoukaku/2.0 (Discord Bot)',
     baseUrl: 'https://oauth.reddit.com',
     authUrl: 'https://www.reddit.com/api/v1/access_token',
     rateLimit: 60,  // requests per minute

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NHentai Handler
  * Creates embeds and buttons for nhentai command
  * @module handlers/api/nhentaiHandler
@@ -109,8 +109,10 @@ const COLORS = {
 class NHentaiHandler {
     private readonly CACHE_NS = 'api:nhentai';
     private readonly SESSION_TTL = 1800; // 30 minutes in seconds for longer reading sessions
-    private readonly CDN_MIRRORS = ['i1', 'i2', 'i3', 'i5', 'i7'];
-    private readonly THUMB_MIRRORS = ['t1', 't2', 't3', 't5', 't7'];
+    // nhentai CDN mirrors — canonical (no number) first, then numbered fallbacks
+    // i5/i7/t5/t7 are deprecated (DNS ENOTFOUND), prefer i/i2/i3 and t/t2/t3
+    private readonly CDN_MIRRORS = ['i', 'i2', 'i3', 'i1'];
+    private readonly THUMB_MIRRORS = ['t', 't2', 't3', 't1'];
     private cdnIndex = 0;
     private thumbIndex = 0;
     private _cleanupInterval: NodeJS.Timeout | null = null;
@@ -151,6 +153,50 @@ class NHentaiHandler {
     }
 
     /**
+     * Fetch image with automatic mirror retry.
+     * Tries multiple CDN mirrors when 404/network errors occur.
+     */
+    private async _fetchImageWithRetry(urls: string[]): Promise<Buffer | null> {
+        for (const url of urls) {
+            const result = await this._fetchImage(url);
+            if (result) return result;
+        }
+        return null;
+    }
+
+    /**
+     * Get all mirror URLs for a thumbnail (cover image)
+     */
+    private _getAllThumbnailUrls(mediaId: string, coverType: string): string[] {
+        const ext: Record<string, string> = { 'j': 'jpg', 'p': 'png', 'g': 'gif' };
+        const extension = ext[coverType] || 'jpg';
+        // Start from the next mirror in rotation, then try all others
+        const startIdx = this.thumbIndex % this.THUMB_MIRRORS.length;
+        this.thumbIndex++;
+        const urls: string[] = [];
+        for (let i = 0; i < this.THUMB_MIRRORS.length; i++) {
+            const mirror = this.THUMB_MIRRORS[(startIdx + i) % this.THUMB_MIRRORS.length];
+            urls.push(`https://${mirror}.nhentai.net/galleries/${mediaId}/cover.${extension}`);
+        }
+        return urls;
+    }
+
+    /**
+     * Get all mirror URLs for a page image
+     */
+    private _getAllPageImageUrls(mediaId: string, pageNum: number, pageType: string): string[] {
+        const ext: Record<string, string> = { 'j': 'jpg', 'p': 'png', 'g': 'gif' };
+        const extension = ext[pageType] || 'jpg';
+        const startIdx = pageNum % this.CDN_MIRRORS.length;
+        const urls: string[] = [];
+        for (let i = 0; i < this.CDN_MIRRORS.length; i++) {
+            const mirror = this.CDN_MIRRORS[(startIdx + i) % this.CDN_MIRRORS.length];
+            urls.push(`https://${mirror}.nhentai.net/galleries/${mediaId}/${pageNum}.${extension}`);
+        }
+        return urls;
+    }
+
+    /**
      * Get file extension from nhentai image type code
      */
     private _getExt(typeCode: string): string {
@@ -172,7 +218,6 @@ class NHentaiHandler {
 
         const page = pages[pageNum - 1];
         const ext = this._getExt(page.t);
-        const imageUrl = this._getPageImageUrl(media_id, pageNum, page.t);
         const filename = `page_${pageNum}.${ext}`;
 
         const embed = new EmbedBuilder()
@@ -183,7 +228,9 @@ class NHentaiHandler {
             })
             .setFooter({ text: `Page ${pageNum}/${num_pages} • ID: ${id}` });
 
-        const imageBuffer = await this._fetchImage(imageUrl);
+        // Try all CDN mirrors until one works
+        const pageUrls = this._getAllPageImageUrls(media_id, pageNum, page.t);
+        const imageBuffer = await this._fetchImageWithRetry(pageUrls);
         const files: AttachmentBuilder[] = [];
 
         if (imageBuffer) {
@@ -192,7 +239,7 @@ class NHentaiHandler {
             embed.setImage(`attachment://${filename}`);
         } else {
             // Fallback: try direct URL (may not load, but better than nothing)
-            embed.setImage(imageUrl);
+            embed.setImage(pageUrls[0]);
         }
 
         return { embed, files };
@@ -207,10 +254,11 @@ class NHentaiHandler {
         const { media_id, images } = gallery;
         const coverType = images?.cover?.t || 'j';
         const ext = this._getExt(coverType);
-        const coverUrl = this._getThumbnailUrl(media_id, coverType);
         const filename = `cover.${ext}`;
 
-        const imageBuffer = await this._fetchImage(coverUrl);
+        // Try all thumbnail mirrors until one works
+        const coverUrls = this._getAllThumbnailUrls(media_id, coverType);
+        const imageBuffer = await this._fetchImageWithRetry(coverUrls);
         const files: AttachmentBuilder[] = [];
 
         if (imageBuffer) {

@@ -1,31 +1,29 @@
-# ═══════════════════════════════════════════════════════════════
-# ALTERGOLDEN BOT - Core Services
-# Docker Desktop folder: altergolden-bot
-# ═══════════════════════════════════════════════════════════════
-# Sử dụng start.ps1 / stop.ps1 để quản lý toàn bộ stack
-# Hoặc: docker compose up -d (chỉ bot + DB + cache)
-# ═══════════════════════════════════════════════════════════════
+# ==============================================================
+# shoukaku BOT - Core Services
+# Docker Desktop folder: shoukaku-bot
+# ==============================================================
+# Use start.ps1 / stop.ps1 to manage the full stack
+# Or: docker compose up -d (bot + DB + cache only)
+# ==============================================================
 
-name: altergolden-bot
+name: shoukaku-bot
 
 networks:
-  altergolden-net:
+  shoukaku-net:
     external: true
 
 services:
-  # ───────────────────────────────────────────────────────────────
   # PostgreSQL Database
-  # ───────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
-    container_name: altergolden-postgres
+    container_name: shoukaku-postgres
     restart: on-failure:5
     networks:
-      - altergolden-net
+      - shoukaku-net
     environment:
-      POSTGRES_USER: ${DB_USER:-altergolden}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-altergolden_secret}
-      POSTGRES_DB: ${DB_NAME:-altergolden_db}
+      POSTGRES_USER: ${DB_USER:-shoukaku}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-shoukaku_secret}
+      POSTGRES_DB: ${DB_NAME:-shoukaku_db}
     ports:
       - "${DB_PORT:-5433}:5432"
     volumes:
@@ -60,21 +58,19 @@ services:
         max-size: "5m"
         max-file: "2"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-altergolden} -d ${DB_NAME:-altergolden_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-shoukaku} -d ${DB_NAME:-shoukaku_db}"]
       interval: 30s
       timeout: 5s
       retries: 5
       start_period: 10s
 
-  # ───────────────────────────────────────────────────────────────
   # Redis Cache
-  # ───────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: altergolden-redis
+    container_name: shoukaku-redis
     restart: on-failure:5
     networks:
-      - altergolden-net
+      - shoukaku-net
     ports:
       - "${REDIS_PORT:-6380}:6379"
     volumes:
@@ -107,15 +103,13 @@ services:
       retries: 5
       start_period: 5s
 
-  # ───────────────────────────────────────────────────────────────
   # yt-dlp HTTP API (video download microservice)
-  # ───────────────────────────────────────────────────────────────
   ytdlp-api:
     build: ./docker/ytdlp-api
-    container_name: altergolden-ytdlp-api
+    container_name: shoukaku-ytdlp-api
     restart: on-failure:5
     networks:
-      - altergolden-net
+      - shoukaku-net
     volumes:
       - video_temp:/downloads
     environment:
@@ -140,17 +134,15 @@ services:
       retries: 5
       start_period: 10s
 
-  # ───────────────────────────────────────────────────────────────
-  # alterGolden Bot Application
-  # ───────────────────────────────────────────────────────────────
+  # shoukaku Bot Application
   bot:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: altergolden-bot
+    container_name: shoukaku-bot
     restart: on-failure:5
     networks:
-      - altergolden-net
+      - shoukaku-net
     ports:
       - "3000:3000"
     volumes:
@@ -164,24 +156,24 @@ services:
         condition: service_healthy
       # Lavalink nodes are in separate compose - bot auto-reconnects (30 retries)
     environment:
-      # ── Core (required — compose will fail if missing) ──
+      # Bot core configuration
       BOT_TOKEN: ${BOT_TOKEN:?BOT_TOKEN is required in .env}
       CLIENT_ID: ${CLIENT_ID:?CLIENT_ID is required in .env}
-      # ── Database ──
+      # Database configuration (PostgreSQL on shared shoukaku-net network)
       DB_HOST: postgres
       DB_PORT: "5432"
-      DB_USER: ${DB_USER:-altergolden}
-      DB_PASSWORD: ${DB_PASSWORD:-altergolden_secret}
-      DB_NAME: ${DB_NAME:-altergolden_db}
-      # ── Redis ──
+      DB_USER: ${DB_USER:-shoukaku}
+      DB_PASSWORD: ${DB_PASSWORD:-shoukaku_secret}
+      DB_NAME: ${DB_NAME:-shoukaku_db}
+      # Redis configuration (Redis on shared shoukaku-net network)
       REDIS_URL: redis://redis:6379
-      # ── Owner / Logging (optional) ──
+      # Owner / Logging (optional)
       OWNER_IDS: ${OWNER_IDS:-}
       GUILD_LOG_CHANNEL_ID: ${GUILD_LOG_CHANNEL_ID:-}
       REPORT_CHANNEL_ID: ${REPORT_CHANNEL_ID:-}
       SYSTEM_LOG_CHANNEL_ID: ${SYSTEM_LOG_CHANNEL_ID:-}
       SUPPORT_GUILD_ID: ${SUPPORT_GUILD_ID:-}
-      # ── API Keys (optional) ──
+      # API Keys (optional)
       STEAM_API_KEY: ${STEAM_API_KEY:-}
       REDDIT_CLIENT_ID: ${REDDIT_CLIENT_ID:-}
       REDDIT_SECRET_KEY: ${REDDIT_SECRET_KEY:-}
@@ -190,7 +182,7 @@ services:
       PIXIV_CLIENT_SECRET: ${PIXIV_CLIENT_SECRET:-}
       RULE34_USER_ID: ${RULE34_USER_ID:-}
       RULE34_API_KEY: ${RULE34_API_KEY:-}
-      # ── Music (Lavalink nodes on shared network) ──
+      # Music (Lavalink nodes on shared network)
       LAVALINK_HOST_1: lavalink-1
       LAVALINK_HOST_2: lavalink-2
       LAVALINK_HOST_3: lavalink-3
@@ -198,13 +190,13 @@ services:
       LAVALINK_PORT_2: "2333"
       LAVALINK_PORT_3: "2333"
       LAVALINK_PASSWORD: ${LAVALINK_PASSWORD:-youshallnotpass}
-      # ── Video (Cobalt instances on shared network) ──
+      # Video (Cobalt instances on shared network)
       COBALT_INSTANCES: "http://cobalt-1:9000,http://cobalt-2:9000,http://cobalt-3:9000"
-      # ── yt-dlp API ──
+      # yt-dlp API
       YTDLP_API_URL: "http://ytdlp-api:8900"
-      # ── Sentry (optional) ──
+      # Sentry (optional)
       SENTRY_DSN: ${SENTRY_DSN:-}
-      # ── Node.js ──
+      # Node.js configuration
       NODE_ENV: ${NODE_ENV:-production}
       NODE_OPTIONS: "--max-old-space-size=384"
     deploy:
@@ -225,15 +217,13 @@ services:
       retries: 3
       start_period: 30s
 
-  # ───────────────────────────────────────────────────────────────
   # YT-Cipher (Lavalink YouTube plugin dependency)
-  # ───────────────────────────────────────────────────────────────
   yt-cipher:
     image: ghcr.io/kikkia/yt-cipher:master
     container_name: ejs_signature_api
     restart: on-failure:3
     networks:
-      - altergolden-net
+      - shoukaku-net
     ports:
       - "8001:8001"
     deploy:

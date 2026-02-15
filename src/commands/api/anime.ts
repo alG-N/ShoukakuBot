@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Anime Command - Presentation Layer
  * Search anime/manga on AniList and MyAnimeList
  * @module presentation/commands/api/anime

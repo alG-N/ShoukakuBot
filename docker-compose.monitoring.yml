@@ -1,21 +1,21 @@
-# ═══════════════════════════════════════════════════════════════
+# ==============================================================
 # MONITORING STACK (Prometheus + Grafana)
-# Docker Desktop folder: altergolden-monitoring
-# ═══════════════════════════════════════════════════════════════
+# Docker Desktop folder: shoukaku-monitoring
+# ==============================================================
 
-name: altergolden-monitoring
+name: shoukaku-monitoring
 
 networks:
-  altergolden-net:
+  shoukaku-net:
     external: true
 
 services:
   prometheus:
     image: prom/prometheus:v2.48.0
-    container_name: altergolden-prometheus
+    container_name: shoukaku-prometheus
     restart: on-failure:3
     networks:
-      - altergolden-net
+      - shoukaku-net
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./monitoring/prometheus/alerts:/etc/prometheus/alerts:ro
@@ -51,10 +51,10 @@ services:
 
   grafana:
     image: grafana/grafana:10.2.2
-    container_name: altergolden-grafana
+    container_name: shoukaku-grafana
     restart: on-failure:3
     networks:
-      - altergolden-net
+      - shoukaku-net
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin

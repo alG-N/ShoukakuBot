@@ -48,7 +48,7 @@ class InviteCommand extends BaseCommand {
 
         const embed = new EmbedBuilder()
             .setColor(COLORS.PRIMARY)
-            .setTitle('🤖 Invite alterGolden')
+            .setTitle('🤖 Invite Shoukaku')
             .setDescription('Choose an invite option based on your needs:')
             .setThumbnail(interaction.client.user?.displayAvatarURL({ size: 256 }) || null)
             .addFields(
@@ -68,7 +68,7 @@ class InviteCommand extends BaseCommand {
                     inline: false 
                 }
             )
-            .setFooter({ text: 'Thank you for using alterGolden! 💖' })
+            .setFooter({ text: 'Thank you for using Shoukaku! 💖' })
             .setTimestamp();
 
         const row = new ActionRowBuilder<ButtonBuilder>()

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Steam Command - Presentation Layer
  * Steam game utilities
  * @module presentation/commands/api/steam

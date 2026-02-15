@@ -1,6 +1,6 @@
 /**
  * Bot Configuration
- * Main configuration file for alterGolden Discord Bot
+ * Main configuration file for Shoukaku Discord Bot
  * @module config/bot
  */
 

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Anime Handler
  * Creates embeds for anime/manga search results
  * @module handlers/api/animeHandler

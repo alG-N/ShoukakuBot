@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Say Command - Presentation Layer
  * Send a message as the bot
  * @module presentation/commands/fun/say

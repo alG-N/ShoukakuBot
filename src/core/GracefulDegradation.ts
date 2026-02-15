@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Graceful Degradation Service
  * Provides fallback behaviors when services are unavailable
  * Ensures the bot continues functioning with reduced capability

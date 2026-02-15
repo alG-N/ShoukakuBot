@@ -194,9 +194,9 @@ export class PostgresDatabase {
         const config: PoolConfig = {
             host: process.env.DB_HOST || 'localhost',
             port: parseInt(process.env.DB_PORT || '5432'),
-            user: process.env.DB_USER || 'altergolden',
+            user: process.env.DB_USER || 'shoukaku',
             password: process.env.DB_PASSWORD || '',
-            database: process.env.DB_NAME || 'altergolden_db',
+            database: process.env.DB_NAME || 'shoukaku_db',
             
             // Connection pool settings
             max: parseInt(process.env.DB_POOL_MAX || '15'),
@@ -255,9 +255,9 @@ export class PostgresDatabase {
         const readConfig: PoolConfig = {
             host: process.env.DB_READ_HOST,
             port: parseInt(process.env.DB_READ_PORT || process.env.DB_PORT || '5432'),
-            user: process.env.DB_READ_USER || process.env.DB_USER || 'altergolden',
+            user: process.env.DB_READ_USER || process.env.DB_USER || 'shoukaku',
             password: process.env.DB_READ_PASSWORD || process.env.DB_PASSWORD || '',
-            database: process.env.DB_NAME || 'altergolden_db',
+            database: process.env.DB_NAME || 'shoukaku_db',
             
             max: parseInt(process.env.DB_READ_POOL_MAX || '20'),
             min: parseInt(process.env.DB_READ_POOL_MIN || '2'),

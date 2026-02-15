@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Auto-Mod Handler
  * Integrates auto-mod with message events
  * @module handlers/moderation/AutoModHandler

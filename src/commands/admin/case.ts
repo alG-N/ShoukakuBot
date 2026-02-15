@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Case Command
  * View details of a specific moderation case
  * @module commands/admin/case

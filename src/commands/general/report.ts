@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Report Command - Presentation Layer
  * Submit reports to bot developers
  * @module presentation/commands/general/report

@@ -1,5 +1,5 @@
 /**
- * Video Commands Index
+ * Download Commands Index
  */
 
-export { default as video } from './video.js';
+export { default as download } from './video.js';

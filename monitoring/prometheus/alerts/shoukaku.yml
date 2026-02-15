@@ -1,4 +1,4 @@
-# alterGolden Alert Rules
+# shoukaku Alert Rules
 # 
 # Categories:
 # - Bot Health: Discord connectivity, command execution
@@ -7,24 +7,24 @@
 # - Infrastructure: Redis, PostgreSQL connections
 
 groups:
-  # ═══════════════════════════════════════════════════════════════
+  # ==========================================
   # BOT HEALTH ALERTS
-  # ═══════════════════════════════════════════════════════════════
-  - name: altergolden_bot_health
+  # ==========================================
+  - name: shoukaku_bot_health
     rules:
       # Bot disconnected from Discord
       - alert: BotDisconnected
-        expr: altergolden_discord_uptime_seconds == 0
+        expr: shoukaku_discord_uptime_seconds == 0
         for: 1m
         labels:
           severity: critical
         annotations:
-          summary: "alterGolden bot disconnected from Discord"
+          summary: "Shoukaku bot disconnected from Discord"
           description: "The bot has been disconnected from Discord for more than 1 minute."
 
       # High gateway latency
       - alert: HighGatewayLatency
-        expr: altergolden_discord_gateway_latency_ms > 500
+        expr: shoukaku_discord_gateway_latency_ms > 500
         for: 5m
         labels:
           severity: warning
@@ -34,7 +34,7 @@ groups:
 
       # Critical gateway latency
       - alert: CriticalGatewayLatency
-        expr: altergolden_discord_gateway_latency_ms > 1000
+        expr: shoukaku_discord_gateway_latency_ms > 1000
         for: 2m
         labels:
           severity: critical
@@ -44,7 +44,7 @@ groups:
 
       # Guild count dropped significantly
       - alert: GuildCountDrop
-        expr: delta(altergolden_discord_guilds_total[1h]) < -10
+        expr: delta(shoukaku_discord_guilds_total[1h]) < -10
         for: 5m
         labels:
           severity: warning
@@ -52,17 +52,17 @@ groups:
           summary: "Significant guild count drop"
           description: "Lost {{ $value }} guilds in the last hour."
 
-  # ═══════════════════════════════════════════════════════════════
+  # ==========================================
   # PERFORMANCE ALERTS
-  # ═══════════════════════════════════════════════════════════════
-  - name: altergolden_performance
+  # ==========================================
+  - name: shoukaku_performance
     rules:
       # High command error rate
       - alert: HighCommandErrorRate
         expr: |
-          sum(rate(altergolden_command_errors_total[5m])) 
+          sum(rate(shoukaku_command_errors_total[5m])) 
           / 
-          sum(rate(altergolden_commands_executed_total[5m])) > 0.1
+          sum(rate(shoukaku_commands_executed_total[5m])) > 0.1
         for: 5m
         labels:
           severity: warning
@@ -74,7 +74,7 @@ groups:
       - alert: SlowCommandExecution
         expr: |
           histogram_quantile(0.95, 
-            sum(rate(altergolden_command_execution_duration_seconds_bucket[5m])) by (le, command)
+            sum(rate(shoukaku_command_execution_duration_seconds_bucket[5m])) by (le, command)
           ) > 5
         for: 5m
         labels:
@@ -86,8 +86,8 @@ groups:
       # High memory usage
       - alert: HighMemoryUsage
         expr: |
-          altergolden_nodejs_external_memory_bytes 
-          + altergolden_nodejs_heap_size_used_bytes > 1.5e9
+          shoukaku_nodejs_external_memory_bytes 
+          + shoukaku_nodejs_heap_size_used_bytes > 1.5e9
         for: 10m
         labels:
           severity: warning
@@ -98,7 +98,7 @@ groups:
       # Memory leak detection
       - alert: PossibleMemoryLeak
         expr: |
-          delta(altergolden_nodejs_heap_size_used_bytes[1h]) > 100e6
+          delta(shoukaku_nodejs_heap_size_used_bytes[1h]) > 100e6
         for: 30m
         labels:
           severity: warning
@@ -106,24 +106,24 @@ groups:
           summary: "Possible memory leak detected"
           description: "Heap grew by {{ $value | humanize1024 }} in the last hour."
 
-  # ═══════════════════════════════════════════════════════════════
+  # ==========================================
   # MUSIC ALERTS
-  # ═══════════════════════════════════════════════════════════════
-  - name: altergolden_music
+  # ==========================================
+  - name: shoukaku_music
     rules:
       # Lavalink node down
       - alert: LavalinkNodeDown
-        expr: altergolden_lavalink_node_status{status="connected"} == 0
+        expr: shoukaku_lavalink_node_status == 0
         for: 2m
         labels:
           severity: critical
         annotations:
           summary: "Lavalink node disconnected"
-          description: "Node {{ $labels.node }} has been disconnected for more than 2 minutes."
+          description: "Node {{ $labels.node_name }} has been disconnected for more than 2 minutes."
 
       # High queue size
       - alert: HighMusicQueueSize
-        expr: altergolden_music_queue_size_total > 500
+        expr: shoukaku_music_queue_size_total > 500
         for: 5m
         labels:
           severity: warning
@@ -131,14 +131,14 @@ groups:
           summary: "High music queue size"
           description: "Total queue size is {{ $value }} tracks."
 
-  # ═══════════════════════════════════════════════════════════════
+  # ==========================================
   # INFRASTRUCTURE ALERTS
-  # ═══════════════════════════════════════════════════════════════
-  - name: altergolden_infrastructure
+  # ==========================================
+  - name: shoukaku_infrastructure
     rules:
       # Redis disconnected (warning - fallback to in-memory cache is available)
       - alert: RedisDisconnected
-        expr: altergolden_redis_connection_status == 0
+        expr: shoukaku_redis_connection_status == 0
         for: 5m
         labels:
           severity: warning
@@ -148,7 +148,7 @@ groups:
 
       # Low cache hit rate
       - alert: LowCacheHitRate
-        expr: altergolden_cache_hit_ratio < 0.5
+        expr: shoukaku_cache_hit_ratio < 0.5
         for: 15m
         labels:
           severity: warning
@@ -158,7 +158,7 @@ groups:
 
       # Circuit breaker open
       - alert: CircuitBreakerOpen
-        expr: altergolden_circuit_breaker_state{state="open"} > 0
+        expr: shoukaku_circuit_breaker_state{state="open"} > 0
         for: 5m
         labels:
           severity: warning
@@ -170,7 +170,7 @@ groups:
       - alert: HighDatabaseLatency
         expr: |
           histogram_quantile(0.95, 
-            sum(rate(altergolden_database_query_duration_seconds_bucket[5m])) by (le)
+            sum(rate(shoukaku_database_query_duration_seconds_bucket[5m])) by (le)
           ) > 1
         for: 5m
         labels:
@@ -179,14 +179,14 @@ groups:
           summary: "High database query latency"
           description: "95th percentile database latency is {{ $value }}s."
 
-  # ═══════════════════════════════════════════════════════════════
+  # ==========================================
   # AUTOMOD ALERTS
-  # ═══════════════════════════════════════════════════════════════
-  - name: altergolden_automod
+  # ==========================================
+  - name: shoukaku_automod
     rules:
       # High automod activity
       - alert: HighAutomodActivity
-        expr: sum(rate(altergolden_automod_violations_total[5m])) > 10
+        expr: sum(rate(shoukaku_automod_violations_total[5m])) > 10
         for: 5m
         labels:
           severity: info
@@ -196,7 +196,7 @@ groups:
 
       # Automod ban spike
       - alert: AutomodBanSpike
-        expr: sum(rate(altergolden_automod_actions_total{action="ban"}[5m])) > 1
+        expr: sum(rate(shoukaku_automod_actions_total{action="ban"}[5m])) > 1
         for: 5m
         labels:
           severity: warning

@@ -1,9 +1,9 @@
-# Prometheus Configuration for alterGolden Bot
+# Prometheus Configuration for shoukaku Bot
 # 
 # This configuration file defines:
 # - Global settings (scrape interval, evaluation interval)
 # - Alerting configuration (Alertmanager endpoints)
-# - Scrape targets (alterGolden bot metrics, Prometheus itself)
+# - Scrape targets (shoukaku bot metrics, Prometheus itself)
 # - Recording rules and alerts
 
 global:
@@ -13,12 +13,12 @@ global:
 
   # Labels attached to all metrics
   external_labels:
-    monitor: 'altergolden'
+    monitor: 'shoukaku'
     environment: 'production'
 
-# ═══════════════════════════════════════════════════════════════
+# ==========================================
 # ALERTING CONFIGURATION
-# ═══════════════════════════════════════════════════════════════
+# ==========================================
 alerting:
   alertmanagers:
     - static_configs:
@@ -28,45 +28,39 @@ alerting:
       scheme: http
       timeout: 10s
 
-# ═══════════════════════════════════════════════════════════════
+# ==========================================
 # RULE FILES
-# ═══════════════════════════════════════════════════════════════
+# ==========================================
 rule_files:
   - /etc/prometheus/alerts/*.yml
 
-# ═══════════════════════════════════════════════════════════════
+# ==========================================
 # SCRAPE CONFIGURATIONS
-# ═══════════════════════════════════════════════════════════════
+# ==========================================
 scrape_configs:
-  # ─────────────────────────────────────────────────────────────
   # Prometheus self-monitoring
-  # ─────────────────────────────────────────────────────────────
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
     metrics_path: /metrics
     scheme: http
 
-  # ─────────────────────────────────────────────────────────────
-  # alterGolden Bot Metrics
-  # ─────────────────────────────────────────────────────────────
-  - job_name: 'altergolden'
+  # Shoukaku Bot Metrics
+  - job_name: 'shoukaku'
     static_configs:
       - targets: 
-        # Use container name on shared altergolden-net network
-        - 'altergolden-bot:3000'
+        # Use container name on shared shoukaku-net network
+        - 'shoukaku-bot:3000'
         labels:
           instance: 'main'
-          app: 'altergolden'
+          app: 'shoukaku'
     metrics_path: /metrics
     scheme: http
     scrape_interval: 10s
     scrape_timeout: 5s
 
-  # ─────────────────────────────────────────────────────────────
-  # alterGolden Shards (Production - uncomment when sharding)
-  # ─────────────────────────────────────────────────────────────
-  # - job_name: 'altergolden-shards'
+  # shoukaku Shards (Production - uncomment when sharding)
+  # - job_name: 'shoukaku-shards'
   #   # Service discovery using file_sd
   #   file_sd_configs:
   #     - files:
@@ -80,36 +74,28 @@ scrape_configs:
   #       regex: '.*:(\d+)'
   #       replacement: '${1}'
 
-  # ─────────────────────────────────────────────────────────────
   # Node Exporter (Host metrics - optional)
-  # ─────────────────────────────────────────────────────────────
   - job_name: 'node-exporter'
     static_configs:
       - targets: ['node-exporter:9100']
     metrics_path: /metrics
     scheme: http
 
-  # ─────────────────────────────────────────────────────────────
   # Redis Exporter (optional - requires separate redis_exporter)
-  # ─────────────────────────────────────────────────────────────
   # - job_name: 'redis'
   #   static_configs:
   #     - targets: ['redis-exporter:9121']
   #   metrics_path: /metrics
   #   scheme: http
 
-  # ─────────────────────────────────────────────────────────────
   # PostgreSQL Exporter (optional - requires postgres_exporter)
-  # ─────────────────────────────────────────────────────────────
   # - job_name: 'postgres'
   #   static_configs:
   #     - targets: ['postgres-exporter:9187']
   #   metrics_path: /metrics
   #   scheme: http
 
-  # ─────────────────────────────────────────────────────────────
   # Lavalink Metrics (optional)
-  # ─────────────────────────────────────────────────────────────
   # - job_name: 'lavalink'
   #   static_configs:
   #     - targets: ['lavalink:2333']

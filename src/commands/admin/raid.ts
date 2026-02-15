@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Raid Command
  * Manage anti-raid mode
  * @module commands/admin/raid

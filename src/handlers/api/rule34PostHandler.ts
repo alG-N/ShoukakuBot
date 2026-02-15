@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Rule34 Post Handler
  * Handles embed creation and UI components for Rule34 posts
  * @module handlers/api/rule34PostHandler

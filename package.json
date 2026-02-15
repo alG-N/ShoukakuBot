@@ -1,7 +1,7 @@
 {
-  "name": "altergolden-bot",
+  "name": "shoukaku-bot",
   "version": "2.0.0",
-  "description": "alterGolden Discord Bot - Utility, Music, Video, API commands",
+  "description": "shoukaku Discord Bot - Utility, Music, Video, API commands",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",

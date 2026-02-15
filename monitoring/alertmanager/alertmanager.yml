@@ -1,4 +1,4 @@
-# Alertmanager Configuration for alterGolden
+# Alertmanager Configuration for shoukaku
 #
 # Routes alerts to appropriate channels (Discord, Email, etc.)
 # 
@@ -13,19 +13,19 @@ global:
   
   # SMTP settings (for email alerts)
   # smtp_smarthost: 'smtp.gmail.com:587'
-  # smtp_from: 'alertmanager@altergolden.com'
+  # smtp_from: 'alertmanager@shoukaku.com'
   # smtp_auth_username: 'your-email@gmail.com'
   # smtp_auth_password: 'your-app-password'
 
-# ═══════════════════════════════════════════════════════════════
+# ==========================================
 # NOTIFICATION TEMPLATES
-# ═══════════════════════════════════════════════════════════════
+# ==========================================
 templates:
   - '/etc/alertmanager/templates/*.tmpl'
 
-# ═══════════════════════════════════════════════════════════════
+# ==========================================
 # ROUTING CONFIGURATION
-# ═══════════════════════════════════════════════════════════════
+# ==========================================
 route:
   # Default receiver
   receiver: 'discord-notifications'
@@ -65,9 +65,9 @@ route:
       group_wait: 5m
       repeat_interval: 12h
 
-# ═══════════════════════════════════════════════════════════════
+# ==========================================
 # RECEIVERS
-# ═══════════════════════════════════════════════════════════════
+# ==========================================
 receivers:
   # Discord webhook for general notifications
   - name: 'discord-notifications'
@@ -84,7 +84,7 @@ receivers:
   # Email notifications (optional)
   # - name: 'email-notifications'
   #   email_configs:
-  #     - to: 'admin@altergolden.com'
+  #     - to: 'admin@shoukaku.com'
   #       send_resolved: true
 
   # Slack notifications (optional)
@@ -94,9 +94,9 @@ receivers:
   #       channel: '#alerts'
   #       send_resolved: true
 
-# ═══════════════════════════════════════════════════════════════
+# ==========================================
 # INHIBIT RULES
-# ═══════════════════════════════════════════════════════════════
+# ==========================================
 inhibit_rules:
   # If critical alert is firing, suppress warnings for same alertname
   - source_match:

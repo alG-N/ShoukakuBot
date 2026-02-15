@@ -210,7 +210,7 @@ class BotCheckCommand extends BaseCommand {
 
         // Main embed
         const mainEmbed = new EmbedBuilder()
-            .setTitle('🤖 alterGolden Health Dashboard')
+            .setTitle('🤖 Shoukaku Health Dashboard')
             .setColor(services.every(s => s.healthy) ? COLORS.SUCCESS : COLORS.WARNING)
             .setDescription(`**Status:** ${services.every(s => s.healthy) ? '🟢 All Systems Operational' : '🟡 Degraded Performance'}`)
             .addFields(

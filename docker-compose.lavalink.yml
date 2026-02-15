@@ -1,12 +1,12 @@
-# ═══════════════════════════════════════════════════════════════
+# ==============================================================
 # LAVALINK - 3 Nodes (Load Balancing + Failover)
-# Docker Desktop folder: altergolden-lavalink
-# ═══════════════════════════════════════════════════════════════
+# Docker Desktop folder: shoukaku-lavalink
+# ==============================================================
 
-name: altergolden-lavalink
+name: shoukaku-lavalink
 
 networks:
-  altergolden-net:
+  shoukaku-net:
     external: true
 
 services:
@@ -15,7 +15,7 @@ services:
     container_name: lavalink-1
     restart: on-failure:3
     networks:
-      - altergolden-net
+      - shoukaku-net
     volumes:
       - ./docker/lavalink/application.yml:/opt/Lavalink/application.yml:ro
       - ./docker/lavalink/plugins:/opt/Lavalink/plugins:ro
@@ -50,7 +50,7 @@ services:
     container_name: lavalink-2
     restart: on-failure:3
     networks:
-      - altergolden-net
+      - shoukaku-net
     volumes:
       - ./docker/lavalink/application.yml:/opt/Lavalink/application.yml:ro
       - ./docker/lavalink/plugins:/opt/Lavalink/plugins:ro
@@ -85,7 +85,7 @@ services:
     container_name: lavalink-3
     restart: on-failure:3
     networks:
-      - altergolden-net
+      - shoukaku-net
     volumes:
       - ./docker/lavalink/application.yml:/opt/Lavalink/application.yml:ro
       - ./docker/lavalink/plugins:/opt/Lavalink/plugins:ro

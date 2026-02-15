@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
 Write-Host "==========================================="
-Write-Host "  AlterGolden - Starting All Services"
+Write-Host "  shoukaku - Starting All Services"
 Write-Host "==========================================="
 
 # 0. Check Docker daemon
@@ -31,12 +31,14 @@ if (Test-Path ".env") {
 # 1. Create shared network
 Write-Host ""
 Write-Host "[1/5] Creating shared network..."
-$netResult = docker network create altergolden-net 2>&1 | Out-String
+$ErrorActionPreference = "Continue"
+$netResult = docker network create shoukaku-net 2>&1 | Out-String
 if ($LASTEXITCODE -ne 0 -and $netResult -notmatch "already exists") {
     Write-Host "  ERROR: Failed to create network: $netResult" -ForegroundColor Red
     exit 1
 }
-Write-Host "  Done - network altergolden-net ready"
+$ErrorActionPreference = "Stop"
+Write-Host "  Done - network shoukaku-net ready"
 
 # 2. Start Lavalink
 Write-Host ""

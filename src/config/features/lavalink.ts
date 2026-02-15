@@ -28,7 +28,7 @@ export const nodes = [
     }
 ];
 
-export const clientName = 'alterGolden';
+export const clientName = 'Shoukaku';
 export const defaultSearchPlatform = 'ytsearch';
 export const fallbackSearchPlatform = 'scsearch';
 
@@ -46,7 +46,7 @@ export const shoukakuOptions = {
     reconnectInterval: 5000,
     restTimeout: 60000,
     moveOnDisconnect: false,
-    userAgent: 'alterGolden/2.0'
+    userAgent: 'Shoukaku/2.0'
 };
 
 export default {

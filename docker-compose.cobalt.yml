@@ -1,12 +1,12 @@
-# ═══════════════════════════════════════════════════════════════
+# ==============================================================
 # COBALT - 3 Instances (Load Balancing)
-# Docker Desktop folder: altergolden-cobalt
-# ═══════════════════════════════════════════════════════════════
+# Docker Desktop folder: shoukaku-cobalt
+# ==============================================================
 
-name: altergolden-cobalt
+name: shoukaku-cobalt
 
 networks:
-  altergolden-net:
+  shoukaku-net:
     external: true
 
 services:
@@ -15,7 +15,7 @@ services:
     container_name: cobalt-1
     restart: on-failure:3
     networks:
-      - altergolden-net
+      - shoukaku-net
     environment:
       API_PORT: 9000
       API_AUTH_REQUIRED: "false"
@@ -55,7 +55,7 @@ services:
     container_name: cobalt-2
     restart: on-failure:3
     networks:
-      - altergolden-net
+      - shoukaku-net
     environment:
       API_PORT: 9000
       API_AUTH_REQUIRED: "false"
@@ -95,7 +95,7 @@ services:
     container_name: cobalt-3
     restart: on-failure:3
     networks:
-      - altergolden-net
+      - shoukaku-net
     environment:
       API_PORT: 9000
       API_AUTH_REQUIRED: "false"

@@ -1,5 +1,5 @@
 /**
- * alterGolden Discord Client Factory
+ * Shoukaku Discord Client Factory
  * Core client configuration and creation
  * @module core/Client
  */

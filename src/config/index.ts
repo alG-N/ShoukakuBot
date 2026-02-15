@@ -1,5 +1,5 @@
 /**
- * alterGolden Configuration Module
+ * Shoukaku Configuration Module
  * Central export for all configuration files
  * @module config
  */

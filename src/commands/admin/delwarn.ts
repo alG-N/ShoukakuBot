@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Delete Warning Command
  * Delete a specific warning by case ID
  * @module commands/admin/delwarn

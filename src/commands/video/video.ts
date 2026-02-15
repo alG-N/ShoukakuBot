@@ -1,7 +1,7 @@
-﻿/**
- * Video Command
+/**
+ * Download Command
  * Download videos from social media platforms
- * @module commands/video/VideoCommand
+ * @module commands/video/DownloadCommand
  */
 
 import { 
@@ -222,7 +222,7 @@ const cooldownCleanupTimer = setInterval(() => {
 }, 60000);
 cooldownCleanupTimer.unref(); // Don't prevent process exit
 // COMMAND
-class VideoCommand extends BaseCommand {
+class DownloadCommand extends BaseCommand {
     constructor() {
         super({
             category: CommandCategory.VIDEO,
@@ -233,11 +233,11 @@ class VideoCommand extends BaseCommand {
 
     get data(): CommandData {
         return new SlashCommandBuilder()
-            .setName('video')
-            .setDescription('Download videos from social media platforms')
+            .setName('download')
+            .setDescription('Download media from social media platforms')
             .addStringOption(option =>
                 option.setName('url')
-                    .setDescription('Video URL (TikTok, Reddit, Twitter, Instagram, YouTube, etc.)')
+                    .setDescription('Media URL (TikTok, Reddit, Twitter, Instagram, YouTube, etc.)')
                     .setRequired(true)
             )
             .addStringOption(option =>
@@ -739,4 +739,4 @@ class VideoCommand extends BaseCommand {
     }
 }
 
-export default new VideoCommand();
+export default new DownloadCommand();

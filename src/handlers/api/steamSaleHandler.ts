@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Steam Sale Handler
  * Handles Steam sale command display
  * @module handlers/api/steamSaleHandler

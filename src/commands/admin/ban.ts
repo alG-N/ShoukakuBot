@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Ban Command - Presentation Layer
  * Ban/unban users from the server
  * @module commands/admin/ban

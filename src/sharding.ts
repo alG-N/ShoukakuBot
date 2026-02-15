@@ -277,7 +277,7 @@ const healthServer = require('http').createServer(async (req: { url?: string }, 
 
 async function start() {
     console.log('╔══════════════════════════════════════════════════════════════╗');
-    console.log('║           alterGolden Sharding Manager v' + VERSION + ' '.repeat(Math.max(0, 22 - VERSION.length)) + '║');
+    console.log('║           Shoukaku Sharding Manager v' + VERSION + ' '.repeat(Math.max(0, 26 - VERSION.length)) + '║');
     console.log('╠══════════════════════════════════════════════════════════════╣');
     console.log(`║  Total Shards: ${String(TOTAL_SHARDS).padEnd(46)}║`);
     console.log(`║  Respawn Delay: ${String(RESPAWN_DELAY + 'ms').padEnd(45)}║`);

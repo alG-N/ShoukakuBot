@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Warn Command
  * Issue a warning to a user with settings panel
  * @module commands/admin/warn

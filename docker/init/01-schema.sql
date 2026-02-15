@@ -1,4 +1,4 @@
--- alterGolden PostgreSQL Database Schema
+-- shoukaku PostgreSQL Database Schema
 -- This script runs automatically when the PostgreSQL container starts
 
 -- Enable UUID extension
@@ -274,5 +274,5 @@ INSERT INTO bot_stats (date, commands_used) VALUES (CURRENT_DATE, 0)
 ON CONFLICT (date) DO NOTHING;
 
 -- Grant permissions
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO altergolden;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO altergolden;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO shoukaku;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO shoukaku;

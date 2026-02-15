@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Warnings Command
  * View warnings for a user
  * @module commands/admin/warnings

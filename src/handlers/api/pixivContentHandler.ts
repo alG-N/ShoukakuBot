@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Pixiv Content Handler
  * Creates embeds and buttons for Pixiv search results
  * @module handlers/api/pixivContentHandler

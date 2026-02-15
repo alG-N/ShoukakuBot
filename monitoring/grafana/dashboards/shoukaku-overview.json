@@ -24,7 +24,7 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
       "id": 1,
       "panels": [],
-      "title": "📊 Overview",
+      "title": "ðŸ“Š Overview",
       "type": "row"
     },
     {
@@ -59,7 +59,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "altergolden_discord_gateway_latency_ms",
+          "expr": "shoukaku_discord_gateway_latency_ms",
           "refId": "A"
         }
       ],
@@ -92,7 +92,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(altergolden_discord_guilds_total) or vector(0)",
+          "expr": "sum(shoukaku_discord_guilds_total) or vector(0)",
           "refId": "A"
         }
       ],
@@ -125,7 +125,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(altergolden_discord_users_total) or vector(0)",
+          "expr": "sum(shoukaku_discord_users_total) or vector(0)",
           "refId": "A"
         }
       ],
@@ -160,7 +160,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "altergolden_discord_uptime_seconds / 60",
+          "expr": "shoukaku_discord_uptime_seconds / 60",
           "refId": "A"
         }
       ],
@@ -193,7 +193,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "altergolden_music_players_active or vector(0)",
+          "expr": "shoukaku_music_players_active or vector(0)",
           "refId": "A"
         }
       ],
@@ -226,7 +226,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(increase(altergolden_commands_executed_total[1h])) or vector(0)",
+          "expr": "sum(increase(shoukaku_commands_executed_total[1h])) or vector(0)",
           "refId": "A"
         }
       ],
@@ -270,7 +270,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "altergolden_redis_connection_status or vector(0)",
+          "expr": "shoukaku_redis_connection_status or vector(0)",
           "refId": "A"
         }
       ],
@@ -314,7 +314,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "altergolden_lavalink_node_status or vector(0)",
+          "expr": "shoukaku_lavalink_node_status or vector(0)",
           "refId": "A"
         }
       ],
@@ -326,7 +326,7 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
       "id": 10,
       "panels": [],
-      "title": "⚡ Commands",
+      "title": "âš¡ Commands",
       "type": "row"
     },
     {
@@ -368,7 +368,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (command) (rate(altergolden_commands_executed_total[5m]))",
+          "expr": "sum by (command) (rate(shoukaku_commands_executed_total[5m]))",
           "legendFormat": "{{command}}",
           "refId": "A"
         }
@@ -415,13 +415,13 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.95, sum by (le, command) (rate(altergolden_command_execution_duration_seconds_bucket[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le, command) (rate(shoukaku_command_execution_duration_seconds_bucket[5m])))",
           "legendFormat": "p95 {{command}}",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.50, sum by (le, command) (rate(altergolden_command_execution_duration_seconds_bucket[5m])))",
+          "expr": "histogram_quantile(0.50, sum by (le, command) (rate(shoukaku_command_execution_duration_seconds_bucket[5m])))",
           "legendFormat": "p50 {{command}}",
           "refId": "B"
         }
@@ -450,7 +450,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "topk(10, sum by (command) (increase(altergolden_commands_executed_total[24h])))",
+          "expr": "topk(10, sum by (command) (increase(shoukaku_commands_executed_total[24h])))",
           "legendFormat": "{{command}}",
           "refId": "A"
         }
@@ -496,7 +496,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (error_type) (rate(altergolden_command_errors_total[5m]))",
+          "expr": "sum by (error_type) (rate(shoukaku_command_errors_total[5m]))",
           "legendFormat": "{{error_type}}",
           "refId": "A"
         }
@@ -534,7 +534,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(altergolden_commands_active) or vector(0)",
+          "expr": "sum(shoukaku_commands_active) or vector(0)",
           "legendFormat": "Running",
           "refId": "A"
         }
@@ -547,7 +547,7 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
       "id": 20,
       "panels": [],
-      "title": "🎵 Music",
+      "title": "ðŸŽµ Music",
       "type": "row"
     },
     {
@@ -588,13 +588,13 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "altergolden_music_players_active or vector(0)",
+          "expr": "shoukaku_music_players_active or vector(0)",
           "legendFormat": "Active Players",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "altergolden_music_voice_connections or vector(0)",
+          "expr": "shoukaku_music_voice_connections or vector(0)",
           "legendFormat": "Voice Connections",
           "refId": "B"
         }
@@ -640,13 +640,13 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "altergolden_music_queue_size_total or vector(0)",
+          "expr": "shoukaku_music_queue_size_total or vector(0)",
           "legendFormat": "Queue Size",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(altergolden_music_tracks_played_total[5m])) * 60 or vector(0)",
+          "expr": "sum(rate(shoukaku_music_tracks_played_total[5m])) * 60 or vector(0)",
           "legendFormat": "Tracks/min",
           "refId": "B"
         }
@@ -659,7 +659,7 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 },
       "id": 30,
       "panels": [],
-      "title": "💾 System Resources",
+      "title": "ðŸ’¾ System Resources",
       "type": "row"
     },
     {
@@ -701,19 +701,19 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "altergolden_nodejs_heap_size_used_bytes",
+          "expr": "shoukaku_nodejs_heap_size_used_bytes",
           "legendFormat": "Heap Used",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "altergolden_nodejs_heap_size_total_bytes",
+          "expr": "shoukaku_nodejs_heap_size_total_bytes",
           "legendFormat": "Heap Total",
           "refId": "B"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "altergolden_nodejs_external_memory_bytes",
+          "expr": "shoukaku_nodejs_external_memory_bytes",
           "legendFormat": "External Memory",
           "refId": "C"
         }
@@ -760,7 +760,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "rate(altergolden_process_cpu_seconds_total[1m]) * 100",
+          "expr": "rate(shoukaku_process_cpu_seconds_total[1m]) * 100",
           "legendFormat": "CPU %",
           "refId": "A"
         }
@@ -773,7 +773,7 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 40 },
       "id": 40,
       "panels": [],
-      "title": "🔒 AutoMod & Cache",
+      "title": "ðŸ”’ AutoMod & Cache",
       "type": "row"
     },
     {
@@ -814,7 +814,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (type) (rate(altergolden_automod_violations_total[5m]))",
+          "expr": "sum by (type) (rate(shoukaku_automod_violations_total[5m]))",
           "legendFormat": "{{type}}",
           "refId": "A"
         }
@@ -860,7 +860,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (action) (rate(altergolden_automod_actions_total[5m]))",
+          "expr": "sum by (action) (rate(shoukaku_automod_actions_total[5m]))",
           "legendFormat": "{{action}}",
           "refId": "A"
         }
@@ -907,7 +907,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(altergolden_cache_operations_total{result=\"hit\"}[5m])) / (sum(rate(altergolden_cache_operations_total{result=\"hit\"}[5m])) + sum(rate(altergolden_cache_operations_total{result=\"miss\"}[5m])))",
+          "expr": "sum(rate(shoukaku_cache_operations_total{result=\"hit\"}[5m])) / (sum(rate(shoukaku_cache_operations_total{result=\"hit\"}[5m])) + sum(rate(shoukaku_cache_operations_total{result=\"miss\"}[5m])))",
           "legendFormat": "Hit Ratio",
           "refId": "A"
         }
@@ -919,13 +919,13 @@
   "refresh": "10s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["altergolden", "discord", "bot"],
+  "tags": ["shoukaku", "discord", "bot"],
   "templating": { "list": [] },
   "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "",
-  "title": "alterGolden Bot Overview",
-  "uid": "altergolden-overview",
+  "title": "Shoukaku Bot Overview",
+  "uid": "shoukaku-bot-overview",
   "version": 2,
   "weekStart": ""
 }

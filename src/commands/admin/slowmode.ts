@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Slowmode Command
  * Set channel slowmode
  * @module commands/admin/slowmode

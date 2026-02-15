@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Lockdown Command
  * Lock/unlock channels or server
  * @module commands/admin/lockdown
