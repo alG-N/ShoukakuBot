@@ -133,6 +133,42 @@ function getSourceName(url: string): { name: string; emoji: string } {
     }
 }
 
+// URL CLEANING
+
+/** Tracking parameters to strip from URLs */
+const TRACKING_PARAMS = [
+    'utm_source', 'utm_medium', 'utm_name', 'utm_term', 'utm_content', 'utm_campaign',
+    'si', 'igsh', 'igshid', 'feature', 'ref_src', 'ref_url', 'ref',
+    's', 't', 'fbclid', 'gclid', 'mc_cid', 'mc_eid',
+];
+
+/**
+ * Clean a URL by stripping tracking/analytics parameters and normalizing
+ */
+function cleanUrl(url: string): string {
+    try {
+        const parsed = new URL(url);
+
+        // Strip tracking params
+        for (const param of TRACKING_PARAMS) {
+            parsed.searchParams.delete(param);
+        }
+
+        // Remove www. prefix
+        if (parsed.hostname.startsWith('www.')) {
+            parsed.hostname = parsed.hostname.slice(4);
+        }
+
+        // Remove empty query string
+        let result = parsed.toString();
+        if (result.endsWith('?')) result = result.slice(0, -1);
+
+        return result;
+    } catch {
+        return url;
+    }
+}
+
 // COMMAND
 
 class MediaCommand extends BaseCommand {
@@ -157,13 +193,16 @@ class MediaCommand extends BaseCommand {
     }
 
     async run(interaction: ChatInputCommandInteraction): Promise<void> {
-        const url = interaction.options.getString('link', true).trim();
+        const rawUrl = interaction.options.getString('link', true).trim();
 
         // Basic URL validation
-        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        if (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
             await interaction.reply({ content: '❌ Invalid URL.', ephemeral: true });
             return;
         }
+
+        // Clean tracking params from input URL
+        const url = cleanUrl(rawUrl);
 
         // 1. Check if it's a direct image/GIF URL
         const imageCheck = isDirectImageUrl(url);
@@ -176,14 +215,20 @@ class MediaCommand extends BaseCommand {
         const result = embedService.convert(url);
 
         if (!result.success) {
+            const platforms = embedService.getSupportedPlatforms()
+                .map(p => `${p.emoji} ${p.name}`)
+                .join(', ');
             await interaction.reply({
-                content: '❌ Unsupported URL. Supported: social media links, direct image/GIF URLs.',
+                content: `❌ Unsupported URL.\n\n**Supported platforms:** ${platforms}\n**Also supports:** direct image/GIF URLs`,
                 ephemeral: true,
             });
             return;
         }
 
-        // Send fixed URL with "Original link" button (like video command)
+        // Clean the fx URL too (strip leftover tracking params)
+        const cleanFxUrl = cleanUrl(result.fixedUrl!);
+
+        // "Original link" button (points to original, clean URL)
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()
                 .setLabel('Original link')
@@ -192,7 +237,11 @@ class MediaCommand extends BaseCommand {
                 .setEmoji('🔗')
         );
 
-        await interaction.reply({ content: result.fixedUrl!, components: [row] });
+        // Format as masked link: [🤖 Reddit](fxUrl)
+        // Discord auto-embeds the URL from masked links in bot messages
+        const content = `[${result.platform!.emoji} ${result.platform!.name}](${cleanFxUrl})`;
+
+        await interaction.reply({ content, components: [row] });
 
         logger.debug('MediaCommand', `Fixed ${result.platform!.name} URL for ${interaction.user.tag}`);
     }

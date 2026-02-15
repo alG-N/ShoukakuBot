@@ -127,6 +127,21 @@ const EMBED_FIX_RULES: EmbedFixRule[] = [
         reliable: true,
     },
     {
+        platformId: 'facebook',
+        name: 'Facebook',
+        emoji: '📘',
+        patterns: [
+            /https?:\/\/(www\.|m\.|web\.)?facebook\.com\/.+/i,
+            /https?:\/\/fb\.watch\/.+/i,
+        ],
+        replacements: [
+            ['facebook.com', 'facebed.com'],
+            ['fb.watch', 'facebed.com/fb.watch'],
+        ],
+        service: 'Facebed',
+        reliable: true,
+    },
+    {
         platformId: 'threads',
         name: 'Threads',
         emoji: '🧵',
