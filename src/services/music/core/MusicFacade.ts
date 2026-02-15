@@ -14,6 +14,7 @@ import { queueService, QueueService } from '../queue/index.js';
 import { playbackService, PlaybackService } from '../playback/index.js';
 import { voiceConnectionService, VoiceConnectionService } from '../voice/index.js';
 import { autoPlayService, AutoPlayService } from '../autoplay/index.js';
+import spotifyService from '../spotify/SpotifyService.js';
 import { musicEventBus, MusicEvents, playbackEventHandler } from '../events/index.js';
 import musicCache from '../../../cache/music/MusicCacheFacade.js';
 import trackHandler from '../../../handlers/music/trackHandler.js';
@@ -506,7 +507,13 @@ export class MusicFacade {
 
                     // Notify
                     if (queue?.textChannel) {
-                        const autoPlayEmbed = trackHandler.createInfoEmbed('🎵 Auto-Play', `Now playing: **${similarTrack.info?.title}**`);
+                        const spotifyLabel = spotifyService.isConfigured() ? ' 🟢' : '';
+                        const moodInfo = autoPlayService.getLastMoodProfile();
+                        const moodLabel = moodInfo ? ` • ${moodInfo.mood}` : '';
+                        const autoPlayEmbed = trackHandler.createInfoEmbed(
+                            `🎵 Auto-Play${spotifyLabel}`,
+                            `Now playing: **${similarTrack.info?.title}**${moodLabel}`
+                        );
                         await queue.textChannel.send({ embeds: [autoPlayEmbed] }).catch(() => {});
                     }
 

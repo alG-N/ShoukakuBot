@@ -75,6 +75,21 @@ export const cobalt = {
     maxRetries: 3
 };
 
+export const spotify = {
+    clientId: process.env.SPOTIFY_CLIENT_ID || '',
+    clientSecret: process.env.SPOTIFY_CLIENT_SECRET || '',
+    /** Base URL for Spotify Web API */
+    baseUrl: 'https://api.spotify.com/v1',
+    /** OAuth token endpoint */
+    authUrl: 'https://accounts.spotify.com/api/token',
+    /** Rate limit: requests per minute */
+    rateLimit: 120,
+    /** Recommendation tuning: energy window ±offset from current track */
+    energyWindow: 0.2,
+    /** Max genre seeds per recommendation request */
+    maxGenreSeeds: 3,
+};
+
 export const ytdlp = {
     url: process.env.YTDLP_URL || 'http://localhost:8080',
     timeout: 120000
@@ -93,5 +108,6 @@ export default {
     myanimelist,
     wikipedia,
     cobalt,
+    spotify,
     ytdlp
 };

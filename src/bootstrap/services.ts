@@ -43,8 +43,7 @@ import musicFacade from '../services/music/core/MusicFacade.js';
 import voiceConnectionService from '../services/music/voice/VoiceConnectionService.js';
 import queueService from '../services/music/queue/QueueService.js';
 import playbackService from '../services/music/playback/PlaybackService.js';
-import autoPlayService from '../services/music/autoplay/AutoPlayService.js';
-import musicEventBus from '../services/music/events/MusicEventBus.js';
+import autoPlayService from '../services/music/autoplay/AutoPlayService.js';import spotifyService from '../services/music/spotify/SpotifyService.js';import musicEventBus from '../services/music/events/MusicEventBus.js';
 import playbackEventHandler from '../services/music/events/PlaybackEventHandler.js';
 
 // ── MUSIC CACHES ─────────────────────────────────────────────────────
@@ -123,6 +122,7 @@ export function registerServices(): void {
     container.instance('queueService', queueService);
     container.instance('playbackService', playbackService);
     container.instance('autoPlayService', autoPlayService);
+    container.instance('spotifyService', spotifyService);
     container.instance('musicEventBus', musicEventBus);
     container.instance('playbackEventHandler', playbackEventHandler);
 

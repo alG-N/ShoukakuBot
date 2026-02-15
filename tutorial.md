@@ -3,10 +3,13 @@
 ## 📌 Development (Single Shard - Recommended for Dev)
 ```powershell
 # Clean build và chạy (ưu tiên dùng cái này khi dev)
-Set-Location "d:\Project\FumoBOT\alterGolden - Backend"; Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue; npx tsc; node dist/index.js
+Set-Location "d:\Project\FumoBOT\Shoukaku - Backend"; Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue; npx tsc; node dist/index.js
 ```
 
-Set-Location "C:\Users\alterGolden\Desktop\alterGoldenBOT\alterGolden - Backend"; Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue; npx tsc; node dist/index.js
+## 📌 Quick Restart (Clean build)
+```powershell
+Set-Location "C:\Users\alterGolden\Desktop\ShoukakuBOT\Shoukaku - Backend"; Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue; npx tsc; node dist/index.js
+```
 
 ## 📌 Quick Restart (không cần clean)
 ```powershell
@@ -17,7 +20,7 @@ Get-Process -Name "node" -ErrorAction SilentlyContinue | Stop-Process -Force; St
 ## 📌 Production (Multi-Shard - 1000+ servers)
 ```powershell
 # Dùng ShardingManager để spawn nhiều shards
-Set-Location "d:\Project\FumoBOT\alterGolden - Backend"; Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue; npx tsc; node dist/sharding.js
+Set-Location "d:\Project\FumoBOT\Shoukaku - Backend"; Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue; npx tsc; node dist/sharding.js
 ```
 
 ---
@@ -32,23 +35,23 @@ npm install -g pm2
 ### Chạy với PM2
 ```powershell
 # Build trước
-Set-Location "d:\Project\FumoBOT\alterGolden - Backend"; npx tsc
+Set-Location "d:\Project\FumoBOT\Shoukaku - Backend"; npx tsc
 
 # Start single shard (dev/small production)
-pm2 start dist/index.js --name "altergolden"
+pm2 start dist/index.js --name "shoukaku"
 
 # Start multi-shard (large production)
-pm2 start dist/sharding.js --name "altergolden-sharding"
+pm2 start dist/sharding.js --name "shoukaku-sharding"
 ```
 
 ### PM2 Commands thường dùng
 ```powershell
 pm2 list                    # Xem tất cả processes
-pm2 logs altergolden        # Xem logs realtime
-pm2 logs altergolden --lines 100  # Xem 100 dòng log gần nhất
-pm2 restart altergolden     # Restart bot
-pm2 stop altergolden        # Stop bot
-pm2 delete altergolden      # Xóa khỏi PM2
+pm2 logs shoukaku        # Xem logs realtime
+pm2 logs shoukaku --lines 100  # Xem 100 dòng log gần nhất
+pm2 restart shoukaku     # Restart bot
+pm2 stop shoukaku        # Stop bot
+pm2 delete shoukaku      # Xóa khỏi PM2
 pm2 monit                   # Dashboard monitor CPU/RAM
 ```
 
@@ -64,7 +67,7 @@ pm2-startup install
 ### Rebuild & Restart
 ```powershell
 # Clean build và restart PM2
-Set-Location "d:\Project\FumoBOT\alterGolden - Backend"; Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue; npx tsc; pm2 restart altergolden
+Set-Location "d:\Project\FumoBOT\Shoukaku - Backend"; Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue; npx tsc; pm2 restart shoukaku
 ```
 
 ---
@@ -142,7 +145,7 @@ docker logs altergolden-prometheus
 - **AutoMod:** Violations, actions taken
 
 ### Dashboard có sẵn
-Mở Grafana → Menu ☰ → Dashboards → **alterGolden Bot Overview**
+Mở Grafana → Menu ☰ → Dashboards → **Shoukaku Bot Overview**
 
 Sections:
 - 📊 Overview: Latency, guilds, users, redis status

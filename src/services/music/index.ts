@@ -22,6 +22,7 @@ export { queueService, QueueService } from './queue/index.js';
 export { playbackService, PlaybackService } from './playback/index.js';
 export { voiceConnectionService, VoiceConnectionService } from './voice/index.js';
 export { autoPlayService, AutoPlayService } from './autoplay/index.js';
+export { spotifyService, SpotifyService } from './spotify/index.js';
 
 // Core modules
 export { MusicNowPlayingManager } from './core/MusicNowPlayingManager.js';
@@ -55,3 +56,9 @@ export type {
     MusicTrack,
     TrackInfo
 } from './events/index.js';
+export type {
+    SpotifyTrack,
+    SpotifyArtist,
+    SpotifyAudioFeatures,
+    MoodProfile
+} from './spotify/index.js';
