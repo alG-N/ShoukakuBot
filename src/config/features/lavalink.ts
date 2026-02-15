@@ -33,7 +33,7 @@ export const defaultSearchPlatform = 'ytsearch';
 export const fallbackSearchPlatform = 'scsearch';
 
 export const playerOptions = {
-    volume: 80,
+    volume: 100,
     selfDeafen: true,
     selfMute: false
 };

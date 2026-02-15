@@ -16,8 +16,8 @@ lavalink:
       http: true
       local: false
 
-    bufferDurationMs: 400
-    frameBufferDurationMs: 5000
+    bufferDurationMs: 2000
+    frameBufferDurationMs: 8000
     opusEncodingQuality: 10
     resamplingQuality: HIGH
     trackStuckThresholdMs: 10000
@@ -75,10 +75,11 @@ plugins:
     allowSearch: true
     allowDirectVideoIds: true
     allowDirectPlaylistIds: true
-    # Client order matters - first client is tried first, fallback to next on failure
+    # Client order matters - MUSIC client returns highest audio quality (Opus 160kbps)
+    # ANDROID_VR as fallback for restricted content
     clients:
-      - ANDROID_VR
       - MUSIC
+      - ANDROID_VR
       - TV_EMBEDDED
     # REMOVED: invidious-companion pot provider (không cần thiết, tốn tài nguyên)
     # Lavalink vẫn hoạt động bình thường với OAuth và các client trên

@@ -190,6 +190,9 @@ services:
       LAVALINK_PORT_2: "2333"
       LAVALINK_PORT_3: "2333"
       LAVALINK_PASSWORD: ${LAVALINK_PASSWORD:-youshallnotpass}
+      # Spotify (for autoplay recommendations & fallback search)
+      SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
+      SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-}
       # Video (Cobalt instances on shared network)
       COBALT_INSTANCES: "http://cobalt-1:9000,http://cobalt-2:9000,http://cobalt-3:9000"
       # yt-dlp API
