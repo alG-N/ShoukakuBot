@@ -24,7 +24,7 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
       "id": 1,
       "panels": [],
-      "title": "ðŸ“Š Overview",
+      "title": "Overview",
       "type": "row"
     },
     {
@@ -334,7 +334,7 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
       "id": 10,
       "panels": [],
-      "title": "âš¡ Commands",
+      "title": "Commands",
       "type": "row"
     },
     {
@@ -555,7 +555,7 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
       "id": 20,
       "panels": [],
-      "title": "ðŸŽµ Music",
+      "title": "Music",
       "type": "row"
     },
     {
@@ -667,7 +667,7 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 },
       "id": 30,
       "panels": [],
-      "title": "ðŸ’¾ System Resources",
+      "title": "System Resources",
       "type": "row"
     },
     {
@@ -781,7 +781,7 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 40 },
       "id": 40,
       "panels": [],
-      "title": "ðŸ”’ AutoMod & Cache",
+      "title": "AutoMod & Cache",
       "type": "row"
     },
     {
