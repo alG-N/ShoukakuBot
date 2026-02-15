@@ -185,7 +185,15 @@ export const playHandler = {
             }
         } catch (error) {
             logger.error('Play', `Error: ${(error as Error).message}`);
-            const errorMessage = error instanceof Error ? error.message : 'Failed to play track';
+            let errorMessage = error instanceof Error ? error.message : 'Failed to play track';
+            
+            // Provide user-friendly messages for known errors
+            if (errorMessage === 'NO_RESULTS' && query.includes('spotify.com')) {
+                errorMessage = 'Could not resolve this Spotify track. The track may be unavailable or region-restricted.';
+            } else if (errorMessage === 'NO_RESULTS') {
+                errorMessage = `No results found for: \`${query}\``;
+            }
+            
             await interaction.editReply({
                 embeds: [trackHandler.createErrorEmbed(errorMessage)]
             });
@@ -270,7 +278,17 @@ export const playHandler = {
             }
         } catch (error) {
             logger.error('Play', `Playlist error: ${(error as Error).message}`);
-            const errorMessage = error instanceof Error ? error.message : 'Failed to load playlist';
+            let errorMessage = error instanceof Error ? error.message : 'Failed to load playlist';
+            
+            // User-friendly messages for Spotify playlist errors
+            if (errorMessage === 'NO_RESULTS' && query.includes('spotify.com')) {
+                errorMessage = 'Could not load this Spotify playlist. The playlist may be private, empty, or the Spotify service may be temporarily unavailable.';
+            } else if (errorMessage === 'NO_RESULTS') {
+                errorMessage = 'No tracks found in this playlist.';
+            } else if (errorMessage === 'NOT_A_PLAYLIST') {
+                errorMessage = 'This URL does not appear to be a valid playlist.';
+            }
+            
             await interaction.editReply({
                 embeds: [trackHandler.createErrorEmbed(errorMessage)]
             });

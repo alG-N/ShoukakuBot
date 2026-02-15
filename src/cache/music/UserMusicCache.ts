@@ -324,6 +324,12 @@ class UserMusicCache {
      * Add to listening history (write-through: DB + update cache directly)
      */
     async addToHistory(userId: string, track: any): Promise<HistoryTrack[]> {
+        // Guard: skip if track has no valid URL (e.g. unresolved Spotify tracks)
+        if (!track.url || track.url.trim() === '') {
+            logger.warn('UserMusicCache', `Skipping history for user ${userId}: track has no URL (title: ${track.title || 'unknown'})`);
+            return this._fetchHistoryFromDB(userId);
+        }
+
         let dbSuccess = false;
         try {
             // Remove existing entry for same URL (move to top)
@@ -336,7 +342,7 @@ class UserMusicCache {
             await postgres.query(
                 `INSERT INTO user_music_history (user_id, url, title, author, duration, thumbnail)
                  VALUES ($1, $2, $3, $4, $5, $6)`,
-                [userId, track.url, track.title, track.author || null, track.lengthSeconds || track.duration || null, track.thumbnail || null]
+                [userId, track.url, track.title || 'Unknown', track.author || null, track.lengthSeconds || track.duration || null, track.thumbnail || null]
             );
             dbSuccess = true;
             // Trim trigger handles size limit in DB

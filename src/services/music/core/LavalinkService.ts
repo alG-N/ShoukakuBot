@@ -443,6 +443,36 @@ class LavalinkService {
                 throw new Error('NO_RESULTS');
             }
 
+            // Spotify fallback: if resolved track has no encoded data (YouTube match not found),
+            // try searching by title + author as a text query
+            if ((!track.encoded || track.encoded === '') && this.isSpotifyUrl(query) && track.info.title) {
+                const fallbackTextQuery = `${(lavalinkConfig as { defaultSearchPlatform?: string }).defaultSearchPlatform}:${track.info.title} ${track.info.author || ''}`;
+                logger.info('Lavalink', `Spotify track unresolved, falling back to text search: ${fallbackTextQuery}`);
+                try {
+                    const fallbackResult = await node.rest.resolve(fallbackTextQuery);
+                    if (fallbackResult && (fallbackResult.loadType === 'search' || fallbackResult.loadType === 'track')) {
+                        const fallbackTrack = fallbackResult.loadType === 'track'
+                            ? fallbackResult.data as typeof track
+                            : (fallbackResult.data as typeof track[])?.[0];
+                        if (fallbackTrack?.encoded && fallbackTrack.encoded !== '') {
+                            // Merge: keep Spotify metadata (title, author, artwork) but use YouTube playback data
+                            track = {
+                                ...fallbackTrack,
+                                info: {
+                                    ...fallbackTrack.info,
+                                    title: track.info.title || fallbackTrack.info?.title,
+                                    author: track.info.author || fallbackTrack.info?.author,
+                                    artworkUrl: track.info.artworkUrl || fallbackTrack.info?.artworkUrl,
+                                }
+                            };
+                            logger.info('Lavalink', `Spotify fallback found: ${track.info?.title}`);
+                        }
+                    }
+                } catch (fallbackErr) {
+                    logger.warn('Lavalink', `Spotify text search fallback failed: ${(fallbackErr as Error).message}`);
+                }
+            }
+
             const youtubeId = this.extractYouTubeId(track.info.uri);
             
             // Try multiple thumbnail options with fallbacks
@@ -581,7 +611,17 @@ class LavalinkService {
         }
 
         let searchQuery = query;
-        if (!/^https?:\/\//.test(query)) {
+        if (/^https?:\/\//.test(query)) {
+            // Strip tracking params (si, feature) from URLs (including Spotify)
+            try {
+                const url = new URL(query);
+                url.searchParams.delete('si');
+                url.searchParams.delete('feature');
+                searchQuery = url.toString();
+            } catch {
+                // Use original query on parse failure
+            }
+        } else {
             searchQuery = `${(lavalinkConfig as { defaultSearchPlatform?: string }).defaultSearchPlatform}:${query}`;
         }
 
@@ -593,9 +633,11 @@ class LavalinkService {
         }
 
         try {
+            logger.info('Lavalink', `Playlist search: ${searchQuery}`);
             let result = await node.rest.resolve(searchQuery);
 
             if (!result || result.loadType === 'error' || result.loadType === 'empty') {
+                logger.info('Lavalink', `Playlist search failed (loadType: ${result?.loadType}), retrying with original query`);
                 result = await node.rest.resolve(query);
 
                 if (!result || result.loadType === 'error' || result.loadType === 'empty') {
@@ -636,9 +678,20 @@ class LavalinkService {
                     };
                 });
 
+                // Filter out unplayable tracks (no encoded data = Spotify track not resolved to YouTube)
+                const playableTracks = tracks.filter(t => t.encoded && t.encoded !== '');
+                if (playableTracks.length === 0) {
+                    logger.warn('Lavalink', `Spotify playlist "${playlistData.info.name}" had ${tracks.length} tracks but none were playable (no YouTube match found)`);
+                    throw new Error('NO_RESULTS');
+                }
+
+                if (playableTracks.length < tracks.length) {
+                    logger.info('Lavalink', `Spotify playlist: ${playableTracks.length}/${tracks.length} tracks playable`);
+                }
+
                 return {
                     playlistName: playlistData.info.name,
-                    tracks: tracks
+                    tracks: playableTracks
                 };
             }
 
