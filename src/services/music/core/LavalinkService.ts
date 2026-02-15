@@ -13,6 +13,7 @@ import gracefulDegradation from '../../../core/GracefulDegradation.js';
 import cacheService from '../../../cache/CacheService.js';
 import { updateLavalinkMetrics } from '../../../core/metrics.js';
 import type { MusicTrack } from '../events/MusicEvents.js';
+import spotifyService from '../spotify/SpotifyService.js';
 // TYPES
 interface NodeConfig {
     name: string;
@@ -416,6 +417,18 @@ class LavalinkService {
             let result = await node.rest.resolve(searchQuery);
 
             if (!result || result.loadType === 'error' || result.loadType === 'empty') {
+                if (result?.loadType === 'error') {
+                    const errorData = result.data as { message?: string; severity?: string; cause?: string } | undefined;
+                    logger.warn('Lavalink', `Search returned error for "${searchQuery}": ${errorData?.message || 'unknown'} (severity: ${errorData?.severity || 'unknown'})`);
+                }
+
+                // For Spotify URLs that completely failed, try using Spotify API to get track metadata
+                // then search YouTube by title + artist
+                if (this.isSpotifyUrl(query)) {
+                    const spotifyFallbackResult = await this._spotifyTrackFallback(query, node, requester);
+                    if (spotifyFallbackResult) return spotifyFallbackResult;
+                }
+
                 const fallbackQuery = /^https?:\/\//.test(query) 
                     ? query 
                     : `${(lavalinkConfig as { fallbackSearchPlatform?: string }).fallbackSearchPlatform}:${query}`;
@@ -510,6 +523,157 @@ class LavalinkService {
             const err = error as Error;
             logger.error('Lavalink', `Search error: ${err.message}`);
             throw new Error(err.message === 'NO_RESULTS' ? 'NO_RESULTS' : 'SEARCH_FAILED');
+        }
+    }
+
+    /**
+     * Spotify track fallback: use Spotify Web API to get track metadata, then search YouTube
+     */
+    private async _spotifyTrackFallback(query: string, node: ShoukakuNode, requester?: unknown): Promise<SearchResult | null> {
+        if (!spotifyService.isConfigured()) return null;
+
+        try {
+            const spotifyId = spotifyService.extractSpotifyId(query);
+            if (!spotifyId || spotifyId.type !== 'track') return null;
+
+            const spotifyTrack = await spotifyService.getTrack(spotifyId.id);
+            if (!spotifyTrack) return null;
+
+            const searchText = `${spotifyTrack.name} ${spotifyTrack.artists.map(a => a.name).join(' ')}`;
+            logger.info('Lavalink', `Spotify API fallback for track: "${searchText}"`);
+
+            const searchQuery = `${(lavalinkConfig as { defaultSearchPlatform?: string }).defaultSearchPlatform}:${searchText}`;
+            const result = await node.rest.resolve(searchQuery);
+
+            if (!result || result.loadType === 'error' || result.loadType === 'empty') return null;
+
+            type TrackData = { encoded?: string; info?: { uri?: string; title?: string; length?: number; artworkUrl?: string; author?: string; sourceName?: string; identifier?: string; viewCount?: number }; pluginInfo?: { viewCount?: number; playCount?: number } };
+            let track: TrackData | undefined;
+            if (result.loadType === 'track') {
+                track = result.data as TrackData;
+            } else if (result.loadType === 'search') {
+                track = (result.data as TrackData[])?.[0];
+            }
+
+            if (!track?.encoded || !track.info) return null;
+
+            // Use Spotify metadata (title, artist, artwork) with YouTube playback data
+            const artworkUrl = spotifyTrack.album.images?.[0]?.url || track.info.artworkUrl;
+            const youtubeId = this.extractYouTubeId(track.info.uri);
+
+            logger.info('Lavalink', `Spotify API fallback resolved: "${spotifyTrack.name}" → "${track.info.title}"`);
+
+            return {
+                track: track,
+                encoded: track.encoded,
+                url: track.info.uri || '',
+                title: spotifyTrack.name || track.info.title || '',
+                lengthSeconds: Math.floor((spotifyTrack.duration_ms || track.info.length || 0) / 1000),
+                thumbnail: artworkUrl || null,
+                author: spotifyTrack.artists.map(a => a.name).join(', ') || track.info.author || '',
+                requestedBy: requester,
+                source: 'spotify',
+                viewCount: track.pluginInfo?.viewCount || track.info.viewCount || null,
+                identifier: youtubeId || track.info.identifier || null,
+                searchedByLink: true,
+                originalQuery: null
+            };
+        } catch (error) {
+            logger.warn('Lavalink', `Spotify API track fallback failed: ${(error as Error).message}`);
+            return null;
+        }
+    }
+
+    /**
+     * Spotify playlist fallback: use Spotify Web API to get playlist tracks, then search each on YouTube
+     */
+    private async _spotifyPlaylistFallback(query: string, node: ShoukakuNode, requester?: unknown): Promise<PlaylistResult | null> {
+        if (!spotifyService.isConfigured()) return null;
+
+        try {
+            const spotifyId = spotifyService.extractSpotifyId(query);
+            if (!spotifyId || (spotifyId.type !== 'playlist' && spotifyId.type !== 'album')) return null;
+
+            logger.info('Lavalink', `Spotify API fallback: fetching ${spotifyId.type} ${spotifyId.id} tracks...`);
+            const spotifyTracks = await spotifyService.getPlaylistTracks(spotifyId.id);
+            if (spotifyTracks.length === 0) return null;
+
+            const resolvedTracks: SearchResult[] = [];
+            const searchPlatform = (lavalinkConfig as { defaultSearchPlatform?: string }).defaultSearchPlatform;
+
+            // Search each track on YouTube (with concurrency limit)
+            const batchSize = 3;
+            for (let i = 0; i < spotifyTracks.length; i += batchSize) {
+                const batch = spotifyTracks.slice(i, i + batchSize);
+                const promises = batch.map(async (st) => {
+                    try {
+                        // Try ISRC first if available, then title+artist
+                        let searchQuery = st.isrc
+                            ? `${searchPlatform}:"${st.isrc}"`
+                            : `${searchPlatform}:${st.title} ${st.artist}`;
+
+                        let result = await node.rest.resolve(searchQuery);
+
+                        // If ISRC search fails, fall back to title+artist
+                        if (st.isrc && (!result || result.loadType === 'error' || result.loadType === 'empty')) {
+                            searchQuery = `${searchPlatform}:${st.title} ${st.artist}`;
+                            result = await node.rest.resolve(searchQuery);
+                        }
+
+                        if (!result || result.loadType === 'error' || result.loadType === 'empty') return null;
+
+                        type TrackData = { encoded?: string; info?: { uri?: string; title?: string; length?: number; artworkUrl?: string; author?: string; sourceName?: string; identifier?: string; viewCount?: number }; pluginInfo?: { viewCount?: number; playCount?: number } };
+                        let track: TrackData | undefined;
+                        if (result.loadType === 'track') {
+                            track = result.data as TrackData;
+                        } else if (result.loadType === 'search') {
+                            track = (result.data as TrackData[])?.[0];
+                        }
+
+                        if (!track?.encoded || !track.info) return null;
+
+                        const youtubeId = this.extractYouTubeId(track.info.uri);
+
+                        return {
+                            track: track,
+                            encoded: track.encoded,
+                            url: track.info.uri || '',
+                            title: st.title || track.info.title || '',
+                            lengthSeconds: Math.floor((st.duration_ms || track.info.length || 0) / 1000),
+                            thumbnail: st.artworkUrl || track.info.artworkUrl || (youtubeId ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg` : null),
+                            author: st.artist || track.info.author || '',
+                            requestedBy: requester,
+                            source: 'spotify' as const,
+                            viewCount: track.pluginInfo?.viewCount || track.info.viewCount || null,
+                            identifier: youtubeId || track.info.identifier || null,
+                            searchedByLink: true,
+                            originalQuery: null
+                        } as SearchResult;
+                    } catch {
+                        return null;
+                    }
+                });
+
+                const results = await Promise.all(promises);
+                for (const r of results) {
+                    if (r) resolvedTracks.push(r);
+                }
+            }
+
+            if (resolvedTracks.length === 0) {
+                logger.warn('Lavalink', `Spotify API fallback: none of ${spotifyTracks.length} tracks could be resolved on YouTube`);
+                return null;
+            }
+
+            logger.info('Lavalink', `Spotify API fallback: resolved ${resolvedTracks.length}/${spotifyTracks.length} tracks`);
+
+            return {
+                playlistName: `Spotify Playlist (${resolvedTracks.length} tracks)`,
+                tracks: resolvedTracks
+            };
+        } catch (error) {
+            logger.warn('Lavalink', `Spotify API playlist fallback failed: ${(error as Error).message}`);
+            return null;
         }
     }
 
@@ -637,10 +801,19 @@ class LavalinkService {
             let result = await node.rest.resolve(searchQuery);
 
             if (!result || result.loadType === 'error' || result.loadType === 'empty') {
+                if (result?.loadType === 'error') {
+                    const errorData = result.data as { message?: string; severity?: string; cause?: string } | undefined;
+                    logger.warn('Lavalink', `Playlist search error data: ${errorData?.message || 'unknown'} (severity: ${errorData?.severity || 'unknown'}, cause: ${errorData?.cause || 'unknown'})`);
+                }
                 logger.info('Lavalink', `Playlist search failed (loadType: ${result?.loadType}), retrying with original query`);
                 result = await node.rest.resolve(query);
 
                 if (!result || result.loadType === 'error' || result.loadType === 'empty') {
+                    // Fallback: use Spotify Web API to get playlist tracks, then search each on YouTube
+                    if (this.isSpotifyUrl(query)) {
+                        const spotifyFallbackResult = await this._spotifyPlaylistFallback(query, node, requester);
+                        if (spotifyFallbackResult) return spotifyFallbackResult;
+                    }
                     throw new Error('NO_RESULTS');
                 }
             }

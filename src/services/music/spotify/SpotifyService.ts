@@ -710,6 +710,60 @@ class SpotifyService {
     // ── EXTRACT SPOTIFY ID ───────────────────────────────────────────
 
     /**
+     * Get playlist tracks from Spotify Web API
+     * Returns basic track info (title, artist, artwork) for YouTube fallback search
+     */
+    async getPlaylistTracks(playlistId: string, limit: number = 100): Promise<Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }>> {
+        try {
+            interface SpotifyPlaylistResponse {
+                items: Array<{
+                    track: {
+                        name: string;
+                        artists: Array<{ name: string }>;
+                        album: { images: Array<{ url: string }> };
+                        duration_ms: number;
+                        external_ids?: { isrc?: string };
+                    } | null;
+                }>;
+                next: string | null;
+                total: number;
+            }
+
+            const tracks: Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }> = [];
+            let offset = 0;
+            const pageSize = Math.min(limit, 50); // Spotify max per page is 50
+
+            while (tracks.length < limit) {
+                const data = await this.apiRequest<SpotifyPlaylistResponse>(
+                    `/playlists/${playlistId}/tracks`,
+                    { offset: String(offset), limit: String(pageSize), fields: 'items(track(name,artists(name),album(images),duration_ms,external_ids)),next,total' }
+                );
+
+                for (const item of data.items) {
+                    if (!item.track) continue; // Skip null tracks (deleted/unavailable)
+                    tracks.push({
+                        title: item.track.name,
+                        artist: item.track.artists.map(a => a.name).join(', '),
+                        duration_ms: item.track.duration_ms,
+                        artworkUrl: item.track.album.images?.[0]?.url,
+                        isrc: item.track.external_ids?.isrc,
+                    });
+                    if (tracks.length >= limit) break;
+                }
+
+                if (!data.next || tracks.length >= limit) break;
+                offset += pageSize;
+            }
+
+            logger.info('Spotify', `Fetched ${tracks.length} tracks from playlist ${playlistId}`);
+            return tracks;
+        } catch (error) {
+            logger.error('Spotify', `getPlaylistTracks error: ${(error as Error).message}`);
+            return [];
+        }
+    }
+
+    /**
      * Extract Spotify track/album/playlist/artist ID from URL
      */
     extractSpotifyId(url: string): { type: 'track' | 'album' | 'playlist' | 'artist'; id: string } | null {
