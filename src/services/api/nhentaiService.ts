@@ -37,11 +37,12 @@ const CDN_THUMB_MIRRORS = [
     'https://t1.nhentai.net/galleries', // Mirror 1
 ];
 
-// Image type mapping
+// Image type mapping (includes webp — nhentai now uses 'w' for many covers)
 const IMAGE_TYPES: Record<string, string> = {
     'j': 'jpg',
     'p': 'png',
-    'g': 'gif'
+    'g': 'gif',
+    'w': 'webp'
 };
 
 // Known popular gallery IDs (curated fallback list)

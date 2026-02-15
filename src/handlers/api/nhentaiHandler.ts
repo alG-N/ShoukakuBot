@@ -168,15 +168,22 @@ class NHentaiHandler {
      * Get all mirror URLs for a thumbnail (cover image)
      */
     private _getAllThumbnailUrls(mediaId: string, coverType: string): string[] {
-        const ext: Record<string, string> = { 'j': 'jpg', 'p': 'png', 'g': 'gif' };
+        const ext: Record<string, string> = { 'j': 'jpg', 'p': 'png', 'g': 'gif', 'w': 'webp' };
         const extension = ext[coverType] || 'jpg';
-        // Start from the next mirror in rotation, then try all others
+        // Build list: primary extension on all mirrors, then fallback extensions on first mirror
         const startIdx = this.thumbIndex % this.THUMB_MIRRORS.length;
         this.thumbIndex++;
         const urls: string[] = [];
+        // 1. Try primary extension on all mirrors
         for (let i = 0; i < this.THUMB_MIRRORS.length; i++) {
             const mirror = this.THUMB_MIRRORS[(startIdx + i) % this.THUMB_MIRRORS.length];
             urls.push(`https://${mirror}.nhentai.net/galleries/${mediaId}/cover.${extension}`);
+        }
+        // 2. Fallback: try other extensions on first mirror (webp/jpg/png) to handle wrong type metadata
+        const fallbackExts = ['webp', 'jpg', 'png'].filter(e => e !== extension);
+        const fallbackMirror = this.THUMB_MIRRORS[startIdx % this.THUMB_MIRRORS.length];
+        for (const fbExt of fallbackExts) {
+            urls.push(`https://${fallbackMirror}.nhentai.net/galleries/${mediaId}/cover.${fbExt}`);
         }
         return urls;
     }
@@ -185,13 +192,19 @@ class NHentaiHandler {
      * Get all mirror URLs for a page image
      */
     private _getAllPageImageUrls(mediaId: string, pageNum: number, pageType: string): string[] {
-        const ext: Record<string, string> = { 'j': 'jpg', 'p': 'png', 'g': 'gif' };
+        const ext: Record<string, string> = { 'j': 'jpg', 'p': 'png', 'g': 'gif', 'w': 'webp' };
         const extension = ext[pageType] || 'jpg';
         const startIdx = pageNum % this.CDN_MIRRORS.length;
         const urls: string[] = [];
         for (let i = 0; i < this.CDN_MIRRORS.length; i++) {
             const mirror = this.CDN_MIRRORS[(startIdx + i) % this.CDN_MIRRORS.length];
             urls.push(`https://${mirror}.nhentai.net/galleries/${mediaId}/${pageNum}.${extension}`);
+        }
+        // Fallback: try other extensions on first mirror
+        const fallbackExts = ['webp', 'jpg', 'png'].filter(e => e !== extension);
+        const fallbackMirror = this.CDN_MIRRORS[startIdx % this.CDN_MIRRORS.length];
+        for (const fbExt of fallbackExts) {
+            urls.push(`https://${fallbackMirror}.nhentai.net/galleries/${mediaId}/${pageNum}.${fbExt}`);
         }
         return urls;
     }
@@ -200,7 +213,7 @@ class NHentaiHandler {
      * Get file extension from nhentai image type code
      */
     private _getExt(typeCode: string): string {
-        const ext: Record<string, string> = { 'j': 'jpg', 'p': 'png', 'g': 'gif' };
+        const ext: Record<string, string> = { 'j': 'jpg', 'p': 'png', 'g': 'gif', 'w': 'webp' };
         return ext[typeCode] || 'jpg';
     }
 
@@ -754,7 +767,7 @@ class NHentaiHandler {
      * Get thumbnail URL using rotating CDN mirrors
      */
     private _getThumbnailUrl(mediaId: string, coverType: string): string {
-        const ext: Record<string, string> = { 'j': 'jpg', 'p': 'png', 'g': 'gif' };
+        const ext: Record<string, string> = { 'j': 'jpg', 'p': 'png', 'g': 'gif', 'w': 'webp' };
         const extension = ext[coverType] || 'jpg';
         const mirror = this.THUMB_MIRRORS[this.thumbIndex % this.THUMB_MIRRORS.length];
         this.thumbIndex++;
@@ -765,7 +778,7 @@ class NHentaiHandler {
      * Get page image URL using rotating CDN mirrors for better load distribution
      */
     private _getPageImageUrl(mediaId: string, pageNum: number, pageType: string): string {
-        const ext: Record<string, string> = { 'j': 'jpg', 'p': 'png', 'g': 'gif' };
+        const ext: Record<string, string> = { 'j': 'jpg', 'p': 'png', 'g': 'gif', 'w': 'webp' };
         const extension = ext[pageType] || 'jpg';
         // Rotate CDN mirrors based on page number for consistent caching per page
         const mirror = this.CDN_MIRRORS[pageNum % this.CDN_MIRRORS.length];
@@ -776,7 +789,7 @@ class NHentaiHandler {
      * Get page thumbnail URL (smaller, loads faster) as fallback
      */
     private _getPageThumbUrl(mediaId: string, pageNum: number, pageType: string): string {
-        const ext: Record<string, string> = { 'j': 'jpg', 'p': 'png', 'g': 'gif' };
+        const ext: Record<string, string> = { 'j': 'jpg', 'p': 'png', 'g': 'gif', 'w': 'webp' };
         const extension = ext[pageType] || 'jpg';
         const mirror = this.THUMB_MIRRORS[pageNum % this.THUMB_MIRRORS.length];
         return `https://${mirror}.nhentai.net/galleries/${mediaId}/${pageNum}t.${extension}`;

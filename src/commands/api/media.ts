@@ -183,8 +183,16 @@ class MediaCommand extends BaseCommand {
             return;
         }
 
-        // Send the fixed URL as plain text — Discord will auto-embed the video
-        await interaction.reply({ content: result.fixedUrl! });
+        // Send fixed URL with "Original link" button (like video command)
+        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+                .setLabel('Original link')
+                .setStyle(ButtonStyle.Link)
+                .setURL(url)
+                .setEmoji('🔗')
+        );
+
+        await interaction.reply({ content: result.fixedUrl!, components: [row] });
 
         logger.debug('MediaCommand', `Fixed ${result.platform!.name} URL for ${interaction.user.tag}`);
     }

@@ -53,13 +53,14 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value"
       },
       "pluginVersion": "10.2.2",
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "shoukaku_discord_gateway_latency_ms",
+          "legendFormat": "Ping",
           "refId": "A"
         }
       ],
@@ -87,12 +88,13 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value"
       },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "sum(shoukaku_discord_guilds_total) or vector(0)",
+          "legendFormat": "Guilds",
           "refId": "A"
         }
       ],
@@ -120,12 +122,13 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value"
       },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "sum(shoukaku_discord_users_total) or vector(0)",
+          "legendFormat": "Users",
           "refId": "A"
         }
       ],
@@ -155,12 +158,13 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value"
       },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "shoukaku_discord_uptime_seconds / 60",
+          "legendFormat": "Uptime",
           "refId": "A"
         }
       ],
@@ -188,12 +192,13 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value"
       },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "shoukaku_music_players_active or vector(0)",
+          "legendFormat": "Active",
           "refId": "A"
         }
       ],
@@ -221,12 +226,13 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value"
       },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "sum(increase(shoukaku_commands_executed_total[1h])) or vector(0)",
+          "legendFormat": "Commands",
           "refId": "A"
         }
       ],
@@ -265,12 +271,13 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value"
       },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "shoukaku_redis_connection_status or vector(0)",
+          "legendFormat": "Redis",
           "refId": "A"
         }
       ],
@@ -309,12 +316,13 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value_and_name"
       },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "shoukaku_lavalink_node_status or vector(0)",
+          "legendFormat": "{{node_name}}",
           "refId": "A"
         }
       ],
@@ -529,7 +537,7 @@
         "justifyMode": "auto",
         "orientation": "horizontal",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "value"
       },
       "targets": [
         {

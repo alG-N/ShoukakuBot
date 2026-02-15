@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
 Write-Host "==========================================="
-Write-Host "  shoukaku - Starting All Services"
+Write-Host "  Shoukaku - Starting All Services"
 Write-Host "==========================================="
 
 # 0. Check Docker daemon
