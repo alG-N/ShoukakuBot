@@ -460,9 +460,9 @@ class LavalinkService {
                                 ...fallbackTrack,
                                 info: {
                                     ...fallbackTrack.info,
-                                    title: track.info.title || fallbackTrack.info?.title,
-                                    author: track.info.author || fallbackTrack.info?.author,
-                                    artworkUrl: track.info.artworkUrl || fallbackTrack.info?.artworkUrl,
+                                    title: track.info?.title || fallbackTrack.info?.title,
+                                    author: track.info?.author || fallbackTrack.info?.author,
+                                    artworkUrl: track.info?.artworkUrl || fallbackTrack.info?.artworkUrl,
                                 }
                             };
                             logger.info('Lavalink', `Spotify fallback found: ${track.info?.title}`);
@@ -473,10 +473,10 @@ class LavalinkService {
                 }
             }
 
-            const youtubeId = this.extractYouTubeId(track.info.uri);
+            const youtubeId = this.extractYouTubeId(track.info?.uri);
             
             // Try multiple thumbnail options with fallbacks
-            let thumbnail: string | null = track.info.artworkUrl || null;
+            let thumbnail: string | null = track.info?.artworkUrl || null;
             if (!thumbnail && youtubeId) {
                 // Try hqdefault first (more reliable), then maxresdefault
                 thumbnail = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
@@ -493,15 +493,15 @@ class LavalinkService {
             return {
                 track: track,
                 encoded: track.encoded || '',
-                url: track.info.uri || '',
-                title: track.info.title || '',
-                lengthSeconds: Math.floor((track.info.length || 0) / 1000),
+                url: track.info?.uri || '',
+                title: track.info?.title || '',
+                lengthSeconds: Math.floor((track.info?.length || 0) / 1000),
                 thumbnail: thumbnail,
-                author: track.info.author || '',
+                author: track.info?.author || '',
                 requestedBy: requester,
-                source: track.info.sourceName || 'Unknown',
+                source: track.info?.sourceName || 'Unknown',
                 viewCount: viewCount,
-                identifier: youtubeId || track.info.identifier || null,
+                identifier: youtubeId || track.info?.identifier || null,
                 searchedByLink: isLinkSearch,
                 originalQuery: isLinkSearch ? null : query
             };
