@@ -595,7 +595,9 @@ class LavalinkService {
             if (!spotifyId || (spotifyId.type !== 'playlist' && spotifyId.type !== 'album')) return null;
 
             logger.info('Lavalink', `Spotify API fallback: fetching ${spotifyId.type} ${spotifyId.id} tracks...`);
-            const spotifyTracks = await spotifyService.getPlaylistTracks(spotifyId.id);
+            const spotifyTracks = spotifyId.type === 'album'
+                ? await spotifyService.getAlbumTracks(spotifyId.id)
+                : await spotifyService.getPlaylistTracks(spotifyId.id);
             if (spotifyTracks.length === 0) return null;
 
             const resolvedTracks: SearchResult[] = [];

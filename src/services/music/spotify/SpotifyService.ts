@@ -203,6 +203,25 @@ class SpotifyService {
             return this.apiRequest<T>(endpoint, params);
         }
 
+        // Invalidate token on auth errors and retry once
+        if ((response.status === 401 || response.status === 403) && this.token) {
+            const errorBody = await response.text().catch(() => '');
+            
+            // Check if this is a token issue (not a resource access issue like private playlist)
+            if (response.status === 401) {
+                logger.warn('Spotify', `Token rejected (${response.status}), refreshing and retrying...`);
+                this.token = null;
+                return this.apiRequest<T>(endpoint, params);
+            }
+            
+            // 403 on playlist/album endpoints likely means private content
+            if (endpoint.includes('/playlists/') || endpoint.includes('/albums/')) {
+                throw new Error(`Spotify API error: ${response.status} ${response.statusText} — The content may be private or unavailable. Client Credentials flow can only access public content. ${errorBody}`);
+            }
+            
+            throw new Error(`Spotify API error: ${response.status} ${response.statusText} — ${errorBody}`);
+        }
+
         if (!response.ok) {
             const errorBody = await response.text().catch(() => '');
             throw new Error(`Spotify API error: ${response.status} ${response.statusText} — ${errorBody}`);
@@ -759,6 +778,86 @@ class SpotifyService {
             return tracks;
         } catch (error) {
             logger.error('Spotify', `getPlaylistTracks error: ${(error as Error).message}`);
+            return [];
+        }
+    }
+
+    /**
+     * Get tracks from a Spotify album via the Web API
+     */
+    async getAlbumTracks(albumId: string, limit = 100): Promise<Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }>> {
+        try {
+            type SpotifyAlbumResponse = {
+                images: Array<{ url: string }>;
+                tracks: {
+                    items: Array<{
+                        name: string;
+                        artists: Array<{ name: string }>;
+                        duration_ms: number;
+                        external_ids?: { isrc?: string };
+                    }>;
+                    next: string | null;
+                    total: number;
+                };
+            }
+
+            // Fetch album (includes first page of tracks + album images)
+            const albumData = await this.apiRequest<SpotifyAlbumResponse>(
+                `/albums/${albumId}`,
+                { market: 'US' }
+            );
+
+            const albumArtwork = albumData.images?.[0]?.url;
+            const tracks: Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }> = [];
+
+            for (const item of albumData.tracks.items) {
+                tracks.push({
+                    title: item.name,
+                    artist: item.artists.map(a => a.name).join(', '),
+                    duration_ms: item.duration_ms,
+                    artworkUrl: albumArtwork,
+                    isrc: item.external_ids?.isrc,
+                });
+                if (tracks.length >= limit) break;
+            }
+
+            // Paginate if album has more tracks
+            let nextUrl = albumData.tracks.next;
+            while (nextUrl && tracks.length < limit) {
+                type SpotifyAlbumTracksPage = {
+                    items: Array<{
+                        name: string;
+                        artists: Array<{ name: string }>;
+                        duration_ms: number;
+                        external_ids?: { isrc?: string };
+                    }>;
+                    next: string | null;
+                }
+
+                const offset = tracks.length;
+                const pageData = await this.apiRequest<SpotifyAlbumTracksPage>(
+                    `/albums/${albumId}/tracks`,
+                    { offset: String(offset), limit: String(Math.min(50, limit - tracks.length)), market: 'US' }
+                );
+
+                for (const item of pageData.items) {
+                    tracks.push({
+                        title: item.name,
+                        artist: item.artists.map(a => a.name).join(', '),
+                        duration_ms: item.duration_ms,
+                        artworkUrl: albumArtwork,
+                        isrc: item.external_ids?.isrc,
+                    });
+                    if (tracks.length >= limit) break;
+                }
+
+                nextUrl = pageData.next;
+            }
+
+            logger.info('Spotify', `Fetched ${tracks.length} tracks from album ${albumId}`);
+            return tracks;
+        } catch (error) {
+            logger.error('Spotify', `getAlbumTracks error: ${(error as Error).message}`);
             return [];
         }
     }
