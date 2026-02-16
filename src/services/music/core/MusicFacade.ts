@@ -245,9 +245,11 @@ export class MusicFacade {
         const result = await this.playNext(guildId);
 
         // If no next track (queue ended), playNext already handled cleanup
+        // Check if autoplay was triggered (queue was empty but autoplay found a track)
+        const autoplayTriggered = result === null && this.getCurrentTrack(guildId) !== null;
 
         musicEventBus.emitEvent(MusicEvents.TRACK_SKIP, { guildId, count, previousTrack: currentTrack });
-        return { skipped: count, previousTrack: currentTrack };
+        return { skipped: count, previousTrack: currentTrack, autoplayTriggered };
     }
 
     async togglePause(guildId: string): Promise<boolean> {

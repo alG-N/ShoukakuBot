@@ -68,7 +68,7 @@ export const controlHandler = {
         await musicService.disableNowPlayingControls(guildId);
         
         // Skip advances to the next track automatically
-        await musicService.skip(guildId);
+        const skipResult = await musicService.skip(guildId);
         
         // Reply first to acknowledge the skip
         await interaction.reply({
@@ -76,8 +76,9 @@ export const controlHandler = {
         });
         
         // Send new now playing embed if a new track is now playing
+        // Skip if autoplay already sent the embed to avoid duplicates
         const newCurrentTrack = musicService.getCurrentTrack(guildId);
-        if (newCurrentTrack) {
+        if (newCurrentTrack && !skipResult.autoplayTriggered) {
             await new Promise(resolve => setTimeout(resolve, 200));
             await musicService.sendNowPlayingEmbed(guildId);
         }

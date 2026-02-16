@@ -199,12 +199,13 @@ export const buttonHandler = {
             await musicService.disableNowPlayingControls(guildId);
             
             const currentTrack = musicService.getCurrentTrack(guildId) as Track | null;
-            const nextTrack = await musicService.skip(guildId);
+            const skipResult = await musicService.skip(guildId);
+            const nextTrack = musicService.getCurrentTrack(guildId);
             
-            if (nextTrack) {
+            if (nextTrack && !skipResult.autoplayTriggered) {
                 await new Promise(resolve => setTimeout(resolve, 200));
                 await musicService.sendNowPlayingEmbed(guildId);
-            } else {
+            } else if (!nextTrack) {
                 const queue = musicCache.getQueue(guildId);
                 if (queue?.textChannel) {
                     const channel = queue.textChannel as TextChannel;

@@ -147,7 +147,13 @@ class NHentaiHandler {
             return Buffer.from(response.data);
         } catch (error) {
             const err = error as { response?: { status: number }; message?: string };
-            logger.warn('NHentai', `Failed to fetch image (${err.response?.status || 'network'}): ${err.message} | URL: ${url}`);
+            // 404 is expected during mirror/extension fallback — use debug level to reduce log noise
+            const status = err.response?.status;
+            if (status === 404) {
+                logger.debug('NHentai', `Image not found (404), trying next mirror/extension | URL: ${url}`);
+            } else {
+                logger.warn('NHentai', `Failed to fetch image (${status || 'network'}): ${err.message} | URL: ${url}`);
+            }
             return null;
         }
     }

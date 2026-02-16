@@ -755,7 +755,7 @@ class SpotifyService {
             while (tracks.length < limit) {
                 const data = await this.apiRequest<SpotifyPlaylistResponse>(
                     `/playlists/${playlistId}/tracks`,
-                    { offset: String(offset), limit: String(pageSize), fields: 'items(track(name,artists(name),album(images),duration_ms,external_ids)),next,total' }
+                    { offset: String(offset), limit: String(pageSize), market: 'US', fields: 'items(track(name,artists(name),album(images),duration_ms,external_ids)),next,total' }
                 );
 
                 for (const item of data.items) {

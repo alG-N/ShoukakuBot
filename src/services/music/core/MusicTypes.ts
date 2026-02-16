@@ -39,6 +39,7 @@ export interface PlayNextResult {
 export interface SkipResult {
     skipped: number;
     previousTrack: Track | null;
+    autoplayTriggered?: boolean;
 }
 
 export interface VoteSkipResult {
