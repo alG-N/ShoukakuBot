@@ -143,13 +143,14 @@ class VideoDownloadService extends EventEmitter {
             let videoPath: string;
             let downloadMethod = 'Cobalt';
 
-            // Check if URL is YouTube - skip Cobalt, go straight to yt-dlp
-            // Cobalt doesn't support YouTube well, wastes time trying 3 instances before failing
+            // Check if URL is YouTube or TikTok - skip Cobalt, go straight to yt-dlp
             const isYouTube = this._isYouTubeUrl(url);
+            const isTikTok = this._isTikTokUrl(url);
 
-            if (isYouTube) {
-                // YouTube → use yt-dlp directly (bypass Cobalt)
-                logger.info('VideoDownloadService', 'YouTube URL detected, using yt-dlp directly (skipping Cobalt)');
+            if (isYouTube || isTikTok) {
+                // YouTube/TikTok → use yt-dlp directly (bypass Cobalt)
+                const platform = isYouTube ? 'YouTube' : 'TikTok';
+                logger.info('VideoDownloadService', `${platform} URL detected, using yt-dlp directly (skipping Cobalt)`);
                 this.emit('stage', { stage: 'connecting', message: 'Downloading with yt-dlp...', method: 'yt-dlp' });
                 downloadMethod = 'yt-dlp';
                 videoPath = await ytDlpService.downloadVideo(url, this.tempDir, { quality: videoQuality });
@@ -305,9 +306,10 @@ class VideoDownloadService extends EventEmitter {
     async getDirectUrl(url: string, options: { quality?: string } = {}): Promise<DirectUrlResult | null> {
         const quality = options.quality || config.COBALT_VIDEO_QUALITY || '720';
         const isYouTube = this._isYouTubeUrl(url);
+        const isTikTok = this._isTikTokUrl(url);
 
-        // YouTube → use yt-dlp directly (Cobalt doesn't support YouTube well)
-        if (isYouTube) {
+        // YouTube/TikTok → use yt-dlp directly
+        if (isYouTube || isTikTok) {
             try {
                 const info = await ytDlpService.getVideoInfo(url);
                 if (info.url) {
@@ -454,6 +456,16 @@ class VideoDownloadService extends EventEmitter {
         return lowerUrl.includes('youtube.com') || 
                lowerUrl.includes('youtu.be') || 
                lowerUrl.includes('youtube-nocookie.com');
+    }
+
+    /**
+     * Check if URL is a TikTok URL
+     * TikTok URLs should bypass Cobalt and use yt-dlp directly (Cobalt tunnel gets blocked)
+     */
+    private _isTikTokUrl(url: string): boolean {
+        const lowerUrl = url.toLowerCase();
+        return lowerUrl.includes('tiktok.com') || 
+               lowerUrl.includes('vm.tiktok.com');
     }
 }
 

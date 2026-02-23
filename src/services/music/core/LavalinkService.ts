@@ -609,7 +609,7 @@ class LavalinkService {
             const searchPlatform = (lavalinkConfig as { defaultSearchPlatform?: string }).defaultSearchPlatform;
 
             // Search each track on YouTube (with concurrency limit)
-            const batchSize = 3;
+            const batchSize = 5;
             for (let i = 0; i < spotifyTracks.length; i += batchSize) {
                 const batch = spotifyTracks.slice(i, i + batchSize);
                 const promises = batch.map(async (st) => {

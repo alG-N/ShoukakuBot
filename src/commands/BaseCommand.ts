@@ -223,8 +223,8 @@ export abstract class BaseCommand {
             trackCommand(commandName, this.category, duration, 'success');
             commandsActive.dec({ command: commandName });
 
-            // Log slow executions
-            if (duration > 3000) {
+            // Log slow executions (playlist/video commands can take 10s+ legitimately)
+            if (duration > 10000) {
                 logger.warn(commandName, `Slow command execution: ${duration}ms`);
             }
 

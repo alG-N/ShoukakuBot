@@ -199,7 +199,7 @@ class CobaltService extends EventEmitter {
                         if (parsed.status === 'tunnel' || parsed.status === 'redirect' || parsed.status === 'stream') {
                             // Check if the response is an image/slideshow instead of a video
                             const filename = parsed.filename?.toLowerCase() || '';
-                            const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.avif', '.heic'];
+                            const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.avif', '.heic'];
                             if (imageExtensions.some(ext => filename.endsWith(ext))) {
                                 reject(new Error('CONTENT_IS_IMAGES:This content contains images/slideshow, not a downloadable video.'));
                                 return;
@@ -214,8 +214,7 @@ class CobaltService extends EventEmitter {
                                 // Check if all picker items are images
                                 const hasOnlyImages = parsed.picker.every(p => 
                                     p.type === 'photo' || p.type === 'image' || 
-                                    !p.type || // items without type in picker are usually images
-                                    (p.url && /\.(jpg|jpeg|png|webp|gif|avif|heic)(\?|$)/i.test(p.url))
+                                    (p.url && /\.(jpg|jpeg|png|webp|avif|heic)(\?|$)/i.test(p.url))
                                 );
                                 if (hasOnlyImages) {
                                     reject(new Error('CONTENT_IS_IMAGES:This content is a photo slideshow, not a downloadable video.'));
@@ -310,12 +309,12 @@ class CobaltService extends EventEmitter {
                     // Get content length for progress tracking
                     totalBytes = parseInt(response.headers['content-length'] || '0', 10) || 0;
                     
-                    // Check content-type: reject if response is an image (not video)
+                    // Check content-type: reject if response is a static image (not video/gif)
                     const contentType = response.headers['content-type'] || '';
-                    if (contentType.startsWith('image/')) {
-                        logger.info('CobaltService', `Response is an image (${contentType}), not a video — rejecting`);
+                    if (contentType.startsWith('image/') && !contentType.includes('gif')) {
+                        logger.info('CobaltService', `Response is a static image (${contentType}), not a video — rejecting`);
                         req.destroy();
-                        reject(new Error('CONTENT_IS_IMAGES:The server returned an image instead of a video file.'));
+                        reject(new Error('CONTENT_IS_IMAGES:The server returned a static image instead of a video file.'));
                         return;
                     }
 

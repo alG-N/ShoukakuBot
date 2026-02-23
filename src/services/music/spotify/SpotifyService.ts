@@ -802,27 +802,13 @@ class SpotifyService {
      * Without OAuth: Client Credentials for public playlists, embed scraping as fallback
      */
     async getPlaylistTracks(playlistId: string, limit: number = 100): Promise<Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }>> {
-        // Try API first (faster, more reliable, has ISRC for better YouTube matching)
-        if (this.isConfigured()) {
-            try {
-                const tracks = await this._getPlaylistTracksViaApi(playlistId, limit);
-                if (tracks.length > 0) {
-                    logger.info('Spotify', `API fetched ${tracks.length} tracks from playlist ${playlistId}`);
-                    return tracks;
-                }
-            } catch (error) {
-                const msg = (error as Error).message;
-                logger.warn('Spotify', `API playlist fetch failed: ${msg}, falling back to embed scraping`);
-            }
-        }
-
-        // Fallback: embed scraping (no auth required, works for public playlists)
+        // Use embed scraping directly (no auth required, works for all playlists)
         try {
             const tracks = await this._scrapeEmbed('playlist', playlistId, limit);
             logger.info('Spotify', `Scraped ${tracks.length} tracks from playlist ${playlistId}`);
             return tracks;
         } catch (error) {
-            logger.error('Spotify', `getPlaylistTracks failed (API + scraping): ${(error as Error).message}`);
+            logger.error('Spotify', `getPlaylistTracks scraping failed: ${(error as Error).message}`);
             return [];
         }
     }
@@ -838,17 +824,30 @@ class SpotifyService {
         const pageSize = Math.min(limit, 100);
 
         // Use user token (OAuth) if available, otherwise Client Credentials
-        const token = await this.getUserAccessToken();
+        let token = await this.getUserAccessToken();
+        let retried = false;
 
         while (tracks.length < limit) {
-            const url = `${this.BASE_URL}/playlists/${playlistId}/tracks?fields=${encodeURIComponent(fields)}&limit=${pageSize}&offset=${offset}&market=US`;
+            const url = `${this.BASE_URL}/playlists/${playlistId}/tracks?fields=${encodeURIComponent(fields)}&limit=${pageSize}&offset=${offset}`;
 
             const response = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
 
             if (response.status === 403) {
-                throw new Error(`Playlist is private or unavailable (403). ${this.refreshToken ? 'Your OAuth token may lack playlist-read-private scope.' : 'Set SPOTIFY_REFRESH_TOKEN for private playlist access.'}`);
+                const errorBody = await response.text().catch(() => '');
+                logger.warn('Spotify', `Playlist 403 response: ${errorBody}`);
+
+                // Force-refresh the token and retry once
+                if (!retried && this.refreshToken) {
+                    retried = true;
+                    logger.info('Spotify', 'Force-refreshing OAuth token and retrying...');
+                    this.userToken = null;
+                    token = await this.getUserAccessToken();
+                    continue;
+                }
+
+                throw new Error(`Playlist is private or unavailable (403). ${this.refreshToken ? 'OAuth token may lack playlist-read-private scope. Try re-running spotify-oauth.ps1' : 'Set SPOTIFY_REFRESH_TOKEN for private playlist access.'}. Spotify response: ${errorBody}`);
             }
 
             if (!response.ok) {
@@ -1020,27 +1019,13 @@ class SpotifyService {
      * Get album tracks — tries Spotify Web API first, falls back to embed scraping
      */
     async getAlbumTracks(albumId: string, limit = 100): Promise<Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }>> {
-        // Try API first
-        if (this.isConfigured()) {
-            try {
-                const tracks = await this._getAlbumTracksViaApi(albumId, limit);
-                if (tracks.length > 0) {
-                    logger.info('Spotify', `API fetched ${tracks.length} tracks from album ${albumId}`);
-                    return tracks;
-                }
-            } catch (error) {
-                const msg = (error as Error).message;
-                logger.warn('Spotify', `API album fetch failed: ${msg}, falling back to embed scraping`);
-            }
-        }
-
-        // Fallback: embed scraping
+        // Use embed scraping directly (no auth required, works for all albums)
         try {
             const tracks = await this._scrapeEmbed('album', albumId, limit);
             logger.info('Spotify', `Scraped ${tracks.length} tracks from album ${albumId}`);
             return tracks;
         } catch (error) {
-            logger.error('Spotify', `getAlbumTracks failed (API + scraping): ${(error as Error).message}`);
+            logger.error('Spotify', `getAlbumTracks scraping failed: ${(error as Error).message}`);
             return [];
         }
     }

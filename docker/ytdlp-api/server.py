@@ -9,8 +9,10 @@ from pydantic import BaseModel
 import yt_dlp
 import asyncio
 import os
+import json
 import time
 import shutil
+import tempfile
 
 app = FastAPI(title="yt-dlp API", version="1.0.0")
 
@@ -19,9 +21,66 @@ DOWNLOAD_DIR = os.environ.get("DOWNLOAD_DIR", "/downloads")
 MAX_CONCURRENT = int(os.environ.get("MAX_CONCURRENT_DOWNLOADS", "5"))
 MAX_DURATION = int(os.environ.get("MAX_DURATION_SECONDS", "600"))
 MAX_FILE_SIZE_MB = int(os.environ.get("MAX_FILE_SIZE_MB", "100"))
+COOKIE_PATH = os.environ.get("COOKIE_PATH", "")
+
+# Netscape cookie file generated from Cobalt's cookies.json
+NETSCAPE_COOKIE_FILE = None
 
 semaphore = asyncio.Semaphore(MAX_CONCURRENT)
 active_downloads = 0
+
+
+# ── Cookie Conversion (Cobalt JSON → Netscape format) ──
+DOMAIN_MAP = {
+    "youtube": ".youtube.com",
+    "tiktok": ".tiktok.com",
+    "instagram": ".instagram.com",
+    "twitter": ".twitter.com",
+    "reddit": ".reddit.com",
+}
+
+
+def _convert_cobalt_cookies() -> str | None:
+    """Convert Cobalt's cookies.json to Netscape cookie format for yt-dlp."""
+    global NETSCAPE_COOKIE_FILE
+
+    if not COOKIE_PATH or not os.path.exists(COOKIE_PATH):
+        return None
+
+    try:
+        with open(COOKIE_PATH, "r") as f:
+            cobalt_cookies = json.load(f)
+    except Exception as e:
+        print(f"Failed to parse cookies.json: {e}")
+        return None
+
+    lines = ["# Netscape HTTP Cookie File", "# Generated from Cobalt cookies.json", ""]
+
+    for service, cookie_strings in cobalt_cookies.items():
+        domain = DOMAIN_MAP.get(service, f".{service}.com")
+
+        for cookie_str in cookie_strings:
+            # Parse "key=value; key2=value2" format
+            for part in cookie_str.split(";"):
+                part = part.strip()
+                if not part or "=" not in part:
+                    continue
+                name, _, value = part.partition("=")
+                name = name.strip()
+                value = value.strip()
+                # Netscape format: domain  flag  path  secure  expiry  name  value
+                lines.append(f"{domain}\tTRUE\t/\tFALSE\t0\t{name}\t{value}")
+
+    if len(lines) <= 3:
+        return None
+
+    # Write to temp file
+    cookie_file = os.path.join(tempfile.gettempdir(), "cookies.txt")
+    with open(cookie_file, "w") as f:
+        f.write("\n".join(lines) + "\n")
+
+    print(f"Loaded cookies for: {', '.join(cobalt_cookies.keys())} ({sum(len(v) for v in cobalt_cookies.values())} entries)")
+    return cookie_file
 
 
 # ── Request Models ──
@@ -104,6 +163,8 @@ def _extract_info(url: str) -> dict:
         "no_check_certificate": True,
         "socket_timeout": 15,
     }
+    if NETSCAPE_COOKIE_FILE:
+        opts["cookiefile"] = NETSCAPE_COOKIE_FILE
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=False)
 
@@ -146,6 +207,9 @@ def _download(url: str, quality: str, filename: str | None) -> dict:
         # Hard limit: abort download if file exceeds limit (prevents massive downloads)
         "max_filesize": MAX_FILE_SIZE_MB * 1024 * 1024,
     }
+
+    if NETSCAPE_COOKIE_FILE:
+        opts["cookiefile"] = NETSCAPE_COOKIE_FILE
 
     # Duration filter
     if MAX_DURATION > 0:
@@ -221,7 +285,13 @@ def _parse_error(error_text: str) -> str:
 # ── Periodic Cleanup ──
 @app.on_event("startup")
 async def startup():
+    global NETSCAPE_COOKIE_FILE
     os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+    NETSCAPE_COOKIE_FILE = _convert_cobalt_cookies()
+    if NETSCAPE_COOKIE_FILE:
+        print(f"Cookie file ready: {NETSCAPE_COOKIE_FILE}")
+    else:
+        print("No cookies configured (set COOKIE_PATH for authenticated downloads)")
     asyncio.create_task(_cleanup_loop())
     print(f"yt-dlp API started (max concurrent: {MAX_CONCURRENT}, max duration: {MAX_DURATION}s)")
 

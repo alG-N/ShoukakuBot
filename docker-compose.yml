@@ -112,10 +112,12 @@ services:
       - shoukaku-net
     volumes:
       - video_temp:/downloads
+      - ./docker/cobalt/cookies.json:/cookies.json:ro
     environment:
       MAX_CONCURRENT_DOWNLOADS: "5"
       MAX_DURATION_SECONDS: "600"
       MAX_FILE_SIZE_MB: "100"
+      COOKIE_PATH: "/cookies.json"
     deploy:
       resources:
         limits:
