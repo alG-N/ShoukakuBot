@@ -102,6 +102,10 @@ class SpotifyService {
     private clientSecret: string;
     private token: SpotifyToken | null = null;
     
+    /** OAuth user token (from Authorization Code flow with refresh token) */
+    private refreshToken: string | null = null;
+    private userToken: SpotifyToken | null = null;
+    
     /** Cache for genre seeds — refreshed every 24h */
     private genreSeedsCache: string[] = [];
     private genreSeedsCacheTime = 0;
@@ -119,9 +123,11 @@ class SpotifyService {
     constructor() {
         this.clientId = process.env.SPOTIFY_CLIENT_ID || '';
         this.clientSecret = process.env.SPOTIFY_CLIENT_SECRET || '';
+        this.refreshToken = process.env.SPOTIFY_REFRESH_TOKEN || null;
         
         if (this.clientId && this.clientSecret) {
-            logger.info('Spotify', 'Service initialized with credentials');
+            const authMode = this.refreshToken ? 'OAuth (refresh token)' : 'Client Credentials';
+            logger.info('Spotify', `Service initialized with ${authMode}`);
         } else {
             logger.warn('Spotify', 'Missing SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET — Spotify features disabled');
         }
@@ -132,6 +138,11 @@ class SpotifyService {
     /** Check if Spotify credentials are configured */
     isConfigured(): boolean {
         return !!(this.clientId && this.clientSecret);
+    }
+
+    /** Check if OAuth (Authorization Code flow) is configured */
+    hasOAuth(): boolean {
+        return !!(this.clientId && this.clientSecret && this.refreshToken);
     }
 
     /** Get a valid access token (auto-refresh if expired) */
@@ -163,12 +174,69 @@ class SpotifyService {
                 expiresAt: Date.now() + (data.expires_in * 1000),
             };
 
-            logger.info('Spotify', `Token obtained, expires in ${data.expires_in}s`);
+            logger.info('Spotify', `Client Credentials token obtained, expires in ${data.expires_in}s`);
             return this.token.accessToken;
         } catch (error) {
             const err = error as Error;
             logger.error('Spotify', `Auth error: ${err.message}`);
             throw err;
+        }
+    }
+
+    /**
+     * Get a user-scoped access token via OAuth Authorization Code flow (refresh token).
+     * This allows accessing private playlists and user-specific data.
+     * Falls back to Client Credentials if no refresh token is configured.
+     */
+    private async getUserAccessToken(): Promise<string> {
+        if (!this.refreshToken) {
+            // No refresh token — fall back to Client Credentials
+            return this.getAccessToken();
+        }
+
+        if (this.userToken && Date.now() < this.userToken.expiresAt - 60_000) {
+            return this.userToken.accessToken;
+        }
+
+        const credentials = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64');
+
+        try {
+            const response = await fetch(this.AUTH_URL, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Basic ${credentials}`,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(this.refreshToken)}`,
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.text().catch(() => '');
+                logger.warn('Spotify', `OAuth refresh failed (${response.status}): ${errorBody}`);
+                // Fall back to Client Credentials
+                logger.info('Spotify', 'Falling back to Client Credentials token');
+                return this.getAccessToken();
+            }
+
+            const data = await response.json() as { access_token: string; expires_in: number; token_type: string; refresh_token?: string };
+
+            this.userToken = {
+                accessToken: data.access_token,
+                expiresAt: Date.now() + (data.expires_in * 1000),
+            };
+
+            // Spotify may rotate the refresh token
+            if (data.refresh_token) {
+                this.refreshToken = data.refresh_token;
+                logger.info('Spotify', 'Refresh token rotated by Spotify');
+            }
+
+            logger.info('Spotify', `OAuth user token obtained, expires in ${data.expires_in}s`);
+            return this.userToken.accessToken;
+        } catch (error) {
+            const err = error as Error;
+            logger.warn('Spotify', `OAuth refresh error: ${err.message}, falling back to Client Credentials`);
+            return this.getAccessToken();
         }
     }
 
@@ -729,18 +797,98 @@ class SpotifyService {
     // ── EXTRACT SPOTIFY ID ───────────────────────────────────────────
 
     /**
-     * Get playlist tracks by scraping Spotify embed page (no auth required)
-     * Bypasses API 403 issues with Client Credentials flow
+     * Get playlist tracks — tries Spotify Web API first (fast, has ISRC), falls back to embed scraping
+     * With OAuth refresh token: can access private playlists too
+     * Without OAuth: Client Credentials for public playlists, embed scraping as fallback
      */
     async getPlaylistTracks(playlistId: string, limit: number = 100): Promise<Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }>> {
+        // Try API first (faster, more reliable, has ISRC for better YouTube matching)
+        if (this.isConfigured()) {
+            try {
+                const tracks = await this._getPlaylistTracksViaApi(playlistId, limit);
+                if (tracks.length > 0) {
+                    logger.info('Spotify', `API fetched ${tracks.length} tracks from playlist ${playlistId}`);
+                    return tracks;
+                }
+            } catch (error) {
+                const msg = (error as Error).message;
+                logger.warn('Spotify', `API playlist fetch failed: ${msg}, falling back to embed scraping`);
+            }
+        }
+
+        // Fallback: embed scraping (no auth required, works for public playlists)
         try {
             const tracks = await this._scrapeEmbed('playlist', playlistId, limit);
             logger.info('Spotify', `Scraped ${tracks.length} tracks from playlist ${playlistId}`);
             return tracks;
         } catch (error) {
-            logger.error('Spotify', `getPlaylistTracks scrape failed: ${(error as Error).message}`);
+            logger.error('Spotify', `getPlaylistTracks failed (API + scraping): ${(error as Error).message}`);
             return [];
         }
+    }
+
+    /**
+     * Fetch playlist tracks via Spotify Web API (paginated, includes ISRC)
+     * Uses OAuth user token if available (private playlists), otherwise Client Credentials
+     */
+    private async _getPlaylistTracksViaApi(playlistId: string, limit: number = 100): Promise<Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }>> {
+        const tracks: Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }> = [];
+        const fields = 'items(track(name,artists(name),album(images),duration_ms,external_ids,is_local)),next,total';
+        let offset = 0;
+        const pageSize = Math.min(limit, 100);
+
+        // Use user token (OAuth) if available, otherwise Client Credentials
+        const token = await this.getUserAccessToken();
+
+        while (tracks.length < limit) {
+            const url = `${this.BASE_URL}/playlists/${playlistId}/tracks?fields=${encodeURIComponent(fields)}&limit=${pageSize}&offset=${offset}&market=US`;
+
+            const response = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+
+            if (response.status === 403) {
+                throw new Error(`Playlist is private or unavailable (403). ${this.refreshToken ? 'Your OAuth token may lack playlist-read-private scope.' : 'Set SPOTIFY_REFRESH_TOKEN for private playlist access.'}`);
+            }
+
+            if (!response.ok) {
+                throw new Error(`Spotify API ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json() as {
+                items: Array<{
+                    track: {
+                        name: string;
+                        artists: Array<{ name: string }>;
+                        album: { images: Array<{ url: string }> };
+                        duration_ms: number;
+                        external_ids?: { isrc?: string };
+                        is_local?: boolean;
+                    } | null;
+                }>;
+                next: string | null;
+                total: number;
+            };
+
+            for (const item of data.items) {
+                if (tracks.length >= limit) break;
+                const track = item.track;
+                if (!track || track.is_local) continue; // Skip local files
+
+                tracks.push({
+                    title: track.name,
+                    artist: track.artists.map(a => a.name).join(', '),
+                    duration_ms: track.duration_ms,
+                    artworkUrl: track.album?.images?.[0]?.url,
+                    isrc: track.external_ids?.isrc,
+                });
+            }
+
+            if (!data.next || tracks.length >= limit) break;
+            offset += pageSize;
+        }
+
+        return tracks;
     }
 
     /**
@@ -869,18 +1017,116 @@ class SpotifyService {
     }
 
     /**
-     * Get album tracks by scraping Spotify embed page (no auth required)
-     * Bypasses API 403 issues with Client Credentials flow
+     * Get album tracks — tries Spotify Web API first, falls back to embed scraping
      */
     async getAlbumTracks(albumId: string, limit = 100): Promise<Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }>> {
+        // Try API first
+        if (this.isConfigured()) {
+            try {
+                const tracks = await this._getAlbumTracksViaApi(albumId, limit);
+                if (tracks.length > 0) {
+                    logger.info('Spotify', `API fetched ${tracks.length} tracks from album ${albumId}`);
+                    return tracks;
+                }
+            } catch (error) {
+                const msg = (error as Error).message;
+                logger.warn('Spotify', `API album fetch failed: ${msg}, falling back to embed scraping`);
+            }
+        }
+
+        // Fallback: embed scraping
         try {
             const tracks = await this._scrapeEmbed('album', albumId, limit);
             logger.info('Spotify', `Scraped ${tracks.length} tracks from album ${albumId}`);
             return tracks;
         } catch (error) {
-            logger.error('Spotify', `getAlbumTracks scrape failed: ${(error as Error).message}`);
+            logger.error('Spotify', `getAlbumTracks failed (API + scraping): ${(error as Error).message}`);
             return [];
         }
+    }
+
+    /**
+     * Fetch album tracks via Spotify Web API (includes ISRC)
+     */
+    private async _getAlbumTracksViaApi(albumId: string, limit: number = 100): Promise<Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }>> {
+        const token = await this.getUserAccessToken();
+        const tracks: Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }> = [];
+
+        // First get album metadata (for artwork)
+        const albumResponse = await fetch(`${this.BASE_URL}/albums/${albumId}?market=US`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+        });
+
+        if (!albumResponse.ok) {
+            throw new Error(`Spotify API ${albumResponse.status}: ${albumResponse.statusText}`);
+        }
+
+        const album = await albumResponse.json() as {
+            images: Array<{ url: string }>;
+            tracks: {
+                items: Array<{
+                    name: string;
+                    artists: Array<{ name: string }>;
+                    duration_ms: number;
+                    external_ids?: { isrc?: string };
+                    is_local?: boolean;
+                }>;
+                next: string | null;
+                total: number;
+            };
+        };
+
+        const artworkUrl = album.images?.[0]?.url;
+
+        for (const track of album.tracks.items) {
+            if (tracks.length >= limit) break;
+            if (track.is_local) continue;
+
+            tracks.push({
+                title: track.name,
+                artist: track.artists.map(a => a.name).join(', '),
+                duration_ms: track.duration_ms,
+                artworkUrl,
+                isrc: track.external_ids?.isrc,
+            });
+        }
+
+        // Paginate if needed
+        let nextUrl = album.tracks.next;
+        while (nextUrl && tracks.length < limit) {
+            const response = await fetch(nextUrl, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            if (!response.ok) break;
+
+            const page = await response.json() as {
+                items: Array<{
+                    name: string;
+                    artists: Array<{ name: string }>;
+                    duration_ms: number;
+                    external_ids?: { isrc?: string };
+                    is_local?: boolean;
+                }>;
+                next: string | null;
+            };
+
+            for (const track of page.items) {
+                if (tracks.length >= limit) break;
+                if (track.is_local) continue;
+
+                tracks.push({
+                    title: track.name,
+                    artist: track.artists.map(a => a.name).join(', '),
+                    duration_ms: track.duration_ms,
+                    artworkUrl,
+                    isrc: track.external_ids?.isrc,
+                });
+            }
+
+            nextUrl = page.next;
+        }
+
+        return tracks;
     }
 
     /**
@@ -915,6 +1161,7 @@ class SpotifyService {
      */
     shutdown(): void {
         this.token = null;
+        this.userToken = null;
         this.artistGenreCache.clear();
         this.audioFeaturesCache.clear();
         this.genreSeedsCache = [];

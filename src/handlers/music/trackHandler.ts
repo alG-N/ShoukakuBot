@@ -71,6 +71,13 @@ class TrackHandler {
     createDisconnectedEmbed() {
         return embeds.createDisconnectedEmbed();
     }
+    createSkippedEmbed(
+        track: Track | null,
+        skippedBy: User | { displayName?: string; username?: string; tag?: string },
+        reason: 'manual' | 'vote' = 'manual'
+    ) {
+        return embeds.createSkippedEmbed(track, skippedBy, reason);
+    }
     createStoppedByUserEmbed(user?: User | { displayName?: string; username?: string }) {
         return embeds.createStoppedByUserEmbed(user);
     }

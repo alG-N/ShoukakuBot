@@ -70,9 +70,9 @@ export const controlHandler = {
         // Skip advances to the next track automatically
         const skipResult = await musicService.skip(guildId);
         
-        // Reply first to acknowledge the skip
+        // Reply with skip notification showing who skipped and why
         await interaction.reply({
-            embeds: [trackHandler.createInfoEmbed('⏭️ Skipped', `Skipped: **${currentTrack.title}**`, 'success')]
+            embeds: [trackHandler.createSkippedEmbed(currentTrack, interaction.user, 'manual')]
         });
         
         // Send new now playing embed if a new track is now playing
@@ -98,10 +98,20 @@ export const controlHandler = {
 
             if (musicService.hasEnoughSkipVotes(guildId)) {
                 musicService.endSkipVote(guildId);
-                await musicService.skip(guildId);
+                const skippedTrack = musicService.getCurrentTrack(guildId) as Track | null;
+                await musicService.disableNowPlayingControls(guildId);
+                const skipResult = await musicService.skip(guildId);
+                
                 await interaction.reply({
-                    embeds: [trackHandler.createInfoEmbed('⏭️ Vote Skip Passed', 'Skipping to next track!', 'success')]
+                    embeds: [trackHandler.createSkippedEmbed(skippedTrack, interaction.user, 'vote')]
                 });
+                
+                // Send new now playing embed for the next track
+                const newCurrentTrack = musicService.getCurrentTrack(guildId);
+                if (newCurrentTrack && !skipResult.autoplayTriggered) {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    await musicService.sendNowPlayingEmbed(guildId);
+                }
                 return;
             }
 

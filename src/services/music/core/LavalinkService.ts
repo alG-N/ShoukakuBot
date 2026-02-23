@@ -590,7 +590,7 @@ class LavalinkService {
     }
 
     /**
-     * Spotify playlist fallback: use Spotify Web API to get playlist tracks, then search each on YouTube
+     * Spotify playlist fallback: use Spotify Web API (or embed scraping) to get playlist tracks, then search each on YouTube
      */
     private async _spotifyPlaylistFallback(query: string, node: ShoukakuNode, requester?: unknown): Promise<PlaylistResult | null> {
         if (!spotifyService.isConfigured()) return null;
@@ -599,7 +599,7 @@ class LavalinkService {
             const spotifyId = spotifyService.extractSpotifyId(query);
             if (!spotifyId || (spotifyId.type !== 'playlist' && spotifyId.type !== 'album')) return null;
 
-            logger.info('Lavalink', `Spotify API fallback: fetching ${spotifyId.type} ${spotifyId.id} tracks...`);
+            logger.info('Lavalink', `Spotify fallback: fetching ${spotifyId.type} ${spotifyId.id} tracks (API → embed scraping)...`);
             const spotifyTracks = spotifyId.type === 'album'
                 ? await spotifyService.getAlbumTracks(spotifyId.id)
                 : await spotifyService.getPlaylistTracks(spotifyId.id);

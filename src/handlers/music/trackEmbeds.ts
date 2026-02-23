@@ -499,6 +499,31 @@ export function createDisconnectedEmbed(): EmbedBuilder {
 }
 
 /**
+ * Create skipped embed — shows who skipped and why
+ */
+export function createSkippedEmbed(
+    track: Track | null,
+    skippedBy: User | { displayName?: string; username?: string; tag?: string },
+    reason: 'manual' | 'vote' = 'manual'
+): EmbedBuilder {
+    const displayName = 'displayName' in skippedBy
+        ? skippedBy.displayName
+        : (skippedBy as { username?: string }).username || 'Unknown';
+
+    const reasonText = reason === 'vote' ? 'Vote Skip' : 'Manual Skip';
+    const trackTitle = track ? `**${truncate(track.title, 50)}**` : 'Current track';
+
+    return new EmbedBuilder()
+        .setColor(COLORS.info as `#${string}`)
+        .setAuthor({ name: '⏭️ Track Skipped' })
+        .setDescription(
+            `${trackTitle} has been skipped by **${displayName}**\n` +
+            `**Reason:** ${reasonText}`
+        )
+        .setTimestamp();
+}
+
+/**
  * Create stopped by user embed
  */
 export function createStoppedByUserEmbed(user?: User | { displayName?: string; username?: string }): EmbedBuilder {

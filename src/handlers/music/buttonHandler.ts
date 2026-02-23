@@ -201,12 +201,20 @@ export const buttonHandler = {
             const currentTrack = musicService.getCurrentTrack(guildId) as Track | null;
             const skipResult = await musicService.skip(guildId);
             const nextTrack = musicService.getCurrentTrack(guildId);
+
+            // Send skip notification in channel
+            const queue = musicCache.getQueue(guildId);
+            if (queue?.textChannel) {
+                const channel = queue.textChannel as TextChannel;
+                await channel.send({
+                    embeds: [trackHandler.createSkippedEmbed(currentTrack, interaction.user, 'manual')]
+                }).catch(() => {});
+            }
             
             if (nextTrack && !skipResult.autoplayTriggered) {
                 await new Promise(resolve => setTimeout(resolve, 200));
                 await musicService.sendNowPlayingEmbed(guildId);
             } else if (!nextTrack) {
-                const queue = musicCache.getQueue(guildId);
                 if (queue?.textChannel) {
                     const channel = queue.textChannel as TextChannel;
                     await channel.send({
@@ -558,16 +566,20 @@ export const buttonHandler = {
             await interaction.deferUpdate();
             
             const skippedTrack = musicService.getCurrentTrack(guildId) as Track | null;
-            await musicService.skip(guildId);
+            await musicService.disableNowPlayingControls(guildId);
+            const skipResult = await musicService.skip(guildId);
             
             const channel = interaction.channel as TextChannel;
             await channel.send({
-                embeds: [trackHandler.createInfoEmbed(
-                    '⏭️ Track Skipped',
-                    skippedTrack ? `**${skippedTrack.title}** was skipped by ${interaction.user.tag}` : `Track skipped by ${interaction.user.tag}`,
-                    'success'
-                )]
+                embeds: [trackHandler.createSkippedEmbed(skippedTrack, interaction.user, 'manual')]
             }).catch(() => {});
+
+            // Send new now playing embed for the next track
+            const nextTrack = musicService.getCurrentTrack(guildId) as Track | null;
+            if (nextTrack && !skipResult.autoplayTriggered) {
+                await new Promise(resolve => setTimeout(resolve, 200));
+                await musicService.sendNowPlayingEmbed(guildId);
+            }
             
             return;
         }
@@ -583,12 +595,20 @@ export const buttonHandler = {
             if (musicService.hasEnoughSkipVotes(guildId)) {
                 musicService.endSkipVote(guildId);
                 const skippedTrack = musicService.getCurrentTrack(guildId) as Track | null;
-                await musicService.skip(guildId);
+                await musicService.disableNowPlayingControls(guildId);
+                const skipResult = await musicService.skip(guildId);
                 
                 await interaction.update({
-                    embeds: [trackHandler.createInfoEmbed('⏭️ Skipped!', `**${skippedTrack?.title || 'Track'}** was skipped by vote!`, 'success')],
+                    embeds: [trackHandler.createSkippedEmbed(skippedTrack, interaction.user, 'vote')],
                     components: []
                 });
+
+                // Send new now playing embed for the next track
+                const nextTrack = musicService.getCurrentTrack(guildId) as Track | null;
+                if (nextTrack && !skipResult.autoplayTriggered) {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    await musicService.sendNowPlayingEmbed(guildId);
+                }
                 return;
             }
 
