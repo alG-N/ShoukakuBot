@@ -394,6 +394,11 @@ class LavalinkService {
                 const url = new URL(query);
                 url.searchParams.delete('si');
                 url.searchParams.delete('feature');
+                // Normalize Spotify /intl-XX/ locale prefix (LavaSrc doesn't handle it)
+                if (url.hostname.includes('spotify.com')) {
+                    url.pathname = url.pathname.replace(/\/intl-[a-z]{2}\//, '/');
+                    url.pathname = url.pathname.replace(/\/intl\/[a-z]{2}\//, '/');
+                }
                 searchQuery = url.toString();
             } catch {
                 // Use original query on parse failure
@@ -693,7 +698,8 @@ class LavalinkService {
      */
     isSpotifyUrl(url?: string): boolean {
         if (!url) return false;
-        return /^https?:\/\/(open\.)?spotify\.com\/(track|album|playlist|artist)\//.test(url);
+        // Handle /intl-XX/ locale prefix in newer Spotify URLs
+        return /^https?:\/\/(open\.)?spotify\.com\/(intl-[a-z]{2}\/)?(?:intl\/[a-z]{2}\/)?(?:embed\/)?(track|album|playlist|artist)\//.test(url);
     }
 
     /**
@@ -783,6 +789,11 @@ class LavalinkService {
                 const url = new URL(query);
                 url.searchParams.delete('si');
                 url.searchParams.delete('feature');
+                // Normalize Spotify /intl-XX/ locale prefix (LavaSrc doesn't handle it)
+                if (url.hostname.includes('spotify.com')) {
+                    url.pathname = url.pathname.replace(/\/intl-[a-z]{2}\//, '/');
+                    url.pathname = url.pathname.replace(/\/intl\/[a-z]{2}\//, '/');
+                }
                 searchQuery = url.toString();
             } catch {
                 // Use original query on parse failure

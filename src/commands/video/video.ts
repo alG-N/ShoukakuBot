@@ -644,9 +644,21 @@ class DownloadCommand extends BaseCommand {
                               err.message === 'This operation was aborted' ||
                               err.name === 'AbortError';
             const isDurationTooLong = err.message?.includes('DURATION_TOO_LONG');
+            const isContentImages = err.message?.includes('CONTENT_IS_IMAGES');
             
             let errorEmbed: EmbedBuilder;
-            if (isDurationTooLong) {
+            if (isContentImages) {
+                const detail = err.message.split('CONTENT_IS_IMAGES:')[1] || 'This content contains images/slideshow, not a downloadable video.';
+                errorEmbed = new EmbedBuilder()
+                    .setColor(COLORS.ERROR)
+                    .setTitle('🖼️ Slideshow / Photo Content')
+                    .setDescription(
+                        `⚠️ ${detail}\n\n` +
+                        `📷 This link contains **photos or a slideshow**, not a video file.\n\n` +
+                        `💡 **Only video content can be downloaded.** Photo slideshows are not supported.`
+                    )
+                    .setFooter({ text: 'Only video content is downloadable' });
+            } else if (isDurationTooLong) {
                 const durationMatch = err.message.match(/DURATION_TOO_LONG:([^|]+)/);
                 let durationInfo = durationMatch ? durationMatch[1].trim() : 'too long';
                 durationInfo = durationInfo.replace(/[')"\]]+$/, '').trim();

@@ -165,6 +165,12 @@ class CobaltService extends EventEmitter {
             const req = protocol.request(options, (res) => {
                 let data = '';
 
+                // Handle HTTP 5xx errors immediately without buffering full response
+                if (res.statusCode && res.statusCode >= 500) {
+                    reject(new Error(`Cobalt API returned HTTP ${res.statusCode} (server error — instance may be overloaded or crashed)`));
+                    return;
+                }
+
                 res.on('data', (chunk) => {
                     data += chunk;
                 });
@@ -190,14 +196,31 @@ class CobaltService extends EventEmitter {
 
                         // Handle different response formats
                         if (parsed.status === 'tunnel' || parsed.status === 'redirect' || parsed.status === 'stream') {
+                            // Check if the response is an image/slideshow instead of a video
+                            const filename = parsed.filename?.toLowerCase() || '';
+                            const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.avif', '.heic'];
+                            if (imageExtensions.some(ext => filename.endsWith(ext))) {
+                                reject(new Error('CONTENT_IS_IMAGES:This content contains images/slideshow, not a downloadable video.'));
+                                return;
+                            }
                             resolve({ url: parsed.url, filename: parsed.filename });
                         } else if (parsed.status === 'picker' && parsed.picker?.length) {
-                            // Multiple options available, pick video
-                            const videoOption = parsed.picker.find(p => p.type === 'video') || parsed.picker[0];
+                            // Multiple options available — only pick videos, reject if only images/slideshows
+                            const videoOption = parsed.picker.find(p => p.type === 'video');
                             if (videoOption?.url) {
                                 resolve({ url: videoOption.url, filename: videoOption.filename });
                             } else {
-                                reject(new Error('No video found in picker response'));
+                                // Check if all picker items are images
+                                const hasOnlyImages = parsed.picker.every(p => 
+                                    p.type === 'photo' || p.type === 'image' || 
+                                    !p.type || // items without type in picker are usually images
+                                    (p.url && /\.(jpg|jpeg|png|webp|gif|avif|heic)(\?|$)/i.test(p.url))
+                                );
+                                if (hasOnlyImages) {
+                                    reject(new Error('CONTENT_IS_IMAGES:This content is a photo slideshow, not a downloadable video.'));
+                                } else {
+                                    reject(new Error('No video found in picker response'));
+                                }
                             }
                         } else if (parsed.url) {
                             // Direct URL response
@@ -276,6 +299,15 @@ class CobaltService extends EventEmitter {
                     // Get content length for progress tracking
                     totalBytes = parseInt(response.headers['content-length'] || '0', 10) || 0;
                     
+                    // Check content-type: reject if response is an image (not video)
+                    const contentType = response.headers['content-type'] || '';
+                    if (contentType.startsWith('image/')) {
+                        logger.info('CobaltService', `Response is an image (${contentType}), not a video — rejecting`);
+                        req.destroy();
+                        reject(new Error('CONTENT_IS_IMAGES:The server returned an image instead of a video file.'));
+                        return;
+                    }
+
                     // PRE-DOWNLOAD SIZE CHECK (using content-length as a hint, not authoritative)
                     // Content-Length can be inaccurate due to transcoding/chunked encoding
                     if (totalBytes > 0) {
@@ -290,11 +322,26 @@ class CobaltService extends EventEmitter {
                         logger.info('CobaltService', `Pre-download size hint: ${fileSizeMB.toFixed(1)}MB (limit: ${sizeLimit}MB) — will verify after download`);
                     }
 
+                    // Hard streaming limit: abort download immediately if actual bytes exceed limit
+                    // This prevents huge files from blowing up the server when content-length is absent/wrong
+                    const hardLimitBytes = sizeLimit * 1024 * 1024; // exact limit in bytes for streaming check
+
                     const file = fs.createWriteStream(outputPath);
                     
                     response.on('data', (chunk: Buffer) => {
                         downloadedBytes += chunk.length;
                         
+                        // STREAMING SIZE CHECK: abort if actual downloaded bytes exceed the hard limit
+                        if (downloadedBytes > hardLimitBytes) {
+                            const downloadedMB = (downloadedBytes / (1024 * 1024)).toFixed(1);
+                            logger.info('CobaltService', `Streaming size limit hit: ${downloadedMB}MB downloaded exceeds ${sizeLimit}MB limit — aborting`);
+                            response.destroy();
+                            file.close();
+                            fs.unlink(outputPath, () => {});
+                            reject(new Error(`FILE_TOO_LARGE:${downloadedMB}MB`));
+                            return;
+                        }
+
                         const now = Date.now();
                         if (now - lastProgressUpdate >= progressUpdateInterval) {
                             const elapsed = (now - startTime) / 1000;

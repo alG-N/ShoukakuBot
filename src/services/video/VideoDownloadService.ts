@@ -160,9 +160,10 @@ class VideoDownloadService extends EventEmitter {
                     videoPath = await cobaltService.downloadVideo(url, this.tempDir, { quality: videoQuality });
                 } catch (cobaltError) {
                     const errorMsg = (cobaltError as Error).message;
-                    // Don't fallback for size/duration errors - these will be the same for yt-dlp
+                    // Don't fallback for size/duration/content-type errors - these will be the same for yt-dlp
                     if (errorMsg.startsWith('FILE_TOO_LARGE') || 
-                        errorMsg.startsWith('DURATION_TOO_LONG')) {
+                        errorMsg.startsWith('DURATION_TOO_LONG') ||
+                        errorMsg.startsWith('CONTENT_IS_IMAGES')) {
                         throw cobaltError;
                     }
                     

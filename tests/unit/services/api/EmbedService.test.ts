@@ -43,17 +43,17 @@ describe('EmbedService', () => {
 
         // ── TikTok ──
 
-        it('should convert tiktok.com URLs to vxtiktok.com', () => {
+        it('should convert tiktok.com URLs to tfxktok.com', () => {
             const result = embedService.convert('https://www.tiktok.com/@user/video/123456');
             expect(result.success).toBe(true);
-            expect(result.fixedUrl).toBe('https://www.vxtiktok.com/@user/video/123456');
+            expect(result.fixedUrl).toBe('https://www.tfxktok.com/@user/video/123456');
             expect(result.platform!.id).toBe('tiktok');
         });
 
         it('should convert vm.tiktok.com short links', () => {
             const result = embedService.convert('https://vm.tiktok.com/ZMabcdef/');
             expect(result.success).toBe(true);
-            expect(result.fixedUrl).toBe('https://vm.vxtiktok.com/ZMabcdef/');
+            expect(result.fixedUrl).toBe('https://vm.tfxktok.com/ZMabcdef/');
             expect(result.platform!.id).toBe('tiktok');
         });
 

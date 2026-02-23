@@ -143,6 +143,8 @@ def _download(url: str, quality: str, filename: str | None) -> dict:
         "fragment_retries": 5,
         "merge_output_format": "mp4",
         "quiet": True,
+        # Hard limit: abort download if file exceeds limit (prevents massive downloads)
+        "max_filesize": MAX_FILE_SIZE_MB * 1024 * 1024,
     }
 
     # Duration filter

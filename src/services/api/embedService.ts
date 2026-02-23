@@ -79,9 +79,9 @@ const EMBED_FIX_RULES: EmbedFixRule[] = [
             /https?:\/\/(www\.|vm\.)?tiktok\.com\/.+/i,
         ],
         replacements: [
-            ['tiktok.com', 'vxtiktok.com'],
+            ['tiktok.com', 'tfxktok.com'],
         ],
-        service: 'vxTikTok',
+        service: 'tfxktok',
         reliable: true,
     },
     {

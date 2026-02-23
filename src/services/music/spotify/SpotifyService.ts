@@ -866,7 +866,8 @@ class SpotifyService {
      * Extract Spotify track/album/playlist/artist ID from URL
      */
     extractSpotifyId(url: string): { type: 'track' | 'album' | 'playlist' | 'artist'; id: string } | null {
-        const match = url.match(/spotify\.com\/(track|album|playlist|artist)\/([a-zA-Z0-9]+)/);
+        // Handle /intl-XX/ locale prefix in newer Spotify URLs
+        const match = url.match(/spotify\.com\/(?:intl-[a-z]{2}\/)?(?:intl\/[a-z]{2}\/)?(?:embed\/)?(track|album|playlist|artist)\/([a-zA-Z0-9]+)/);
         if (!match) return null;
         return { type: match[1] as any, id: match[2] };
     }

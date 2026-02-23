@@ -13,7 +13,7 @@ services:
   cobalt-1:
     image: ghcr.io/imputnet/cobalt:10
     container_name: cobalt-1
-    restart: on-failure:3
+    restart: on-failure:5
     networks:
       - shoukaku-net
     environment:
@@ -24,6 +24,7 @@ services:
       STREAM_LIMIT: 10737418240
       COOKIE_PATH: "/cookies.json"
       CUSTOM_INNERTUBE_CLIENT: "IOS"
+      PROCESSING_PRIORITY: 0
       API_URL: "http://cobalt-1:9000"
       API_NAME: "Cobalt-1"
     volumes:
@@ -31,13 +32,13 @@ services:
     ports:
       - "9001:9000"
     tmpfs:
-      - /tmp:size=32M
+      - /tmp:size=128M
     deploy:
       resources:
         limits:
-          memory: 192M
+          memory: 384M
         reservations:
-          memory: 64M
+          memory: 128M
     logging:
       driver: "json-file"
       options:
@@ -53,7 +54,7 @@ services:
   cobalt-2:
     image: ghcr.io/imputnet/cobalt:10
     container_name: cobalt-2
-    restart: on-failure:3
+    restart: on-failure:5
     networks:
       - shoukaku-net
     environment:
@@ -64,6 +65,7 @@ services:
       STREAM_LIMIT: 10737418240
       COOKIE_PATH: "/cookies.json"
       CUSTOM_INNERTUBE_CLIENT: "IOS"
+      PROCESSING_PRIORITY: 0
       API_URL: "http://cobalt-2:9000"
       API_NAME: "Cobalt-2"
     volumes:
@@ -71,13 +73,13 @@ services:
     ports:
       - "9002:9000"
     tmpfs:
-      - /tmp:size=32M
+      - /tmp:size=128M
     deploy:
       resources:
         limits:
-          memory: 192M
+          memory: 384M
         reservations:
-          memory: 64M
+          memory: 128M
     logging:
       driver: "json-file"
       options:
@@ -93,7 +95,7 @@ services:
   cobalt-3:
     image: ghcr.io/imputnet/cobalt:10
     container_name: cobalt-3
-    restart: on-failure:3
+    restart: on-failure:5
     networks:
       - shoukaku-net
     environment:
@@ -104,6 +106,7 @@ services:
       STREAM_LIMIT: 10737418240
       COOKIE_PATH: "/cookies.json"
       CUSTOM_INNERTUBE_CLIENT: "IOS"
+      PROCESSING_PRIORITY: 0
       API_URL: "http://cobalt-3:9000"
       API_NAME: "Cobalt-3"
     volumes:
@@ -111,13 +114,13 @@ services:
     ports:
       - "9003:9000"
     tmpfs:
-      - /tmp:size=32M
+      - /tmp:size=128M
     deploy:
       resources:
         limits:
-          memory: 192M
+          memory: 384M
         reservations:
-          memory: 64M
+          memory: 128M
     logging:
       driver: "json-file"
       options:
