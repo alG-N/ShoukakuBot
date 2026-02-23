@@ -729,82 +729,26 @@ class SpotifyService {
     // ── EXTRACT SPOTIFY ID ───────────────────────────────────────────
 
     /**
-     * Get playlist tracks from Spotify Web API
-     * Returns basic track info (title, artist, artwork) for YouTube fallback search
-     * Falls back to scraping embed page if API returns 403
+     * Get playlist tracks by scraping Spotify embed page (no auth required)
+     * Bypasses API 403 issues with Client Credentials flow
      */
     async getPlaylistTracks(playlistId: string, limit: number = 100): Promise<Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }>> {
         try {
-            interface SpotifyPlaylistResponse {
-                items: Array<{
-                    track: {
-                        name: string;
-                        artists: Array<{ name: string }>;
-                        album: { images: Array<{ url: string }> };
-                        duration_ms: number;
-                        external_ids?: { isrc?: string };
-                    } | null;
-                }>;
-                next: string | null;
-                total: number;
-            }
-
-            const tracks: Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }> = [];
-            let offset = 0;
-            const pageSize = Math.min(limit, 50); // Spotify max per page is 50
-
-            while (tracks.length < limit) {
-                const data = await this.apiRequest<SpotifyPlaylistResponse>(
-                    `/playlists/${playlistId}/tracks`,
-                    { offset: String(offset), limit: String(pageSize), market: 'US', fields: 'items(track(name,artists(name),album(images),duration_ms,external_ids)),next,total' }
-                );
-
-                for (const item of data.items) {
-                    if (!item.track) continue; // Skip null tracks (deleted/unavailable)
-                    tracks.push({
-                        title: item.track.name,
-                        artist: item.track.artists.map(a => a.name).join(', '),
-                        duration_ms: item.track.duration_ms,
-                        artworkUrl: item.track.album.images?.[0]?.url,
-                        isrc: item.track.external_ids?.isrc,
-                    });
-                    if (tracks.length >= limit) break;
-                }
-
-                if (!data.next || tracks.length >= limit) break;
-                offset += pageSize;
-            }
-
-            logger.info('Spotify', `Fetched ${tracks.length} tracks from playlist ${playlistId}`);
+            const tracks = await this._scrapeEmbed('playlist', playlistId, limit);
+            logger.info('Spotify', `Scraped ${tracks.length} tracks from playlist ${playlistId}`);
             return tracks;
         } catch (error) {
-            const errorMsg = (error as Error).message;
-            logger.error('Spotify', `getPlaylistTracks error: ${errorMsg}`);
-
-            // If 403 Forbidden, try scraping the embed page as fallback
-            if (errorMsg.includes('403')) {
-                logger.info('Spotify', `Trying embed page fallback for playlist ${playlistId}...`);
-                try {
-                    const embedTracks = await this._scrapePlaylistEmbed(playlistId, limit);
-                    if (embedTracks.length > 0) {
-                        logger.info('Spotify', `Embed fallback fetched ${embedTracks.length} tracks from playlist ${playlistId}`);
-                        return embedTracks;
-                    }
-                } catch (embedError) {
-                    logger.error('Spotify', `Embed fallback also failed: ${(embedError as Error).message}`);
-                }
-            }
-
+            logger.error('Spotify', `getPlaylistTracks scrape failed: ${(error as Error).message}`);
             return [];
         }
     }
 
     /**
-     * Scrape Spotify embed page to get playlist tracks (no auth required)
-     * Used as fallback when API returns 403 on public playlists
+     * Scrape Spotify embed page to get tracks (no auth required)
+     * Works for both playlists and albums
      */
-    private async _scrapePlaylistEmbed(playlistId: string, limit: number = 100): Promise<Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }>> {
-        const embedUrl = `https://open.spotify.com/embed/playlist/${playlistId}`;
+    private async _scrapeEmbed(type: 'playlist' | 'album', id: string, limit: number = 100): Promise<Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }>> {
+        const embedUrl = `https://open.spotify.com/embed/${type}/${id}`;
         
         const response = await fetch(embedUrl, {
             headers: {
@@ -818,47 +762,35 @@ class SpotifyService {
         }
 
         const html = await response.text();
-        
-        // Extract __NEXT_DATA__ JSON from the embed page
-        const nextDataMatch = html.match(/<script\s+id="__NEXT_DATA__"\s+type="application\/json"[^>]*>([\s\S]*?)<\/script>/);
-        if (!nextDataMatch) {
-            throw new Error('Could not find __NEXT_DATA__ in embed page');
-        }
-
-        const nextData = JSON.parse(nextDataMatch[1]);
         const tracks: Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }> = [];
 
-        // Navigate the __NEXT_DATA__ structure to find track list
-        // Structure: props.pageProps.state.data.entity.trackList[]
-        const entity = nextData?.props?.pageProps?.state?.data?.entity;
-        const trackList = entity?.trackList || entity?.tracks?.items || [];
+        // Try extracting from __NEXT_DATA__ script tag
+        const nextDataMatch = html.match(/<script\s+id="__NEXT_DATA__"\s+type="application\/json"[^>]*>([\s\S]*?)<\/script>/);
+        if (nextDataMatch) {
+            try {
+                const nextData = JSON.parse(nextDataMatch[1]);
+                const entity = nextData?.props?.pageProps?.state?.data?.entity;
+                const trackList = entity?.trackList || entity?.tracks?.items || [];
 
-        for (const item of trackList) {
-            if (tracks.length >= limit) break;
+                for (const item of trackList) {
+                    if (tracks.length >= limit) break;
+                    const track = item.track || item;
+                    const title = track?.name || track?.title;
+                    if (!title) continue;
 
-            // Handle different embed data structures
-            const track = item.track || item;
-            const title = track?.name || track?.title;
-            const artists = track?.artists?.map((a: { name: string }) => a.name).join(', ') 
-                         || track?.subtitle 
-                         || '';
-            const duration = track?.duration_ms || track?.duration || 0;
-            const artwork = track?.album?.images?.[0]?.url 
-                         || track?.coverArt?.sources?.[0]?.url
-                         || entity?.images?.[0]?.url
-                         || undefined;
-
-            if (title) {
-                tracks.push({
-                    title,
-                    artist: artists,
-                    duration_ms: duration,
-                    artworkUrl: artwork,
-                });
+                    tracks.push({
+                        title,
+                        artist: track?.artists?.map((a: { name: string }) => a.name).join(', ') || track?.subtitle || '',
+                        duration_ms: track?.duration_ms || track?.duration || 0,
+                        artworkUrl: track?.album?.images?.[0]?.url || track?.coverArt?.sources?.[0]?.url || entity?.images?.[0]?.url || entity?.coverArt?.sources?.[0]?.url,
+                    });
+                }
+            } catch {
+                // __NEXT_DATA__ parse failed, continue to other methods
             }
         }
 
-        // If __NEXT_DATA__ didn't have tracks, try extracting from resource script
+        // Fallback: try window.__RESOURCE__ or similar embedded JSON
         if (tracks.length === 0) {
             const resourceMatch = html.match(/<script[^>]*>\s*window\.__RESOURCE__\s*=\s*(\{[\s\S]*?\});\s*<\/script>/);
             if (resourceMatch) {
@@ -878,94 +810,75 @@ class SpotifyService {
                         }
                     }
                 } catch {
-                    // Ignore parse errors for resource fallback
+                    // Ignore parse errors
+                }
+            }
+        }
+
+        // Fallback: extract from Spotify's internal API data embedded in script tags
+        if (tracks.length === 0) {
+            // Some embed pages inline the data differently — look for any large JSON with track data
+            const jsonBlocks = html.matchAll(/<script[^>]*>(\{"props"[\s\S]*?\})<\/script>/g);
+            for (const match of jsonBlocks) {
+                try {
+                    const data = JSON.parse(match[1]);
+                    const items = this._findTrackList(data);
+                    for (const track of items) {
+                        if (tracks.length >= limit) break;
+                        if (track?.name || track?.title) {
+                            tracks.push({
+                                title: track.name || track.title,
+                                artist: track.artists?.map((a: { name: string }) => a.name).join(', ') || track.subtitle || '',
+                                duration_ms: track.duration_ms || track.duration || 0,
+                                artworkUrl: track.album?.images?.[0]?.url || track.coverArt?.sources?.[0]?.url,
+                            });
+                        }
+                    }
+                } catch {
+                    continue;
                 }
             }
         }
 
         if (tracks.length === 0) {
-            throw new Error('No tracks found in embed page data');
+            throw new Error('No tracks found in embed page — Spotify may have changed their embed format');
         }
 
         return tracks;
     }
 
     /**
-     * Get tracks from a Spotify album via the Web API
+     * Recursively search an object for an array that looks like a track list
+     */
+    private _findTrackList(obj: any, depth = 0): any[] {
+        if (depth > 8 || !obj || typeof obj !== 'object') return [];
+
+        // Check if this object has a trackList or items with track-like objects
+        if (Array.isArray(obj.trackList) && obj.trackList.length > 0) return obj.trackList;
+        if (Array.isArray(obj.items) && obj.items.length > 0) {
+            const first = obj.items[0]?.track || obj.items[0];
+            if (first?.name && first?.artists) return obj.items;
+        }
+
+        // Recurse into child objects
+        for (const key of Object.keys(obj)) {
+            const result = this._findTrackList(obj[key], depth + 1);
+            if (result.length > 0) return result;
+        }
+        return [];
+    }
+
+    /**
+     * Get album tracks by scraping Spotify embed page (no auth required)
+     * Bypasses API 403 issues with Client Credentials flow
      */
     async getAlbumTracks(albumId: string, limit = 100): Promise<Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }>> {
         try {
-            type SpotifyAlbumResponse = {
-                images: Array<{ url: string }>;
-                tracks: {
-                    items: Array<{
-                        name: string;
-                        artists: Array<{ name: string }>;
-                        duration_ms: number;
-                        external_ids?: { isrc?: string };
-                    }>;
-                    next: string | null;
-                    total: number;
-                };
-            }
-
-            // Fetch album (includes first page of tracks + album images)
-            const albumData = await this.apiRequest<SpotifyAlbumResponse>(
-                `/albums/${albumId}`,
-                { market: 'US' }
-            );
-
-            const albumArtwork = albumData.images?.[0]?.url;
-            const tracks: Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }> = [];
-
-            for (const item of albumData.tracks.items) {
-                tracks.push({
-                    title: item.name,
-                    artist: item.artists.map(a => a.name).join(', '),
-                    duration_ms: item.duration_ms,
-                    artworkUrl: albumArtwork,
-                    isrc: item.external_ids?.isrc,
-                });
-                if (tracks.length >= limit) break;
-            }
-
-            // Paginate if album has more tracks
-            let nextUrl = albumData.tracks.next;
-            while (nextUrl && tracks.length < limit) {
-                type SpotifyAlbumTracksPage = {
-                    items: Array<{
-                        name: string;
-                        artists: Array<{ name: string }>;
-                        duration_ms: number;
-                        external_ids?: { isrc?: string };
-                    }>;
-                    next: string | null;
-                }
-
-                const offset = tracks.length;
-                const pageData = await this.apiRequest<SpotifyAlbumTracksPage>(
-                    `/albums/${albumId}/tracks`,
-                    { offset: String(offset), limit: String(Math.min(50, limit - tracks.length)), market: 'US' }
-                );
-
-                for (const item of pageData.items) {
-                    tracks.push({
-                        title: item.name,
-                        artist: item.artists.map(a => a.name).join(', '),
-                        duration_ms: item.duration_ms,
-                        artworkUrl: albumArtwork,
-                        isrc: item.external_ids?.isrc,
-                    });
-                    if (tracks.length >= limit) break;
-                }
-
-                nextUrl = pageData.next;
-            }
-
-            logger.info('Spotify', `Fetched ${tracks.length} tracks from album ${albumId}`);
+            const tracks = await this._scrapeEmbed('album', albumId, limit);
+            logger.info('Spotify', `Scraped ${tracks.length} tracks from album ${albumId}`);
             return tracks;
         } catch (error) {
-            logger.error('Spotify', `getAlbumTracks error: ${(error as Error).message}`);
+            logger.error('Spotify', `getAlbumTracks scrape failed: ${(error as Error).message}`);
             return [];
         }
     }
