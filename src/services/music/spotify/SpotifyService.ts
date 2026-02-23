@@ -731,6 +731,7 @@ class SpotifyService {
     /**
      * Get playlist tracks from Spotify Web API
      * Returns basic track info (title, artist, artwork) for YouTube fallback search
+     * Falls back to scraping embed page if API returns 403
      */
     async getPlaylistTracks(playlistId: string, limit: number = 100): Promise<Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }>> {
         try {
@@ -777,9 +778,116 @@ class SpotifyService {
             logger.info('Spotify', `Fetched ${tracks.length} tracks from playlist ${playlistId}`);
             return tracks;
         } catch (error) {
-            logger.error('Spotify', `getPlaylistTracks error: ${(error as Error).message}`);
+            const errorMsg = (error as Error).message;
+            logger.error('Spotify', `getPlaylistTracks error: ${errorMsg}`);
+
+            // If 403 Forbidden, try scraping the embed page as fallback
+            if (errorMsg.includes('403')) {
+                logger.info('Spotify', `Trying embed page fallback for playlist ${playlistId}...`);
+                try {
+                    const embedTracks = await this._scrapePlaylistEmbed(playlistId, limit);
+                    if (embedTracks.length > 0) {
+                        logger.info('Spotify', `Embed fallback fetched ${embedTracks.length} tracks from playlist ${playlistId}`);
+                        return embedTracks;
+                    }
+                } catch (embedError) {
+                    logger.error('Spotify', `Embed fallback also failed: ${(embedError as Error).message}`);
+                }
+            }
+
             return [];
         }
+    }
+
+    /**
+     * Scrape Spotify embed page to get playlist tracks (no auth required)
+     * Used as fallback when API returns 403 on public playlists
+     */
+    private async _scrapePlaylistEmbed(playlistId: string, limit: number = 100): Promise<Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }>> {
+        const embedUrl = `https://open.spotify.com/embed/playlist/${playlistId}`;
+        
+        const response = await fetch(embedUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Embed page returned ${response.status}`);
+        }
+
+        const html = await response.text();
+        
+        // Extract __NEXT_DATA__ JSON from the embed page
+        const nextDataMatch = html.match(/<script\s+id="__NEXT_DATA__"\s+type="application\/json"[^>]*>([\s\S]*?)<\/script>/);
+        if (!nextDataMatch) {
+            throw new Error('Could not find __NEXT_DATA__ in embed page');
+        }
+
+        const nextData = JSON.parse(nextDataMatch[1]);
+        const tracks: Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }> = [];
+
+        // Navigate the __NEXT_DATA__ structure to find track list
+        // Structure: props.pageProps.state.data.entity.trackList[]
+        const entity = nextData?.props?.pageProps?.state?.data?.entity;
+        const trackList = entity?.trackList || entity?.tracks?.items || [];
+
+        for (const item of trackList) {
+            if (tracks.length >= limit) break;
+
+            // Handle different embed data structures
+            const track = item.track || item;
+            const title = track?.name || track?.title;
+            const artists = track?.artists?.map((a: { name: string }) => a.name).join(', ') 
+                         || track?.subtitle 
+                         || '';
+            const duration = track?.duration_ms || track?.duration || 0;
+            const artwork = track?.album?.images?.[0]?.url 
+                         || track?.coverArt?.sources?.[0]?.url
+                         || entity?.images?.[0]?.url
+                         || undefined;
+
+            if (title) {
+                tracks.push({
+                    title,
+                    artist: artists,
+                    duration_ms: duration,
+                    artworkUrl: artwork,
+                });
+            }
+        }
+
+        // If __NEXT_DATA__ didn't have tracks, try extracting from resource script
+        if (tracks.length === 0) {
+            const resourceMatch = html.match(/<script[^>]*>\s*window\.__RESOURCE__\s*=\s*(\{[\s\S]*?\});\s*<\/script>/);
+            if (resourceMatch) {
+                try {
+                    const resource = JSON.parse(resourceMatch[1]);
+                    const items = resource?.tracks?.items || resource?.trackList || [];
+                    for (const item of items) {
+                        if (tracks.length >= limit) break;
+                        const track = item.track || item;
+                        if (track?.name || track?.title) {
+                            tracks.push({
+                                title: track.name || track.title,
+                                artist: track.artists?.map((a: { name: string }) => a.name).join(', ') || '',
+                                duration_ms: track.duration_ms || 0,
+                                artworkUrl: track.album?.images?.[0]?.url,
+                            });
+                        }
+                    }
+                } catch {
+                    // Ignore parse errors for resource fallback
+                }
+            }
+        }
+
+        if (tracks.length === 0) {
+            throw new Error('No tracks found in embed page data');
+        }
+
+        return tracks;
     }
 
     /**

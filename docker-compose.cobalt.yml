@@ -32,13 +32,13 @@ services:
     ports:
       - "9001:9000"
     tmpfs:
-      - /tmp:size=128M
+      - /tmp:size=512M
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 512M
         reservations:
-          memory: 128M
+          memory: 192M
     logging:
       driver: "json-file"
       options:
@@ -73,13 +73,13 @@ services:
     ports:
       - "9002:9000"
     tmpfs:
-      - /tmp:size=128M
+      - /tmp:size=512M
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 512M
         reservations:
-          memory: 128M
+          memory: 192M
     logging:
       driver: "json-file"
       options:
@@ -114,13 +114,13 @@ services:
     ports:
       - "9003:9000"
     tmpfs:
-      - /tmp:size=128M
+      - /tmp:size=512M
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 512M
         reservations:
-          memory: 128M
+          memory: 192M
     logging:
       driver: "json-file"
       options:
