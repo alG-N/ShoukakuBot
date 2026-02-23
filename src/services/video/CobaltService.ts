@@ -111,32 +111,7 @@ class CobaltService extends EventEmitter {
         const extension = downloadInfo.filename?.split('.').pop() || 'mp4';
         const outputPath = path.join(tempDir, `video_${timestamp}.${extension}`);
 
-        // Retry tunnel/stream downloads up to 2 times (transient 5xx from source proxying)
-        const maxTunnelRetries = 2;
-        let lastTunnelError: Error | null = null;
-        for (let retry = 0; retry <= maxTunnelRetries; retry++) {
-            try {
-                if (retry > 0) {
-                    logger.info('CobaltService', `Retrying tunnel download (attempt ${retry + 1}/${maxTunnelRetries + 1})...`);
-                    // Brief delay before retry
-                    await new Promise(r => setTimeout(r, 1000 * retry));
-                }
-                await this._downloadFile(downloadInfo.url, outputPath);
-                lastTunnelError = null;
-                break;
-            } catch (err) {
-                lastTunnelError = err as Error;
-                const msg = lastTunnelError.message;
-                // Only retry on server errors (5xx) — don't retry size/content errors
-                if (msg.startsWith('FILE_TOO_LARGE') || msg.startsWith('CONTENT_IS_IMAGES') || !msg.includes('HTTP 5')) {
-                    throw lastTunnelError;
-                }
-                logger.info('CobaltService', `Tunnel download failed (attempt ${retry + 1}): ${msg}`);
-            }
-        }
-        if (lastTunnelError) {
-            throw lastTunnelError;
-        }
+        await this._downloadFile(downloadInfo.url, outputPath);
 
         if (!fs.existsSync(outputPath)) {
             throw new Error('Video file not found after download');
