@@ -6,7 +6,7 @@
 param([switch]$RemoveNetwork)
 
 $ErrorActionPreference = "Stop"
-Set-Location $PSScriptRoot
+Set-Location "$PSScriptRoot\.."
 
 Write-Host ============================== -ForegroundColor Red
 Write-Host "  shoukaku - Stopping All Services" -ForegroundColor Red

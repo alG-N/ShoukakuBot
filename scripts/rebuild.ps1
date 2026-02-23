@@ -3,7 +3,7 @@
 # ==========================================
 
 $ErrorActionPreference = "Stop"
-Set-Location $PSScriptRoot
+Set-Location "$PSScriptRoot\.."
 
 Write-Host ============================== -ForegroundColor Cyan
 Write-Host "  shoukaku - Rebuild Bot" -ForegroundColor Cyan

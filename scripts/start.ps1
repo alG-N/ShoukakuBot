@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-Set-Location $PSScriptRoot
+Set-Location "$PSScriptRoot\.."
 
 Write-Host "==========================================="
 Write-Host "  Shoukaku - Starting All Services"

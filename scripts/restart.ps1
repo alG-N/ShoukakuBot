@@ -10,7 +10,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-Set-Location $PSScriptRoot
+Set-Location "$PSScriptRoot\.."
 
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host "  shoukaku - Restart & Apply Changes" -ForegroundColor Cyan
