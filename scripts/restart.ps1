@@ -91,7 +91,7 @@ if ($ServicesOnly) {
     Write-Host "  Bot restarted" -ForegroundColor Green
 }
 
-# Wait for services to start
+# Wait for services to start before showing status/logs
 Write-Host "`nWaiting for services to initialize..." -ForegroundColor Gray
 Start-Sleep 10
 
