@@ -1,14 +1,14 @@
 /**
- * Spotify Web API Service
- * Handles OAuth client credentials flow + recommendations + genre data.
- * Used by AutoPlayService for genre-aware autoplay recommendations.
+ * Spotify Service (Simplified — Embed Scraping + Client Credentials)
+ * Uses Client Credentials for API access (recommendations, search, audio features).
+ * Uses embed scraping for playlist/album track extraction (no auth needed).
  * 
  * Features:
- * - Client Credentials OAuth (auto-refresh)
  * - Track search & metadata
  * - Recommendations API (genre/artist/track seeds)
  * - Artist genre fetching
- * - Available genre seeds listing
+ * - Audio features & mood profiling
+ * - Playlist/album embed scraping
  * 
  * @module services/music/spotify/SpotifyService
  */
@@ -92,6 +92,15 @@ export interface MoodProfile {
     acousticness: number;
 }
 
+/** Track info extracted from embed scraping */
+export interface EmbedTrack {
+    title: string;
+    artist: string;
+    duration_ms: number;
+    artworkUrl?: string;
+    isrc?: string;
+}
+
 // ── SPOTIFY SERVICE ──────────────────────────────────────────────────
 
 class SpotifyService {
@@ -101,10 +110,6 @@ class SpotifyService {
     private clientId: string;
     private clientSecret: string;
     private token: SpotifyToken | null = null;
-    
-    /** OAuth user token (from Authorization Code flow with refresh token) */
-    private refreshToken: string | null = null;
-    private userToken: SpotifyToken | null = null;
     
     /** Cache for genre seeds — refreshed every 24h */
     private genreSeedsCache: string[] = [];
@@ -123,11 +128,9 @@ class SpotifyService {
     constructor() {
         this.clientId = process.env.SPOTIFY_CLIENT_ID || '';
         this.clientSecret = process.env.SPOTIFY_CLIENT_SECRET || '';
-        this.refreshToken = process.env.SPOTIFY_REFRESH_TOKEN || null;
         
         if (this.clientId && this.clientSecret) {
-            const authMode = this.refreshToken ? 'OAuth (refresh token)' : 'Client Credentials';
-            logger.info('Spotify', `Service initialized with ${authMode}`);
+            logger.info('Spotify', 'Service initialized (Client Credentials)');
         } else {
             logger.warn('Spotify', 'Missing SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET — Spotify features disabled');
         }
@@ -138,11 +141,6 @@ class SpotifyService {
     /** Check if Spotify credentials are configured */
     isConfigured(): boolean {
         return !!(this.clientId && this.clientSecret);
-    }
-
-    /** Check if OAuth (Authorization Code flow) is configured */
-    hasOAuth(): boolean {
-        return !!(this.clientId && this.clientSecret && this.refreshToken);
     }
 
     /** Get a valid access token (auto-refresh if expired) */
@@ -174,69 +172,12 @@ class SpotifyService {
                 expiresAt: Date.now() + (data.expires_in * 1000),
             };
 
-            logger.info('Spotify', `Client Credentials token obtained, expires in ${data.expires_in}s`);
+            logger.info('Spotify', `Token obtained, expires in ${data.expires_in}s`);
             return this.token.accessToken;
         } catch (error) {
             const err = error as Error;
             logger.error('Spotify', `Auth error: ${err.message}`);
             throw err;
-        }
-    }
-
-    /**
-     * Get a user-scoped access token via OAuth Authorization Code flow (refresh token).
-     * This allows accessing private playlists and user-specific data.
-     * Falls back to Client Credentials if no refresh token is configured.
-     */
-    private async getUserAccessToken(): Promise<string> {
-        if (!this.refreshToken) {
-            // No refresh token — fall back to Client Credentials
-            return this.getAccessToken();
-        }
-
-        if (this.userToken && Date.now() < this.userToken.expiresAt - 60_000) {
-            return this.userToken.accessToken;
-        }
-
-        const credentials = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64');
-
-        try {
-            const response = await fetch(this.AUTH_URL, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Basic ${credentials}`,
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(this.refreshToken)}`,
-            });
-
-            if (!response.ok) {
-                const errorBody = await response.text().catch(() => '');
-                logger.warn('Spotify', `OAuth refresh failed (${response.status}): ${errorBody}`);
-                // Fall back to Client Credentials
-                logger.info('Spotify', 'Falling back to Client Credentials token');
-                return this.getAccessToken();
-            }
-
-            const data = await response.json() as { access_token: string; expires_in: number; token_type: string; refresh_token?: string };
-
-            this.userToken = {
-                accessToken: data.access_token,
-                expiresAt: Date.now() + (data.expires_in * 1000),
-            };
-
-            // Spotify may rotate the refresh token
-            if (data.refresh_token) {
-                this.refreshToken = data.refresh_token;
-                logger.info('Spotify', 'Refresh token rotated by Spotify');
-            }
-
-            logger.info('Spotify', `OAuth user token obtained, expires in ${data.expires_in}s`);
-            return this.userToken.accessToken;
-        } catch (error) {
-            const err = error as Error;
-            logger.warn('Spotify', `OAuth refresh error: ${err.message}, falling back to Client Credentials`);
-            return this.getAccessToken();
         }
     }
 
@@ -271,23 +212,11 @@ class SpotifyService {
             return this.apiRequest<T>(endpoint, params);
         }
 
-        // Invalidate token on auth errors and retry once
-        if ((response.status === 401 || response.status === 403) && this.token) {
-            const errorBody = await response.text().catch(() => '');
-            
-            // Check if this is a token issue (not a resource access issue like private playlist)
-            if (response.status === 401) {
-                logger.warn('Spotify', `Token rejected (${response.status}), refreshing and retrying...`);
-                this.token = null;
-                return this.apiRequest<T>(endpoint, params);
-            }
-            
-            // 403 on playlist/album endpoints likely means private content
-            if (endpoint.includes('/playlists/') || endpoint.includes('/albums/')) {
-                throw new Error(`Spotify API error: ${response.status} ${response.statusText} — The content may be private or unavailable. Client Credentials flow can only access public content. ${errorBody}`);
-            }
-            
-            throw new Error(`Spotify API error: ${response.status} ${response.statusText} — ${errorBody}`);
+        // Invalidate token on 401 and retry once
+        if (response.status === 401 && this.token) {
+            logger.warn('Spotify', 'Token rejected (401), refreshing and retrying...');
+            this.token = null;
+            return this.apiRequest<T>(endpoint, params);
         }
 
         if (!response.ok) {
@@ -300,9 +229,7 @@ class SpotifyService {
 
     // ── SEARCH ───────────────────────────────────────────────────────
 
-    /**
-     * Search for tracks on Spotify
-     */
+    /** Search for tracks on Spotify */
     async searchTrack(query: string, limit: number = 5): Promise<SpotifyTrack[]> {
         try {
             const result = await this.apiRequest<SpotifySearchResult>('/search', {
@@ -318,9 +245,7 @@ class SpotifyService {
         }
     }
 
-    /**
-     * Get a track by Spotify ID
-     */
+    /** Get a track by Spotify ID */
     async getTrack(trackId: string): Promise<SpotifyTrack | null> {
         try {
             return await this.apiRequest<SpotifyTrack>(`/tracks/${trackId}`);
@@ -329,9 +254,7 @@ class SpotifyService {
         }
     }
 
-    /**
-     * Search Spotify for a track by title + artist, return the best match
-     */
+    /** Search Spotify for a track by title + artist, return the best match */
     async findTrack(title: string, artist?: string): Promise<SpotifyTrack | null> {
         const query = artist ? `track:${title} artist:${artist}` : title;
         const results = await this.searchTrack(query, 1);
@@ -340,11 +263,8 @@ class SpotifyService {
 
     // ── ARTIST GENRES ────────────────────────────────────────────────
 
-    /**
-     * Get genres for an artist by ID (cached)
-     */
+    /** Get genres for an artist by ID (cached 1h) */
     async getArtistGenres(artistId: string): Promise<string[]> {
-        // Check cache
         const cached = this.artistGenreCache.get(artistId);
         if (cached && Date.now() < cached.expiresAt) {
             return cached.genres;
@@ -354,7 +274,6 @@ class SpotifyService {
             const artist = await this.apiRequest<SpotifyArtist>(`/artists/${artistId}`);
             const genres = artist.genres || [];
             
-            // Cache for 1 hour
             this.artistGenreCache.set(artistId, {
                 genres,
                 expiresAt: Date.now() + 3600_000,
@@ -366,14 +285,11 @@ class SpotifyService {
         }
     }
 
-    /**
-     * Get genres for multiple artists at once (batch)
-     */
+    /** Get genres for multiple artists at once (batch, max 50 per request) */
     async getMultipleArtistGenres(artistIds: string[]): Promise<Map<string, string[]>> {
         const result = new Map<string, string[]>();
         const uncachedIds: string[] = [];
 
-        // Check cache first
         for (const id of artistIds) {
             const cached = this.artistGenreCache.get(id);
             if (cached && Date.now() < cached.expiresAt) {
@@ -383,7 +299,6 @@ class SpotifyService {
             }
         }
 
-        // Batch fetch uncached (max 50 per request)
         if (uncachedIds.length > 0) {
             const batches = [];
             for (let i = 0; i < uncachedIds.length; i += 50) {
@@ -417,11 +332,8 @@ class SpotifyService {
 
     // ── AUDIO FEATURES ───────────────────────────────────────────────
 
-    /**
-     * Get audio features for a track (energy, valence, danceability, tempo, etc.)
-     */
+    /** Get audio features for a track (energy, valence, danceability, tempo, etc.) */
     async getAudioFeatures(trackId: string): Promise<SpotifyAudioFeatures | null> {
-        // Check cache
         const cached = this.audioFeaturesCache.get(trackId);
         if (cached && Date.now() < cached.expiresAt) {
             return cached.features;
@@ -430,7 +342,6 @@ class SpotifyService {
         try {
             const features = await this.apiRequest<SpotifyAudioFeatures>(`/audio-features/${trackId}`);
             
-            // Cache for 1 hour
             this.audioFeaturesCache.set(trackId, {
                 features,
                 expiresAt: Date.now() + 3600_000,
@@ -442,9 +353,7 @@ class SpotifyService {
         }
     }
 
-    /**
-     * Get audio features for multiple tracks (batch, max 100)
-     */
+    /** Get audio features for multiple tracks (batch, max 100 per request) */
     async getMultipleAudioFeatures(trackIds: string[]): Promise<Map<string, SpotifyAudioFeatures>> {
         const result = new Map<string, SpotifyAudioFeatures>();
         const uncachedIds: string[] = [];
@@ -488,9 +397,7 @@ class SpotifyService {
         return result;
     }
 
-    /**
-     * Derive a mood profile from audio features
-     */
+    /** Derive a mood profile from audio features */
     deriveMoodProfile(features: SpotifyAudioFeatures): MoodProfile {
         const { energy, valence, danceability, tempo, acousticness } = features;
 
@@ -521,27 +428,18 @@ class SpotifyService {
 
     /**
      * Get recommendations from Spotify based on seed tracks/artists/genres.
-     * This is the core of genre-aware autoplay.
-     * 
-     * @param options Seed data + tuning parameters
-     * @returns Recommended tracks
+     * Core of genre-aware autoplay.
      */
     async getRecommendations(options: {
         seedTracks?: string[];
         seedArtists?: string[];
         seedGenres?: string[];
-        /** Target energy level 0.0-1.0 */
         targetEnergy?: number;
-        /** Target valence (happiness) 0.0-1.0 */
         targetValence?: number;
-        /** Target danceability 0.0-1.0 */
         targetDanceability?: number;
-        /** Target tempo (BPM) */
         targetTempo?: number;
-        /** Min/max energy */
         minEnergy?: number;
         maxEnergy?: number;
-        /** Min/max valence */
         minValence?: number;
         maxValence?: number;
         limit?: number;
@@ -571,13 +469,12 @@ class SpotifyService {
             }
         }
 
-        // At least one seed is required
         if (!params.seed_tracks && !params.seed_artists && !params.seed_genres) {
             logger.warn('Spotify', 'No seeds provided for recommendations');
             return [];
         }
 
-        // Tuning parameters — maintain genre/mood consistency
+        // Tuning parameters
         if (options.targetEnergy !== undefined) params.target_energy = String(options.targetEnergy);
         if (options.targetValence !== undefined) params.target_valence = String(options.targetValence);
         if (options.targetDanceability !== undefined) params.target_danceability = String(options.targetDanceability);
@@ -599,11 +496,8 @@ class SpotifyService {
 
     // ── GENRE SEEDS ──────────────────────────────────────────────────
 
-    /**
-     * Get available genre seeds for the recommendations API (cached daily)
-     */
+    /** Get available genre seeds for the recommendations API (cached daily) */
     async getAvailableGenreSeeds(): Promise<string[]> {
-        // Cache for 24 hours
         if (this.genreSeedsCache.length > 0 && Date.now() - this.genreSeedsCacheTime < 86400_000) {
             return this.genreSeedsCache;
         }
@@ -628,7 +522,6 @@ class SpotifyService {
         const availableSeeds = await this.getAvailableGenreSeeds();
         if (availableSeeds.length === 0) return [];
 
-        // Direct mapping from our genre names to Spotify genre seeds
         const genreMapping: Record<string, string[]> = {
             'lofi': ['chill'],
             'edm': ['edm', 'electronic'],
@@ -680,7 +573,6 @@ class SpotifyService {
                     }
                 }
             } else {
-                // Try direct match
                 const normalized = genre.toLowerCase().replace(/\s+/g, '-');
                 if (availableSeeds.includes(normalized)) {
                     mappedGenres.add(normalized);
@@ -695,19 +587,14 @@ class SpotifyService {
 
     /**
      * Get genre-aware recommendations for autoplay.
-     * This is the main entry point for the AutoPlayService.
+     * Main entry point for AutoPlayService.
      * 
      * Strategy:
      * 1. Find the current track on Spotify (by title + artist)
      * 2. Get its audio features (energy, valence, mood)
      * 3. Get artist genres
-     * 4. Use all of this as seeds + tuning for Spotify.getRecommendations()
-     * 5. The result maintains genre/mood consistency (chill → chill, energetic → energetic)
-     * 
-     * @param trackTitle Current track title
-     * @param trackArtist Current track artist
-     * @param recentGenres Genres detected from play history
-     * @param limit Number of recommendations
+     * 4. Use all of this as seeds + tuning for recommendations
+     * 5. Maintains genre/mood consistency (chill → chill, energetic → energetic)
      */
     async getSmartRecommendations(
         trackTitle: string,
@@ -718,7 +605,6 @@ class SpotifyService {
         if (!this.isConfigured()) return [];
 
         try {
-            // Step 1: Find track on Spotify
             const spotifyTrack = await this.findTrack(trackTitle, trackArtist);
             
             const seedTracks: string[] = [];
@@ -733,18 +619,15 @@ class SpotifyService {
             if (spotifyTrack) {
                 seedTracks.push(spotifyTrack.id);
 
-                // Add primary artist as seed
                 if (spotifyTrack.artists[0]) {
                     seedArtists.push(spotifyTrack.artists[0].id);
                 }
 
-                // Step 2: Get audio features for mood matching
+                // Get audio features for mood matching
                 const features = await this.getAudioFeatures(spotifyTrack.id);
                 if (features) {
                     const moodProfile = this.deriveMoodProfile(features);
                     
-                    // Set target to match current mood — the key to genre consistency!
-                    // Use a ±0.15 window to allow some variety while staying in the same vibe
                     targetEnergy = features.energy;
                     targetValence = features.valence;
                     targetDanceability = features.danceability;
@@ -757,7 +640,7 @@ class SpotifyService {
                     logger.info('Spotify', `Mood: ${moodProfile.mood} (energy=${features.energy.toFixed(2)}, valence=${features.valence.toFixed(2)}, tempo=${features.tempo.toFixed(0)}bpm)`);
                 }
 
-                // Step 3: Get artist genres for genre seeding
+                // Get artist genres for genre seeding
                 if (spotifyTrack.artists[0]) {
                     const genres = await this.getArtistGenres(spotifyTrack.artists[0].id);
                     if (genres.length > 0) {
@@ -766,10 +649,9 @@ class SpotifyService {
                 }
             }
 
-            // Step 4: Map detected genres to Spotify seed genres
+            // Map detected genres to Spotify seed genres
             const spotifyGenres = await this.mapToSpotifyGenres(recentGenres);
 
-            // Step 5: Build recommendations
             const recommendations = await this.getRecommendations({
                 seedTracks: seedTracks.length > 0 ? seedTracks : undefined,
                 seedArtists: seedArtists.length > 0 ? seedArtists : undefined,
@@ -794,107 +676,37 @@ class SpotifyService {
         }
     }
 
-    // ── EXTRACT SPOTIFY ID ───────────────────────────────────────────
+    // ── PLAYLIST / ALBUM (EMBED SCRAPING) ────────────────────────────
 
-    /**
-     * Get playlist tracks — tries Spotify Web API first (fast, has ISRC), falls back to embed scraping
-     * With OAuth refresh token: can access private playlists too
-     * Without OAuth: Client Credentials for public playlists, embed scraping as fallback
-     */
-    async getPlaylistTracks(playlistId: string, limit: number = 100): Promise<Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }>> {
-        // Use embed scraping directly (no auth required, works for all playlists)
+    /** Get playlist tracks via embed scraping (no auth required) */
+    async getPlaylistTracks(playlistId: string, limit: number = 100): Promise<EmbedTrack[]> {
         try {
             const tracks = await this._scrapeEmbed('playlist', playlistId, limit);
             logger.info('Spotify', `Scraped ${tracks.length} tracks from playlist ${playlistId}`);
             return tracks;
         } catch (error) {
-            logger.error('Spotify', `getPlaylistTracks scraping failed: ${(error as Error).message}`);
+            logger.error('Spotify', `getPlaylistTracks failed: ${(error as Error).message}`);
+            return [];
+        }
+    }
+
+    /** Get album tracks via embed scraping (no auth required) */
+    async getAlbumTracks(albumId: string, limit = 100): Promise<EmbedTrack[]> {
+        try {
+            const tracks = await this._scrapeEmbed('album', albumId, limit);
+            logger.info('Spotify', `Scraped ${tracks.length} tracks from album ${albumId}`);
+            return tracks;
+        } catch (error) {
+            logger.error('Spotify', `getAlbumTracks failed: ${(error as Error).message}`);
             return [];
         }
     }
 
     /**
-     * Fetch playlist tracks via Spotify Web API (paginated, includes ISRC)
-     * Uses OAuth user token if available (private playlists), otherwise Client Credentials
+     * Scrape Spotify embed page to get tracks (no auth required).
+     * Works for both playlists and albums.
      */
-    private async _getPlaylistTracksViaApi(playlistId: string, limit: number = 100): Promise<Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }>> {
-        const tracks: Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }> = [];
-        const fields = 'items(track(name,artists(name),album(images),duration_ms,external_ids,is_local)),next,total';
-        let offset = 0;
-        const pageSize = Math.min(limit, 100);
-
-        // Use user token (OAuth) if available, otherwise Client Credentials
-        let token = await this.getUserAccessToken();
-        let retried = false;
-
-        while (tracks.length < limit) {
-            const url = `${this.BASE_URL}/playlists/${playlistId}/tracks?fields=${encodeURIComponent(fields)}&limit=${pageSize}&offset=${offset}`;
-
-            const response = await fetch(url, {
-                headers: { 'Authorization': `Bearer ${token}` },
-            });
-
-            if (response.status === 403) {
-                const errorBody = await response.text().catch(() => '');
-                logger.warn('Spotify', `Playlist 403 response: ${errorBody}`);
-
-                // Force-refresh the token and retry once
-                if (!retried && this.refreshToken) {
-                    retried = true;
-                    logger.info('Spotify', 'Force-refreshing OAuth token and retrying...');
-                    this.userToken = null;
-                    token = await this.getUserAccessToken();
-                    continue;
-                }
-
-                throw new Error(`Playlist is private or unavailable (403). ${this.refreshToken ? 'OAuth token may lack playlist-read-private scope. Try re-running spotify-oauth.ps1' : 'Set SPOTIFY_REFRESH_TOKEN for private playlist access.'}. Spotify response: ${errorBody}`);
-            }
-
-            if (!response.ok) {
-                throw new Error(`Spotify API ${response.status}: ${response.statusText}`);
-            }
-
-            const data = await response.json() as {
-                items: Array<{
-                    track: {
-                        name: string;
-                        artists: Array<{ name: string }>;
-                        album: { images: Array<{ url: string }> };
-                        duration_ms: number;
-                        external_ids?: { isrc?: string };
-                        is_local?: boolean;
-                    } | null;
-                }>;
-                next: string | null;
-                total: number;
-            };
-
-            for (const item of data.items) {
-                if (tracks.length >= limit) break;
-                const track = item.track;
-                if (!track || track.is_local) continue; // Skip local files
-
-                tracks.push({
-                    title: track.name,
-                    artist: track.artists.map(a => a.name).join(', '),
-                    duration_ms: track.duration_ms,
-                    artworkUrl: track.album?.images?.[0]?.url,
-                    isrc: track.external_ids?.isrc,
-                });
-            }
-
-            if (!data.next || tracks.length >= limit) break;
-            offset += pageSize;
-        }
-
-        return tracks;
-    }
-
-    /**
-     * Scrape Spotify embed page to get tracks (no auth required)
-     * Works for both playlists and albums
-     */
-    private async _scrapeEmbed(type: 'playlist' | 'album', id: string, limit: number = 100): Promise<Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }>> {
+    private async _scrapeEmbed(type: 'playlist' | 'album', id: string, limit: number = 100): Promise<EmbedTrack[]> {
         const embedUrl = `https://open.spotify.com/embed/${type}/${id}`;
         
         const response = await fetch(embedUrl, {
@@ -909,7 +721,7 @@ class SpotifyService {
         }
 
         const html = await response.text();
-        const tracks: Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }> = [];
+        const tracks: EmbedTrack[] = [];
 
         // Try extracting from __NEXT_DATA__ script tag
         const nextDataMatch = html.match(/<script\s+id="__NEXT_DATA__"\s+type="application\/json"[^>]*>([\s\S]*?)<\/script>/);
@@ -937,7 +749,7 @@ class SpotifyService {
             }
         }
 
-        // Fallback: try window.__RESOURCE__ or similar embedded JSON
+        // Fallback: try window.__RESOURCE__
         if (tracks.length === 0) {
             const resourceMatch = html.match(/<script[^>]*>\s*window\.__RESOURCE__\s*=\s*(\{[\s\S]*?\});\s*<\/script>/);
             if (resourceMatch) {
@@ -962,9 +774,8 @@ class SpotifyService {
             }
         }
 
-        // Fallback: extract from Spotify's internal API data embedded in script tags
+        // Fallback: extract from any large JSON with track data
         if (tracks.length === 0) {
-            // Some embed pages inline the data differently — look for any large JSON with track data
             const jsonBlocks = html.matchAll(/<script[^>]*>(\{"props"[\s\S]*?\})<\/script>/g);
             for (const match of jsonBlocks) {
                 try {
@@ -994,20 +805,16 @@ class SpotifyService {
         return tracks;
     }
 
-    /**
-     * Recursively search an object for an array that looks like a track list
-     */
+    /** Recursively search an object for an array that looks like a track list */
     private _findTrackList(obj: any, depth = 0): any[] {
         if (depth > 8 || !obj || typeof obj !== 'object') return [];
 
-        // Check if this object has a trackList or items with track-like objects
         if (Array.isArray(obj.trackList) && obj.trackList.length > 0) return obj.trackList;
         if (Array.isArray(obj.items) && obj.items.length > 0) {
             const first = obj.items[0]?.track || obj.items[0];
             if (first?.name && first?.artists) return obj.items;
         }
 
-        // Recurse into child objects
         for (const key of Object.keys(obj)) {
             const result = this._findTrackList(obj[key], depth + 1);
             if (result.length > 0) return result;
@@ -1015,108 +822,9 @@ class SpotifyService {
         return [];
     }
 
-    /**
-     * Get album tracks — tries Spotify Web API first, falls back to embed scraping
-     */
-    async getAlbumTracks(albumId: string, limit = 100): Promise<Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }>> {
-        // Use embed scraping directly (no auth required, works for all albums)
-        try {
-            const tracks = await this._scrapeEmbed('album', albumId, limit);
-            logger.info('Spotify', `Scraped ${tracks.length} tracks from album ${albumId}`);
-            return tracks;
-        } catch (error) {
-            logger.error('Spotify', `getAlbumTracks scraping failed: ${(error as Error).message}`);
-            return [];
-        }
-    }
+    // ── URL EXTRACTION ───────────────────────────────────────────────
 
-    /**
-     * Fetch album tracks via Spotify Web API (includes ISRC)
-     */
-    private async _getAlbumTracksViaApi(albumId: string, limit: number = 100): Promise<Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }>> {
-        const token = await this.getUserAccessToken();
-        const tracks: Array<{ title: string; artist: string; duration_ms: number; artworkUrl?: string; isrc?: string }> = [];
-
-        // First get album metadata (for artwork)
-        const albumResponse = await fetch(`${this.BASE_URL}/albums/${albumId}?market=US`, {
-            headers: { 'Authorization': `Bearer ${token}` },
-        });
-
-        if (!albumResponse.ok) {
-            throw new Error(`Spotify API ${albumResponse.status}: ${albumResponse.statusText}`);
-        }
-
-        const album = await albumResponse.json() as {
-            images: Array<{ url: string }>;
-            tracks: {
-                items: Array<{
-                    name: string;
-                    artists: Array<{ name: string }>;
-                    duration_ms: number;
-                    external_ids?: { isrc?: string };
-                    is_local?: boolean;
-                }>;
-                next: string | null;
-                total: number;
-            };
-        };
-
-        const artworkUrl = album.images?.[0]?.url;
-
-        for (const track of album.tracks.items) {
-            if (tracks.length >= limit) break;
-            if (track.is_local) continue;
-
-            tracks.push({
-                title: track.name,
-                artist: track.artists.map(a => a.name).join(', '),
-                duration_ms: track.duration_ms,
-                artworkUrl,
-                isrc: track.external_ids?.isrc,
-            });
-        }
-
-        // Paginate if needed
-        let nextUrl = album.tracks.next;
-        while (nextUrl && tracks.length < limit) {
-            const response = await fetch(nextUrl, {
-                headers: { 'Authorization': `Bearer ${token}` },
-            });
-            if (!response.ok) break;
-
-            const page = await response.json() as {
-                items: Array<{
-                    name: string;
-                    artists: Array<{ name: string }>;
-                    duration_ms: number;
-                    external_ids?: { isrc?: string };
-                    is_local?: boolean;
-                }>;
-                next: string | null;
-            };
-
-            for (const track of page.items) {
-                if (tracks.length >= limit) break;
-                if (track.is_local) continue;
-
-                tracks.push({
-                    title: track.name,
-                    artist: track.artists.map(a => a.name).join(', '),
-                    duration_ms: track.duration_ms,
-                    artworkUrl,
-                    isrc: track.external_ids?.isrc,
-                });
-            }
-
-            nextUrl = page.next;
-        }
-
-        return tracks;
-    }
-
-    /**
-     * Extract Spotify track/album/playlist/artist ID from URL
-     */
+    /** Extract Spotify track/album/playlist/artist ID from URL */
     extractSpotifyId(url: string): { type: 'track' | 'album' | 'playlist' | 'artist'; id: string } | null {
         // Handle /intl-XX/ locale prefix in newer Spotify URLs
         const match = url.match(/spotify\.com\/(?:intl-[a-z]{2}\/)?(?:intl\/[a-z]{2}\/)?(?:embed\/)?(track|album|playlist|artist)\/([a-zA-Z0-9]+)/);
@@ -1126,9 +834,7 @@ class SpotifyService {
 
     // ── CLEANUP ──────────────────────────────────────────────────────
 
-    /**
-     * Clear expired cache entries
-     */
+    /** Clear expired cache entries */
     cleanup(): void {
         const now = Date.now();
         
@@ -1141,12 +847,9 @@ class SpotifyService {
         }
     }
 
-    /**
-     * Shutdown — clear all caches
-     */
+    /** Shutdown — clear all caches */
     shutdown(): void {
         this.token = null;
-        this.userToken = null;
         this.artistGenreCache.clear();
         this.audioFeaturesCache.clear();
         this.genreSeedsCache = [];

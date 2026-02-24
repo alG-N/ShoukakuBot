@@ -125,6 +125,14 @@ class AutoPlayService {
     private lastMoodProfile: MoodProfile | null = null;
 
     /**
+     * Recently auto-played artists per guild.
+     * Used to enforce artist diversity — avoids playing the same artist back-to-back.
+     * Map<guildId, artistName[]> (most recent last)
+     */
+    private recentAutoplayArtists = new Map<string, string[]>();
+    private readonly MAX_RECENT_ARTISTS = 8; // Remember last N artists to avoid repeats
+
+    /**
      * Find a similar track based on play history analysis.
      * Strategy: Spotify recommendations (genre/mood-aware) → YouTube search fallback.
      * 
@@ -149,6 +157,9 @@ class AutoPlayService {
         }
         if (queue) queue.lastAutoplaySearch = now;
 
+        // Store guildId for use in sub-methods
+        this._currentGuildId = guildId;
+
         const trackInfo = lastTrack?.info || lastTrack;
         const title = trackInfo?.title;
         const author = trackInfo?.author;
@@ -162,6 +173,11 @@ class AutoPlayService {
         const recentTitles = queue?.lastPlayedTracks || [];
 
         logger.info('AutoPlay', `Finding similar to: "${title}" by "${author}"`);
+
+        // Track the current artist in recent artists list (for diversity)
+        if (author) {
+            this._trackRecentArtist(guildId, this._cleanAuthor(author));
+        }
 
         // Build a listening profile from history
         const profile = this._buildListeningProfile(recentTitles, title, author || '');
@@ -327,7 +343,7 @@ class AutoPlayService {
             return null;
         }
 
-        // Filter out recently played
+        // Filter out recently played tracks
         const validRecs = recommendations.filter(rec => {
             const recTitle = `${rec.name} ${rec.artists.map(a => a.name).join(' ')}`.toLowerCase();
             return !recentTitles.some(t => {
@@ -344,34 +360,65 @@ class AutoPlayService {
             return null;
         }
 
-        // Pick a track — weighted by popularity with randomness for variety
-        const selected = this._pickSpotifyTrack(validRecs);
+        // Pick a track — artist-diverse selection with popularity weighting
+        const guildId = this._currentGuildId;
+        const selected = this._pickSpotifyTrack(validRecs, guildId);
         
-        logger.info('AutoPlay', `Spotify picked: "${selected.name}" by ${selected.artists[0]?.name || 'Unknown'} (pop: ${selected.popularity})`);
+        const pickedArtist = selected.artists[0]?.name || 'Unknown';
+        logger.info('AutoPlay', `Spotify picked: "${selected.name}" by ${pickedArtist} (pop: ${selected.popularity})`);
+
+        // Track the picked artist for future diversity
+        if (guildId) {
+            this._trackRecentArtist(guildId, pickedArtist);
+        }
 
         // Now search this track on Lavalink so we can actually play it
         return this._resolveSpotifyTrackOnLavalink(selected, recentTitles, currentTitle);
     }
 
     /**
-     * Pick a Spotify track from recommendations.
-     * Uses weighted random selection favoring higher popularity
-     * but with enough variance to keep things fresh.
+     * Pick a Spotify track from recommendations with artist diversity.
+     * Strongly penalizes recently played artists, prefers switching to
+     * popular songs from different artists in the same genre/mood.
      */
-    private _pickSpotifyTrack(tracks: SpotifyTrack[]): SpotifyTrack {
+    private _pickSpotifyTrack(tracks: SpotifyTrack[], guildId?: string): SpotifyTrack {
         if (tracks.length === 1) return tracks[0]!;
 
-        // Score: popularity + random factor
-        const scored = tracks.map(track => ({
-            track,
-            score: track.popularity + Math.random() * 30, // 0-100 pop + 0-30 random
-        }));
+        const recentArtists = guildId ? (this.recentAutoplayArtists.get(guildId) || []) : [];
+        const recentArtistsLower = recentArtists.map(a => a.toLowerCase());
+
+        const scored = tracks.map(track => {
+            let score = track.popularity + Math.random() * 25; // 0-100 pop + 0-25 random
+
+            const artistName = (track.artists[0]?.name || '').toLowerCase();
+
+            // Heavy penalty for recently auto-played artists (most recent = harshest)
+            const recentIdx = recentArtistsLower.findIndex(a =>
+                a.includes(artistName.substring(0, 10)) || artistName.includes(a.substring(0, 10))
+            );
+            if (recentIdx !== -1) {
+                // More recent = bigger penalty (last artist gets -60, older ones less)
+                const recency = (recentArtistsLower.length - recentIdx) / recentArtistsLower.length;
+                score -= 30 + (recency * 30); // -30 to -60 penalty
+            } else {
+                // Bonus for fresh artist we haven't heard recently
+                score += 15;
+            }
+
+            return { track, score };
+        });
 
         scored.sort((a, b) => b.score - a.score);
 
-        // Pick from top 5
+        // Pick from top 5 with weighted probability
         const top = scored.slice(0, Math.min(5, scored.length));
-        return top[Math.floor(Math.random() * top.length)]!.track;
+        const totalScore = top.reduce((sum, t) => sum + Math.max(t.score, 1), 0);
+        let random = Math.random() * totalScore;
+        for (const entry of top) {
+            random -= Math.max(entry.score, 1);
+            if (random <= 0) return entry.track;
+        }
+        return top[0]!.track;
     }
 
     /**
@@ -452,24 +499,43 @@ class AutoPlayService {
     ): SearchStrategy[] {
         const strategies: SearchStrategy[] = [];
 
-        // ── ARTIST-BASED (highest priority) ──────────────────────────
+        // ── ARTIST-BASED (with diversity awareness) ──────────────────
         if (cleanAuthor && cleanAuthor.length > 2) {
-            // Direct artist search — most relevant
-            strategies.push(
-                { name: 'artist_similar_songs', query: `${cleanAuthor}`, weight: 100, category: 'artist' },
-                { name: 'artist_popular', query: `${cleanAuthor} popular`, weight: 90, category: 'artist' },
-            );
+            const guildId = this._currentGuildId;
+            const isRecentAuthor = guildId && this._isRecentArtist(guildId, cleanAuthor);
 
             // Check artist graph for known similar artists
             const authorKey = cleanAuthor.toLowerCase();
             const similarArtists = this._findSimilarArtists(authorKey);
-            if (similarArtists.length > 0) {
-                // Pick 1-2 random similar artists
-                const shuffled = similarArtists.sort(() => Math.random() - 0.5).slice(0, 2);
-                for (const artist of shuffled) {
+
+            if (isRecentAuthor && similarArtists.length > 0) {
+                // We've been playing this artist recently — prioritize switching!
+                // Related artists get TOP priority instead of current artist
+                const shuffled = similarArtists.sort(() => Math.random() - 0.5).slice(0, 3);
+                for (let i = 0; i < shuffled.length; i++) {
                     strategies.push(
-                        { name: `related_artist_${artist}`, query: `${artist}`, weight: 85, category: 'related' }
+                        { name: `switch_artist_${shuffled[i]}`, query: `${shuffled[i]} popular`, weight: 100 - i * 5, category: 'related' }
                     );
+                }
+                // Current artist gets lower priority
+                strategies.push(
+                    { name: 'artist_similar_songs', query: `${cleanAuthor}`, weight: 60, category: 'artist' },
+                );
+            } else {
+                // Fresh artist or no graph data — normal behavior
+                strategies.push(
+                    { name: 'artist_similar_songs', query: `${cleanAuthor}`, weight: 95, category: 'artist' },
+                    { name: 'artist_popular', query: `${cleanAuthor} popular`, weight: 85, category: 'artist' },
+                );
+
+                if (similarArtists.length > 0) {
+                    // Pick 2-3 random similar artists for diversity
+                    const shuffled = similarArtists.sort(() => Math.random() - 0.5).slice(0, 3);
+                    for (const artist of shuffled) {
+                        strategies.push(
+                            { name: `related_artist_${artist}`, query: `${artist} popular`, weight: 90, category: 'related' }
+                        );
+                    }
                 }
             }
 
@@ -477,7 +543,7 @@ class AutoPlayService {
             if (genres.length > 0) {
                 const primaryGenre = genres[0];
                 strategies.push(
-                    { name: 'artist_genre_cross', query: `${cleanAuthor} ${primaryGenre}`, weight: 80, category: 'artist' }
+                    { name: 'artist_genre_cross', query: `${cleanAuthor} ${primaryGenre}`, weight: 75, category: 'artist' }
                 );
             }
         }
@@ -622,11 +688,14 @@ class AutoPlayService {
     // ── SMART SELECTION ──────────────────────────────────────────────
 
     /**
-     * Score and select from results based on relevance signals
-     * Instead of pure random top-3, scores each track
+     * Score and select from results based on relevance signals.
+     * Prioritizes artist diversity: different artists get a big boost,
+     * same/recent artists get penalized.
      */
     private _scoredSelect(tracks: MusicTrack[], author: string, genres: string[], profile: ListeningProfile): MusicTrack {
         if (tracks.length === 1) return tracks[0]!;
+
+        const guildId = this._currentGuildId;
 
         const scored = tracks.map(track => {
             let score = 0;
@@ -634,16 +703,26 @@ class AutoPlayService {
             const trackAuthor = (track.info?.author || '').toLowerCase();
             const cleanTrackAuthor = this._cleanAuthor(trackAuthor);
 
-            // Same or similar artist bonus
-            if (author && cleanTrackAuthor.includes(author.toLowerCase().substring(0, 10))) {
-                score += 5; // Same artist — moderate bonus (not too high to avoid same-artist loop)
+            // ── ARTIST DIVERSITY (most important signal) ─────────
+            const isSameArtist = author && cleanTrackAuthor.includes(author.toLowerCase().substring(0, 10));
+            const isRecentArtist = guildId && this._isRecentArtist(guildId, cleanTrackAuthor);
+
+            if (isSameArtist) {
+                // Same artist as current track — penalize to encourage switching
+                score -= 8;
+            } else if (isRecentArtist) {
+                // Recently played artist — moderate penalty
+                score -= 4;
+            } else {
+                // Fresh artist — big bonus!
+                score += 10;
             }
 
-            // Similar artists from graph
+            // Similar artists from graph — bonus (they're different but related)
             const authorKey = author.toLowerCase();
             const similarArtists = this._findSimilarArtists(authorKey);
             if (similarArtists.some(a => cleanTrackAuthor.includes(a.substring(0, 8)))) {
-                score += 8; // Known similar artist — high bonus
+                score += 8; // Known similar artist — high bonus (different artist, same vibe)
             }
 
             // Genre match bonus
@@ -674,8 +753,8 @@ class AutoPlayService {
                 score -= 3;
             }
 
-            // Add small random factor to prevent deterministic loops
-            score += Math.random() * 3;
+            // Add random factor to prevent deterministic loops
+            score += Math.random() * 5;
 
             return { track, score };
         });
@@ -683,17 +762,71 @@ class AutoPlayService {
         // Sort by score descending
         scored.sort((a, b) => b.score - a.score);
 
-        // Pick from top 3 with weighted probability
-        const top = scored.slice(0, Math.min(3, scored.length));
+        // Pick from top 4 with weighted probability
+        const top = scored.slice(0, Math.min(4, scored.length));
         const totalScore = top.reduce((sum, t) => sum + Math.max(t.score, 1), 0);
         
         let random = Math.random() * totalScore;
         for (const entry of top) {
             random -= Math.max(entry.score, 1);
-            if (random <= 0) return entry.track;
+            if (random <= 0) {
+                // Track picked artist for diversity
+                if (guildId) {
+                    const pickedAuthor = this._cleanAuthor(entry.track.info?.author || '');
+                    if (pickedAuthor) this._trackRecentArtist(guildId, pickedAuthor);
+                }
+                return entry.track;
+            }
         }
 
         return top[0]!.track;
+    }
+
+    // ── ARTIST GRAPH ─────────────────────────────────────────────────
+
+    /** Store the current guildId during findSimilarTrack execution */
+    private _currentGuildId: string | undefined;
+
+    // ── ARTIST DIVERSITY TRACKING ────────────────────────────────────
+
+    /**
+     * Track a recently auto-played artist for a guild.
+     * Maintains a sliding window of recent artists to avoid repetition.
+     */
+    private _trackRecentArtist(guildId: string, artist: string): void {
+        if (!artist || artist.length < 2) return;
+
+        let recent = this.recentAutoplayArtists.get(guildId);
+        if (!recent) {
+            recent = [];
+            this.recentAutoplayArtists.set(guildId, recent);
+        }
+
+        // Don't add duplicates at the end
+        const cleanArtist = artist.toLowerCase().trim();
+        const last = recent[recent.length - 1];
+        if (last && last.toLowerCase() === cleanArtist) return;
+
+        recent.push(artist);
+
+        // Trim to max size
+        while (recent.length > this.MAX_RECENT_ARTISTS) {
+            recent.shift();
+        }
+    }
+
+    /**
+     * Check if an artist was recently auto-played in a guild
+     */
+    private _isRecentArtist(guildId: string, artist: string): boolean {
+        const recent = this.recentAutoplayArtists.get(guildId);
+        if (!recent || !artist) return false;
+
+        const cleanArtist = artist.toLowerCase().trim();
+        return recent.some(a =>
+            a.toLowerCase().includes(cleanArtist.substring(0, 10)) ||
+            cleanArtist.includes(a.toLowerCase().substring(0, 10))
+        );
     }
 
     // ── ARTIST GRAPH ─────────────────────────────────────────────────
