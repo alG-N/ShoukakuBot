@@ -1,15 +1,13 @@
 /**
- * Auto-Play Service — Smart Recommendations (Spotify-Enhanced)
- * Intelligent track recommendations combining Spotify's recommendation API
- * with YouTube search fallback. Uses Spotify audio features for mood/genre
- * consistency: chill → chill, energetic → energetic, never chill → heavy metal.
+ * Auto-Play Service — Smart YouTube Recommendations
+ * Intelligent track recommendations using YouTube search with multi-strategy
+ * approach: artist graph, genre patterns, mood profiling, and language detection.
+ * Spotify is only used for link resolution and embed scraping (not recommendations).
  * @module services/music/autoplay/AutoPlayService
  */
 
 import lavalinkService from '../core/LavalinkService.js';
 import { queueService } from '../queue/index.js';
-import spotifyService from '../spotify/SpotifyService.js';
-import type { SpotifyTrack, MoodProfile } from '../spotify/SpotifyService.js';
 import logger from '../../../core/Logger.js';
 import type { MusicTrack, TrackInfo } from '../events/MusicEvents.js';
 
@@ -121,8 +119,8 @@ class AutoPlayService {
     private readonly HISTORY_SIZE = 30; // Track more history for better profiling
     private readonly MAX_STRATEGIES = 6;
 
-    /** Last Spotify mood profile for logging */
-    private lastMoodProfile: MoodProfile | null = null;
+    /** Last mood profile (derived from listening history) */
+    private lastMoodProfile: string | null = null;
 
     /**
      * Recently auto-played artists per guild.
@@ -187,29 +185,11 @@ class AutoPlayService {
         const cleanAuthor = this._cleanAuthor(author || '');
         const genreKeywords = this._extractGenreKeywords(title + ' ' + (author || ''));
 
-        // ── SPOTIFY-FIRST STRATEGY ───────────────────────────────────
-        // Try Spotify recommendations first — this gives us genre/mood-aware
-        // suggestions that maintain musical consistency.
-        // If Spotify is configured and returns results, use them.
-        // This ensures: chill → chill, energetic → energetic, 
-        // never chill → heavy metal (which sounds terrible).
-        if (spotifyService.isConfigured()) {
-            try {
-                const spotifyResult = await this._trySpotifyRecommendations(
-                    cleanTitle, cleanAuthor, genreKeywords, recentTitles, title
-                );
-                if (spotifyResult) {
-                    logger.info('AutoPlay', `Spotify recommendation: ${spotifyResult.info?.title ?? 'Unknown'}`);
-                    return spotifyResult;
-                }
-            } catch (error) {
-                logger.warn('AutoPlay', `Spotify fallback to YouTube: ${(error as Error).message}`);
-            }
-        }
-
-        // ── YOUTUBE FALLBACK STRATEGY ────────────────────────────────
-        // If Spotify is not configured or failed, use the existing
-        // YouTube-based multi-strategy approach.
+        // ── YOUTUBE STRATEGY ─────────────────────────────────────────
+        // YouTube-based multi-strategy approach with artist graph,
+        // genre patterns, mood profiling, and language detection.
+        // (Spotify recommendations API returns 404 — deprecated.
+        //  Spotify is only used for link resolution & embed scraping.)
         // Build weighted strategies based on profile
         const strategies = this._buildSmartStrategies(cleanTitle, cleanAuthor, genreKeywords, uri, profile);
 
@@ -311,181 +291,10 @@ class AutoPlayService {
         return 'mixed';
     }
 
-    // ── SPOTIFY RECOMMENDATION ENGINE ────────────────────────────────
-
-    /**
-     * Try Spotify's recommendation API for genre/mood-aware autoplay.
-     * 
-     * This is the core innovation: Spotify uses actual audio analysis
-     * (energy, valence, danceability, tempo) to find similar tracks.
-     * We constrain the energy window so the mood stays consistent:
-     * - Listening to chill lofi? Get more chill lofi, not death metal.
-     * - Listening to hype EDM? Get more energetic tracks.
-     * - Diversify artists while staying in the same vibe.
-     */
-    private async _trySpotifyRecommendations(
-        cleanTitle: string,
-        cleanAuthor: string,
-        genreKeywords: string[],
-        recentTitles: string[],
-        currentTitle: string
-    ): Promise<MusicTrack | null> {
-        // Get smart recommendations from Spotify
-        const recommendations = await spotifyService.getSmartRecommendations(
-            cleanTitle,
-            cleanAuthor,
-            genreKeywords,
-            15 // Get extra to filter from
-        );
-
-        if (recommendations.length === 0) {
-            logger.info('AutoPlay', 'Spotify: No recommendations returned');
-            return null;
-        }
-
-        // Filter out recently played tracks
-        const validRecs = recommendations.filter(rec => {
-            const recTitle = `${rec.name} ${rec.artists.map(a => a.name).join(' ')}`.toLowerCase();
-            return !recentTitles.some(t => {
-                const lt = t.toLowerCase();
-                const minLen = Math.min(lt.length, recTitle.length, 20);
-                return lt.substring(0, minLen) === recTitle.substring(0, minLen) ||
-                       lt.includes(rec.name.toLowerCase().substring(0, 15)) ||
-                       recTitle.includes(lt.substring(0, 15));
-            }) && rec.name.toLowerCase() !== currentTitle.toLowerCase();
-        });
-
-        if (validRecs.length === 0) {
-            logger.info('AutoPlay', 'Spotify: All recommendations were recently played');
-            return null;
-        }
-
-        // Pick a track — artist-diverse selection with popularity weighting
-        const guildId = this._currentGuildId;
-        const selected = this._pickSpotifyTrack(validRecs, guildId);
-        
-        const pickedArtist = selected.artists[0]?.name || 'Unknown';
-        logger.info('AutoPlay', `Spotify picked: "${selected.name}" by ${pickedArtist} (pop: ${selected.popularity})`);
-
-        // Track the picked artist for future diversity
-        if (guildId) {
-            this._trackRecentArtist(guildId, pickedArtist);
-        }
-
-        // Now search this track on Lavalink so we can actually play it
-        return this._resolveSpotifyTrackOnLavalink(selected, recentTitles, currentTitle);
-    }
-
-    /**
-     * Pick a Spotify track from recommendations with artist diversity.
-     * Strongly penalizes recently played artists, prefers switching to
-     * popular songs from different artists in the same genre/mood.
-     */
-    private _pickSpotifyTrack(tracks: SpotifyTrack[], guildId?: string): SpotifyTrack {
-        if (tracks.length === 1) return tracks[0]!;
-
-        const recentArtists = guildId ? (this.recentAutoplayArtists.get(guildId) || []) : [];
-        const recentArtistsLower = recentArtists.map(a => a.toLowerCase());
-
-        const scored = tracks.map(track => {
-            let score = track.popularity + Math.random() * 25; // 0-100 pop + 0-25 random
-
-            const artistName = (track.artists[0]?.name || '').toLowerCase();
-
-            // Heavy penalty for recently auto-played artists (most recent = harshest)
-            const recentIdx = recentArtistsLower.findIndex(a =>
-                a.includes(artistName.substring(0, 10)) || artistName.includes(a.substring(0, 10))
-            );
-            if (recentIdx !== -1) {
-                // More recent = bigger penalty (last artist gets -60, older ones less)
-                const recency = (recentArtistsLower.length - recentIdx) / recentArtistsLower.length;
-                score -= 30 + (recency * 30); // -30 to -60 penalty
-            } else {
-                // Bonus for fresh artist we haven't heard recently
-                score += 15;
-            }
-
-            return { track, score };
-        });
-
-        scored.sort((a, b) => b.score - a.score);
-
-        // Pick from top 5 with weighted probability
-        const top = scored.slice(0, Math.min(5, scored.length));
-        const totalScore = top.reduce((sum, t) => sum + Math.max(t.score, 1), 0);
-        let random = Math.random() * totalScore;
-        for (const entry of top) {
-            random -= Math.max(entry.score, 1);
-            if (random <= 0) return entry.track;
-        }
-        return top[0]!.track;
-    }
-
-    /**
-     * Resolve a Spotify track to a playable Lavalink track.
-     * Searches by "artist - title" on YouTube/SoundCloud.
-     */
-    private async _resolveSpotifyTrackOnLavalink(
-        spotifyTrack: SpotifyTrack,
-        recentTitles: string[],
-        currentTitle: string
-    ): Promise<MusicTrack | null> {
-        const artistName = spotifyTrack.artists[0]?.name || '';
-        const trackName = spotifyTrack.name;
-
-        // Try exact search first: "artist - title"
-        const queries = [
-            `${artistName} - ${trackName}`,
-            `${artistName} ${trackName}`,
-            trackName, // fallback: title only
-        ];
-
-        for (const query of queries) {
-            try {
-                const results = await this._searchWithLimit(query, 5);
-                if (results && results.length > 0) {
-                    const valid = this._filterRecentTracks(results, recentTitles, currentTitle);
-                    if (valid.length > 0) {
-                        // Pick the best match (shortest title distance from expected)
-                        const expectedTitle = `${artistName} ${trackName}`.toLowerCase();
-                        const sorted = valid.sort((a, b) => {
-                            const aTitle = (a.info?.title || '').toLowerCase();
-                            const bTitle = (b.info?.title || '').toLowerCase();
-                            const aSim = this._stringSimilarity(aTitle, expectedTitle);
-                            const bSim = this._stringSimilarity(bTitle, expectedTitle);
-                            return bSim - aSim; // Higher similarity first
-                        });
-                        return sorted[0]!;
-                    }
-                }
-            } catch {
-                continue;
-            }
-        }
-
-        logger.info('AutoPlay', `Spotify: Could not resolve "${artistName} - ${trackName}" on Lavalink`);
-        return null;
-    }
-
-    /**
-     * Simple string similarity score (0-1) based on shared words
-     */
-    private _stringSimilarity(a: string, b: string): number {
-        const wordsA = new Set(a.split(/\s+/).filter(w => w.length > 2));
-        const wordsB = new Set(b.split(/\s+/).filter(w => w.length > 2));
-        if (wordsA.size === 0 || wordsB.size === 0) return 0;
-        
-        let shared = 0;
-        for (const word of wordsA) {
-            if (wordsB.has(word)) shared++;
-        }
-        return shared / Math.max(wordsA.size, wordsB.size);
-    }
-
     /**
      * Get the current mood profile (for display/debugging)
      */
-    getLastMoodProfile(): MoodProfile | null {
+    getLastMoodProfile(): string | null {
         return this.lastMoodProfile;
     }
 

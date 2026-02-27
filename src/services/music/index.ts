@@ -59,6 +59,4 @@ export type {
 export type {
     SpotifyTrack,
     SpotifyArtist,
-    SpotifyAudioFeatures,
-    MoodProfile
 } from './spotify/index.js';

@@ -9,8 +9,5 @@ export type {
     SpotifyTrack,
     SpotifyArtist,
     SpotifyAlbum,
-    SpotifyRecommendation,
     SpotifySearchResult,
-    SpotifyAudioFeatures,
-    MoodProfile,
 } from './SpotifyService.js';
