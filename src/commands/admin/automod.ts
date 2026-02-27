@@ -1,7 +1,7 @@
 /**
  * AutoMod Command - Interactive Panel with Sections
  * Fixed: Use deferUpdate() + editReply() pattern to prevent timeout
- * Refactored: Panels -> automodPanels.ts, Handlers -> automodHandlers.ts, Types -> automodTypes.ts
+ * Refactored: Panels -> handlers/moderation/AutoModPanels.ts, Handlers -> handlers/moderation/AutoModSettingsHandlers.ts, Types -> handlers/moderation/AutoModTypes.ts
  * @module commands/admin/automod
  */
 
@@ -20,8 +20,8 @@ import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.j
 import logger from '../../core/Logger.js';
 import { autoModService as _autoModService } from '../../services/moderation/index.js';
 import _moderationConfigModule from '../../config/features/moderation/index.js';
-import type { AutoModService, ModerationConfig } from './automodTypes.js';
-import { showMainPanel, showToggleSection, showFilterSection, showConfigSection, showActionsSection, showExemptSection, showEscalationConfig } from './automodPanels.js';
+import type { AutoModService, ModerationConfig } from '../../handlers/moderation/AutoModTypes.js';
+import { showMainPanel, showToggleSection, showFilterSection, showConfigSection, showActionsSection, showExemptSection, showEscalationConfig } from '../../handlers/moderation/AutoModPanels.js';
 import {
     handleFilterAction,
     handleFilterActionDeferred,
@@ -34,7 +34,7 @@ import {
     handleEscalationSelect,
     handleEscalationActionSelect,
     handleEscalationActionValue
-} from './automodHandlers.js';
+} from '../../handlers/moderation/AutoModSettingsHandlers.js';
 
 // SERVICE IMPORTS
 const AutoModServiceInstance: AutoModService = _autoModService as any;

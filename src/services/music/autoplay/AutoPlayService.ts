@@ -521,6 +521,17 @@ class AutoPlayService {
                 strategies.push(
                     { name: 'artist_similar_songs', query: `${cleanAuthor}`, weight: 60, category: 'artist' },
                 );
+            } else if (isRecentAuthor && similarArtists.length === 0) {
+                // Recent artist but NOT in the artist graph — deprioritize direct artist search
+                // to avoid looping the same artist. Boost "songs like" and genre strategies instead.
+                strategies.push(
+                    { name: 'artist_similar_songs', query: `${cleanAuthor}`, weight: 50, category: 'artist' },
+                );
+                // Boost broader discovery: "artists similar to X" via YouTube
+                strategies.push(
+                    { name: 'similar_to_artist', query: `artists similar to ${cleanAuthor}`, weight: 92, category: 'related' },
+                    { name: 'fans_also_like', query: `${cleanAuthor} fans also like`, weight: 88, category: 'related' },
+                );
             } else {
                 // Fresh artist or no graph data — normal behavior
                 strategies.push(
@@ -708,14 +719,14 @@ class AutoPlayService {
             const isRecentArtist = guildId && this._isRecentArtist(guildId, cleanTrackAuthor);
 
             if (isSameArtist) {
-                // Same artist as current track — penalize to encourage switching
-                score -= 8;
+                // Same artist as current track — heavy penalty to encourage switching
+                score -= 15;
             } else if (isRecentArtist) {
                 // Recently played artist — moderate penalty
-                score -= 4;
+                score -= 6;
             } else {
                 // Fresh artist — big bonus!
-                score += 10;
+                score += 12;
             }
 
             // Similar artists from graph — bonus (they're different but related)
@@ -756,11 +767,25 @@ class AutoPlayService {
             // Add random factor to prevent deterministic loops
             score += Math.random() * 5;
 
-            return { track, score };
+            return { track, score, isSameArtist: !!isSameArtist };
         });
 
         // Sort by score descending
         scored.sort((a, b) => b.score - a.score);
+
+        // Hard diversity guard: if the top pick is same-artist, prefer any different-artist result
+        const topPick = scored[0]!;
+        if (topPick.isSameArtist) {
+            const differentArtist = scored.find(s => !s.isSameArtist);
+            if (differentArtist) {
+                logger.info('AutoPlay', `Diversity override: skipping same-artist "${topPick.track.info?.author}" → "${differentArtist.track.info?.author}"`);
+                if (guildId) {
+                    const pickedAuthor = this._cleanAuthor(differentArtist.track.info?.author || '');
+                    if (pickedAuthor) this._trackRecentArtist(guildId, pickedAuthor);
+                }
+                return differentArtist.track;
+            }
+        }
 
         // Pick from top 4 with weighted probability
         const top = scored.slice(0, Math.min(4, scored.length));

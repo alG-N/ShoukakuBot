@@ -86,6 +86,7 @@ def _convert_cobalt_cookies() -> str | None:
 # ── Request Models ──
 class InfoRequest(BaseModel):
     url: str
+    quality: str = "720"
 
 
 class DownloadRequest(BaseModel):
@@ -118,7 +119,7 @@ async def health():
 async def get_info(req: InfoRequest):
     """Get video metadata without downloading"""
     try:
-        info = await asyncio.to_thread(_extract_info, req.url)
+        info = await asyncio.to_thread(_extract_info, req.url, req.quality)
         return info
     except Exception as e:
         error_msg = _parse_error(str(e))
@@ -154,24 +155,45 @@ async def download_video(req: DownloadRequest):
 
 
 # ── Core Logic (runs in thread pool) ──
-def _extract_info(url: str) -> dict:
-    """Extract video info using yt-dlp library"""
+def _extract_info(url: str, quality: str = "720") -> dict:
+    """Extract video info using yt-dlp library with quality-aware format selection"""
+    # Build the same format string as _download() so filesize reflects the actual quality
+    format_string = (
+        f"bestvideo[height={quality}][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/"
+        f"bestvideo[height<={quality}][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/"
+        f"bestvideo[height<={quality}][ext=mp4]+bestaudio[ext=m4a]/"
+        f"bestvideo[height<={quality}]+bestaudio/"
+        f"best[height<={quality}][vcodec!*=none]"
+    )
+
     opts = {
         "quiet": True,
         "no_warnings": True,
         "skip_download": True,
         "no_check_certificate": True,
         "socket_timeout": 15,
+        "format": format_string,
     }
     if NETSCAPE_COOKIE_FILE:
         opts["cookiefile"] = NETSCAPE_COOKIE_FILE
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=False)
 
+    # Try to get filesize from the selected format's requested_formats (merged streams)
+    filesize = info.get("filesize") or info.get("filesize_approx")
+    if not filesize and info.get("requested_formats"):
+        # Sum video + audio stream sizes for merged formats
+        total = 0
+        for fmt in info["requested_formats"]:
+            sz = fmt.get("filesize") or fmt.get("filesize_approx") or 0
+            total += sz
+        if total > 0:
+            filesize = total
+
     return {
         "title": info.get("title"),
         "duration": info.get("duration"),
-        "filesize": info.get("filesize") or info.get("filesize_approx"),
+        "filesize": filesize,
         "uploader": info.get("uploader"),
         "thumbnail": info.get("thumbnail"),
         "url": info.get("url") or info.get("webpage_url"),

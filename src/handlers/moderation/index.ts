@@ -37,3 +37,34 @@ export type {
 
 // Anti-raid handler
 export { handleAntiRaid } from './AntiRaidHandler.js';
+
+// AutoMod command panels, handlers, and types
+export {
+    showMainPanel,
+    showToggleSection,
+    showFilterSection,
+    showConfigSection,
+    showActionsSection,
+    showExemptSection,
+    showEscalationConfig
+} from './AutoModPanels.js';
+
+export {
+    handleFilterAction,
+    handleFilterActionDeferred,
+    handleConfigSelect,
+    handleIgnoreChannel,
+    handleIgnoreRole,
+    handleActionSelect,
+    handleActionValue,
+    handleWhitelistLinks,
+    handleEscalationSelect,
+    handleEscalationActionSelect,
+    handleEscalationActionValue
+} from './AutoModSettingsHandlers.js';
+
+export type {
+    AutoModService as AutoModCommandService,
+    ModerationConfig as AutoModModerationConfig,
+    AutoModSettings as AutoModCommandSettings
+} from './AutoModTypes.js';

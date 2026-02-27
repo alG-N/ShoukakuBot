@@ -17,7 +17,9 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # Ensure network exists
+$ErrorActionPreference = "Continue"
 $netResult = docker network create shoukaku-net 2>&1 | Out-String
+$ErrorActionPreference = "Stop"
 if ($LASTEXITCODE -ne 0 -and $netResult -notmatch "already exists") {
     Write-Host "ERROR: Failed to create network: $netResult" -ForegroundColor Red
     exit 1

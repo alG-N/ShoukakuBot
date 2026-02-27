@@ -1,7 +1,7 @@
 /**
  * AutoMod Command — Shared Type Definitions
  * Extracted from automod.ts for modularity
- * @module commands/admin/automodTypes
+ * @module handlers/moderation/AutoModTypes
  */
 
 export interface AutoModSettings {

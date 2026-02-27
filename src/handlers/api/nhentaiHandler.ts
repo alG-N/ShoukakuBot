@@ -268,7 +268,7 @@ class NHentaiHandler {
      * Build a gallery info response (embed + attached thumbnail).
      * Downloads the cover image from nhentai CDN and attaches it.
      */
-    async createGalleryResponse(gallery: Gallery, options: { isRandom?: boolean; isPopular?: boolean } = {}): Promise<{ embed: EmbedBuilder; files: AttachmentBuilder[] }> {
+    async createGalleryResponse(gallery: Gallery, options: { isRandom?: boolean; isPopular?: boolean; popularPeriod?: string } = {}): Promise<{ embed: EmbedBuilder; files: AttachmentBuilder[] }> {
         const embed = this.createGalleryEmbed(gallery, options);
         const { media_id, images } = gallery;
         const coverType = images?.cover?.t || 'j';
@@ -294,8 +294,8 @@ class NHentaiHandler {
     /**
      * Create gallery info embed
      */
-    createGalleryEmbed(gallery: Gallery, options: { isRandom?: boolean; isPopular?: boolean } = {}): EmbedBuilder {
-        const { isRandom = false, isPopular = false } = options;
+    createGalleryEmbed(gallery: Gallery, options: { isRandom?: boolean; isPopular?: boolean; popularPeriod?: string } = {}): EmbedBuilder {
+        const { isRandom = false, isPopular = false, popularPeriod } = options;
         const { id, media_id, title, tags, num_pages, upload_date, images } = gallery;
         
         const embed = new EmbedBuilder()
@@ -312,7 +312,8 @@ class NHentaiHandler {
         if (isRandom) {
             embed.setAuthor({ name: '🎲 Random Gallery' });
         } else if (isPopular) {
-            embed.setAuthor({ name: '🔥 Popular Gallery' });
+            const periodText = popularPeriod ? ` • ${popularPeriod}` : '';
+            embed.setAuthor({ name: `🔥 Popular Gallery${periodText}` });
         }
 
         // Parse and add tags
@@ -674,7 +675,7 @@ class NHentaiHandler {
         const embed = new EmbedBuilder()
             .setColor(COLORS.NHENTAI)
             .setTitle(`🔍 Search Results: "${query}"`)
-            .setDescription(`Found **${totalResults}+** results • Page **${page}** of **${numPages}** • Sorted by **${sort === 'recent' ? 'Recent' : 'Popular'}**`)
+            .setDescription(`Found **${totalResults}+** results • Page **${page}** of **${numPages}** • Sorted by **${this._getSortLabel(sort)}**`)
             .setFooter({ text: 'Select a gallery to view more details' });
 
         // Show first 10 results
@@ -699,7 +700,7 @@ class NHentaiHandler {
      * Create search navigation buttons
      */
     createSearchButtons(query: string, data: SearchData, page: number, userId: string): ActionRowBuilder<ButtonBuilder>[] {
-        const { results, numPages } = data;
+        const { results, numPages, totalResults } = data;
         
         const row1 = new ActionRowBuilder<ButtonBuilder>();
         
@@ -746,7 +747,13 @@ class NHentaiHandler {
                 .setLabel('Next Page')
                 .setStyle(ButtonStyle.Primary)
                 .setEmoji('▶️')
-                .setDisabled(page >= numPages)
+                .setDisabled(page >= numPages),
+            new ButtonBuilder()
+                .setCustomId(`nhentai_scount_${userId}`)
+                .setLabel(`${totalResults}+ results`)
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('📊')
+                .setDisabled(true)
         );
 
         const rows = [row1];
@@ -759,6 +766,18 @@ class NHentaiHandler {
     // Private helper methods
     private _getTitle(title: GalleryTitle): string {
         return title.english || title.japanese || title.pretty || 'Unknown Title';
+    }
+
+    private _getSortLabel(sort: string): string {
+        const labels: Record<string, string> = {
+            'date': 'Recent',
+            'recent': 'Recent',
+            'popular-today': 'Popular Today',
+            'popular-week': 'Popular This Week',
+            'popular-month': 'Popular This Month',
+            'popular': 'All Time Popular'
+        };
+        return labels[sort] || 'Popular';
     }
 
     private _formatDate(timestamp: number): string {

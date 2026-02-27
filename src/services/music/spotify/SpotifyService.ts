@@ -489,12 +489,37 @@ class SpotifyService {
             logger.info('Spotify', `Recommendations: ${data.tracks?.length || 0} tracks from ${data.seeds?.length || 0} seeds`);
             return data.tracks || [];
         } catch (error) {
-            logger.error('Spotify', `Recommendations error: ${(error as Error).message}`);
+            const errMsg = (error as Error).message;
+            // Spotify may have deprecated /recommendations (404).
+            // Log once and let AutoPlay fall through to YouTube strategies.
+            if (errMsg.includes('404')) {
+                logger.warn('Spotify', 'Recommendations endpoint returned 404 (possibly deprecated)');
+            } else {
+                logger.error('Spotify', `Recommendations error: ${errMsg}`);
+            }
             return [];
         }
     }
 
     // ── GENRE SEEDS ──────────────────────────────────────────────────
+
+    /**
+     * Hardcoded genre seeds fallback.
+     * Spotify deprecated /recommendations/available-genre-seeds (returns 404).
+     * This list covers the genres we actually use in mapToSpotifyGenres().
+     */
+    private static readonly FALLBACK_GENRE_SEEDS: string[] = [
+        'acoustic', 'alt-rock', 'alternative', 'ambient', 'anime',
+        'blues', 'chill', 'classical', 'country', 'dance',
+        'deep-house', 'disco', 'drum-and-bass', 'dub', 'dubstep',
+        'edm', 'electronic', 'folk', 'funk', 'grunge',
+        'happy', 'heavy-metal', 'hip-hop', 'house', 'indie',
+        'indie-pop', 'j-pop', 'jazz', 'k-pop', 'latin',
+        'mandopop', 'metal', 'piano', 'pop', 'post-rock',
+        'punk', 'punk-rock', 'r-n-b', 'reggae', 'reggaeton',
+        'rock', 'sad', 'shoegaze', 'soul', 'techno',
+        'trance',
+    ];
 
     /** Get available genre seeds for the recommendations API (cached daily) */
     async getAvailableGenreSeeds(): Promise<string[]> {
@@ -509,8 +534,16 @@ class SpotifyService {
             logger.info('Spotify', `Loaded ${this.genreSeedsCache.length} genre seeds`);
             return this.genreSeedsCache;
         } catch (error) {
-            logger.error('Spotify', `Genre seeds error: ${(error as Error).message}`);
-            return [];
+            const errMsg = (error as Error).message;
+            // Spotify deprecated this endpoint (404). Use hardcoded fallback.
+            if (errMsg.includes('404')) {
+                logger.warn('Spotify', 'Genre seeds endpoint deprecated (404), using hardcoded fallback');
+                this.genreSeedsCache = SpotifyService.FALLBACK_GENRE_SEEDS;
+                this.genreSeedsCacheTime = Date.now();
+                return this.genreSeedsCache;
+            }
+            logger.error('Spotify', `Genre seeds error: ${errMsg}`);
+            return SpotifyService.FALLBACK_GENRE_SEEDS;
         }
     }
 

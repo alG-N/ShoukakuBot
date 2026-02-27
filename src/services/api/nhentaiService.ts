@@ -232,11 +232,21 @@ class NHentaiService {
 
     /**
      * Fetch a popular gallery - tries actual popular API first, falls back to curated list
+     * @param period - Time period: 'today', 'week', 'month', or 'all' (default)
      */
-    async fetchPopularGallery(): Promise<GalleryResult> {
+    async fetchPopularGallery(period: 'today' | 'week' | 'month' | 'all' = 'all'): Promise<GalleryResult> {
+        // Map period to nhentai API sort parameter
+        const sortEndpoints: Record<string, string> = {
+            'today': '/galleries/search?query=*&sort=popular-today',
+            'week': '/galleries/search?query=*&sort=popular-week',
+            'month': '/galleries/search?query=*&sort=popular-month',
+            'all': '/galleries/search?query=*&sort=popular'
+        };
+
         // First, try to fetch from actual popular/homepage API
         try {
-            const response = await axios.get(`${API_BASE}/galleries/popular`, getRequestConfig({ timeout: 10000 }));
+            const endpoint = sortEndpoints[period] || sortEndpoints['all'];
+            const response = await axios.get(`${API_BASE}${endpoint}`, getRequestConfig({ timeout: 10000 }));
             
             if (response.data?.result && Array.isArray(response.data.result) && response.data.result.length > 0) {
                 // Pick a random gallery from popular results
@@ -295,11 +305,12 @@ class NHentaiService {
 
     /**
      * Search galleries by query with circuit breaker
+     * @param sort - Sort parameter: 'date', 'popular-today', 'popular-week', 'popular-month', 'popular'
      */
     async searchGalleries(
         query: string,
         page: number = 1,
-        sort: 'popular' | 'recent' = 'popular'
+        sort: string = 'popular'
     ): Promise<SearchResult> {
         const cacheKey = `nhentai:search_${query}_${page}_${sort}`;
         const cached = await cacheService.get<SearchData>(this.CACHE_NS, cacheKey);
@@ -308,7 +319,9 @@ class NHentaiService {
         return circuitBreakerRegistry.execute('nsfw', async () => {
             try {
                 const encodedQuery = encodeURIComponent(query);
-                const sortParam = sort === 'recent' ? 'date' : 'popular';
+                // Pass sort parameter directly to nhentai API
+                // Valid values: date, popular-today, popular-week, popular-month, popular
+                const sortParam = sort;
 
                 const response = await axios.get<NHentaiSearchResponse>(
                     `${API_BASE}/galleries/search?query=${encodedQuery}&page=${page}&sort=${sortParam}`,

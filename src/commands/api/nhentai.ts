@@ -57,13 +57,13 @@ interface SearchGalleriesResult {
 interface NHentaiService {
     fetchGallery: (code: number) => Promise<GalleryResult>;
     fetchRandomGallery: () => Promise<GalleryResult>;
-    fetchPopularGallery: () => Promise<GalleryResult>;
-    searchGalleries: (query: string, page?: number, sort?: 'popular' | 'recent') => Promise<SearchGalleriesResult>;
+    fetchPopularGallery: (period?: 'today' | 'week' | 'month' | 'all') => Promise<GalleryResult>;
+    searchGalleries: (query: string, page?: number, sort?: string) => Promise<SearchGalleriesResult>;
 }
 
 interface NHentaiHandler {
     createGalleryEmbed: (data: GalleryData, options?: { isRandom?: boolean; isPopular?: boolean }) => EmbedBuilder;
-    createGalleryResponse: (data: GalleryData, options?: { isRandom?: boolean; isPopular?: boolean }) => Promise<{ embed: EmbedBuilder; files: AttachmentBuilder[] }>;
+    createGalleryResponse: (data: GalleryData, options?: { isRandom?: boolean; isPopular?: boolean; popularPeriod?: string }) => Promise<{ embed: EmbedBuilder; files: AttachmentBuilder[] }>;
     createMainButtons: (id: number, userId: string, numPages: number, data: GalleryData) => Promise<ActionRowBuilder<ButtonBuilder>[]>;
     createSearchResultsEmbed?: (query: string, data: SearchData, page: number, sort: string) => EmbedBuilder;
     createSearchButtons?: (query: string, data: SearchData, page: number, userId: string) => ActionRowBuilder<ButtonBuilder>[];
@@ -109,6 +109,17 @@ class NHentaiCommand extends BaseCommand {
             .addSubcommand(sub => sub
                 .setName('popular')
                 .setDescription('Get a popular gallery')
+                .addStringOption(opt => opt
+                    .setName('period')
+                    .setDescription('Time period for popular galleries')
+                    .setRequired(false)
+                    .addChoices(
+                        { name: '🔥 Popular Today', value: 'today' },
+                        { name: '📊 Popular This Week', value: 'week' },
+                        { name: '📅 Popular This Month', value: 'month' },
+                        { name: '🏆 All Time Popular', value: 'all' }
+                    )
+                )
             )
             .addSubcommand(sub => sub
                 .setName('search')
@@ -123,10 +134,11 @@ class NHentaiCommand extends BaseCommand {
                     .setDescription('Sort order')
                     .setRequired(false)
                     .addChoices(
-                        { name: '📅 Recent', value: 'recent' },
+                        { name: '📅 Recent', value: 'date' },
                         { name: '🔥 Popular Today', value: 'popular-today' },
                         { name: '📊 Popular This Week', value: 'popular-week' },
-                        { name: '📈 All Time Popular', value: 'popular' }
+                        { name: '📅 Popular This Month', value: 'popular-month' },
+                        { name: '🏆 All Time Popular', value: 'popular' }
                     )
                 )
                 .addIntegerOption(opt => opt
@@ -236,7 +248,8 @@ class NHentaiCommand extends BaseCommand {
     }
 
     private async _handlePopular(interaction: ChatInputCommandInteraction): Promise<void> {
-        const result = await nhentaiService!.fetchPopularGallery();
+        const period = interaction.options.getString('period') || 'all';
+        const result = await nhentaiService!.fetchPopularGallery(period as 'today' | 'week' | 'month' | 'all');
 
         if (!result?.success || !result.data) {
             await this.safeReply(interaction, { 
@@ -246,7 +259,8 @@ class NHentaiCommand extends BaseCommand {
             return;
         }
 
-        const { embed, files } = await nhentaiHandler!.createGalleryResponse(result.data, { isPopular: true });
+        const periodLabels: Record<string, string> = { today: 'Today', week: 'This Week', month: 'This Month', all: 'All Time' };
+        const { embed, files } = await nhentaiHandler!.createGalleryResponse(result.data, { isPopular: true, popularPeriod: periodLabels[period] || 'All Time' });
         const buttons = await nhentaiHandler!.createMainButtons(
             result.data.id, 
             interaction.user.id, 
@@ -259,11 +273,11 @@ class NHentaiCommand extends BaseCommand {
 
     private async _handleSearch(interaction: ChatInputCommandInteraction): Promise<void> {
         const query = interaction.options.getString('query', true);
-        const sortRaw = interaction.options.getString('sort') || 'recent';
+        const sortRaw = interaction.options.getString('sort') || 'date';
         const page = interaction.options.getInteger('page') || 1;
 
-        // Map sort options to service's expected values
-        const sort: 'popular' | 'recent' = sortRaw.startsWith('popular') ? 'popular' : 'recent';
+        // Pass sort value directly to the service (date, popular-today, popular-week, popular-month, popular)
+        const sort = sortRaw;
 
         const result = await nhentaiService!.searchGalleries(query, page, sort);
 

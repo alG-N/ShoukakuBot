@@ -261,8 +261,11 @@ class VideoProcessingService extends EventEmitter {
         const analysis = await this.analyzeVideo(inputPath);
 
         if (!analysis.needsReencoding) {
-            logger.info('VideoProcessingService', 'Video is already mobile-compatible');
-            return inputPath;
+            logger.info('VideoProcessingService', 'Video is already mobile-compatible, applying faststart remux');
+            // Even if codecs are compatible, the MOOV atom may be at the end of the file
+            // (common in streamed downloads). Discord needs MOOV at the start to stream properly.
+            // Do a fast remux (no re-encoding, just move MOOV atom) to fix playback issues.
+            return this._applyFaststart(inputPath);
         }
 
         this.emit('stage', { stage: 'processing', message: 'Converting for mobile compatibility...' } as StageData);
@@ -417,6 +420,86 @@ class VideoProcessingService extends EventEmitter {
                 logger.warn('VideoProcessingService', 'FFmpeg processing timeout');
                 ffmpeg.kill('SIGKILL');
             }, 5 * 60 * 1000);
+
+            ffmpeg.on('close', () => clearTimeout(timeout));
+        });
+    }
+
+    /**
+     * Apply faststart to an already-compatible MP4 file (remux only, no re-encoding).
+     * Moves the MOOV atom to the beginning of the file so Discord can stream it properly.
+     * This fixes the issue where videos stop playing mid-way and require a page reload.
+     * @param inputPath - Path to the input MP4 file
+     * @returns Path to the faststart remuxed file
+     */
+    private async _applyFaststart(inputPath: string): Promise<string> {
+        if (!this.initialized) {
+            return inputPath;
+        }
+
+        const timestamp = Date.now();
+        const outputPath = inputPath.replace(/\.[^.]+$/, `_faststart_${timestamp}.mp4`);
+
+        return new Promise((resolve) => {
+            const args = [
+                '-i', inputPath,
+                '-y',
+                '-c', 'copy',                      // No re-encoding, just remux
+                '-movflags', '+faststart',          // Move MOOV atom to the beginning
+                '-max_muxing_queue_size', '2048',
+                outputPath
+            ];
+
+            logger.info('VideoProcessingService', `Applying faststart remux: ${path.basename(inputPath)}`);
+
+            const ffmpeg = spawn(this.ffmpegPath, args, {
+                stdio: ['pipe', 'pipe', 'pipe'],
+                windowsHide: true
+            });
+
+            let errorOutput = '';
+
+            ffmpeg.stderr.on('data', (data: Buffer) => {
+                errorOutput += data.toString();
+            });
+
+            ffmpeg.on('close', (code: number | null) => {
+                if (code !== 0) {
+                    logger.warn('VideoProcessingService', `Faststart remux failed (code ${code}), using original file`);
+                    try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch { /* ignore */ }
+                    resolve(inputPath);
+                    return;
+                }
+
+                if (fs.existsSync(outputPath)) {
+                    const stats = fs.statSync(outputPath);
+                    if (stats.size > 0) {
+                        logger.info('VideoProcessingService', `Faststart remux complete: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
+                        // Delete original file
+                        try { fs.unlinkSync(inputPath); } catch (e) {
+                            logger.warn('VideoProcessingService', `Could not delete original file: ${(e as Error).message}`);
+                        }
+                        resolve(outputPath);
+                        return;
+                    }
+                }
+
+                // Output invalid, use original
+                logger.warn('VideoProcessingService', 'Faststart output invalid, using original');
+                try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch { /* ignore */ }
+                resolve(inputPath);
+            });
+
+            ffmpeg.on('error', (err: Error) => {
+                logger.error('VideoProcessingService', `Faststart spawn error: ${err.message}`);
+                resolve(inputPath);
+            });
+
+            // Timeout for remux (30 seconds should be plenty for copy-only)
+            const timeout = setTimeout(() => {
+                logger.warn('VideoProcessingService', 'Faststart remux timeout');
+                ffmpeg.kill('SIGKILL');
+            }, 30 * 1000);
 
             ffmpeg.on('close', () => clearTimeout(timeout));
         });

@@ -2,7 +2,7 @@
  * AutoMod Command — Panel Builders
  * Functions that build embed + component payloads for each automod settings panel.
  * Extracted from automod.ts (~1092 lines) for modularity.
- * @module commands/admin/automodPanels
+ * @module handlers/moderation/AutoModPanels
  */
 
 import {
@@ -15,7 +15,7 @@ import {
     RoleSelectMenuBuilder,
     ChatInputCommandInteraction
 } from 'discord.js';
-import type { AutoModSettings, AutoModService, ModerationConfig } from './automodTypes.js';
+import type { AutoModSettings, AutoModService, ModerationConfig } from './AutoModTypes.js';
 
 /**
  * Build and display the main automod panel

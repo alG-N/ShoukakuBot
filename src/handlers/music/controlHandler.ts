@@ -161,13 +161,32 @@ export const controlHandler = {
 
         const isPaused = await musicService.togglePause(guildId);
 
-        await interaction.reply({
-            embeds: [trackHandler.createInfoEmbed(
-                isPaused ? '⏸️ Paused' : '▶️ Resumed',
-                isPaused ? 'Playback paused' : 'Playback resumed',
-                'success'
-            )]
-        });
+        // Show a rich embed with track info when pausing/resuming
+        const currentTrack = musicService.getCurrentTrack(guildId) as Track | null;
+        if (currentTrack) {
+            const volume = musicService.getVolume(guildId);
+            const loopMode = musicService.getLoopMode(guildId);
+            const isShuffled = musicService.isShuffled(guildId);
+            const queueLength = musicService.getQueueLength(guildId);
+
+            await interaction.reply({
+                embeds: [trackHandler.createNowPlayingEmbed(currentTrack, {
+                    volume,
+                    isPaused,
+                    loopMode,
+                    isShuffled,
+                    queueLength,
+                })]
+            });
+        } else {
+            await interaction.reply({
+                embeds: [trackHandler.createInfoEmbed(
+                    isPaused ? '⏸️ Paused' : '▶️ Resumed',
+                    isPaused ? 'Playback paused' : 'Playback resumed',
+                    'success'
+                )]
+            });
+        }
     },
 
     async handleVolume(interaction: ChatInputCommandInteraction, guildId: string): Promise<void> {

@@ -148,7 +148,7 @@ class YtDlpService extends EventEmitter {
         const maxFileSizeMB = config.MAX_FILE_SIZE_MB || 100;
 
         try {
-            const videoInfo = await this._getVideoInfo(url);
+            const videoInfo = await this._getVideoInfo(url, quality);
 
             if (videoInfo) {
                 if (videoInfo.duration && videoInfo.duration > maxDuration) {
@@ -241,13 +241,17 @@ class YtDlpService extends EventEmitter {
 
     /**
      * Get video info via API (internal)
+     * @param quality - Video quality to check size for (e.g. '720', '480')
      */
-    private async _getVideoInfo(url: string): Promise<VideoInfo | null> {
+    private async _getVideoInfo(url: string, quality?: string): Promise<VideoInfo | null> {
         try {
+            const body: Record<string, string> = { url };
+            if (quality) body.quality = quality;
+
             const resp = await fetch(`${this.apiUrl}/info`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url }),
+                body: JSON.stringify(body),
                 signal: AbortSignal.timeout(15000),
             });
 
