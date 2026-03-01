@@ -515,7 +515,7 @@ export class MusicFacade {
                     if (queue?.textChannel) {
                         const spotifyLabel = spotifyService.isConfigured() ? ' 🟢' : '';
                         const moodInfo = autoPlayService.getLastMoodProfile();
-                        const moodLabel = moodInfo ? ` • ${moodInfo.mood}` : '';
+                        const moodLabel = moodInfo ? ` • ${typeof moodInfo === 'string' ? moodInfo : (moodInfo as { mood: string }).mood}` : '';
                         const autoPlayEmbed = trackHandler.createInfoEmbed(
                             `🎵 Auto-Play${spotifyLabel}`,
                             `Now playing: **${similarTrack.info?.title}**${moodLabel}`
