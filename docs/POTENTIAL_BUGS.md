@@ -41,7 +41,7 @@
 - Messages stored in `snipe:messages:{guildId}`
 - Automatic TTL expiration (12 hours) - no cleanup interval needed
 - All retrieval methods now async
-- Cross-shard message tracking working
+- Cross-shard message tracking working.
 
 ---
 
