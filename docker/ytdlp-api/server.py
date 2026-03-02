@@ -154,16 +154,42 @@ async def download_video(req: DownloadRequest):
 
 
 # ── Core Logic (runs in thread pool) ──
+
+# YouTube-style format: prefer split streams with h264 for Discord compatibility
+_YT_FORMAT = (
+    "bestvideo[height={q}][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/"
+    "bestvideo[height<={q}][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/"
+    "bestvideo[height<={q}][ext=mp4]+bestaudio[ext=m4a]/"
+    "bestvideo[height<={q}]+bestaudio/"
+    "best[height<={q}][vcodec!*=none]"
+)
+
+# TikTok-style format: single combined stream, no split video+audio
+# TikTok serves pre-muxed mp4 files; format IDs like 'download_addr', 'play_addr', 'h264_540p' etc.
+_TIKTOK_FORMAT = (
+    "best[height={q}][ext=mp4]/"
+    "best[height<={q}][ext=mp4]/"
+    "best[height<={q}]/"
+    "best[ext=mp4]/"
+    "best"
+)
+
+# Platforms that use single-stream format (no split video+audio)
+_SINGLE_STREAM_DOMAINS = ["tiktok.com"]
+
+
+def _get_format_string(url: str, quality: str) -> str:
+    """Pick the right format string based on the platform."""
+    lower = url.lower()
+    for domain in _SINGLE_STREAM_DOMAINS:
+        if domain in lower:
+            return _TIKTOK_FORMAT.format(q=quality)
+    return _YT_FORMAT.format(q=quality)
+
+
 def _extract_info(url: str, quality: str = "720") -> dict:
     """Extract video info using yt-dlp library with quality-aware format selection"""
-    # Build the same format string as _download() so filesize reflects the actual quality
-    format_string = (
-        f"bestvideo[height={quality}][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/"
-        f"bestvideo[height<={quality}][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/"
-        f"bestvideo[height<={quality}][ext=mp4]+bestaudio[ext=m4a]/"
-        f"bestvideo[height<={quality}]+bestaudio/"
-        f"best[height<={quality}][vcodec!*=none]"
-    )
+    format_string = _get_format_string(url, quality)
 
     opts = {
         "quiet": True,
@@ -208,13 +234,7 @@ def _download(url: str, quality: str, filename: str | None) -> dict:
 
     output_template = os.path.join(DOWNLOAD_DIR, f"{filename}.%(ext)s")
 
-    format_string = (
-        f"bestvideo[height={quality}][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/"
-        f"bestvideo[height<={quality}][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/"
-        f"bestvideo[height<={quality}][ext=mp4]+bestaudio[ext=m4a]/"
-        f"bestvideo[height<={quality}]+bestaudio/"
-        f"best[height<={quality}][vcodec!*=none]"
-    )
+    format_string = _get_format_string(url, quality)
 
     opts = {
         "format": format_string,
@@ -294,6 +314,8 @@ def _parse_error(error_text: str) -> str:
         return "This video is blocked due to copyright"
     if "age" in lower or "confirm your age" in lower:
         return "This video is age-restricted"
+    if "requested format" in lower and "not available" in lower:
+        return f"Requested video format/quality is not available (detail: {error_text[:200]})"
     if "unavailable" in lower or "not available" in lower:
         return f"This video is unavailable (detail: {error_text[:200]})"
     if "live" in lower:
