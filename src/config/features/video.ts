@@ -15,13 +15,16 @@ export const quality = {
 export const ENABLE_MOBILE_PROCESSING = true;
 export const MOBILE_VIDEO_CODEC = 'libx264';
 export const MOBILE_AUDIO_CODEC = 'aac';
-export const MOBILE_CRF = '23';
-export const MOBILE_PRESET = 'fast';
+export const MOBILE_CRF = '28';
+export const MOBILE_PRESET = 'ultrafast';
+export const USE_HARDWARE_ACCEL = true;
+export const HARDWARE_ENCODERS = ['h264_nvenc', 'h264_qsv', 'h264_vaapi'];
+export const FFMPEG_THREADS = 0;
 export const mobile = {
     enabled: true,
     videoCodec: 'libx264',
     audioCodec: 'aac',
-    crf: '23',
+    crf: '28',
     preset: 'ultrafast',
     useHardwareAccel: true,
     hardwareEncoders: ['h264_nvenc', 'h264_qsv', 'h264_vaapi']
@@ -128,6 +131,9 @@ export default {
     MOBILE_AUDIO_CODEC,
     MOBILE_CRF,
     MOBILE_PRESET,
+    USE_HARDWARE_ACCEL,
+    HARDWARE_ENCODERS,
+    FFMPEG_THREADS,
     mobile,
     MAX_FILE_SIZE_MB,
     MAX_VIDEO_DURATION_SECONDS,

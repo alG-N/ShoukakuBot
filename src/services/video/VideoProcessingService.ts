@@ -283,7 +283,7 @@ class VideoProcessingService extends EventEmitter {
             const threads = config.FFMPEG_THREADS ?? 0;
             
             // Try hardware acceleration if enabled
-            if (config.USE_HARDWARE_ACCEL) {
+            if (config.USE_HARDWARE_ACCEL !== false) {
                 const hwEncoder = await this.detectHardwareEncoder();
                 if (hwEncoder) {
                     videoCodec = hwEncoder;
@@ -304,7 +304,7 @@ class VideoProcessingService extends EventEmitter {
                 args.push(
                     '-preset', preset,          // ultrafast for max speed
                     '-crf', crf,                // Higher CRF = faster
-                    '-tune', 'fastdecode'       // Optimize for fast decoding
+                    '-tune', 'zerolatency',     // Skip lookahead/B-frames for max speed
                 );
             } else if (videoCodec.includes('nvenc')) {
                 args.push(
@@ -319,8 +319,16 @@ class VideoProcessingService extends EventEmitter {
                 );
             }
             
+            // Scale down if source is larger than 720p to speed up encoding
+            // Most Discord embeds don't benefit from >720p anyway
+            const maxHeight = 720;
+            if (analysis.height && analysis.height > maxHeight) {
+                args.push('-vf', `scale=-2:${maxHeight}`);
+                logger.info('VideoProcessingService', `Scaling down from ${analysis.height}p to ${maxHeight}p for faster encoding`);
+            }
+            
             args.push(
-                '-profile:v', 'high',           // High profile for compression
+                '-profile:v', 'baseline',       // Baseline = fastest encode + widest compat
                 '-level', '4.1',                // Compatible with most devices
                 '-pix_fmt', 'yuv420p',          // Required for some players
                 '-c:a', audioCodec,             // AAC audio codec
