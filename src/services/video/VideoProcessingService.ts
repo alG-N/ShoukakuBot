@@ -278,7 +278,7 @@ class VideoProcessingService extends EventEmitter {
             // Get settings from config or use defaults
             let videoCodec = config.MOBILE_VIDEO_CODEC || 'libx264';
             const audioCodec = config.MOBILE_AUDIO_CODEC || 'aac';
-            const crf = config.MOBILE_CRF || '28';
+            const crf = config.MOBILE_CRF || '23';
             const preset = config.MOBILE_PRESET || 'ultrafast';
             const threads = config.FFMPEG_THREADS ?? 0;
             
@@ -328,7 +328,7 @@ class VideoProcessingService extends EventEmitter {
             }
             
             args.push(
-                '-profile:v', 'baseline',       // Baseline = fastest encode + widest compat
+                '-profile:v', 'high',           // High profile for better quality
                 '-level', '4.1',                // Compatible with most devices
                 '-pix_fmt', 'yuv420p',          // Required for some players
                 '-c:a', audioCodec,             // AAC audio codec
