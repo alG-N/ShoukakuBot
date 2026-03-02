@@ -465,7 +465,8 @@ class VideoDownloadService extends EventEmitter {
     private _isTikTokUrl(url: string): boolean {
         const lowerUrl = url.toLowerCase();
         return lowerUrl.includes('tiktok.com') || 
-               lowerUrl.includes('vm.tiktok.com');
+               lowerUrl.includes('vm.tiktok.com') ||
+               lowerUrl.includes('vt.tiktok.com');
     }
 }
 

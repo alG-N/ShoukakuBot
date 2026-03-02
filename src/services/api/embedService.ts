@@ -76,7 +76,7 @@ const EMBED_FIX_RULES: EmbedFixRule[] = [
         name: 'TikTok',
         emoji: '🎵',
         patterns: [
-            /https?:\/\/(www\.|vm\.)?tiktok\.com\/.+/i,
+            /https?:\/\/(www\.|vm\.|vt\.)?tiktok\.com\/.+/i,
         ],
         replacements: [
             ['tiktok.com', 'tfxktok.com'],

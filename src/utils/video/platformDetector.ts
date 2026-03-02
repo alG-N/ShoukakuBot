@@ -30,7 +30,7 @@ class PlatformDetector {
                 name: '🎵 TikTok',
                 id: 'tiktok',
                 color: '#000000',
-                patterns: ['tiktok.com', 'vm.tiktok.com'],
+                patterns: ['tiktok.com', 'vm.tiktok.com', 'vt.tiktok.com'],
                 supports: ['video', 'slideshow'],
                 maxQuality: '1080p',
             },

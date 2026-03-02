@@ -33,7 +33,6 @@ active_downloads = 0
 # ── Cookie Conversion (Cobalt JSON → Netscape format) ──
 DOMAIN_MAP = {
     "youtube": ".youtube.com",
-    "tiktok": ".tiktok.com",
     "instagram": ".instagram.com",
     "twitter": ".twitter.com",
     "reddit": ".reddit.com",
@@ -174,8 +173,10 @@ def _extract_info(url: str, quality: str = "720") -> dict:
         "socket_timeout": 15,
         "format": format_string,
     }
+
     if NETSCAPE_COOKIE_FILE:
         opts["cookiefile"] = NETSCAPE_COOKIE_FILE
+
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=False)
 
@@ -280,7 +281,10 @@ def _parse_error(error_text: str) -> str:
     """Parse yt-dlp errors into structured error messages"""
     lower = error_text.lower()
 
-    if "does not pass filter" and "duration" in lower:
+    # Always log the original error for debugging
+    print(f"[yt-dlp error] {error_text}")
+
+    if "does not pass filter" in lower and "duration" in lower:
         return f"DURATION_TOO_LONG:over {MAX_DURATION // 60} minutes"
     if "does not pass filter" in lower:
         return "DURATION_TOO_LONG:exceeds limit"
@@ -291,7 +295,7 @@ def _parse_error(error_text: str) -> str:
     if "age" in lower or "confirm your age" in lower:
         return "This video is age-restricted"
     if "unavailable" in lower or "not available" in lower:
-        return "This video is unavailable"
+        return f"This video is unavailable (detail: {error_text[:200]})"
     if "live" in lower:
         return "Cannot download live streams"
     if "premieres" in lower or "scheduled" in lower:
@@ -305,6 +309,17 @@ def _parse_error(error_text: str) -> str:
 
 
 # ── Periodic Cleanup ──
+@app.post("/reload-cookies")
+async def reload_cookies():
+    """Hot-reload cookies from disk without restarting the container.
+    Update docker/cobalt/cookies.json then call POST /reload-cookies."""
+    global NETSCAPE_COOKIE_FILE
+    NETSCAPE_COOKIE_FILE = _convert_cobalt_cookies()
+    if NETSCAPE_COOKIE_FILE:
+        return {"status": "ok", "message": "Cookies reloaded"}
+    return {"status": "warning", "message": "No cookies found"}
+
+
 @app.on_event("startup")
 async def startup():
     global NETSCAPE_COOKIE_FILE
