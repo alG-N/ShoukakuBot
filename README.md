@@ -20,8 +20,8 @@
 | Category | Features |
 |----------|----------|
 | 🎵 **Music** | Lavalink-powered streaming, queue management, autoplay, lyrics, favorites |
-| 📹 **Video** | Download videos via Cobalt API & yt-dlp |
-| 🔌 **APIs** | Reddit, Pixiv, NHentai, Rule34, Steam, Wikipedia, Google, Anime, Fandom |
+| 📹 **Video** | Download videos via `/download` (Cobalt API + yt-dlp fallback) |
+| 🔌 **APIs** | Anime, Media embed-fix, NHentai, Pixiv, Reddit, Rule34, Steam, Wikipedia |
 | 🛡️ **Moderation** | Ban, kick, mute, warn, automod, lockdown, anti-raid, snipe |
 | ⚙️ **Settings** | Per-server configuration, NSFW controls |
 | 🎮 **Fun** | Death Battle (JJK, Naruto, One Piece, Demon Slayer skillsets) |
@@ -36,17 +36,17 @@
 shoukaku-backend/
 ├── 📁 src/
 │   ├── 📁 commands/           # Slash commands (organized by category)
-│   │   ├── admin/             # 16 commands: automod, ban, case, clearwarns, delete,
+│   │   ├── admin/             # automod, ban, case, clearwarns, delete,
 │   │   │                      #   delwarn, kick, lockdown, mute, raid, setting,
 │   │   │                      #   slowmode, snipe, warn, warnings
-│   │   ├── api/               # 10 commands: anime, fandom, google, nhentai, pixiv,
-│   │   │                      #   reddit, rule34, steam, wikipedia
-│   │   ├── fun/               # 2 commands: deathbattle, say
-│   │   ├── general/           # 9 commands: afk, avatar, help, invite, ping,
+│   │   ├── api/               # anime, media, nhentai, pixiv,
+│   │   │                      # reddit, rule34, steam, wikipedia
+│   │   ├── fun/               # deathbattle, say
+│   │   ├── general/           # afk, avatar, help, invite, ping,
 │   │   │                      #   report, roleinfo, serverinfo
-│   │   ├── music/             # Music player (play, skip, queue, volume, etc.)
-│   │   ├── video/             # Video download commands
-│   │   └── owner/             # Bot owner: botcheck
+│   │   ├── music/             # /music (multi-subcommand)
+│   │   ├── video/             # /download
+│   │   └── owner/             # botcheck
 │   │
 │   ├── 📁 config/             # Configuration files
 │   │   ├── bot.ts             # Bot settings
@@ -74,12 +74,12 @@ shoukaku-backend/
 │   │   └── registry/          # Command/event registration
 │   │
 │   ├── 📁 cache/              # Unified caching (shard-safe)
-│   │   ├── CacheService.ts    # Redis + memory fallback (1170 lines)
-│   │   └── CacheManager.ts    # Cache orchestration
+│   │   ├── CacheService.ts    # Redis + memory fallback
+│   │   └── index.ts           # Cache exports
 │   │
 │   ├── 📁 database/           # Database layer
 │   │   ├── postgres.ts        # PostgreSQL with write queue
-│   │   └── admin.ts           # Admin queries
+│   │   └── index.ts           # Database exports
 │   │
 │   ├── 📁 events/             # Discord event listeners
 │   │   ├── messageCreate.ts   # Message handling + automod
@@ -88,6 +88,7 @@ shoukaku-backend/
 │   │
 │   ├── 📁 middleware/         # Request middleware
 │   │   ├── access.ts          # Permission & cooldown checks
+│   │   ├── checks.ts          # Validation checks
 │   │   └── voiceChannelCheck.ts # Voice channel validation
 │   │
 │   ├── 📁 utils/              # Utility functions
@@ -101,17 +102,17 @@ shoukaku-backend/
 │   └── container.ts           # Dependency Injection container
 │
 ├── 📁 tests/
-│   ├── unit/                  # 177 unit tests
+│   ├── unit/                  # Unit tests
 │   └── integration/           # Integration test framework
 │
 ├── 📁 docker/
 │   └── init/                  # PostgreSQL init scripts
 │
 ├── 📁 docs/
-│   ├── ARCHITECTURE_ROADMAP.md
 │   ├── SHARD_SAFETY.md
-│   ├── POTENTIAL_BUGS.md
-│   └── MONITORING.md
+│   ├── SHARDING.md
+│   ├── MONITORING.md
+│   └── TOS.md
 │
 ├── 🐳 docker-compose.yml      # Docker services config
 ├── 🐳 Dockerfile              # Bot container definition
@@ -139,20 +140,20 @@ cd shoukaku-backend
 npm install
 
 # 3. Configure environment
-cp .env.example .env
-# Edit .env with your credentials
+# Create `.env` manually in project root and add your credentials
 
 # 4. Start Docker services (PostgreSQL, Lavalink)
 npm run docker:up
 
-# 5. Run the bot
+# 5. Build and run the bot
+npm run build
 npm start
 ```
 
 ### Development Mode
 
 ```bash
-npm run dev  # Auto-restart on file changes
+npm run dev  # Compile TypeScript and run dist build
 ```
 
 ### Type Guardrails
@@ -229,79 +230,68 @@ COBALT_API_URL=https://your-cobalt-instance.com
 
 ## 📋 Command Reference
 
-### 🛡️ Admin Commands (16 commands)
+### 🛡️ Admin Commands
 
 | Command | Description | Permission |
 |---------|-------------|------------|
-| `/automod <action>` | Configure automatic moderation (spam, links, etc.) | Administrator |
-| `/ban <user> [reason] [days]` | Ban a user with optional message deletion | Ban Members |
-| `/case <case_id>` | View details of a moderation case | Moderate Members |
-| `/clearwarns <user>` | Clear all warnings for a user | Moderate Members |
-| `/delete <amount>` | Bulk delete messages (1-100) | Manage Messages |
-| `/delwarn <warn_id>` | Delete a specific warning | Moderate Members |
-| `/kick <user> [reason]` | Kick a user from the server | Kick Members |
-| `/lockdown <action> [channel]` | Lock/unlock channel or entire server | Manage Channels |
-| `/mute <user> <duration> [reason]` | Timeout a user | Moderate Members |
-| `/raid <action>` | Anti-raid controls (enable/disable/status) | Administrator |
-| `/setting <option> <value>` | Configure guild settings | Administrator |
-| `/slowmode <seconds> [channel]` | Set channel slowmode (0-21600) | Manage Channels |
-| `/snipe [channel] [index]` | View recently deleted messages | Manage Messages |
-| `/warn <user> <reason>` | Warn a user | Moderate Members |
-| `/warnings <user>` | View warnings for a user | Moderate Members |
+| `/automod` | Configure automatic moderation | Administrator |
+| `/ban` | Ban management (add/remove/list) | Ban Members |
+| `/case` | View moderation case details | Moderate Members |
+| `/clearwarns` | Clear warnings for a user | Moderate Members |
+| `/delete` | Bulk delete messages with filters | Manage Messages |
+| `/delwarn` | Delete a warning case | Moderate Members |
+| `/kick` | Kick a user | Kick Members |
+| `/lockdown` | Channel/server lockdown controls | Manage Channels |
+| `/mute` | Timeout controls (add/remove) | Moderate Members |
+| `/raid` | Anti-raid controls | Administrator |
+| `/setting` | Guild configuration settings | Administrator |
+| `/slowmode` | Slowmode controls | Manage Channels |
+| `/snipe` | View recently deleted messages | Manage Messages |
+| `/warn` | Issue warnings and warning settings | Moderate Members |
+| `/warnings` | List warnings | Moderate Members |
 
 ### 🎵 Music Commands
 
 | Command | Description |
 |---------|-------------|
-| `/music play <query>` | Play a song or add to queue |
+| `/music play` | Play a song or playlist |
 | `/music stop` | Stop playback and clear queue |
 | `/music skip` | Skip current track |
-| `/music queue` | View current queue |
-| `/music volume <1-200>` | Adjust volume |
-| `/music pause` | Pause/Resume playback |
-| `/music loop <off\|track\|queue>` | Set loop mode |
-| `/music shuffle` | Shuffle the queue |
-| `/music nowplaying` | Show current track info |
-| `/music seek <time>` | Seek to position |
-| `/music lyrics` | Get lyrics for current song |
-| `/music favorites` | Manage favorite tracks |
+| `/music pause` | Pause/resume playback |
+| `/music queue` | View queue (paged) |
+| `/music nowplaying` | Show current track |
+| `/music volume` | Set volume |
+| `/music loop` | Set loop mode |
+| `/music shuffle` | Toggle shuffle |
+| `/music remove` | Remove track from queue |
+| `/music move` | Move track position in queue |
+| `/music clear` | Clear queue (keep current track) |
+| `/music seek` | Seek to position |
+| `/music lyrics` | Fetch lyrics |
+| `/music history` | View recent tracks |
+| `/music autoplay` | Toggle autoplay |
+| `/music grab` | Send current track info to DM |
 
-#### Music Controls (Button Interface)
-
-```
-┌─────────────────────────────────────────────────────┐
-│  ⏸️ Pause  │  ⏹️ Stop  │  ⏭️ Skip  │  🔁 Loop  │  🔀 Shuffle  │
-├─────────────────────────────────────────────────────┤
-│  🔉 -10  │  🔊 +10  │  📋 Queue  │  🎵 Autoplay  │
-├─────────────────────────────────────────────────────┤
-│  🔗 Open Link  │  📝 Lyrics  │  🗳️ Vote Skip  │
-└─────────────────────────────────────────────────────┘
-```
-
-**Autoplay Feature:**
-- When enabled, automatically finds and plays similar tracks when queue ends
-- Disables Shuffle and Loop modes (they conflict with autoplay logic)
-- Uses intelligent search strategies based on artist, genre, and track similarity
-
-### 🔌 API Commands (10 commands)
+### 🔌 API Commands
 
 | Command | Description |
 |---------|-------------|
-| `/anime <title>` | Search anime on AniList/MyAnimeList |
-| `/fandom <wiki> <query>` | Search Fandom wikis |
-| `/google <query>` | Google search |
-| `/nhentai <query>` | Search NHentai (NSFW) |
-| `/pixiv <query>` | Search Pixiv artwork |
-| `/reddit <subreddit>` | Get posts from subreddit |
-| `/rule34 <query>` | Search Rule34 (NSFW) |
-| `/steam <game>` | Get Steam game info & deals |
-| `/wikipedia <query> [language]` | Search Wikipedia (multi-language) |
+| `/anime` | AniList/MyAnimeList search and lookup |
+| `/media` | Fix social-media embeds and preview media URLs |
+| `/nhentai` | NHentai search/browse commands (NSFW) |
+| `/pixiv` | Pixiv artwork search |
+| `/reddit` | Browse subreddit posts and trending feeds |
+| `/rule34` | Rule34 search commands (NSFW) |
+| `/steam` | Steam sale/game/free/featured lookups |
+| `/wikipedia` | Wikipedia search/article/random/today |
+
+Note: command coverage can evolve between releases. Use `src/commands/` as the source of truth.
 
 ### 📹 Video Commands
 
 | Command | Description |
 |---------|-------------|
-| `/video download <url>` | Download video (YouTube, TikTok, Twitter, Instagram, etc.) |
+| `/download <url>` | Download video/media (YouTube, TikTok, Twitter/X, Instagram, Reddit, etc.) |
 
 Supported platforms: YouTube, TikTok, Twitter/X, Instagram, Reddit, Twitch clips, and more via Cobalt API + yt-dlp fallback.
 
@@ -309,8 +299,8 @@ Supported platforms: YouTube, TikTok, Twitter/X, Instagram, Reddit, Twitch clips
 
 | Command | Description |
 |---------|-------------|
-| `/deathbattle <user1> <user2> [skillset]` | Simulate anime-style battle between users |
-| `/say <message>` | Make the bot say something |
+| `/deathbattle` | Simulate anime-style battles with selectable skillsets |
+| `/say` | Send message/embed output via bot |
 
 **Death Battle Skillsets:**
 - **Jujutsu Kaisen** - Cursed techniques, Domain Expansion
@@ -318,18 +308,18 @@ Supported platforms: YouTube, TikTok, Twitter/X, Instagram, Reddit, Twitch clips
 - **One Piece** - Devil Fruits, Haki
 - **Demon Slayer** - Breathing styles, Demon abilities
 
-### 📊 General Commands (9 commands)
+### 📊 General Commands
 
 | Command | Description |
 |---------|-------------|
-| `/afk [reason]` | Set AFK status (auto-responds when mentioned) |
-| `/avatar [user]` | Get user's avatar in high resolution |
-| `/help [command]` | View command help |
+| `/afk` | Set AFK status |
+| `/avatar` | Get user avatar |
+| `/help` | Show interactive help menu |
 | `/invite` | Bot invite link |
-| `/ping` | Check bot latency and API response time |
-| `/report <issue>` | Report a bug/issue to developers |
-| `/roleinfo <role>` | View role information and permissions |
-| `/serverinfo` | Server information and statistics |
+| `/ping` | Check bot/API latency |
+| `/report` | Open report flow for issue submissions |
+| `/roleinfo` | View role information |
+| `/serverinfo` | View server information |
 
 ### 👑 Owner Commands
 
@@ -370,38 +360,14 @@ Uses multiple APIs for best coverage:
 
 ## 🗄️ Database Schema
 
-### PostgreSQL Tables
+Database schema is managed by SQL bootstrap files in `docker/init/` and runtime DB code in `src/database/`.
 
-```sql
--- Guild settings
-CREATE TABLE guild_settings (
-    guild_id VARCHAR(20) PRIMARY KEY,
-    prefix VARCHAR(10) DEFAULT '!',
-    nsfw_enabled BOOLEAN DEFAULT false,
-    mod_log_channel VARCHAR(20),
-    settings JSONB DEFAULT '{}'
-);
-
--- Command usage analytics
-CREATE TABLE command_usage (
-    id SERIAL PRIMARY KEY,
-    guild_id VARCHAR(20),
-    user_id VARCHAR(20),
-    command_name VARCHAR(50),
-    used_at TIMESTAMP DEFAULT NOW()
-);
-
--- Moderation logs
-CREATE TABLE mod_logs (
-    id SERIAL PRIMARY KEY,
-    guild_id VARCHAR(20),
-    moderator_id VARCHAR(20),
-    target_id VARCHAR(20),
-    action VARCHAR(20),
-    reason TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-```
+Primary schema sources:
+- `docker/init/01-schema.sql`
+- `docker/init/02-optimizations.sql`
+- `docker/init/03-moderation.sql`
+- `docker/init/04-automod-migration.sql`
+- `docker/init/05-user-music.sql`
 
 ---
 
@@ -442,7 +408,7 @@ docker-compose logs -f postgres
 ### APIs
 - `axios` ^1.9 - HTTP client
 - `graphql-request` - GraphQL client (AniList)
-- `node-fetch` ^2.7 - Fetch API
+- `ioredis` ^5.9 - Redis client (shard-safe state)
 
 ### Media
 - `@discordjs/voice` - Voice connections
@@ -474,20 +440,21 @@ npm test -- tests/unit/core/Container.test.ts
 RUN_INTEGRATION_TESTS=1 npm test -- tests/integration/
 ```
 
-**Current Coverage:** 177 unit tests passing
+Coverage varies by branch and commit. Run `npm test -- --coverage` for current numbers.
 
 ---
 
 ## 🔀 Multi-Shard Deployment
 
-alterGolden is fully shard-safe. All runtime state is stored in Redis.
+Shoukaku Bot is fully shard-safe. All runtime state is stored in Redis.
 
 ```bash
-# Start with sharding (auto-calculated)
-node src/sharding.js
+# Start with sharding (build first)
+npm run build
+node dist/sharding.js
 
 # Or specify shard count
-TOTAL_SHARDS=4 node src/sharding.js
+TOTAL_SHARDS=4 node dist/sharding.js
 ```
 
 See [docs/SHARD_SAFETY.md](docs/SHARD_SAFETY.md) for details.
@@ -498,12 +465,20 @@ See [docs/SHARD_SAFETY.md](docs/SHARD_SAFETY.md) for details.
 
 | Document | Description |
 |----------|-------------|
-| [ARCHITECTURE_ROADMAP.md](docs/ARCHITECTURE_ROADMAP.md) | Full architecture overview (8.5/10 score) |
+| [cachehitrate.md](docs/cachehitrate.md) | Cache hit-rate notes and observations |
+| [CODE_REVIEW.md](docs/CODE_REVIEW.md) | Consolidated review notes |
+| [Description.md](docs/Description.md) | Project description notes |
 | [SHARD_SAFETY.md](docs/SHARD_SAFETY.md) | Multi-shard deployment guide |
-| [POTENTIAL_BUGS.md](docs/POTENTIAL_BUGS.md) | Known issues and future improvements |
 | [MONITORING.md](docs/MONITORING.md) | Prometheus/Grafana setup |
+| [PotentialProblem.md](docs/PotentialProblem.md) | Potential issue tracking notes |
+| [POTENTIAL_BUGS.md](docs/POTENTIAL_BUGS.md) | Known issues and future improvements |
 | [SHARDING.md](docs/SHARDING.md) | Discord sharding config |
-| [ROADMAP_8.5.md](docs/ROADMAP_8.5.md) | Migration progress tracker |
+| [SYSTEM_REVIEW.md](docs/SYSTEM_REVIEW.md) | System review notes |
+| [SYSTEM_REVIEW_REVAMPED.md](docs/SYSTEM_REVIEW_REVAMPED.md) | System review (revamped) |
+| [SYSTEM_REVIEW_V3.md](docs/SYSTEM_REVIEW_V3.md) | System review v3 |
+| [SYSTEM_REVIEW_V4.md](docs/SYSTEM_REVIEW_V4.md) | System review v4 |
+| [TOS.md](docs/TOS.md) | Terms of Service for bot usage |
+| [TYPES_ARCHITECTURE.md](docs/TYPES_ARCHITECTURE.md) | Type architecture and migration map |
 
 ---
 
@@ -541,7 +516,7 @@ MIT License - See [LICENSE](LICENSE) for details.
 
 <div align="center">
 
-**Made with ❤️ by alterGolden Team**
+**Made with ❤️ by Shoukaku Bot Team**
 
 [Report Bug](../../issues) · [Request Feature](../../issues)
 
