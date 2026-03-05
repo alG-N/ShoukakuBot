@@ -8,7 +8,7 @@ import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, ActionR
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import logger from '../../core/Logger.js';
-import * as _steamHandler from '../../handlers/api/steamSaleHandler.js';
+import * as _steamHandler from '../../handlers/api/steam/index.js';
 import _steamService from '../../services/api/steamService.js';
 import type { SaleHandler, SteamAppDetail, SteamStoreSearchItem } from '../../types/commands/api-steam.js';
 // SERVICE IMPORTS

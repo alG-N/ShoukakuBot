@@ -16,11 +16,9 @@ import { COLORS } from '../../constants.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import _redditService from '../../services/api/redditService.js';
 import _redditCache from '../../repositories/api/redditCache.js';
-import * as _postHandler from '../../handlers/api/redditPostHandler.js';
+import * as _postHandler from '../../handlers/api/reddit/index.js';
 import logger from '../../core/Logger.js';
-import type { RedditPost } from '../../types/api/reddit.js';
 import type {
-    SubredditSuggestion,
     FetchResult,
     RedditService,
     RedditCache,

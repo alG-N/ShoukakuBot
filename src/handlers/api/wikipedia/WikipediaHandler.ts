@@ -1,47 +1,20 @@
-/**
- * Wikipedia Handler
- * Creates embeds and buttons for Wikipedia articles
- * @module handlers/api/wikipediaHandler
- */
-
-import { 
-    EmbedBuilder, 
-    ActionRowBuilder, 
-    ButtonBuilder, 
-    ButtonStyle, 
-    StringSelectMenuBuilder 
+import {
+    EmbedBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    StringSelectMenuBuilder
 } from 'discord.js';
+import { COLORS, MONTH_NAMES, WIKIPEDIA_ICON } from './constants.js';
 import type {
     WikiArticle as WikipediaArticle,
     WikiSearchResult,
     OnThisDayEvent,
     OnThisDayDate
-} from '../../types/api/wikipedia.js';
-export { type WikiArticle as WikipediaArticle, type WikiSearchResult, type OnThisDayEvent, type OnThisDayDate } from '../../types/api/wikipedia.js';
-// TYPES & INTERFACES
-// CONSTANTS
-const COLORS = {
-    WIKIPEDIA: 0xFFFFFF,
-    ERROR: 0xFF0000,
-    SUCCESS: 0x00FF00,
-} as const;
+} from '../../../types/api/wikipedia.js';
 
-const WIKIPEDIA_ICON = 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Wikipedia-logo-v2.svg/103px-Wikipedia-logo-v2.svg.png';
-
-const MONTH_NAMES = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-] as const;
-// WIKIPEDIA HANDLER CLASS
-/**
- * Handler for Wikipedia article embeds and components
- */
-class WikipediaHandler {
-    /**
-     * Create article embed
-     */
+export class WikipediaHandler {
     createArticleEmbed(article: WikipediaArticle | null | undefined): EmbedBuilder {
-        // Handle missing article data
         if (!article) {
             return new EmbedBuilder()
                 .setColor(COLORS.ERROR)
@@ -52,20 +25,18 @@ class WikipediaHandler {
         const title = article.displayTitle || article.title || 'Unknown Article';
         const embed = new EmbedBuilder()
             .setColor(COLORS.WIKIPEDIA)
-            .setAuthor({ 
+            .setAuthor({
                 name: 'Wikipedia',
                 iconURL: WIKIPEDIA_ICON,
-                url: 'https://en.wikipedia.org',
+                url: 'https://en.wikipedia.org'
             })
             .setTitle(title)
             .setTimestamp();
 
-        // Only set URL if available
         if (article.url) {
             embed.setURL(article.url);
         }
 
-        // Build description
         let description = '';
         if (article.description) {
             description = `*${article.description}*\n\n`;
@@ -73,21 +44,18 @@ class WikipediaHandler {
         description += this.truncate(article.extract, 1800 - description.length);
         embed.setDescription(description);
 
-        // Add thumbnail
         if (article.thumbnail) {
             embed.setThumbnail(article.thumbnail);
         }
 
-        // Add coordinates if available
         if (article.coordinates) {
             embed.addFields({
                 name: '📍 Location',
                 value: `[${article.coordinates.lat.toFixed(4)}, ${article.coordinates.lon.toFixed(4)}](https://www.google.com/maps?q=${article.coordinates.lat},${article.coordinates.lon})`,
-                inline: true,
+                inline: true
             });
         }
 
-        // Footer with type indicator
         const typeLabel = article.type === 'disambiguation' ? '(Disambiguation Page)' : '';
         const langLabel = article.language ? `[${article.language.toUpperCase()}]` : '';
         embed.setFooter({ text: `Wikipedia ${langLabel} ${typeLabel}`.trim() });
@@ -95,15 +63,12 @@ class WikipediaHandler {
         return embed;
     }
 
-    /**
-     * Create search results embed
-     */
     createSearchResultsEmbed(query: string, results: WikiSearchResult[]): EmbedBuilder {
         const embed = new EmbedBuilder()
             .setColor(COLORS.WIKIPEDIA)
-            .setAuthor({ 
+            .setAuthor({
                 name: 'Wikipedia Search',
-                iconURL: WIKIPEDIA_ICON,
+                iconURL: WIKIPEDIA_ICON
             })
             .setTitle(`🔍 Search: "${this.truncate(query, 50)}"`)
             .setTimestamp();
@@ -124,28 +89,22 @@ class WikipediaHandler {
         return embed;
     }
 
-    /**
-     * Create random article embed (with special styling)
-     */
     createRandomArticleEmbed(article: WikipediaArticle): EmbedBuilder {
         const embed = this.createArticleEmbed(article);
-        embed.setAuthor({ 
+        embed.setAuthor({
             name: '🎲 Random Wikipedia Article',
             iconURL: WIKIPEDIA_ICON,
-            url: 'https://en.wikipedia.org/wiki/Special:Random',
+            url: 'https://en.wikipedia.org/wiki/Special:Random'
         });
         return embed;
     }
 
-    /**
-     * Create "On This Day" embed
-     */
     createOnThisDayEmbed(events: OnThisDayEvent[], date: OnThisDayDate): EmbedBuilder {
         const embed = new EmbedBuilder()
             .setColor(COLORS.WIKIPEDIA)
-            .setAuthor({ 
+            .setAuthor({
                 name: 'Wikipedia - On This Day',
-                iconURL: WIKIPEDIA_ICON,
+                iconURL: WIKIPEDIA_ICON
             })
             .setTitle(`📅 ${MONTH_NAMES[date.month - 1]} ${date.day}`)
             .setTimestamp();
@@ -164,9 +123,6 @@ class WikipediaHandler {
         return embed;
     }
 
-    /**
-     * Create article action buttons
-     */
     createArticleButtons(article: WikipediaArticle, userId: string): ActionRowBuilder<ButtonBuilder> {
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()
@@ -181,7 +137,6 @@ class WikipediaHandler {
                 .setEmoji('🎲')
         );
 
-        // Add image button if original image exists
         if (article.originalImage) {
             row.addComponents(
                 new ButtonBuilder()
@@ -195,11 +150,8 @@ class WikipediaHandler {
         return row;
     }
 
-    /**
-     * Create search result select menu
-     */
     createSearchSelectMenu(
-        results: WikiSearchResult[], 
+        results: WikiSearchResult[],
         userId: string
     ): ActionRowBuilder<StringSelectMenuBuilder> | null {
         if (results.length === 0) return null;
@@ -208,7 +160,7 @@ class WikipediaHandler {
             label: this.truncate(result.title, 100),
             description: this.truncate(result.description, 100),
             value: `wiki_select_${i}_${userId}`,
-            emoji: '📄',
+            emoji: '📄'
         }));
 
         return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
@@ -219,9 +171,6 @@ class WikipediaHandler {
         );
     }
 
-    /**
-     * Create error embed
-     */
     createErrorEmbed(message: string): EmbedBuilder {
         return new EmbedBuilder()
             .setColor(COLORS.ERROR)
@@ -230,9 +179,6 @@ class WikipediaHandler {
             .setTimestamp();
     }
 
-    /**
-     * Create cooldown embed
-     */
     createCooldownEmbed(remaining: number): EmbedBuilder {
         return new EmbedBuilder()
             .setColor(COLORS.ERROR)
@@ -240,22 +186,10 @@ class WikipediaHandler {
             .setDescription(`Please wait **${remaining}s** before using this command again.`)
             .setTimestamp();
     }
-    // PRIVATE HELPERS
-    /**
-     * Truncate text and clean HTML tags
-     */
+
     private truncate(text: string | undefined | null, maxLength: number): string {
         if (!text) return '';
-        // Clean HTML tags if any
         const clean = text.replace(/<[^>]*>/g, '');
         return clean.length > maxLength ? clean.substring(0, maxLength - 3) + '...' : clean;
     }
 }
-
-// Export singleton instance
-const wikipediaHandler = new WikipediaHandler();
-export { wikipediaHandler, WikipediaHandler };
-export default wikipediaHandler;
-
-
-

@@ -15,15 +15,12 @@ import { checkAccess, AccessType } from '../../services/index.js';
 import logger from '../../core/Logger.js';
 import _pixivServiceModule from '../../services/api/pixivService.js';
 import _pixivCacheModule from '../../repositories/api/pixivCache.js';
-import * as _contentHandlerModule from '../../handlers/api/pixivContentHandler.js';
+import * as _contentHandlerModule from '../../handlers/api/pixiv/index.js';
 import type {
-    PixivArtworkSummary as Artwork,
     PixivCommandSearchOptions,
-    PixivCommandSearchResult,
     PixivCachedSearch as CachedSearch
 } from '../../types/api/content-session.js';
 import type {
-    PixivContentEmbedResult,
     PixivService,
     PixivCache,
     ContentHandler

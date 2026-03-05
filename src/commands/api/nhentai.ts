@@ -6,21 +6,17 @@
 
 import { 
     SlashCommandBuilder, 
-    EmbedBuilder,
     ChatInputCommandInteraction,
+    AutocompleteInteraction,
     ButtonInteraction,
-    ModalSubmitInteraction,
-    ActionRowBuilder,
-    ButtonBuilder
+    ModalSubmitInteraction
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import logger from '../../core/Logger.js';
 import _nhentaiServiceModule from '../../services/api/nhentaiService.js';
-import _nhentaiHandlerModule from '../../handlers/api/nhentaiHandler.js';
-import type { AttachmentBuilder } from 'discord.js';
-import type { NHentaiGallery, SearchData } from '../../types/api/nhentai.js';
-import type { GalleryData, NHentaiService, NHentaiHandler } from '../../types/commands/api-nhentai.js';
+import _nhentaiHandlerModule from '../../handlers/api/nhentai/index.js';
+import type { NHentaiService, NHentaiHandler } from '../../types/commands/api-nhentai.js';
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const nhentaiService: NHentaiService = _nhentaiServiceModule as any;
 const nhentaiHandler: NHentaiHandler = _nhentaiHandlerModule as any;
@@ -77,6 +73,7 @@ class NHentaiCommand extends BaseCommand {
                     .setName('query')
                     .setDescription('Search query (tag, artist, parody, etc.)')
                     .setRequired(true)
+                    .setAutocomplete(true)
                 )
                 .addStringOption(opt => opt
                     .setName('sort')
@@ -289,6 +286,30 @@ class NHentaiCommand extends BaseCommand {
 
     async handleModal(interaction: ModalSubmitInteraction): Promise<void> {
         await nhentaiHandler?.handleModal?.(interaction);
+    }
+
+    async autocomplete(interaction: AutocompleteInteraction): Promise<void> {
+        const focusedValue = interaction.options.getFocused();
+
+        if (focusedValue.length < 2) {
+            try { await interaction.respond([]); } catch { /* expired */ }
+            return;
+        }
+
+        try {
+            const raw = await nhentaiService!.getSearchSuggestions(focusedValue);
+            const suggestions = Array.isArray(raw) ? raw : [];
+            const choices = suggestions.slice(0, 25).map(s => ({
+                name: s.length > 100 ? s.slice(0, 97) + '...' : s,
+                value: s.slice(0, 100)
+            }));
+            await interaction.respond(choices);
+        } catch (error) {
+            const err = error as { code?: number; message?: string };
+            if (err?.code === 10062 || err?.code === 40060) return;
+            logger.error('NHentai', `Autocomplete error: ${(error as Error).message}`);
+            try { await interaction.respond([]); } catch { /* expired */ }
+        }
     }
 }
 

@@ -17,21 +17,17 @@ import {
     ChatInputCommandInteraction,
     AutocompleteInteraction,
     ButtonInteraction,
-    StringSelectMenuInteraction,
-    PermissionFlagsBits
+    StringSelectMenuInteraction
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import _rule34Service from '../../services/api/rule34Service.js';
 import _rule34Cache from '../../repositories/api/rule34Cache.js';
-import _postHandler from '../../handlers/api/rule34PostHandler.js';
+import _postHandler from '../../handlers/api/rule34/index.js';
 import logger from '../../core/Logger.js';
 import type {
     Post,
     Rule34CommandSearchOptions,
-    Rule34CommandSearchResult,
-    Session,
-    Preferences,
     Rule34ServiceContract,
     Rule34CacheContract,
     Rule34PostHandlerContract
@@ -305,7 +301,7 @@ class Rule34Command extends BaseCommand {
                     await this._handleTrending(interaction, userId);
                     break;
                 case 'related':
-                    await this._handleRelated(interaction, userId);
+                    await this._handleRelated(interaction);
                     break;
                 case 'settings':
                     await this._handleSettings(interaction, userId);
@@ -564,7 +560,7 @@ class Rule34Command extends BaseCommand {
         await interaction.editReply({ embeds: [embed], components: rows });
     }
 
-    private async _handleRelated(interaction: ChatInputCommandInteraction, userId: string): Promise<void> {
+    private async _handleRelated(interaction: ChatInputCommandInteraction): Promise<void> {
         await interaction.deferReply();
 
         const tag = interaction.options.getString('tag', true);

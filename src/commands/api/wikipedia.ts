@@ -7,21 +7,14 @@
 import { 
     SlashCommandBuilder, 
     ChatInputCommandInteraction,
-    AutocompleteInteraction,
-    EmbedBuilder,
-    ActionRowBuilder,
-    ButtonBuilder
+    AutocompleteInteraction
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import logger from '../../core/Logger.js';
 import _wikipediaServiceModule from '../../services/api/wikipediaService.js';
-import _wikipediaHandlerModule from '../../handlers/api/wikipediaHandler.js';
+import _wikipediaHandlerModule from '../../handlers/api/wikipedia/index.js';
 import type {
-    WikiArticle,
-    WikiSearchResult,
-    WikiSearchResponse,
-    OnThisDayEvent,
     OnThisDayDate
 } from '../../types/api/wikipedia.js';
 import type { WikipediaHandler, WikipediaService } from '../../types/commands/api-wikipedia.js';

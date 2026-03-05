@@ -5,36 +5,41 @@
  */
 
 // TypeScript handlers
-export { wikipediaHandler, WikipediaHandler } from './wikipediaHandler.js';
-export { type WikipediaArticle, type WikiSearchResult, type OnThisDayEvent, type OnThisDayDate } from './wikipediaHandler.js';
+export { wikipediaHandler, WikipediaHandler } from './wikipedia/index.js';
+export { type WikipediaArticle, type WikiSearchResult, type OnThisDayEvent, type OnThisDayDate } from './wikipedia/index.js';
 
 // Anime handler
-import * as animeHandlerModule from './animeHandler.js';
+import * as animeHandlerModule from './anime/index.js';
 export {
     createMediaEmbed,
     createAnimeEmbed,
     createAniListEmbed,
     createMALAnimeEmbed,
     createMALMangaEmbed
-} from './animeHandler.js';
-export { type AnimeMedia, type MediaSource, type MediaType, type MediaConfig, type MediaTitle, type MediaDate } from './animeHandler.js';
+} from './anime/index.js';
+export { type AnimeMedia } from '../../types/api/anime.js';
+export { type AnimeContentSource as MediaSource, type MALMediaType as MediaType } from '../../types/api/mal.js';
+export { type MediaConfig, type MediaTitle, type MediaDate } from '../../types/api/handlers/anime-handler.js';
+export { type MediaImage, type MediaTrailer, type MediaStudio, type MediaRelation, type MediaCharacter, type MediaRanking } from '../../types/api/handlers/anime-handler.js';
 
 // NHentai handler
-import nhentaiHandlerInstance from './nhentaiHandler.js';
-export { default as nhentaiHandler, NHentaiHandler } from './nhentaiHandler.js';
-export { type Gallery, type GalleryTitle, type GalleryTag, type GalleryImages, type ParsedTags, type PageSession, type SearchSession, type SearchData, type Favourite } from './nhentaiHandler.js';
+import nhentaiHandlerInstance from './nhentai/index.js';
+export { default as nhentaiHandler, NHentaiHandler } from './nhentai/index.js';
+export { type Gallery, type GalleryTitle, type GalleryTag, type GalleryImages, type PageSession, type SearchSession, type Favourite } from '../../types/api/handlers/nhentai-handler.js';
+export { type ParsedTags, type SearchData } from '../../types/api/nhentai.js';
 
 // Pixiv handler
-import * as pixivContentHandlerModule from './pixivContentHandler.js';
+import * as pixivContentHandlerModule from './pixiv/index.js';
 export {
     createContentEmbed,
     createNoResultsEmbed as createPixivNoResultsEmbed,
     createErrorEmbed as createPixivErrorEmbed
-} from './pixivContentHandler.js';
-export { type PixivItem, type PixivTag, type PixivContentUser, type ContentEmbedOptions, type ContentEmbedResult } from './pixivContentHandler.js';
+} from './pixiv/index.js';
+export { type PixivTag } from '../../types/api/pixiv.js';
+export { type PixivItem, type PixivContentUser, type ContentEmbedOptions, type ContentEmbedResult } from '../../types/api/handlers/pixiv-handler.js';
 
 // Reddit handler
-import * as redditPostHandlerModule from './redditPostHandler.js';
+import * as redditPostHandlerModule from './reddit/index.js';
 export {
     sendPostListEmbed,
     showPostDetails,
@@ -42,11 +47,12 @@ export {
     createPostEmbed,
     createNotFoundEmbed,
     POSTS_PER_PAGE
-} from './redditPostHandler.js';
-export { type RedditPost, type SortType } from './redditPostHandler.js';
+} from './reddit/index.js';
+export { type RedditPost } from '../../types/api/reddit.js';
+export { type RedditSortType as SortType } from '../../types/api/handlers/reddit-post-handler.js';
 
 // Rule34 handler
-import * as rule34PostHandlerModule from './rule34PostHandler.js';
+import * as rule34PostHandlerModule from './rule34/index.js';
 export {
     createPostEmbed as createRule34PostEmbed,
     createVideoEmbed as createRule34VideoEmbed,
@@ -64,13 +70,14 @@ export {
     RATING_EMOJIS,
     CONTENT_EMOJIS,
     SORT_DISPLAY
-} from './rule34PostHandler.js';
-export { type Rule34Post, type PostRating, type ContentType, type SortMode, type SearchResults, type PostEmbedOptions, type SearchFilters, type Rule34HandlerPreferences as UserPreferences, type FavoriteEntry, type Rule34HistoryEntry, type RelatedTag, type EmbedResult } from './rule34PostHandler.js';
+} from './rule34/index.js';
+export { type Rule34Post, type PostRating, type Rule34ContentType as ContentType, type SortMode, type Rule34RelatedTag as RelatedTag, type Rule34HistoryEntry } from '../../types/api/rule34.js';
+export { type SearchResults, type PostEmbedOptions, type SearchFilters, type Rule34HandlerPreferences as UserPreferences, type FavoriteEntry, type EmbedResult } from '../../types/api/handlers/rule34-post-handler.js';
 
 // Steam handler
-import * as steamSaleHandlerModule from './steamSaleHandler.js';
-export { handleSaleCommand } from './steamSaleHandler.js';
-export { type SteamGame, type SaleState } from './steamSaleHandler.js';
+import * as steamSaleHandlerModule from './steam/index.js';
+export { handleSaleCommand } from './steam/index.js';
+export { type SteamGame, type SaleState } from './steam/index.js';
 
 // Re-export as namespace objects for backward compatibility
 export const animeHandler = animeHandlerModule;

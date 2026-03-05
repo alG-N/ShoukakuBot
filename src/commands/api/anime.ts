@@ -19,9 +19,8 @@ import { COLORS } from '../../constants.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import _anilistService from '../../services/api/anilistService.js';
 import _myAnimeListService from '../../services/api/myAnimeListService.js';
-import * as _animeHandler from '../../handlers/api/animeHandler.js';
+import * as _animeHandler from '../../handlers/api/anime/index.js';
 import _animeRepository from '../../repositories/api/animeRepository.js';
-import type { AnimeFavourite as AnimeRepositoryFavourite } from '../../repositories/api/animeRepository.js';
 import logger from '../../core/Logger.js';
 import type {
     AnimeCommandTitle,
@@ -266,11 +265,31 @@ class AnimeCommand extends BaseCommand {
     }
 
     async autocomplete(interaction: AutocompleteInteraction): Promise<void> {
+        const isIgnorableInteractionError = (error: unknown): boolean => {
+            const err = error as { code?: number; message?: string };
+            return err?.code === 10062 || err?.code === 40060 
+                || err?.message === 'Unknown interaction'
+                || err?.message?.includes('already been acknowledged') === true;
+        };
+
+        const safeRespond = async (choices: Array<{ name: string; value: string }>): Promise<void> => {
+            try {
+                if ((interaction as { responded?: boolean }).responded) return;
+                await interaction.respond(choices);
+            } catch (error) {
+                if (isIgnorableInteractionError(error)) {
+                    logger.debug('Anime', `Autocomplete respond expired (normal during fast typing)`);
+                    return;
+                }
+                throw error;
+            }
+        };
+
         const focusedValue = interaction.options.getFocused();
         const subcommand = interaction.options.getSubcommand();
 
         if (focusedValue.length < 2) {
-            await interaction.respond([]);
+            await safeRespond([]);
             return;
         }
 
@@ -278,7 +297,7 @@ class AnimeCommand extends BaseCommand {
         const cached = autocompleteCache.get(cacheKey);
         
         if (cached && Date.now() - cached.timestamp < AUTOCOMPLETE_CACHE_DURATION) {
-            await interaction.respond(cached.results);
+            await safeRespond(cached.results);
             return;
         }
 
@@ -286,7 +305,8 @@ class AnimeCommand extends BaseCommand {
             let results: Array<{ name: string; value: string }> = [];
             
             if (subcommand === 'search') {
-                const suggestions = await anilistService!.searchAnimeAutocomplete(focusedValue);
+                const raw = await anilistService!.searchAnimeAutocomplete(focusedValue);
+                const suggestions = Array.isArray(raw) ? raw : [];
                 results = suggestions.slice(0, 25).map(s => {
                     const titleObj = s.title as AnimeCommandTitle | undefined;
                     const title = titleObj?.english || titleObj?.romaji || titleObj?.native || 'Unknown';
@@ -297,7 +317,8 @@ class AnimeCommand extends BaseCommand {
                 });
             } else if (subcommand === 'mal') {
                 const mediaType = (interaction.options.getString('type') || 'anime') as MALMediaType;
-                const suggestions = await myAnimeListService!.searchMediaAutocomplete(focusedValue, mediaType);
+                const raw = await myAnimeListService!.searchMediaAutocomplete(focusedValue, mediaType);
+                const suggestions = Array.isArray(raw) ? raw : [];
                 results = suggestions.slice(0, 25).map(s => {
                     const titleObj = s.title;
                     const title = typeof titleObj === 'string' 
@@ -311,14 +332,36 @@ class AnimeCommand extends BaseCommand {
             }
 
             autocompleteCache.set(cacheKey, { results, timestamp: Date.now() });
-            await interaction.respond(results);
+            await safeRespond(results);
         } catch (error) {
+            if (isIgnorableInteractionError(error)) {
+                logger.warn('Anime', `Autocomplete interaction lifecycle issue: ${(error as Error).message}`);
+                return;
+            }
+
             logger.error('Anime', `Autocomplete error: ${(error as Error).message}`);
-            await interaction.respond([]);
+
+            try {
+                await safeRespond([]);
+            } catch (fallbackError) {
+                if (!isIgnorableInteractionError(fallbackError)) {
+                    throw fallbackError;
+                }
+            }
         }
     }
 
     async handleButton(interaction: ButtonInteraction): Promise<void> {
+        const isIgnorableInteractionError = (error: unknown): boolean => {
+            const err = error as { code?: number; message?: string };
+            return err?.code === 10062 || err?.code === 40060 || err?.message === 'Unknown interaction';
+        };
+
+        const safeFollowUp = async (content: string): Promise<void> => {
+            if (!interaction.deferred && !interaction.replied) return;
+            await interaction.followUp({ content, ephemeral: true });
+        };
+
         const parts = interaction.customId.split('_');
         const action = parts[1]; // 'fav'
         const animeId = parts[2];
@@ -326,7 +369,9 @@ class AnimeCommand extends BaseCommand {
 
         if (action === 'fav') {
             try {
-                await interaction.deferUpdate();
+                if (!interaction.deferred && !interaction.replied) {
+                    await interaction.deferUpdate();
+                }
 
                 const cached = searchResultCache.get(userId);
                 let animeTitle = 'Unknown';
@@ -354,10 +399,7 @@ class AnimeCommand extends BaseCommand {
                     );
                     
                     await interaction.editReply({ components: [row] });
-                    await interaction.followUp({ 
-                        content: `💔 Removed **${animeTitle}** from favourites`, 
-                        ephemeral: true 
-                    });
+                    await safeFollowUp(`💔 Removed **${animeTitle}** from favourites`);
                 } else {
                     await animeRepository!.addFavourite(userId, animeId, animeTitle, source);
                     
@@ -369,17 +411,23 @@ class AnimeCommand extends BaseCommand {
                     );
                     
                     await interaction.editReply({ components: [row] });
-                    await interaction.followUp({ 
-                        content: `⭐ Added **${animeTitle}** to favourites!`, 
-                        ephemeral: true 
-                    });
+                    await safeFollowUp(`⭐ Added **${animeTitle}** to favourites!`);
                 }
             } catch (error) {
+                if (isIgnorableInteractionError(error)) {
+                    logger.warn('Anime', `Favourite toggle interaction lifecycle issue: ${(error as Error).message}`);
+                    return;
+                }
+
                 logger.error('Anime', `Favourite toggle error: ${(error as Error).message}`);
-                await interaction.followUp({ 
-                    content: '❌ Failed to update favourites. Please try again.', 
-                    ephemeral: true 
-                }).catch(() => {});
+
+                try {
+                    await safeFollowUp('❌ Failed to update favourites. Please try again.');
+                } catch (followUpError) {
+                    if (!isIgnorableInteractionError(followUpError)) {
+                        logger.error('Anime', `Favourite toggle follow-up error: ${(followUpError as Error).message}`);
+                    }
+                }
             }
         }
     }

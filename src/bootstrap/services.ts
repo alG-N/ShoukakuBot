@@ -73,7 +73,7 @@ import battleService from '../services/fun/deathbattle/BattleService.js';
 import sayService from '../services/fun/say/SayService.js';
 
 // ── HANDLERS WITH STATE ──────────────────────────────────────────────
-import nhentaiHandler from '../handlers/api/nhentaiHandler.js';
+import nhentaiHandler from '../handlers/api/nhentai/index.js';
 
 // ── REPOSITORIES WITH LIFECYCLE ──────────────────────────────────────
 import rule34Cache from '../repositories/api/rule34Cache.js';
