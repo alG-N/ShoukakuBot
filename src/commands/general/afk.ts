@@ -8,13 +8,10 @@
 import { 
     SlashCommandBuilder, 
     EmbedBuilder,
-    ChatInputCommandInteraction,
-    Message,
-    Client
+    ChatInputCommandInteraction
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import afkRepository, { type AfkInfo } from '../../repositories/general/AfkRepository.js';
-import logger from '../../core/Logger.js';
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -85,7 +82,6 @@ class AfkCommand extends BaseCommand {
         const type = (interaction.options.getString('type') || 'guild') as 'guild' | 'global';
         const reason = interaction.options.getString('reason') || 'No reason provided.';
 
-        // Set AFK status via repository
         const success = await afkRepository.setAfk({
             userId,
             guildId: type === 'global' ? null : guildId,
@@ -94,9 +90,9 @@ class AfkCommand extends BaseCommand {
         });
 
         if (!success) {
-            await interaction.reply({ 
+            await interaction.reply({
                 content: '❌ Failed to set AFK status. Please try again.',
-                ephemeral: true 
+                ephemeral: true
             });
             return;
         }
@@ -106,82 +102,12 @@ class AfkCommand extends BaseCommand {
             .setTitle('AFK mode activated!')
             .setDescription(`**Type:** ${type}\n**Reason:** ${reason}`)
             .setThumbnail(interaction.user.displayAvatarURL())
-            .setFooter({ 
-                text: 'I will let others know if they mention you 💬', 
-                iconURL: interaction.client.user?.displayAvatarURL() 
+            .setFooter({
+                text: 'I will let others know if they mention you 💬',
+                iconURL: interaction.client.user?.displayAvatarURL()
             });
 
         await interaction.reply({ embeds: [embed] });
-    }
-}
-
-// ============================================================================
-// MESSAGE HANDLER (DEPRECATED — use handlers/general/AfkHandler.ts instead)
-// Kept for backward compatibility. Will be removed in next cleanup pass.
-// ============================================================================
-
-/**
- * @deprecated Use `handleAfkMessage` from `handlers/general/AfkHandler.ts` instead.
- */
-export async function onMessage(message: Message, client: Client): Promise<void> {
-    try {
-        if (message.author.bot) return;
-        if (!message.guild) return;
-
-        const userId = message.author.id;
-        const guildId = message.guild.id;
-
-        // Check if message author is AFK and remove them
-        const afkInfo = await afkRepository.removeAfk(userId, guildId);
-        
-        if (afkInfo) {
-            const timeAway = Math.floor((Date.now() - afkInfo.timestamp) / 1000);
-            const embed = new EmbedBuilder()
-                .setColor(0x00CED1)
-                .setTitle('Welcome Back!')
-                .setDescription(`You were AFK for **${formatDuration(timeAway)}**. おかえりなさい！`)
-                .setThumbnail(message.author.displayAvatarURL())
-                .setImage('https://media.tenor.com/blCLnVdO3CgAAAAd/senko-sewayaki-kitsune-no-senko-san.gif')
-                .setFooter({ text: 'We missed you! 🎌', iconURL: client.user?.displayAvatarURL() });
-            
-            message.reply({ embeds: [embed] })
-                .then(msg => setTimeout(() => msg.delete().catch(() => {}), 15000))
-                .catch(() => {});
-            return;
-        }
-
-        // Check mentions for AFK users
-        const mentionedUsers = message.mentions.users;
-        if (mentionedUsers.size === 0) return;
-
-        // Batch fetch AFK status for all mentioned users
-        const mentionedIds = Array.from(mentionedUsers.keys());
-        const afkMap = await afkRepository.getMultipleAfk(mentionedIds, guildId);
-
-        // Notify about each AFK user
-        for (const [mentionedUserId, mentionedAfkInfo] of afkMap) {
-            const user = mentionedUsers.get(mentionedUserId);
-            if (!user) continue;
-
-            const timeAway = Math.floor((Date.now() - mentionedAfkInfo.timestamp) / 1000);
-            const embed = new EmbedBuilder()
-                .setColor(0xFFA07A)
-                .setTitle(`${user.username} is currently AFK 💤`)
-                .setDescription(`**AFK for:** ${formatDuration(timeAway)}\n**Reason:** ${mentionedAfkInfo.reason}`)
-                .setThumbnail(user.displayAvatarURL())
-                .addFields([
-                    {
-                        name: 'While you wait...',
-                        value: '🍵 Grab tea\n📺 Watch anime\n🎮 Play a game\n🈶 Practice Japanese\n🎨 Draw a fumo\n'
-                    }
-                ])
-                .setFooter({ text: 'They\'ll return soon 🌸', iconURL: client.user?.displayAvatarURL() });
-            
-            message.reply({ embeds: [embed] }).catch(() => {});
-        }
-    } catch (error: unknown) {
-        const err = error as Error;
-        logger.error('AFK', `onMessage error: ${err.message}`);
     }
 }
 

@@ -19,7 +19,9 @@
     "lint": "eslint src/",
     "test": "jest",
     "types:guardrails": "node scripts/type-guardrails.js --report",
-    "types:check": "node scripts/type-guardrails.js --check"
+    "types:check": "node scripts/type-guardrails.js --check",
+    "deprecated:report": "node scripts/deprecated-scan.js --report",
+    "deprecated:check": "node scripts/deprecated-scan.js --check"
   },
   "dependencies": {
     "@discordjs/opus": "^0.10.0",

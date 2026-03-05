@@ -4,13 +4,9 @@
  * @module handlers/music/trackTypes
  */
 
-import { User } from 'discord.js';
-import type { Track, LoopMode, NowPlayingOptions } from '../../types/music/index.js';
+import type { LoopMode } from '../../types/music/index.js';
 import type {
     SourcePlatform,
-    ControlButtonsOptions,
-    QueueListOptions,
-    InfoEmbedType,
     SourceInfo,
     LoopDisplayInfo
 } from '../../types/music/session.js';

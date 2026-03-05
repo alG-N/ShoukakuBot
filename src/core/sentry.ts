@@ -9,7 +9,6 @@ import logger from './Logger.js';
 import type { SentryInitOptions, SentryContext, BreadcrumbData } from '../types/core/sentry.js';
 // STATE
 let isInitialized = false;
-let initializationFailed = false;
 let currentShardId: number | null = null;
 // FUNCTIONS
 /**
@@ -69,7 +68,6 @@ export function initialize(options: SentryInitOptions = {}): boolean {
         logger.info('Sentry', '✅ Error tracking initialized');
         return true;
     } catch (error) {
-        initializationFailed = true;
         logger.error('Sentry', `❌ CRITICAL: Failed to initialize error tracking: ${(error as Error).message}`);
         logger.error('Sentry', 'Production errors will NOT be tracked remotely!');
         logger.error('Sentry', `Sentry initialization failed: ${(error as Error).message}. Production errors will go untracked.`);

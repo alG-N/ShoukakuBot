@@ -8,9 +8,7 @@ import {
     SlashCommandBuilder, 
     EmbedBuilder,
     PermissionFlagsBits,
-    ChatInputCommandInteraction,
-    User,
-    Guild
+    ChatInputCommandInteraction
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import logger from '../../core/Logger.js';

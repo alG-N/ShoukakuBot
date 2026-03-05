@@ -4,7 +4,7 @@
  * @module handlers/music/controlHandler
  */
 
-import { ChatInputCommandInteraction, Guild } from 'discord.js';
+import { ChatInputCommandInteraction } from 'discord.js';
 import { trackHandler, LoopMode } from './trackHandler.js';
 import musicCache from '../../cache/music/MusicCacheFacade.js';
 import { checkSameVoiceChannel } from '../../middleware/voiceChannelCheck.js';
@@ -78,9 +78,7 @@ export const controlHandler = {
     },
 
     async handleVoteSkip(interaction: ChatInputCommandInteraction, guildId: string): Promise<void> {
-        const queue = musicCache.getQueue(guildId);
         const listenerCount = musicService.getListenerCount(guildId, interaction.guild);
-        const requiredVotes = musicCache.getRequiredVotes(listenerCount);
 
         if (musicService.isSkipVoteActive(guildId)) {
             const result = musicService.addSkipVote(guildId, interaction.user.id);

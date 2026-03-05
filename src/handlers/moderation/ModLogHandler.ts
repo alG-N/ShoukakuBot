@@ -10,11 +10,7 @@ import {
     Message, 
     GuildMember,
     User,
-    TextBasedChannel,
-    SendableChannels,
-    Guild,
-    APIEmbed,
-    PartialUser
+    SendableChannels
 } from 'discord.js';
 import { logger } from '../../core/Logger.js';
 import { formatDuration } from '../../utils/common/time.js';

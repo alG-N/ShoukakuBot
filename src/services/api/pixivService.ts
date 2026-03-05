@@ -10,10 +10,6 @@ import logger from '../../core/Logger.js';
 import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
 import cacheService from '../../cache/CacheService.js';
 import type {
-    PixivImageUrls,
-    PixivMetaPage,
-    PixivTag,
-    PixivUser,
     PixivIllust,
     PixivNovel,
     PixivSearchOptions,
@@ -27,7 +23,6 @@ import type {
     PixivSearchResponse,
     PixivIllustDetailResponse,
     AutocompleteSuggestion,
-    PixivAutocompleteCandidate,
     PixivAutocompleteResponse
 } from '../../types/api/services/pixiv-service.js';
 export { type PixivImageUrls, type PixivMetaPage, type PixivTag, type PixivUser, type PixivIllust, type PixivNovel, type PixivSearchOptions, type RankingOptions, type PixivSearchResult } from '../../types/api/pixiv.js';
@@ -609,7 +604,6 @@ class PixivService {
         // Try to extract character(series) pattern
         const match = japaneseTag.match(/^(.+?)[（(](.+?)[）)]$/);
         if (match && match[1] && match[2]) {
-            const charJp = match[1].trim();
             const seriesJp = match[2].trim();
             const seriesEn = SERIES_MAP[seriesJp] || seriesJp;
             

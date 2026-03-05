@@ -5,15 +5,14 @@
  * @module services/music/events/PlaybackEventHandler
  */
 
-import type { Message, MessageEditOptions, TextBasedChannel, TextChannel } from 'discord.js';
+import type { Message, TextBasedChannel, TextChannel } from 'discord.js';
 import musicEventBus from './MusicEventBus.js';
 import { MusicEvents, MusicTrack } from './MusicEvents.js';
 import logger from '../../../core/Logger.js';
 import musicCache from '../../../cache/music/MusicCacheFacade.js';
 import type { MessageRef } from '../../../cache/music/QueueCache.js';
-import trackHandler, { type Track, LoopMode } from '../../../handlers/music/trackHandler.js';
+import trackHandler, { type Track, type LoopMode } from '../../../handlers/music/trackHandler.js';
 import { TRACK_TRANSITION_DELAY } from '../../../config/features/music.js';
-import type { PlayerLike, MusicEventData } from '../../../types/music/infrastructure.js';
 import type {
     MessageComponents,
     ServiceReferences,
@@ -64,6 +63,7 @@ class PlaybackEventHandler {
      * Bind global event handlers
      */
     private _bindGlobalHandlers(): void {
+        void this._handleTrackEnd;
         // NOTE: TRACK_END is handled by MusicFacade.bindPlayerEvents() to avoid double handling
         // Do NOT subscribe to TRACK_END here as it causes race conditions and double-skipping
         

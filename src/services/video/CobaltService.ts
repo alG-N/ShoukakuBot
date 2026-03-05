@@ -168,9 +168,9 @@ class CobaltService extends EventEmitter {
                         if (parsed.status === 'tunnel' || parsed.status === 'redirect' || parsed.status === 'stream') {
                             // Check if the response is an image/slideshow instead of a video
                             const filename = parsed.filename?.toLowerCase() || '';
-                            const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.avif', '.heic'];
+                            const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.avif', '.heic', '.gif'];
                             if (imageExtensions.some(ext => filename.endsWith(ext))) {
-                                reject(new Error('CONTENT_IS_IMAGES:This content contains images/slideshow, not a downloadable video.'));
+                                reject(new Error('CONTENT_IS_IMAGES:This content is an image/GIF/slideshow, not a downloadable video.'));
                                 return;
                             }
                             resolve({ url: parsed.url, filename: parsed.filename });
@@ -178,15 +178,20 @@ class CobaltService extends EventEmitter {
                             // Multiple options available — only pick videos, reject if only images/slideshows
                             const videoOption = parsed.picker.find(p => p.type === 'video');
                             if (videoOption?.url) {
+                                const candidate = `${videoOption.filename || ''} ${videoOption.url}`.toLowerCase();
+                                if (/\.(jpg|jpeg|png|webp|avif|heic|gif)(\?|$)/i.test(candidate)) {
+                                    reject(new Error('CONTENT_IS_IMAGES:This content is an image/GIF/slideshow, not a downloadable video.'));
+                                    return;
+                                }
                                 resolve({ url: videoOption.url, filename: videoOption.filename });
                             } else {
                                 // Check if all picker items are images
                                 const hasOnlyImages = parsed.picker.every(p => 
                                     p.type === 'photo' || p.type === 'image' || 
-                                    (p.url && /\.(jpg|jpeg|png|webp|avif|heic)(\?|$)/i.test(p.url))
+                                    (p.url && /\.(jpg|jpeg|png|webp|avif|heic|gif)(\?|$)/i.test(p.url))
                                 );
                                 if (hasOnlyImages) {
-                                    reject(new Error('CONTENT_IS_IMAGES:This content is a photo slideshow, not a downloadable video.'));
+                                    reject(new Error('CONTENT_IS_IMAGES:This content is an image/GIF/slideshow, not a downloadable video.'));
                                 } else {
                                     reject(new Error('No video found in picker response'));
                                 }
@@ -278,12 +283,12 @@ class CobaltService extends EventEmitter {
                     // Get content length for progress tracking
                     totalBytes = parseInt(response.headers['content-length'] || '0', 10) || 0;
                     
-                    // Check content-type: reject if response is a static image (not video/gif)
+                    // Check content-type: reject if response is any image (including GIF)
                     const contentType = response.headers['content-type'] || '';
-                    if (contentType.startsWith('image/') && !contentType.includes('gif')) {
-                        logger.info('CobaltService', `Response is a static image (${contentType}), not a video — rejecting`);
+                    if (contentType.startsWith('image/')) {
+                        logger.info('CobaltService', `Response is image content (${contentType}), not a video — rejecting`);
                         req.destroy();
-                        reject(new Error('CONTENT_IS_IMAGES:The server returned a static image instead of a video file.'));
+                        reject(new Error('CONTENT_IS_IMAGES:The server returned image/GIF content instead of a video file.'));
                         return;
                     }
 

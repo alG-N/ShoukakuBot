@@ -8,7 +8,7 @@
 import { EmbedBuilder, User } from 'discord.js';
 import musicCache from '../../cache/music/MusicCacheFacade.js';
 import { formatSecondsToTime as fmtDur } from '../../utils/music/index.js';
-import { type Track, LoopMode, SourcePlatform, NowPlayingOptions, QueueListOptions, InfoEmbedType, SourceInfo, COLORS, LOOP_DISPLAY, SOURCE_PLATFORM, DECORATIONS, NOW_PLAYING_EMOJI, PAUSED_EMOJI } from './trackTypes.js';
+import { type Track, SourcePlatform, NowPlayingOptions, QueueListOptions, InfoEmbedType, SourceInfo, COLORS, LOOP_DISPLAY, SOURCE_PLATFORM, DECORATIONS, NOW_PLAYING_EMOJI, PAUSED_EMOJI } from './trackTypes.js';
 
 // Utility Functions
 
@@ -527,7 +527,7 @@ export function createStoppedByUserEmbed(user?: User | { displayName?: string; u
 /**
  * Create favorites list embed
  */
-export function createFavoritesEmbed(favorites: Track[], userId: string, page: number = 1, perPage: number = 10): EmbedBuilder {
+export function createFavoritesEmbed(favorites: Track[], _userId: string, page: number = 1, perPage: number = 10): EmbedBuilder {
     const totalPages = Math.ceil(favorites.length / perPage) || 1;
     const start = (page - 1) * perPage;
     const pageItems = favorites.slice(start, start + perPage);
@@ -565,7 +565,7 @@ export function createFavoritesEmbed(favorites: Track[], userId: string, page: n
 /**
  * Create history embed
  */
-export function createHistoryEmbed(history: Track[], userId: string, page: number = 1, perPage: number = 10): EmbedBuilder {
+export function createHistoryEmbed(history: Track[], _userId: string, page: number = 1, perPage: number = 10): EmbedBuilder {
     const totalPages = Math.ceil(history.length / perPage) || 1;
     const start = (page - 1) * perPage;
     const pageItems = history.slice(start, start + perPage);

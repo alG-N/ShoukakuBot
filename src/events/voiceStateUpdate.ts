@@ -31,7 +31,7 @@ class VoiceStateUpdateEvent extends BaseEvent {
         });
     }
 
-    async execute(client: Client, oldState: VoiceState, newState: VoiceState): Promise<void> {
+    async execute(client: Client, oldState: VoiceState, _newState: VoiceState): Promise<void> {
         // Store client reference for polling
         if (!this._client) {
             this._client = client;
@@ -85,7 +85,7 @@ class VoiceStateUpdateEvent extends BaseEvent {
         
         try {
             // Check all guilds the bot is in
-            for (const [guildId, guild] of this._client.guilds.cache) {
+            for (const [guildId, _guild] of this._client.guilds.cache) {
                 const deadline = await cacheService.peek<number>(CACHE_NAMESPACE, `disconnect:${guildId}`);
                 
                 if (deadline && Date.now() >= deadline) {

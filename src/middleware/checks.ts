@@ -4,12 +4,9 @@
  * @module middleware/checks
  */
 
-import { EmbedBuilder } from 'discord.js';
 import type { 
     GuildMember,
-    TextChannel,
-    ChatInputCommandInteraction,
-    ButtonInteraction
+    TextChannel
 } from 'discord.js';
 import { isServerAdmin } from './permissions.js';
 import { createErrorEmbed, createWarningEmbed } from './embeds';

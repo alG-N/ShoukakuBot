@@ -7,7 +7,7 @@
 import automod, { type AutomodConfig } from './automod.js';
 import punishments, { type PunishmentsConfig } from './punishments.js';
 import filters, { type FiltersConfig } from './filters.js';
-import type { ActionType, ModerationConfig } from '../../../types/config/moderation.js';
+import type { ModerationConfig } from '../../../types/config/moderation.js';
 
 export { type ActionType, type ModerationConfig } from '../../../types/config/moderation.js';
 // CONFIG

@@ -11,7 +11,6 @@ import musicCache from '../../../cache/music/MusicCacheFacade.js';
 import logger from '../../../core/Logger.js';
 import { Result } from '../../../core/Result.js';
 import { ErrorCodes } from '../../../core/ErrorCodes.js';
-import { TRACK_TRANSITION_DELAY } from '../../../config/features/music.js';
 import type { MusicTrack } from '../../../types/music/events.js';
 import type { PlayNextResult } from '../../../types/music/playback.js';
 import type { PlayerLike } from '../../../types/music/infrastructure.js';

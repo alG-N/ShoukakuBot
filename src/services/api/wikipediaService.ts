@@ -13,7 +13,6 @@ import type {
     WikiSearchResponse,
     WikiArticle,
     WikiArticleResponse,
-    OnThisDayPage,
     OnThisDayEvent,
     OnThisDayResponse,
     WikipediaSearchOptions

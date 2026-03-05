@@ -13,7 +13,6 @@ import {
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import logger from '../../core/Logger.js';
 import { infractionService as _infractionSvc } from '../../services/moderation/index.js';
-import type { Infraction } from '../../types/moderation/infraction.js';
 import type { InfractionService } from '../../types/moderation/services.js';
 
 

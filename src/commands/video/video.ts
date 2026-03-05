@@ -17,7 +17,6 @@ import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import fs from 'fs';
-import path from 'path';
 import _videoDownloadService from '../../services/video/VideoDownloadService.js';
 import _platformDetector from '../../utils/video/platformDetector.js';
 import _videoEmbedBuilder from '../../utils/video/videoEmbedBuilder.js';
@@ -44,7 +43,6 @@ const activeDownloads = new Set<string>();
 
 // Smart Rate Limiting
 const guildActiveDownloads = new Map<string, Set<string>>(); // guildId -> Set<userId>
-const guildCooldowns = new Map<string, number>();
 const userBurstTracking = new Map<string, number[]>(); // userId -> timestamps
 
 function isPeakHours(): boolean {
@@ -550,6 +548,16 @@ class DownloadCommand extends BaseCommand {
 
         } catch (error) {
             const err = error as Error & { code?: number };
+
+            const isIgnorableInteractionError =
+                err.code === 10062 ||
+                err.code === 40060 ||
+                err.message === 'Unknown interaction';
+
+            if (isIgnorableInteractionError) {
+                logger.warn('Video', `Interaction lifecycle issue: ${err.message}`);
+                return;
+            }
             
             // DETAILED ERROR LOGGING
             let errorDetails = `Message: ${err.message}, Code: ${err.code || 'N/A'}, Name: ${err.name || 'N/A'}, URL: ${url}, Quality: ${quality}`;
@@ -579,6 +587,11 @@ class DownloadCommand extends BaseCommand {
             const isTimeout = err.message?.toLowerCase().includes('abort') ||
                               err.message === 'This operation was aborted' ||
                               err.name === 'AbortError';
+            const isBackendUnavailable = err.message?.toLowerCase().includes('fetch failed') ||
+                                        err.message?.toLowerCase().includes('api unreachable') ||
+                                        err.message?.toLowerCase().includes('econnrefused') ||
+                                        err.message?.toLowerCase().includes('enotfound') ||
+                                        err.message?.toLowerCase().includes('could not reach the video backend service');
             const isDurationTooLong = err.message?.includes('DURATION_TOO_LONG');
             const isContentImages = err.message?.includes('CONTENT_IS_IMAGES');
             
@@ -663,6 +676,18 @@ class DownloadCommand extends BaseCommand {
                         `• Try again in a moment`
                     )
                     .setFooter({ text: 'Error: ' + err.message });
+            } else if (isBackendUnavailable) {
+                errorEmbed = new EmbedBuilder()
+                    .setColor(COLORS.ERROR)
+                    .setTitle('⚠️ Video Backend Temporarily Unavailable')
+                    .setDescription(
+                        `The downloader backend did not respond.\n\n` +
+                        `💡 **Suggestions:**\n` +
+                        `• Retry in 10-30 seconds\n` +
+                        `• Use 🔗 **Link mode** for direct URL\n` +
+                        `• Make sure the video is public`
+                    )
+                    .setFooter({ text: 'Backend connectivity issue' });
             } else {
                 errorEmbed = videoEmbedBuilder?.buildDownloadFailedEmbed?.(err.message) ||
                     new EmbedBuilder()

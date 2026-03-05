@@ -35,6 +35,38 @@ class YtDlpService extends EventEmitter {
         this.apiUrl = process.env.YTDLP_API_URL || 'http://ytdlp-api:8900';
     }
 
+    private _formatFetchError(error: unknown): string {
+        const err = error as Error & { cause?: unknown };
+        const cause = typeof err?.cause === 'object' && err.cause !== null
+            ? (err.cause as { message?: string }).message
+            : undefined;
+        return cause || err?.message || 'network error';
+    }
+
+    private async _fetchWithRetry(url: string, init: RequestInit, timeoutMs: number, retries: number = 1): Promise<Response> {
+        let lastError: unknown;
+
+        for (let attempt = 0; attempt <= retries; attempt++) {
+            try {
+                return await fetch(url, {
+                    ...init,
+                    signal: AbortSignal.timeout(timeoutMs)
+                });
+            } catch (error) {
+                lastError = error;
+
+                if (attempt >= retries) {
+                    break;
+                }
+
+                await this.initialize();
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+        }
+
+        throw new Error(`yt-dlp API unreachable at ${this.apiUrl}: ${this._formatFetchError(lastError)}`);
+    }
+
     /**
      * Initialize - verify API is reachable
      */
@@ -46,9 +78,7 @@ class YtDlpService extends EventEmitter {
                 fs.mkdirSync(this.tempDir, { recursive: true });
             }
 
-            const resp = await fetch(`${this.apiUrl}/health`, {
-                signal: AbortSignal.timeout(5000)
-            });
+            const resp = await this._fetchWithRetry(`${this.apiUrl}/health`, {}, 5000, 0);
 
             if (resp.ok) {
                 const data = await resp.json() as ApiHealthResponse;
@@ -126,12 +156,16 @@ class YtDlpService extends EventEmitter {
         logger.info('YtDlpService', `yt-dlp API downloading (${quality}p): ${url.substring(0, 50)}...`);
         this.emit('stage', { stage: 'downloading', message: 'Downloading with yt-dlp...' } as StageData);
 
-        const resp = await fetch(`${this.apiUrl}/download`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url, quality, filename: outputFilename }),
-            signal: AbortSignal.timeout(120000), // 2 minute timeout
-        });
+        const resp = await this._fetchWithRetry(
+            `${this.apiUrl}/download`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url, quality, filename: outputFilename }),
+            },
+            120000,
+            1
+        );
 
         if (!resp.ok) {
             const error = await resp.json().catch(() => ({ detail: `HTTP ${resp.status}` })) as { detail: string };
@@ -147,6 +181,10 @@ class YtDlpService extends EventEmitter {
 
         const result = await resp.json() as ApiDownloadResponse;
 
+        if (this._isNonVideoFormat(result.format) || this._isNonVideoAsset(result.filename)) {
+            throw new Error('CONTENT_IS_IMAGES:This content is an image/GIF/slideshow, not a downloadable video.');
+        }
+
         // File is in the shared volume (mounted at downloadDir)
         const finalPath = path.join(downloadDir, result.filename);
 
@@ -159,6 +197,11 @@ class YtDlpService extends EventEmitter {
         if (stats.size === 0) {
             fs.unlinkSync(finalPath);
             throw new Error('Downloaded file is empty');
+        }
+
+        if (this._isNonVideoAsset(finalPath)) {
+            fs.unlinkSync(finalPath);
+            throw new Error('CONTENT_IS_IMAGES:This content is an image/GIF/slideshow, not a downloadable video.');
         }
 
         const fileSizeInMB = stats.size / (1024 * 1024);
@@ -189,12 +232,16 @@ class YtDlpService extends EventEmitter {
             const body: Record<string, string> = { url };
             if (quality) body.quality = quality;
 
-            const resp = await fetch(`${this.apiUrl}/info`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
-                signal: AbortSignal.timeout(15000),
-            });
+            const resp = await this._fetchWithRetry(
+                `${this.apiUrl}/info`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                },
+                15000,
+                1
+            );
 
             if (!resp.ok) {
                 const error = await resp.json().catch(() => ({ detail: 'unknown' })) as { detail: string };
@@ -205,6 +252,16 @@ class YtDlpService extends EventEmitter {
         } catch (error) {
             throw error;
         }
+    }
+
+    private _isNonVideoFormat(format?: string): boolean {
+        if (!format) return false;
+        const normalized = format.toLowerCase();
+        return ['gif', 'jpg', 'jpeg', 'png', 'webp', 'bmp', 'avif', 'heic', 'photo', 'image'].some(token => normalized.includes(token));
+    }
+
+    private _isNonVideoAsset(value: string): boolean {
+        return /\.(jpg|jpeg|png|webp|bmp|avif|heic|gif)(\?|$)/i.test(value);
     }
 
     /**
@@ -219,12 +276,16 @@ class YtDlpService extends EventEmitter {
             throw new Error('yt-dlp API is not available');
         }
 
-        const resp = await fetch(`${this.apiUrl}/info`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url }),
-            signal: AbortSignal.timeout(30000),
-        });
+        const resp = await this._fetchWithRetry(
+            `${this.apiUrl}/info`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url }),
+            },
+            30000,
+            1
+        );
 
         if (!resp.ok) {
             const error = await resp.json().catch(() => ({ detail: 'Failed to get video info' })) as { detail: string };

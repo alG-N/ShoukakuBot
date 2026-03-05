@@ -22,7 +22,6 @@ import {
 } from 'discord.js';
 import { COLORS } from '../../constants.js';
 import logger from '../../core/Logger.js';
-import type { AutoModOptions, SetupStep } from '../../types/guild/setup-wizard-service.js';
 
 /**
  * Setup Wizard Service Class
@@ -162,7 +161,7 @@ export class SetupWizardService {
     /**
      * Create collector for welcome message buttons
      */
-    private createWelcomeCollector(message: Message, guild: Guild): void {
+    private createWelcomeCollector(message: Message, _guild: Guild): void {
         const collector = message.createMessageComponentCollector({
             componentType: ComponentType.Button,
             time: 600000 // 10 minutes

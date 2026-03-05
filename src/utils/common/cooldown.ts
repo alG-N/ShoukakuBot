@@ -31,7 +31,7 @@ export class CooldownManager {
      * Generate cache key
      * @private
      */
-    private _getKey(userId: string, commandName: string): string {
+    private _getKey(_userId: string, commandName: string): string {
         return this.prefix ? `${this.prefix}:${commandName}` : commandName;
     }
 

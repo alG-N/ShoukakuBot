@@ -78,9 +78,6 @@ class DeathBattleEmbedBuilder {
     }
 
     buildWinnerEmbed(battle: BattleState): { embed: EmbedBuilder; row: ActionRowBuilder<ButtonBuilder> } {
-        const p1Name = this.getUsername(battle.player1);
-        const p2Name = this.getUsername(battle.player2);
-        
         const winner = battle.player1Health > 0 ? battle.player1 : battle.player2;
         const loser = battle.player1Health > 0 ? battle.player2 : battle.player1;
         const winnerName = this.getUsername(winner);

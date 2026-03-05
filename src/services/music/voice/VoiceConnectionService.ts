@@ -5,7 +5,7 @@
  * @module services/music/voice/VoiceConnectionService
  */
 
-import type { ChatInputCommandInteraction, Guild, GuildMember, VoiceBasedChannel, Collection, Snowflake } from 'discord.js';
+import type { ChatInputCommandInteraction, Guild, GuildMember, VoiceBasedChannel } from 'discord.js';
 import lavalinkService from '../core/LavalinkService.js';
 import { queueService } from '../queue/index.js';
 import logger from '../../../core/Logger.js';
@@ -13,7 +13,7 @@ import { Result } from '../../../core/Result.js';
 import { ErrorCodes } from '../../../core/ErrorCodes.js';
 import { INACTIVITY_TIMEOUT, VC_CHECK_INTERVAL } from '../../../config/features/music.js';
 import cacheService from '../../../cache/CacheService.js';
-import type { PlayerLike, MusicEventData } from '../../../types/music/infrastructure.js';
+import type { PlayerLike } from '../../../types/music/infrastructure.js';
 import type { PlayerEventHandlers } from '../../../types/music/events.js';
 import type { EventBusLike, EventsModule, ConnectionState } from '../../../types/music/voice.js';
 

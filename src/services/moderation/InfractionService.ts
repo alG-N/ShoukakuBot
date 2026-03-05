@@ -4,7 +4,7 @@
  * @module services/moderation/InfractionService
  */
 
-import { EmbedBuilder, Guild, User, Snowflake } from 'discord.js';
+import { EmbedBuilder, Guild, User } from 'discord.js';
 import * as ModLogService from './ModLogService.js';
 import { formatDuration } from '../../utils/common/time.js';
 import InfractionRepository from '../../repositories/moderation/InfractionRepository.js';
@@ -236,7 +236,7 @@ export async function getCase(guildId: string, caseId: number): Promise<Infracti
 export async function getUserHistory(
     guildId: string,
     userId: string,
-    options: { limit?: number; type?: string } = {}
+    _options: { limit?: number; type?: string } = {}
 ): Promise<Infraction[]> {
     return InfractionRepository.getByUser(guildId, userId) as Promise<Infraction[]>;
 }

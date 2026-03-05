@@ -7,7 +7,6 @@
 import { 
     CircuitBreaker, 
     CircuitBreakerOptions, 
-    CircuitHealth, 
     CircuitBreakerMetrics,
     CircuitState 
 } from './CircuitBreaker.js';

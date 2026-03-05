@@ -164,7 +164,10 @@ class MyAnimeListService {
         const cached = await cacheService.get<MALAutocompleteItem[]>(this.CACHE_NS, cacheKey);
         if (cached) return cached;
 
-        return circuitBreakerRegistry.execute('anime', async () => {
+        // Wrap circuit breaker call — the 'anime' breaker's fallback returns an object,
+        // not an array, so we must catch and normalise.
+        try {
+        const result = await circuitBreakerRegistry.execute('anime', async () => {
             try {
                 let url = `${JIKAN_BASE}/${config.endpoint}?q=${encodeURIComponent(query)}&limit=${limit}&sfw=true`;
                 if (config.typeFilter) {
@@ -206,6 +209,12 @@ class MyAnimeListService {
                 return [];
             }
         });
+        // Circuit breaker fallback returns { success: false, ... } — not an array.
+        return Array.isArray(result) ? result : [];
+        } catch (error) {
+            logger.warn('MAL', `Autocomplete unavailable: ${(error as Error).message}`);
+            return [];
+        }
     }
 
     /**

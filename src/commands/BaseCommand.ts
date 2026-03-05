@@ -16,14 +16,12 @@ import {
     PermissionResolvable,
     InteractionReplyOptions,
     Message,
-    Client,
-    Guild,
-    User,
     GuildMember,
 } from 'discord.js';
 
 import { COLORS, TIMEOUTS, EMOJIS } from '../constants.js';
-import { AppError, ValidationError, PermissionError } from '../errors/index.js';
+import { AppError } from '../errors/index.js';
+import { ErrorCodes } from '../core/ErrorCodes.js';
 import { trackCommand, commandsActive, commandErrorsTotal } from '../core/metrics.js';
 import { isOwner } from '../config/owner.js';
 import { logger } from '../core/Logger.js';
@@ -184,6 +182,12 @@ export abstract class BaseCommand {
             }
 
         } catch (error) {
+            if (this.isIgnorableInteractionError(error)) {
+                commandsActive.dec({ command: commandName });
+                await this.recoverExpiredInteraction(interaction, commandName, error);
+                return;
+            }
+
             // Track error metrics
             const duration = Date.now() - startTime;
             trackCommand(commandName, this.category, duration, 'error');
@@ -198,24 +202,46 @@ export abstract class BaseCommand {
         }
     }
 
+    private isIgnorableInteractionError(error: unknown): boolean {
+        const err = error as { code?: number | string; message?: string };
+        const code = typeof err.code === 'string' ? Number(err.code) : err.code;
+
+        return (
+            code === 10062 ||
+            code === 40060 ||
+            err.code === 'InteractionAlreadyReplied' ||
+            err.message === 'Unknown interaction'
+        );
+    }
+
+    private async recoverExpiredInteraction(
+        interaction: ChatInputCommandInteraction,
+        commandName: string,
+        error: unknown
+    ): Promise<void> {
+        const err = error as { message?: string };
+        logger.warn('BaseCommand', `Interaction lifecycle recovery for /${commandName}: ${err?.message || String(error)}`);
+        void interaction;
+    }
+
     /**
      * Validate execution requirements
      */
     private async _validateExecution(interaction: ChatInputCommandInteraction): Promise<void> {
         // Guild only check
         if (this.guildOnly && !interaction.guild) {
-            throw new ValidationError('This command can only be used in a server');
+            throw new AppError('This command can only be used in a server', ErrorCodes.INVALID_INPUT, 400);
         }
 
         // NSFW check
         if (this.nsfw && interaction.channel && 'nsfw' in interaction.channel && !interaction.channel.nsfw) {
-            throw new ValidationError('This command can only be used in NSFW channels');
+            throw new AppError('This command can only be used in NSFW channels', ErrorCodes.NSFW_REQUIRED, 400);
         }
 
         // Owner only check
         if (this.ownerOnly) {
             if (!isOwner(interaction.user.id)) {
-                throw new PermissionError('This command is restricted to bot owners');
+                throw new AppError('This command is restricted to bot owners', ErrorCodes.UNAUTHORIZED, 403);
             }
         }
 
@@ -225,7 +251,7 @@ export abstract class BaseCommand {
             const isAdmin = member.permissions.has(PermissionFlagsBits.Administrator);
             const isGuildOwner = interaction.guild.ownerId === interaction.user.id;
             if (!isAdmin && !isGuildOwner) {
-                throw new PermissionError('This command requires Administrator permission');
+                throw new AppError('This command requires Administrator permission', ErrorCodes.MISSING_PERMISSIONS, 403);
             }
         }
 
@@ -236,7 +262,7 @@ export abstract class BaseCommand {
                 perm => !member.permissions.has(perm)
             );
             if (missing.length > 0) {
-                throw new PermissionError(`Missing permissions: ${missing.join(', ')}`);
+                throw new AppError(`Missing permissions: ${missing.join(', ')}`, ErrorCodes.MISSING_PERMISSIONS, 403);
             }
         }
 
@@ -248,7 +274,7 @@ export abstract class BaseCommand {
                     perm => !botMember.permissions.has(perm)
                 );
                 if (missing.length > 0) {
-                    throw new PermissionError(`I'm missing permissions: ${missing.join(', ')}`);
+                    throw new AppError(`I'm missing permissions: ${missing.join(', ')}`, ErrorCodes.MISSING_PERMISSIONS, 403);
                 }
             }
         }
@@ -302,6 +328,11 @@ export abstract class BaseCommand {
         error: Error, 
         commandName: string
     ): Promise<void> {
+        if (this.isIgnorableInteractionError(error)) {
+            await this.recoverExpiredInteraction(interaction, commandName, error);
+            return;
+        }
+
         // Log error
         logger.error(commandName, `Error: ${error.message}`);
         if (error.stack && !AppError.isOperationalError(error)) {
@@ -314,7 +345,7 @@ export abstract class BaseCommand {
 
         if (error instanceof AppError) {
             userMessage = error.message;
-            if (error.code === 'VALIDATION_ERROR') {
+            if (error.code === ErrorCodes.INVALID_INPUT || error.code === ErrorCodes.NSFW_REQUIRED || error.code === ErrorCodes.MISSING_PERMISSIONS || error.code === ErrorCodes.UNAUTHORIZED) {
                 color = COLORS.WARNING;
             }
         } else if ((error as NodeJS.ErrnoException).code === 'InteractionAlreadyReplied') {

@@ -149,8 +149,6 @@ class ShardBridge extends EventEmitter {
         if (!message.requestId) return;
 
         let responseData: unknown;
-        let error: string | undefined;
-
         try {
             switch (message.type) {
                 case 'getStats':
@@ -187,7 +185,7 @@ class ShardBridge extends EventEmitter {
                 case 'eval':
                     // Eval handler removed — RCE vector (see SYSTEM_REVIEW_V3 §2 BLOCKER 2).
                     // Use purpose-built diagnostic commands instead.
-                    error = 'Eval is permanently disabled for security';
+                    responseData = { error: 'Eval is permanently disabled for security' };
                     break;
                 default:
                     // Emit for custom handlers
@@ -196,7 +194,7 @@ class ShardBridge extends EventEmitter {
                     });
             }
         } catch (e) {
-            error = (e as Error).message;
+            responseData = { error: (e as Error).message };
         }
 
         // Send response
@@ -287,7 +285,7 @@ class ShardBridge extends EventEmitter {
     /**
      * Request data from all shards
      */
-    async requestAll<T = unknown>(type: string, data?: unknown, timeout = this.DEFAULT_TIMEOUT): Promise<ShardResponse[]> {
+    async requestAll(type: string, data?: unknown, timeout = this.DEFAULT_TIMEOUT): Promise<ShardResponse[]> {
         // Single shard mode - just return local data
         if (this.totalShards <= 1 || !this.redisPublisher) {
             const localResponse = await this.handleLocalRequest(type, data);
@@ -354,15 +352,7 @@ class ShardBridge extends EventEmitter {
      * Get aggregate stats from all shards
      */
     async getAggregateStats(): Promise<AggregateStats> {
-        const responses = await this.requestAll<{
-            shardId: number;
-            guilds: number;
-            users: number;
-            channels: number;
-            voiceConnections: number;
-            ping: number;
-            uptime: number;
-        }>('getStats');
+        const responses = await this.requestAll('getStats');
 
         const shards = responses.map(r => ({
             id: (r.data as { shardId: number }).shardId,

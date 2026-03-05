@@ -86,6 +86,7 @@ class VideoDownloadService extends EventEmitter {
         }
         
         const timestamp = Date.now();
+        const normalizedUrl = this._normalizeDownloadUrl(url);
         const { onProgress, onStage, quality } = options;
         
         // Use provided quality or fall back to config default
@@ -105,8 +106,8 @@ class VideoDownloadService extends EventEmitter {
             let downloadMethod = 'Cobalt';
 
             // Check if URL is YouTube or TikTok - skip Cobalt, go straight to yt-dlp
-            const isYouTube = this._isYouTubeUrl(url);
-            const isTikTok = this._isTikTokUrl(url);
+            const isYouTube = this._isYouTubeUrl(normalizedUrl);
+            const isTikTok = this._isTikTokUrl(normalizedUrl);
 
             if (isYouTube || isTikTok) {
                 // YouTube/TikTok → use yt-dlp directly (bypass Cobalt)
@@ -114,12 +115,12 @@ class VideoDownloadService extends EventEmitter {
                 logger.info('VideoDownloadService', `${platform} URL detected, using yt-dlp directly (skipping Cobalt)`);
                 this.emit('stage', { stage: 'connecting', message: 'Downloading with yt-dlp...', method: 'yt-dlp' });
                 downloadMethod = 'yt-dlp';
-                videoPath = await ytDlpService.downloadVideo(url, this.tempDir, { quality: videoQuality });
+                videoPath = await ytDlpService.downloadVideo(normalizedUrl, this.tempDir, { quality: videoQuality });
             } else {
                 // Non-YouTube → try Cobalt first, fallback to yt-dlp
                 this.emit('stage', { stage: 'connecting', message: 'Connecting to Cobalt...', method: 'Cobalt' });
                 try {
-                    videoPath = await cobaltService.downloadVideo(url, this.tempDir, { quality: videoQuality });
+                    videoPath = await cobaltService.downloadVideo(normalizedUrl, this.tempDir, { quality: videoQuality });
                 } catch (cobaltError) {
                     const errorMsg = (cobaltError as Error).message;
                     // Don't fallback for size/duration/content-type errors - these will be the same for yt-dlp
@@ -134,7 +135,7 @@ class VideoDownloadService extends EventEmitter {
                     
                     // Fallback to yt-dlp
                     try {
-                        videoPath = await ytDlpService.downloadVideo(url, this.tempDir, { quality: videoQuality });
+                        videoPath = await ytDlpService.downloadVideo(normalizedUrl, this.tempDir, { quality: videoQuality });
                         downloadMethod = 'yt-dlp';
                     } catch (ytdlpError) {
                         // Both failed, throw combined error
@@ -221,6 +222,11 @@ class VideoDownloadService extends EventEmitter {
                 ? 'Downloaded file is empty. The video may be unavailable or protected.'
                 : errorMsg.includes('timeout')
                 ? 'Download timed out. Try again or use a shorter video.'
+                                : errorMsg.toLowerCase().includes('fetch failed') ||
+                                    errorMsg.toLowerCase().includes('api unreachable') ||
+                                    errorMsg.toLowerCase().includes('econnrefused') ||
+                                    errorMsg.toLowerCase().includes('enotfound')
+                                ? 'Could not reach the video backend service. Please try again in a few seconds.'
                 : `Download failed: ${errorMsg}`;
             
             throw new Error(finalErrorMsg);
@@ -266,13 +272,14 @@ class VideoDownloadService extends EventEmitter {
 
     async getDirectUrl(url: string, options: { quality?: string } = {}): Promise<DirectUrlResult | null> {
         const quality = options.quality || config.COBALT_VIDEO_QUALITY || '720';
-        const isYouTube = this._isYouTubeUrl(url);
-        const isTikTok = this._isTikTokUrl(url);
+        const normalizedUrl = this._normalizeDownloadUrl(url);
+        const isYouTube = this._isYouTubeUrl(normalizedUrl);
+        const isTikTok = this._isTikTokUrl(normalizedUrl);
 
         // YouTube/TikTok → use yt-dlp directly
         if (isYouTube || isTikTok) {
             try {
-                const info = await ytDlpService.getVideoInfo(url);
+                const info = await ytDlpService.getVideoInfo(normalizedUrl);
                 if (info.url) {
                     return {
                         directUrl: info.url,
@@ -294,7 +301,7 @@ class VideoDownloadService extends EventEmitter {
             (cobaltService as unknown as { currentQuality?: string }).currentQuality = quality;
             
             // Try Cobalt first for direct URL
-            const info = await cobaltService.getVideoInfo(url);
+            const info = await cobaltService.getVideoInfo(normalizedUrl);
             
             if (info.url) {
                 return {
@@ -310,7 +317,7 @@ class VideoDownloadService extends EventEmitter {
             
             // Fallback to yt-dlp
             try {
-                const info = await ytDlpService.getVideoInfo(url);
+                const info = await ytDlpService.getVideoInfo(normalizedUrl);
                 if (info.url) {
                     return {
                         directUrl: info.url,
@@ -428,6 +435,37 @@ class VideoDownloadService extends EventEmitter {
         return lowerUrl.includes('tiktok.com') || 
                lowerUrl.includes('vm.tiktok.com') ||
                lowerUrl.includes('vt.tiktok.com');
+    }
+
+    private _normalizeDownloadUrl(rawUrl: string): string {
+        const trimmed = rawUrl.trim();
+
+        try {
+            const parsed = new URL(trimmed);
+            const host = parsed.hostname.toLowerCase();
+            const isReddit = host === 'reddit.com' || host === 'www.reddit.com' || host === 'old.reddit.com' || host === 'm.reddit.com';
+
+            if (isReddit) {
+                parsed.search = '';
+                parsed.hash = '';
+            } else {
+                for (const key of [...parsed.searchParams.keys()]) {
+                    const lower = key.toLowerCase();
+                    if (
+                        lower.startsWith('utm_') ||
+                        lower === 'fbclid' ||
+                        lower === 'gclid' ||
+                        lower === 'si'
+                    ) {
+                        parsed.searchParams.delete(key);
+                    }
+                }
+            }
+
+            return parsed.toString();
+        } catch {
+            return trimmed;
+        }
     }
 }
 

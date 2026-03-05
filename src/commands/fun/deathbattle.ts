@@ -7,36 +7,28 @@
 import { 
     SlashCommandBuilder,
     ChatInputCommandInteraction,
-    User,
     Message,
-    EmbedBuilder,
-    ActionRowBuilder,
-    ButtonBuilder,
     ComponentType
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
-import type { Battle, BattleHistoryEntry } from '../../services/fun/deathbattle/BattleService.js';
+import type { Battle } from '../../services/fun/deathbattle/BattleService.js';
 import coreLogger from '../../core/Logger.js';
 import type {
-    BattleRoundResult,
     SkillsetService,
     BattleService,
     EmbedBuilderService,
-    LoggerService,
     DeathBattleConfig
 } from '../../types/fun/deathbattle-command.js';
 
 import _skillsetService from '../../services/fun/deathbattle/SkillsetService.js';
 import _battleService from '../../services/fun/deathbattle/BattleService.js';
 import _embedBuilder from '../../utils/deathbattle/embedBuilder.js';
-import deathBattleLogger from '../../utils/deathbattle/logger.js';
 import deathbattleConfig from '../../config/deathbattle/index.js';
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const skillsetService: SkillsetService = _skillsetService as any;
 const battleService: BattleService = _battleService as any;
 const embedBuilder: EmbedBuilderService = _embedBuilder as any;
-const logger: LoggerService = deathBattleLogger as any;
 const config: DeathBattleConfig = deathbattleConfig as any;
 
 const MAX_HP = config?.MAX_HP || 10000;

@@ -4,7 +4,7 @@
  * @module services/registry/CommandRegistry
  */
 
-import { Collection, Client as DiscordClient } from 'discord.js';
+import { Collection } from 'discord.js';
 import logger from '../../core/Logger.js';
 import type { RegistryCommand } from '../../types/core/registry.js';
 

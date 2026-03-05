@@ -9,15 +9,13 @@
 import { Client, EmbedBuilder, TextChannel, Guild, ChannelType, PermissionFlagsBits } from 'discord.js';
 import type {
     CommandLogOptions,
-    ConsoleMethods,
     DiscordLogEntry,
     GuildLike,
     LogFormat,
     LogLevel,
     LogLevelConfig,
     LogMetadata,
-    RequestLogOptions,
-    SentrySeverity
+    RequestLogOptions
 } from '../types/core/runtime.js';
 import type { StructuredLog } from '../types/core/logger.js';
 
@@ -582,7 +580,7 @@ export class Logger {
             if (!this.logChannel) return;
         }
 
-        const { action, caseNumber, user, moderator, reason, trigger, guildName, duration, details } = options;
+        const { action, caseNumber, user, moderator, reason, trigger, duration, details } = options;
 
         // Action color mapping
         const actionColors: Record<string, number> = {

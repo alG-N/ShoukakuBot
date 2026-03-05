@@ -229,7 +229,8 @@ class AnilistService {
                 search: searchTerm, 
                 perPage: limit 
             });
-            return data.Page?.media || [];
+            const media = data.Page?.media;
+            return Array.isArray(media) ? media : [];
         } catch (error) {
             logger.error('AniList', `Autocomplete error: ${(error as Error).message}`);
             return [];

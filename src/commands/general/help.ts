@@ -18,19 +18,6 @@ import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import type { HelpCategory } from '../../types/commands/general-help.js';
 
-/**
- * Category configuration
- */
-const CATEGORIES: Record<HelpCategory, { emoji: string; name: string; description: string }> = {
-    home: { emoji: '🏠', name: 'Home', description: 'Overview' },
-    media: { emoji: '🎬', name: 'Media', description: 'Video & Image commands' },
-    music: { emoji: '🎵', name: 'Music', description: 'Music playback' },
-    fun: { emoji: '⚔️', name: 'Fun', description: 'Interactive games' },
-    utility: { emoji: '📋', name: 'Utility', description: 'Useful tools' },
-    admin: { emoji: '🛡️', name: 'Admin', description: 'Server management' },
-    moderation: { emoji: '⚙️', name: 'Moderation', description: 'Auto-mod & filters' }
-};
-
 class HelpCommand extends BaseCommand {
     constructor() {
         super({

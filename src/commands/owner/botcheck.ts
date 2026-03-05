@@ -17,16 +17,6 @@ import _lavalinkService from '../../services/music/core/LavalinkService.js';
 import * as _coreExports from '../../core/index.js';
 import _cacheService from '../../cache/CacheService.js';
 
-// Helper to get service status
-const getServiceStatus = async (name: string, checkFn: () => Promise<boolean> | boolean): Promise<{ name: string; healthy: boolean; error?: string }> => {
-    try {
-        const healthy = await checkFn();
-        return { name, healthy };
-    } catch (error) {
-        return { name, healthy: false, error: (error as Error).message };
-    }
-};
-
 class BotCheckCommand extends BaseCommand {
     constructor() {
         super({

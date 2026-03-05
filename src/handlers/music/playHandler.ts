@@ -4,7 +4,7 @@
  * @module handlers/music/playHandler
  */
 
-import { ChatInputCommandInteraction, MessageFlags, Guild, ButtonInteraction, TextChannel } from 'discord.js';
+import { ChatInputCommandInteraction, Guild, ButtonInteraction, TextChannel } from 'discord.js';
 import { trackHandler } from './trackHandler.js';
 import musicCache from '../../cache/music/MusicCacheFacade.js';
 import { checkVoiceChannelSync, checkVoicePermissionsSync } from '../../middleware/voiceChannelCheck.js';
@@ -389,7 +389,7 @@ export const playHandler = {
         }
     },
 
-    async handlePriorityVote(interaction: ChatInputCommandInteraction, trackData: Track, guildId: string): Promise<void> {
+    async handlePriorityVote(interaction: ChatInputCommandInteraction, _trackData: Track, _guildId: string): Promise<void> {
         const embed = trackHandler.createInfoEmbed(
             '🗳️ Vote Required',
             `Priority play requires ${MIN_VOTES_REQUIRED} votes.\nThis feature is coming soon!`
@@ -399,7 +399,7 @@ export const playHandler = {
 
     async refreshNowPlayingMessage(guildId: string, userId: string, guild: Guild | null = null): Promise<void> {
         try {
-            const nowPlayingRef = musicService.getNowPlayingMessage(guildId);
+            const nowPlayingRef = musicService.getNowPlayingMessageRef(guildId);
             if (!nowPlayingRef) return;
 
             const currentTrack = musicService.getCurrentTrack(guildId) as Track | null;

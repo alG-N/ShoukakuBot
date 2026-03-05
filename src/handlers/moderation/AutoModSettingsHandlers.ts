@@ -19,7 +19,7 @@ import {
     ChannelSelectMenuInteraction,
     RoleSelectMenuInteraction
 } from 'discord.js';
-import type { AutoModService, ModerationConfig, AutoModSettings } from './AutoModTypes.js';
+import type { AutoModService, ModerationConfig } from './AutoModTypes.js';
 import { showFilterSection, showConfigSection, showActionsSection, showExemptSection, showEscalationConfig } from './AutoModPanels.js';
 
 // ─── FILTER ACTIONS ────────────────────────────────────────────────────────────
@@ -223,7 +223,7 @@ export async function handleIgnoreRole(
 // ─── ACTION CONFIGURATION ───────────────────────────────────────────────────────
 
 export async function handleActionSelect(
-    i: StringSelectMenuInteraction,
+    _i: StringSelectMenuInteraction,
     originalInteraction: ChatInputCommandInteraction,
     actionType: string,
     pendingActionSelect: Map<string, string>,
@@ -386,7 +386,7 @@ export async function handleEscalationSelect(
 }
 
 export async function handleEscalationActionSelect(
-    i: StringSelectMenuInteraction,
+    _i: StringSelectMenuInteraction,
     originalInteraction: ChatInputCommandInteraction,
     config: ModerationConfig
 ): Promise<void> {

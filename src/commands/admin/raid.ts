@@ -16,9 +16,8 @@ import _lockdownModule from '../../services/moderation/LockdownService.js';
 import _moderationConfigModule from '../../config/features/moderation/index.js';
 import type { ModerationConfig } from '../../config/features/moderation/index.js';
 import type { LockdownService } from '../../types/moderation/services.js';
-import type { LockStatus } from '../../types/moderation/lockdown.js';
 import type { DeactivateResult } from '../../services/moderation/AntiRaidService.js';
-import type { RaidState, LockResults, AntiRaidService } from '../../types/commands/admin-raid.js';
+import type { AntiRaidService } from '../../types/commands/admin-raid.js';
 
 
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())

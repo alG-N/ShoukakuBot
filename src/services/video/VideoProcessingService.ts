@@ -14,7 +14,6 @@ import type { VideoConfigType } from '../../types/video/processing.js';
 import type {
     VideoAnalysis,
     ProcessingOptions,
-    VideoStream,
     FFprobeOutput,
     ProgressData,
     StageData
@@ -197,7 +196,7 @@ class VideoProcessingService extends EventEmitter {
      * @param options - Processing options
      * @returns Path to processed video
      */
-    async processForMobile(inputPath: string, options: ProcessingOptions = {}): Promise<string> {
+    async processForMobile(inputPath: string, _options: ProcessingOptions = {}): Promise<string> {
         // Check if mobile processing is enabled
         if (config.ENABLE_MOBILE_PROCESSING === false) {
             logger.info('VideoProcessingService', 'Mobile processing disabled in config');

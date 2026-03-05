@@ -27,7 +27,6 @@ class LavalinkService {
     private reinitAttempts: number = 0;
     private static readonly MAX_REINIT_ATTEMPTS = 10;
     private static readonly WATCHDOG_INTERVAL = 30_000; // 30s
-    private static readonly REINIT_DELAY = 15_000; // 15s between re-init attempts
     
     // Note: preservedQueues moved to Redis via CacheService for shard-safety
 
@@ -234,7 +233,7 @@ class LavalinkService {
     /**
      * Create player for guild
      */
-    async createPlayer(guildId: string, voiceChannelId: string, textChannelId: string): Promise<ShoukakuPlayer> {
+    async createPlayer(guildId: string, voiceChannelId: string, _textChannelId: string): Promise<ShoukakuPlayer> {
         if (!this.shoukaku) {
             throw new Error('Shoukaku not initialized');
         }

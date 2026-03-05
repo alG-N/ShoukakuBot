@@ -38,11 +38,6 @@ export class MusicNowPlayingManager {
         return musicCache.getNowPlayingMessage(guildId);
     }
 
-    /** @deprecated Use getNowPlayingMessageRef() + resolveMessage() */
-    getNowPlayingMessage(guildId: string): MessageRef | null {
-        return musicCache.getNowPlayingMessage(guildId);
-    }
-
     async updateNowPlayingMessage(guildId: string, payload: any): Promise<Message | null> {
         const ref = this.getNowPlayingMessageRef(guildId);
         const message = await this.resolveMessage(ref, guildId);

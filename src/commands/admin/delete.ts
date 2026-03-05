@@ -10,8 +10,6 @@ import {
     PermissionFlagsBits,
     ChatInputCommandInteraction,
     TextChannel,
-    Collection,
-    Message,
     GuildMember
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';

@@ -619,11 +619,6 @@ export class MusicFacade {
         return this.nowPlayingManager.getNowPlayingMessageRef(guildId);
     }
 
-    /** @deprecated Use getNowPlayingMessageRef() + _resolveMessage() */
-    getNowPlayingMessage(guildId: string): any {
-        return this.nowPlayingManager.getNowPlayingMessage(guildId);
-    }
-
     async updateNowPlayingMessage(guildId: string, payload: any): Promise<Message | null> {
         return this.nowPlayingManager.updateNowPlayingMessage(guildId, payload);
     }

@@ -25,7 +25,6 @@ import { validateOrExit } from './config/validation.js';
 validateOrExit();
 
 import { REST, Routes, Events, Interaction } from 'discord.js';
-import http from 'http';
 import type { BootstrapCommand, ClientWithCommands } from './types/core/bootstrap.js';
 
 // Core utilities (from src/core)
@@ -68,7 +67,6 @@ let cacheService: CacheService;
 class ShoukakuBot {
     public client: ClientWithCommands;
     private rest: REST;
-    private healthServer: http.Server | null = null;
 
     constructor() {
         this.client = createClient() as ClientWithCommands;
@@ -194,7 +192,7 @@ class ShoukakuBot {
         const basePort = parseInt(process.env.HEALTH_PORT || '3000');
         const shardId = this.client.shard?.ids[0] ?? 0;
         const port = basePort + shardId;
-        this.healthServer = health.startHealthServer(port);
+        health.startHealthServer(port);
     }
 
     /**
@@ -336,13 +334,14 @@ class ShoukakuBot {
                 }
                 
             } catch (error) {
-                // Ignore "Unknown interaction" errors (interaction expired/already handled)
+                // Ignore interaction lifecycle errors (expired/already handled)
                 // This is normal for long-running commands or user clicking buttons after timeout
-                const err = error as { code?: number };
-                if (err.code === 10062) {
+                const err = error as { code?: number; message?: string };
+                if (err.code === 10062 || err.code === 40060 || err.message === 'Unknown interaction') {
                     const id = interaction.isChatInputCommand() ? interaction.commandName : 
+                               interaction.isAutocomplete() ? `autocomplete:${interaction.commandName}` :
                                'customId' in interaction ? interaction.customId : 'unknown';
-                    logger.debug('Interaction', `Interaction expired for ${id}`);
+                    logger.warn('Interaction', `Lifecycle issue for ${id}: ${err.message || String(error)}`);
                     return;
                 }
                 

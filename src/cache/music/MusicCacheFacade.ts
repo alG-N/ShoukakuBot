@@ -11,10 +11,11 @@
  * @module modules/music/repository/MusicCacheFacade
  */
 
-import queueCache, { MusicTrack, MusicQueue, MessageRef } from './QueueCache.js';
-import userMusicCache, { UserPreferences, FavoriteTrack, HistoryTrack, AddFavoriteResult, UserMusicStats } from './UserMusicCache.js';
+import queueCache, { MusicTrack, MusicQueue } from './QueueCache.js';
+import userMusicCache, { UserPreferences, FavoriteTrack, HistoryTrack, AddFavoriteResult } from './UserMusicCache.js';
 import voteCache, { VoteResult, AddVoteResult, VoteSkipStatus } from './VoteCache.js';
 import guildMusicCache, { GuildMusicSettings, RecentlyPlayedTrack, DJLockState, CachedPlaylist } from './GuildMusicCache.js';
+import type { MessageRef } from './QueueCache.js';
 import logger from '../../core/Logger.js';
 import type { MusicCacheStats } from '../../types/cache/music/music-cache-facade.js';
 

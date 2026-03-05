@@ -5,7 +5,7 @@
  */
 
 import { ButtonInteraction, TextChannel } from 'discord.js';
-import { trackHandler, LoopMode } from './trackHandler.js';
+import { trackHandler } from './trackHandler.js';
 import { playHandler } from './playHandler.js';
 import musicCache from '../../cache/music/MusicCacheFacade.js';
 import { checkSameVoiceChannel } from '../../middleware/voiceChannelCheck.js';
@@ -350,7 +350,7 @@ export const buttonHandler = {
         await interaction.reply({ embeds: [embed], ephemeral: true });
     },
 
-    async handleButtonFavorite(interaction: ButtonInteraction, guildId: string, targetUserId: string): Promise<void> {
+    async handleButtonFavorite(interaction: ButtonInteraction, guildId: string, _targetUserId: string): Promise<void> {
         try {
             const currentTrack = musicService.getCurrentTrack(guildId) as Track | null;
             
@@ -536,7 +536,6 @@ export const buttonHandler = {
     },
 
     async handleButtonVoteSkip(interaction: ButtonInteraction, guildId: string): Promise<void> {
-        const queue = musicCache.getQueue(guildId);
         const listenerCount = musicService.getListenerCount(guildId, interaction.guild);
 
         if (listenerCount < MIN_VOTES_REQUIRED) {
@@ -618,7 +617,7 @@ export const buttonHandler = {
         musicCache.setSkipVoteTimeout(guildId, voteTimeout);
     },
 
-    async handleButtonQueuePage(interaction: ButtonInteraction, guildId: string, pageAction: string): Promise<void> {
+    async handleButtonQueuePage(interaction: ButtonInteraction, _guildId: string, _pageAction: string): Promise<void> {
         await interaction.deferUpdate();
     },
 

@@ -48,7 +48,7 @@ export async function handleAntiRaid(client: Client, member: GuildMember): Promi
 /**
  * Notify mod log channel of raid detection
  */
-async function notifyRaidDetected(client: Client, guild: Guild, result: JoinAnalysis): Promise<void> {
+async function notifyRaidDetected(_client: Client, guild: Guild, result: JoinAnalysis): Promise<void> {
     try {
         const settings: ModLogSettings | null = await ModLogRepository.get(guild.id);
         

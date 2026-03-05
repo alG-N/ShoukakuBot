@@ -6,7 +6,7 @@
 
 import type { User } from 'discord.js';
 import skillsetService from './SkillsetService.js';
-import type { Power, Skillset } from './SkillsetService.js';
+import type { Power } from './SkillsetService.js';
 import cacheService from '../../../cache/CacheService.js';
 import type {
     NamedEffect,
@@ -197,7 +197,6 @@ class BattleService {
         // Apply all modifiers
         for (const mod of modifiers) {
             if (mod.value !== 1) {
-                const change = Math.floor(scaledBase * (mod.value - 1));
                 finalDamage = Math.floor(finalDamage * mod.value);
                 if (mod.value > 1) {
                     modifiersList.push(`+${Math.round((mod.value - 1) * 100)}% ${mod.name}`);
@@ -343,7 +342,7 @@ class BattleService {
     private processPowerWithBreakdown(
         power: Power,
         attacker: User,
-        defender: User,
+        _defender: User,
         battle: Battle,
         defenderHp: number,
         attackerMaxHp: number,

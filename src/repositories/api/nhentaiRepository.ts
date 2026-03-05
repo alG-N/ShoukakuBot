@@ -5,7 +5,7 @@
 
 import postgres from '../../database/postgres.js';
 import logger from '../../core/Logger.js';
-import type { NHentaiGallery, NHentaiTag } from '../../types/api/nhentai.js';
+import type { NHentaiTag } from '../../types/api/nhentai.js';
 import type {
     NHentaiFavouriteGalleryInput,
     NHentaiFavourite,

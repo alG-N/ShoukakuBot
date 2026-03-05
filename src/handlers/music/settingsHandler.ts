@@ -129,7 +129,7 @@ export const settingsHandler = {
         }
     },
 
-    async handleVolumeSelect(interaction: StringSelectMenuInteraction, guildId: string, settings: GuildMusicSettings): Promise<void> {
+    async handleVolumeSelect(interaction: StringSelectMenuInteraction, guildId: string, _settings: GuildMusicSettings): Promise<void> {
         const volumeSelect = new StringSelectMenuBuilder()
             .setCustomId(`music_volume_set:${guildId}`)
             .setPlaceholder('Select default volume')

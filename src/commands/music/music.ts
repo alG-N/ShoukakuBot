@@ -22,10 +22,6 @@ class MusicCommand extends BaseCommand {
         });
     }
 
-    private getDefault<T>(mod: { default?: T } | T): T {
-        return (mod as { default?: T }).default || mod as T;
-    }
-
     get handlers(): MusicHandlers {
         if (!this._handlers) {
             this._handlers = _musicHandlers as MusicHandlers;

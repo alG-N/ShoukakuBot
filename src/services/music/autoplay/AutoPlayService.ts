@@ -86,7 +86,6 @@ const ARTIST_GRAPH: Record<string, string[]> = {
 
 class AutoPlayService {
     private readonly MIN_SEARCH_INTERVAL = 3000;
-    private readonly HISTORY_SIZE = 30; // Track more history for better profiling
     private readonly MAX_STRATEGIES = 6;
 
     /** Last mood profile (derived from listening history) */
@@ -819,7 +818,6 @@ class AutoPlayService {
     private _filterRecentTracks(results: MusicTrack[], recentTitles: string[], currentTitle: string): MusicTrack[] {
         return results.filter(result => {
             const trackTitle = result.info?.title || '';
-            const trackAuthor = result.info?.author || '';
             const lowerTitle = trackTitle.toLowerCase();
 
             // Exact title match

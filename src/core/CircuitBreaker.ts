@@ -12,8 +12,7 @@ import type {
     CircuitBreakerOptions,
     CircuitHealth,
     CircuitMetrics,
-    CircuitStateType,
-    StateChange
+    CircuitStateType
 } from '../types/core/runtime.js';
 
 export { type CircuitBreakerError, type CircuitBreakerMetrics, type CircuitBreakerOptions, type CircuitHealth, type CircuitMetrics, type CircuitStateType, type StateChange } from '../types/core/runtime.js';

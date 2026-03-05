@@ -64,7 +64,6 @@ function isDirectImageUrl(url: string): { isImage: boolean; isGif: boolean; isAn
         const hasImageExt = IMAGE_EXTENSIONS.some(ext => pathname.endsWith(ext));
         const isGif = pathname.endsWith('.gif');
         const isApng = pathname.endsWith('.apng');
-        const isWebp = pathname.endsWith('.webp'); // could be animated
 
         if (hasImageExt) {
             return { isImage: true, isGif, isAnimated: isGif || isApng };

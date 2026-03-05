@@ -13,7 +13,6 @@ import type {
     RawSubredditAboutResponse,
     RawSubredditSearchResponse,
     RedditSortBy,
-    RedditTimeFilter,
     RedditRegion
 } from '../../types/api/services/reddit-service.js';
 export { type SubredditInfo, type RedditPost, type RedditPostsResult } from '../../types/api/reddit.js';

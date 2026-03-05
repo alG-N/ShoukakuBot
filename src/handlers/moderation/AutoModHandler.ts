@@ -11,7 +11,7 @@ import moderationConfig from '../../config/features/moderation/index.js';
 import type { AutoModSettings } from '../../types/moderation/automod.js';
 import type { ActionType } from '../../config/features/moderation/index.js';
 import type { Violation } from '../../services/moderation/AutoModService.js';
-import type { ActionResult, FeatureConfig, ViolationType } from '../../types/moderation/handlers.js';
+import type { ActionResult, FeatureConfig } from '../../types/moderation/handlers.js';
 /**
  * Action type display mapping
  */
@@ -29,7 +29,7 @@ const ACTION_DISPLAYS: Record<ActionType, string> = {
  * @param message - Discord message
  * @returns Whether message was handled (deleted)
  */
-export async function handleMessage(client: unknown, message: Message): Promise<boolean> {
+export async function handleMessage(_client: unknown, message: Message): Promise<boolean> {
     // Skip DMs and system messages
     if (!message.guild) return false;
     if (message.system) return false;
@@ -126,7 +126,7 @@ export async function handleMessageUpdate(
  * @param guild - Discord guild
  * @returns Settings embed
  */
-export function buildSettingsEmbed(settings: AutoModSettings, guild: Guild): EmbedBuilder {
+export function buildSettingsEmbed(settings: AutoModSettings, _guild: Guild): EmbedBuilder {
     const embed = new EmbedBuilder()
         .setColor(settings.enabled ? 0x00FF00 : 0xFF0000)
         .setTitle(`${moderationConfig.EMOJIS?.AUTOMOD || '🤖'} Auto-Mod Settings`)

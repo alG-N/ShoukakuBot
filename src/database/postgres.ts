@@ -5,9 +5,9 @@
  * @module database/postgres
  */
 
-import { Pool, PoolClient, QueryResult, PoolConfig } from 'pg';
+import { Pool, QueryResult, PoolConfig } from 'pg';
 import gracefulDegradation, { ServiceState } from '../core/GracefulDegradation.js';
-import { databasePoolSize, databaseQueriesTotal, databaseQueryDuration } from '../core/metrics.js';
+import { databasePoolSize } from '../core/metrics.js';
 import logger from '../core/Logger.js';
 import type {
     DatabaseStatus,

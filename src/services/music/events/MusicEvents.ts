@@ -4,18 +4,6 @@
  * @module services/music/events/MusicEvents
  */
 
-import type { MusicTrack } from '../../../types/music/events.js';
-import type {
-    TrackEventData,
-    PlaybackEventData,
-    QueueEventData,
-    VoiceEventData,
-    AutoPlayEventData,
-    SkipVoteEventData,
-    NowPlayingEventData,
-    SystemEventData
-} from '../../../types/music/session.js';
-import type { MusicEventName } from '../../../types/music/events-constants.js';
 export { type TrackInfo } from '../../../types/music/track.js';
 export { type MusicTrack } from '../../../types/music/events.js';
 export { type TrackEventData, type PlaybackEventData, type QueueEventData, type VoiceEventData, type AutoPlayEventData, type SkipVoteEventData, type NowPlayingEventData, type SystemEventData } from '../../../types/music/session.js';

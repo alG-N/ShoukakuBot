@@ -13,7 +13,6 @@ import {
     ActionRowBuilder,
     ChatInputCommandInteraction,
     ModalSubmitInteraction,
-    TextInputModalData,
     TextChannel
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';

@@ -11,10 +11,7 @@ import logger from '../../core/Logger.js';
 import type {
     SteamGame,
     SteamSaleResponse,
-    SteamPriceOverview,
-    SteamAppDetailsData,
     SteamAppDetailsResponse,
-    SteamFeaturedGame,
     SteamFeaturedCategoriesResponse,
     SteamSpyData
 } from '../../types/api/steam.js';
@@ -28,12 +25,9 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
  * Provides methods to fetch Steam sales, game data, and SteamSpy statistics
  */
 export class SteamService {
-    // Reserved for future authenticated Steam API calls
-    private readonly apiKey: string;
     private readonly userAgent: string;
 
     constructor() {
-        this.apiKey = process.env.STEAM_API_KEY || '';
         this.userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
     }
 

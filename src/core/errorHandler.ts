@@ -17,7 +17,7 @@ import type {
  * Initialize global error handlers
  * @param client - Discord client
  */
-export function initializeErrorHandlers(client: Client): void {
+export function initializeErrorHandlers(_client: Client): void {
     // Uncaught exceptions
     process.on('uncaughtException', (error: Error) => {
         // Parse stack trace for file/line info
@@ -53,7 +53,7 @@ export function initializeErrorHandlers(client: Client): void {
     });
 
     // Unhandled promise rejections
-    process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
+    process.on('unhandledRejection', (reason: unknown, _promise: Promise<unknown>) => {
         const error = reason instanceof Error ? reason : new Error(String(reason));
         
         // Parse stack trace for file/line info
