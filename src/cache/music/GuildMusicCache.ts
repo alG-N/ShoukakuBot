@@ -7,53 +7,14 @@
 import { CACHE_LIMITS } from '../../constants.js';
 import { MusicTrack } from './QueueCache.js';
 import logger from '../../core/Logger.js';
-// Types
-export interface GuildMusicSettings {
-    defaultVolume: number;
-    autoPlay: boolean;
-    announceNowPlaying: boolean;
-    twentyFourSeven: boolean;
-    djRole: string | null;
-    textChannelLock: string | null;
-    maxQueueSize: number;
-    voteSkipEnabled: boolean;
-    voteSkipThreshold: number;
-    updatedAt: number;
-    _lastAccessed?: number;
-}
-
-export interface RecentlyPlayedTrack {
-    url: string;
-    title: string;
-    author?: string | null;
-    thumbnail?: string | null;
-    requestedBy: string;
-    playedAt: number;
-}
-
-export interface RecentlyPlayedEntry {
-    tracks: RecentlyPlayedTrack[];
-    _lastAccessed: number;
-}
-
-export interface DJLockState {
-    enabled: boolean;
-    djUserId: string | null;
-    lockedAt?: number;
-}
-
-export interface CachedPlaylist {
-    cachedAt: number;
-    [key: string]: any;
-}
-
-export interface GuildMusicCacheStats {
-    guildSettings: number;
-    recentlyPlayed: number;
-    djLocks: number;
-    playlistCache: number;
-    maxGuilds: number;
-}
+import type {
+    GuildMusicSettings,
+    RecentlyPlayedTrack,
+    RecentlyPlayedEntry,
+    DJLockState,
+    CachedPlaylist,
+    GuildMusicCacheStats
+} from '../../types/cache/music/guild-music-cache.js';
 // GuildMusicCache Class
 class GuildMusicCache {
     // Guild settings
@@ -345,4 +306,7 @@ class GuildMusicCache {
 }
 
 export const guildMusicCache = new GuildMusicCache();
+export { type GuildMusicSettings, type RecentlyPlayedTrack, type RecentlyPlayedEntry, type DJLockState, type CachedPlaylist, type GuildMusicCacheStats };
 export default guildMusicCache;
+
+

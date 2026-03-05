@@ -4,129 +4,8 @@
  */
 
 import db from '../../database/postgres.js';
-// Interfaces
-type AutoModAction = 'warn' | 'mute' | 'kick' | 'ban' | 'delete' | 'delete_warn';
-
-interface AutoModSettings {
-    guild_id: string;
-    enabled: boolean;
-    
-    // Filter
-    filter_enabled: boolean;
-    filtered_words: string[];
-    
-    // Spam
-    spam_enabled: boolean;
-    spam_threshold: number;
-    spam_interval: number;
-    spam_window_ms: number;
-    spam_action: AutoModAction;
-    spam_mute_duration_ms: number;
-    
-    // Duplicate
-    duplicate_enabled: boolean;
-    duplicate_threshold: number;
-    duplicate_window_ms: number;
-    duplicate_action: AutoModAction;
-    
-    // Links
-    links_enabled: boolean;
-    links_whitelist: string[];
-    links_action: AutoModAction;
-    
-    // Mentions
-    mention_enabled: boolean;
-    mention_limit: number;
-    mention_action: AutoModAction;
-    
-    // Caps
-    caps_enabled: boolean;
-    caps_percent: number;
-    caps_percentage: number;
-    caps_min_length: number;
-    caps_action: AutoModAction;
-    
-    // Invites
-    invites_enabled: boolean;
-    invites_whitelist: string[];
-    invites_action: AutoModAction;
-    
-    // New Account
-    new_account_enabled: boolean;
-    new_account_age_hours: number;
-    new_account_action: AutoModAction;
-    
-    // Raid
-    raid_enabled: boolean;
-    raid_join_threshold: number;
-    raid_window_ms: number;
-    raid_action: AutoModAction;
-    raid_auto_unlock_ms: number;
-    
-    // Common
-    ignored_channels: string[];
-    ignored_roles: string[];
-    log_channel_id: string | null;
-    
-    // Warn settings
-    auto_warn: boolean;
-    mute_duration: number;
-    default_action: AutoModAction;
-    warn_threshold: number;
-    warn_action: AutoModAction;
-    warn_reset_hours: number;
-    
-    created_at?: Date;
-    updated_at?: Date;
-}
-
-interface AutoModUpdateData {
-    enabled?: boolean;
-    filter_enabled?: boolean;
-    filtered_words?: string[];
-    spam_enabled?: boolean;
-    spam_threshold?: number;
-    spam_interval?: number;
-    spam_window_ms?: number;
-    spam_action?: AutoModAction;
-    spam_mute_duration_ms?: number;
-    duplicate_enabled?: boolean;
-    duplicate_threshold?: number;
-    duplicate_window_ms?: number;
-    duplicate_action?: AutoModAction;
-    links_enabled?: boolean;
-    links_whitelist?: string[];
-    links_action?: AutoModAction;
-    mention_enabled?: boolean;
-    mention_limit?: number;
-    mention_action?: AutoModAction;
-    caps_enabled?: boolean;
-    caps_percent?: number;
-    caps_percentage?: number;
-    caps_min_length?: number;
-    caps_action?: AutoModAction;
-    invites_enabled?: boolean;
-    invites_whitelist?: string[];
-    invites_action?: AutoModAction;
-    new_account_enabled?: boolean;
-    new_account_age_hours?: number;
-    new_account_action?: AutoModAction;
-    raid_enabled?: boolean;
-    raid_join_threshold?: number;
-    raid_window_ms?: number;
-    raid_action?: AutoModAction;
-    raid_auto_unlock_ms?: number;
-    ignored_channels?: string[];
-    ignored_roles?: string[];
-    log_channel_id?: string | null;
-    auto_warn?: boolean;
-    mute_duration?: number;
-    default_action?: AutoModAction;
-    warn_threshold?: number;
-    warn_action?: AutoModAction;
-    warn_reset_hours?: number;
-    [key: string]: any;
-}
+import type { AutoModSettings } from '../../types/moderation/automod.js';
+import type { AutoModAction, AutoModUpdateData } from '../../types/moderation/automod-repository.js';
 // Repository Functions
 /**
  * Get auto-mod settings for a guild
@@ -336,5 +215,9 @@ export {
     remove,
     getEnabledGuilds
 };
-export type { AutoModSettings, AutoModUpdateData, AutoModAction };
+export { type AutoModSettings, type AutoModUpdateData, type AutoModAction };
 export default AutoModRepository;
+
+
+
+

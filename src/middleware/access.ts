@@ -13,15 +13,15 @@
 
 // Rate Limiting
 export { RateLimiter, DistributedRateLimiter } from './rateLimiter.js';
-export type { RateLimiterOptions, DistributedRateLimiterOptions, RateLimitCheckResult } from './rateLimiter.js';
+export { type RateLimiterOptions, type DistributedRateLimiterOptions, type RateLimitCheckResult } from './rateLimiter.js';
 
 // Permissions
 export { hasPermissions, isServerAdmin, isServerOwner, canModerate, botCanModerate, validators } from './permissions.js';
-export type { ModerateResult } from './permissions.js';
+export { type ModerateResult } from './permissions.js';
 
 // Access Control & Checks
 export { AccessType, checkAccess, checkMaintenance, checkNSFW, validateVideoUrl } from './checks.js';
-export type { ValidationResult, AccessCheckResult, MaintenanceCheckResult, AccessTypeValue, AnyInteraction } from './checks.js';
+export { type AccessValidationResult, type AccessCheckResult, type MaintenanceCheckResult, type AccessTypeValue, type AnyInteraction } from './checks.js';
 
 // Embed Helpers
 export { createErrorEmbed, createWarningEmbed, createSuccessEmbed, createInfoEmbed, createCooldownEmbed } from './embeds.js';
@@ -46,3 +46,6 @@ export default {
     createInfoEmbed,
     createCooldownEmbed
 };
+
+
+

@@ -2,23 +2,8 @@
  * Enhanced PlatformDetector with additional platform info and styling
  * @module utils/video/platformDetector
  */
-// TYPES
-interface PlatformConfig {
-    name: string;
-    id: string;
-    color: string;
-    patterns: string[];
-    supports: string[];
-    maxQuality: string;
-}
+import type { PlatformConfig, PlatformInfo } from '../../types/video/platform-detector.js';
 
-interface PlatformInfo {
-    name: string;
-    id: string;
-    color: string;
-    supports: string[];
-    maxQuality: string;
-}
 // PLATFORM DETECTOR CLASS
 class PlatformDetector {
     private platforms: Record<string, PlatformConfig>;
@@ -289,4 +274,7 @@ class PlatformDetector {
 const platformDetector = new PlatformDetector();
 export default platformDetector;
 export { PlatformDetector };
-export type { PlatformInfo, PlatformConfig };
+export { type PlatformInfo, type PlatformConfig };
+
+
+

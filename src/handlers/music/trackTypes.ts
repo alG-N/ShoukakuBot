@@ -5,99 +5,23 @@
  */
 
 import { User } from 'discord.js';
+import type { Track, LoopMode, NowPlayingOptions } from '../../types/music/index.js';
+import type {
+    SourcePlatform,
+    ControlButtonsOptions,
+    QueueListOptions,
+    InfoEmbedType,
+    SourceInfo,
+    LoopDisplayInfo
+} from '../../types/music/session.js';
+
+export { type Track, type TrackInfo } from '../../types/music/track.js';
+export { type LoopMode, type NowPlayingOptions } from '../../types/music/playback.js';
+export { type SourcePlatform, type ControlButtonsOptions, type QueueListOptions, type InfoEmbedType, type SourceInfo, type LoopDisplayInfo } from '../../types/music/session.js';
 
 /**
  * Track data structure
  */
-export interface Track {
-    title: string;
-    author?: string;
-    url: string;
-    thumbnail?: string;
-    duration?: number;
-    lengthSeconds: number;
-    source?: string;
-    searchedByLink?: boolean;
-    originalQuery?: string;
-    requestedBy?: User | { displayName?: string; username?: string; displayAvatarURL?: () => string | null };
-    playedAt?: number;
-}
-
-/**
- * Loop mode types
- */
-export type LoopMode = 'off' | 'track' | 'queue';
-
-/**
- * Source platform types
- */
-export type SourcePlatform = 'youtube' | 'soundcloud' | 'spotify' | 'unknown';
-
-/**
- * Now playing embed options
- */
-export interface NowPlayingOptions {
-    volume?: number;
-    isPaused?: boolean;
-    loopMode?: LoopMode;
-    isShuffled?: boolean;
-    queueLength?: number;
-    position?: number;
-    player?: unknown;
-    requester?: User | null;
-    nextTrack?: Track | null;
-    loopCount?: number;
-    voteSkipCount?: number;
-    voteSkipRequired?: number;
-    listenerCount?: number;
-}
-
-/**
- * Control buttons options
- */
-export interface ControlButtonsOptions {
-    isPaused?: boolean;
-    loopMode?: LoopMode;
-    isShuffled?: boolean;
-    trackUrl?: string | null;
-    userId?: string;
-    autoPlay?: boolean;
-    listenerCount?: number;
-}
-
-/**
- * Queue list options
- */
-export interface QueueListOptions {
-    page?: number;
-    perPage?: number;
-    loopMode?: LoopMode;
-    isShuffled?: boolean;
-    volume?: number;
-}
-
-/**
- * Info embed type
- */
-export type InfoEmbedType = 'info' | 'success' | 'warning' | 'error';
-
-/**
- * Source platform info
- */
-export interface SourceInfo {
-    emoji: string;
-    name: string;
-    color: string;
-}
-
-/**
- * Loop display info
- */
-export interface LoopDisplayInfo {
-    emoji: string;
-    text: string;
-    label: string;
-}
 
 /**
  * Enhanced color scheme
@@ -151,3 +75,6 @@ export const DECORATIONS = {
  */
 export const NOW_PLAYING_EMOJI = '🇳 🇴 🇼  🇵 🇱 🇦 🇾 🇮 🇳 🇬';
 export const PAUSED_EMOJI = '⏸️ 🇵 🇦 🇺 🇸 🇪 🇩';
+
+
+

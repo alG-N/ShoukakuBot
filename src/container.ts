@@ -6,45 +6,12 @@
  */
 
 import { logger } from './core/Logger.js';
-// Types
-/**
- * Service registration options
- */
-export interface ServiceOptions {
-    /** Whether to cache the instance (default: true) */
-    singleton?: boolean;
-    /** Tags for grouping services */
-    tags?: string[];
-}
-
-/**
- * Service registration entry
- */
-interface ServiceRegistration<T = unknown> {
-    factory: (container: Container) => T;
-    options: Required<ServiceOptions>;
-}
-
-/**
- * Service with optional lifecycle methods
- */
-export interface Service {
-    initialize?(): Promise<void> | void;
-    shutdown?(): Promise<void> | void;
-    destroy?(): Promise<void> | void;
-    close?(): Promise<void> | void;
-    shutdownAll?(): Promise<void> | void;
-    destroyAll?(): Promise<void> | void;
-}
-
-/**
- * Container debug info
- */
-export interface ContainerDebugInfo {
-    registered: string[];
-    instantiated: string[];
-    tags: Record<string, string[]>;
-}
+import type {
+    ContainerServiceOptions,
+    ServiceRegistration,
+    Service,
+    ContainerDebugInfo
+} from './types/core/container.js';
 // Container Class
 export class Container {
     /** Service factories */
@@ -79,9 +46,9 @@ export class Container {
     register<T>(
         name: string, 
         factory: (container: Container) => T, 
-        options: ServiceOptions = {}
+        options: ContainerServiceOptions = {}
     ): this {
-        const opts: Required<ServiceOptions> = { 
+        const opts: Required<ContainerServiceOptions> = { 
             singleton: true, 
             tags: [], 
             ...options 
@@ -291,3 +258,4 @@ export class Container {
 // Export singleton container (but can create new instances for testing)
 export const container = new Container();
 export default container;
+export { type ContainerServiceOptions, type Service, type ContainerDebugInfo };

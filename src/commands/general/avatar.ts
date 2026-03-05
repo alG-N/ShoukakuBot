@@ -13,11 +13,7 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
-
-/**
- * Supported image formats
- */
-type ImageFormat = 'auto' | 'png' | 'jpg' | 'webp' | 'gif';
+import type { EmbedField, ImageFormat } from '../../types/commands/general-avatar.js';
 
 class AvatarCommand extends BaseCommand {
     constructor() {
@@ -117,12 +113,6 @@ class AvatarCommand extends BaseCommand {
         embed.setDescription(`**Download:** ${downloadLinks}`);
 
         // Add fields
-        interface EmbedField {
-            name: string;
-            value: string;
-            inline: boolean;
-        }
-        
         const fields: EmbedField[] = [
             { name: 'User', value: `<@${targetUser.id}>`, inline: true },
             { name: 'ID', value: `\`${targetUser.id}\``, inline: true },
@@ -159,3 +149,4 @@ class AvatarCommand extends BaseCommand {
 // Export singleton instance
 const avatarCommand = new AvatarCommand();
 export default avatarCommand;
+

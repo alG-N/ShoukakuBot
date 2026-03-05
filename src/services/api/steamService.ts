@@ -8,104 +8,20 @@ import * as path from 'path';
 import * as dotenv from 'dotenv';
 import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
 import logger from '../../core/Logger.js';
+import type {
+    SteamGame,
+    SteamSaleResponse,
+    SteamPriceOverview,
+    SteamAppDetailsData,
+    SteamAppDetailsResponse,
+    SteamFeaturedGame,
+    SteamFeaturedCategoriesResponse,
+    SteamSpyData
+} from '../../types/api/steam.js';
+export { type SteamGame, type SteamSaleResponse, type SteamPriceOverview, type SteamAppDetailsResponse, type SteamFeaturedGame, type SteamSpyData } from '../../types/api/steam.js';
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
 // TYPES & INTERFACES
-/**
- * Steam game data from sales search
- */
-export interface SteamGame {
-    id: number;
-    name: string;
-    discount_percent: number;
-    original_price: number;
-    final_price: number;
-    currency?: string;
-    needsUsdPrice?: boolean;
-}
-
-/**
- * Steam sale response from search API
- */
-export interface SteamSaleResponse {
-    success: number;
-    results_html: string;
-    total_count: number;
-    start: number;
-}
-
-/**
- * Steam app details price overview
- */
-export interface SteamPriceOverview {
-    currency: string;
-    initial: number;
-    final: number;
-    discount_percent: number;
-    initial_formatted: string;
-    final_formatted: string;
-}
-
-/**
- * Steam app details data
- */
-export interface SteamAppDetailsData {
-    price_overview?: SteamPriceOverview;
-}
-
-/**
- * Steam app details response
- */
-export interface SteamAppDetailsResponse {
-    success: boolean;
-    data?: SteamAppDetailsData;
-}
-
-/**
- * Steam featured game item
- */
-export interface SteamFeaturedGame {
-    id: number;
-    name: string;
-    discount_percent: number;
-    original_price: number;
-    final_price: number;
-}
-
-/**
- * Steam featured categories response
- */
-export interface SteamFeaturedCategoriesResponse {
-    specials?: {
-        items: SteamFeaturedGame[];
-    };
-}
-
-/**
- * SteamSpy data response
- */
-export interface SteamSpyData {
-    appid: number;
-    name: string;
-    developer: string;
-    publisher: string;
-    score_rank: string;
-    positive: number;
-    negative: number;
-    userscore: number;
-    owners: string;
-    average_forever: number;
-    average_2weeks: number;
-    median_forever: number;
-    median_2weeks: number;
-    price: string;
-    initialprice: string;
-    discount: string;
-    ccu: number;
-    languages: string;
-    genre: string;
-    tags: Record<string, number>;
-}
 // STEAM SERVICE CLASS
 /**
  * Steam Service
@@ -454,3 +370,6 @@ const steamService = new SteamService();
 
 export { steamService };
 export default steamService;
+
+
+

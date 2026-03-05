@@ -7,92 +7,22 @@
  */
 
 import { Client, EmbedBuilder, TextChannel, Guild, ChannelType, PermissionFlagsBits } from 'discord.js';
-// TYPES & INTERFACES
-/**
- * Log level names
- */
-export type LogLevel = 'DEBUG' | 'INFO' | 'SUCCESS' | 'WARN' | 'ERROR' | 'CRITICAL';
+import type {
+    CommandLogOptions,
+    ConsoleMethods,
+    DiscordLogEntry,
+    GuildLike,
+    LogFormat,
+    LogLevel,
+    LogLevelConfig,
+    LogMetadata,
+    RequestLogOptions,
+    SentrySeverity
+} from '../types/core/runtime.js';
+import type { StructuredLog } from '../types/core/logger.js';
 
-/**
- * Log format types
- */
-export type LogFormat = 'json' | 'text';
+export { type CommandLogOptions, type LogFormat, type LogLevel, type LogMetadata, type RequestLogOptions } from '../types/core/runtime.js';
 
-/**
- * Console method names
- */
-type ConsoleMethods = 'log' | 'info' | 'warn' | 'error';
-
-/**
- * Sentry severity names
- */
-type SentrySeverity = 'debug' | 'info' | 'warn' | 'error' | 'fatal';
-
-/**
- * Log level configuration
- */
-interface LogLevelConfig {
-    emoji: string;
-    color: number;
-    console: ConsoleMethods;
-    priority: number;
-    name: SentrySeverity;
-}
-
-/**
- * Discord log entry in queue
- */
-interface DiscordLogEntry {
-    level: LogLevel;
-    title: string;
-    description: string;
-    fields?: Record<string, unknown> | null;
-}
-
-/**
- * Metadata for structured logging
- */
-export interface LogMetadata {
-    [key: string]: unknown;
-    error?: string;
-    userId?: string;
-    guildId?: string;
-    shardId?: number;
-}
-
-/**
- * Request log options
- */
-export interface RequestLogOptions {
-    method: string;
-    url: string;
-    statusCode: number;
-    duration: number;
-    userId?: string;
-    guildId?: string;
-    error?: Error | null;
-}
-
-/**
- * Command log options
- */
-export interface CommandLogOptions {
-    command: string;
-    userId: string;
-    guildId?: string;
-    duration: number;
-    success: boolean;
-    error?: Error | null;
-}
-
-/**
- * Guild interface for logging (simplified)
- */
-interface GuildLike {
-    id: string;
-    name: string;
-    memberCount: number;
-}
 // CONFIGURATION
 /**
  * Log channel ID for Discord logging
@@ -193,18 +123,6 @@ export class Logger {
      */
     private _formatJson(level: LogLevel, category: string, message: string, metadata: LogMetadata = {}): string {
         const logLevel = LOG_LEVELS[level] || LOG_LEVELS.INFO;
-        
-        interface StructuredLog {
-            timestamp: string;
-            level: SentrySeverity;
-            severity: LogLevel;
-            service: string;
-            environment: string;
-            category: string;
-            message: string;
-            shardId?: number;
-            [key: string]: unknown;
-        }
 
         const logEntry: StructuredLog = {
             timestamp: new Date().toISOString(),
@@ -769,3 +687,7 @@ export default logger;
 
 // Named exports for ESM
 export { logger };
+
+
+
+

@@ -5,60 +5,23 @@
  * @module services/moderation/AntiRaidService
  */
 
-import { type GuildMember, type Snowflake } from 'discord.js';
+import { type GuildMember, Snowflake } from 'discord.js';
 import cacheService from '../../cache/CacheService.js';
 import logger from '../../core/Logger.js';
 import automodConfig from '../../config/features/moderation/automod.js';
+import type {
+    JoinEntry,
+    RaidModeState,
+    DeactivateResult,
+    JoinAnalysis,
+    SimilarNameResult
+} from '../../types/moderation/anti-raid-service.js';
 
 // Cache namespace and TTLs
 const CACHE_NAMESPACE = 'antiraid';
 const JOIN_TRACKER_TTL = 300;      // 5 minutes
 const RAID_MODE_TTL = 1800;        // 30 minutes (auto-disable)
 const FLAGGED_ACCOUNTS_TTL = 3600; // 1 hour
-// TYPES
-interface JoinEntry {
-    userId: Snowflake;
-    timestamp: number;
-    accountAge: number;
-    username: string;
-}
-
-interface RaidModeState {
-    active: boolean;
-    activatedAt: number;
-    activatedBy: Snowflake;
-    reason: string;
-    stats?: {
-        kickedCount: number;
-        bannedCount: number;
-    };
-}
-
-interface DeactivateResult {
-    duration: number;
-    flaggedAccounts: number;
-    stats?: {
-        kickedCount?: number;
-        bannedCount?: number;
-    };
-}
-
-export interface JoinAnalysis {
-    isRaid: boolean;
-    isSuspicious: boolean;
-    triggers: string[];
-    recommendation: string | null;
-    stats: {
-        joinCount: number;
-        newAccounts: number;
-        similarNames: number;
-    };
-}
-
-interface SimilarNameResult {
-    count: number;
-    isSuspicious: boolean;
-}
 // ANTI-RAID SERVICE CLASS
 class AntiRaidService {
     private cleanupInterval: NodeJS.Timeout | null = null;
@@ -377,4 +340,7 @@ class AntiRaidService {
 const antiRaidService = new AntiRaidService();
 
 export { AntiRaidService };
+export { type JoinEntry, type RaidModeState, type DeactivateResult, type JoinAnalysis, type SimilarNameResult };
 export default antiRaidService;
+
+

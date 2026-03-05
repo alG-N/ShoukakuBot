@@ -6,29 +6,7 @@
 
 import * as Sentry from '@sentry/node';
 import logger from './Logger.js';
-// TYPES
-interface SentryInitOptions {
-    release?: string;
-    tracesSampleRate?: number;
-    tags?: Record<string, string>;
-    [key: string]: unknown;
-}
-
-interface SentryContext {
-    user?: { id: string; tag?: string; username?: string };
-    guild?: { id: string; name: string };
-    command?: string;
-    extra?: Record<string, unknown>;
-    level?: Sentry.SeverityLevel;
-    tags?: Record<string, string>;
-}
-
-interface BreadcrumbData {
-    category?: string;
-    message: string;
-    level?: Sentry.SeverityLevel;
-    data?: Record<string, unknown>;
-}
+import type { SentryInitOptions, SentryContext, BreadcrumbData } from '../types/core/sentry.js';
 // STATE
 let isInitialized = false;
 let initializationFailed = false;

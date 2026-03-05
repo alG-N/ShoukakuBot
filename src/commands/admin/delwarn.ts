@@ -10,24 +10,11 @@ import {
     PermissionFlagsBits,
     ChatInputCommandInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import logger from '../../core/Logger.js';
 import { infractionService as _infractionSvc } from '../../services/moderation/index.js';
-interface Infraction {
-    id: number;
-    guild_id: string;
-    user_id: string;
-    moderator_id: string;
-    type: string;
-    reason: string;
-    active: boolean;
-    created_at: Date;
-}
-
-interface InfractionService {
-    getCase?: (guildId: string, caseId: number) => Promise<Infraction | null>;
-    deleteCase?: (guildId: string, caseId: number) => Promise<boolean>;
-}
+import type { Infraction } from '../../types/moderation/infraction.js';
+import type { InfractionService } from '../../types/moderation/services.js';
 
 
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
@@ -126,3 +113,4 @@ class DelWarnCommand extends BaseCommand {
 }
 
 export default new DelWarnCommand();
+

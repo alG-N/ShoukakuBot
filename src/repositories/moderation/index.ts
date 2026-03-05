@@ -49,34 +49,11 @@ export {
 };
 
 // Re-export types
-export type {
-    // Infraction types
-    Infraction,
-    InfractionType,
-    InfractionCreateData,
-    InfractionQueryOptions,
-    InfractionSearchCriteria,
-    InfractionStats,
-    InfractionUpdateData,
-    
-    // AutoMod types
-    AutoModSettings,
-    AutoModUpdateData,
-    AutoModAction,
-    
-    // Filter types
-    WordFilter,
-    FilterMatchType,
-    FilterAction,
-    FilterAddData,
-    FilterBulkItem,
-    FilterUpdateData,
-    
-    // ModLog types
-    ModLogSettings,
-    ModLogUpdateData,
-    LogType
-};
+export { type // Infraction types
+    Infraction, type InfractionType, type InfractionCreateData, type InfractionQueryOptions, type InfractionSearchCriteria, type InfractionStats, type InfractionUpdateData, type // AutoMod types
+    AutoModSettings, type AutoModUpdateData, type AutoModAction, type // Filter types
+    WordFilter, type FilterMatchType, type FilterAction, type FilterAddData, type FilterBulkItem, type FilterUpdateData, type // ModLog types
+    ModLogSettings, type ModLogUpdateData, type LogType };
 
 // Default export
 export default {
@@ -85,3 +62,6 @@ export default {
     FilterRepository,
     ModLogRepository
 };
+
+
+

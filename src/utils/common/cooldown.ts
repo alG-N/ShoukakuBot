@@ -6,21 +6,11 @@
  */
 
 import cacheService from '../../cache/CacheService.js';
-// TYPES
-interface CooldownCheckResult {
-    onCooldown: boolean;
-    remaining: number;
-}
-
-interface CooldownCheckAndSetResult {
-    passed: boolean;
-    remaining: number;
-}
-
-interface CooldownManagerOptions {
-    defaultCooldown?: number;
-    prefix?: string;
-}
+import type {
+    CooldownCheckResult,
+    CooldownCheckAndSetResult,
+    CooldownManagerOptions
+} from '../../types/utils/common/cooldown.js';
 // COOLDOWN MANAGER CLASS
 /**
  * Shard-safe cooldown manager using Redis-backed CacheService
@@ -126,3 +116,5 @@ export async function checkCooldown(userId: string, commandName: string, cooldow
 export async function clearCooldown(userId: string, commandName: string): Promise<void> {
     return globalCooldownManager.clear(userId, commandName);
 }
+
+export { type CooldownCheckResult, type CooldownCheckAndSetResult, type CooldownManagerOptions };

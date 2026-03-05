@@ -16,7 +16,7 @@ import {
     TextInputModalData,
     TextChannel
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import logger from '../../core/Logger.js';
 
@@ -145,3 +145,4 @@ export async function handleModal(interaction: ModalSubmitInteraction): Promise<
 
 const command = new ReportCommand();
 export default command;
+

@@ -12,28 +12,11 @@ import {
     ChatInputCommandInteraction,
     TextChannel
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import _lockdownModule from '../../services/moderation/LockdownService.js';
 import _moderationConfigModule from '../../config/features/moderation/index.js';
-interface ModerationConfig {
-    COLORS: Record<string, number>;
-    EMOJIS: Record<string, string>;
-}
-
-interface SlowmodeResult {
-    success: boolean;
-    error?: string;
-}
-
-interface ServerSlowmodeResult {
-    success: string[];
-    failed: string[];
-}
-
-interface LockdownService {
-    setSlowmode?: (channel: TextChannel, duration: number, reason: string) => Promise<SlowmodeResult>;
-    setServerSlowmode?: (guild: ChatInputCommandInteraction['guild'], duration: number, reason: string) => Promise<ServerSlowmodeResult>;
-}
+import type { LockdownService } from '../../types/moderation/services.js';
+import type { ModerationConfig } from '../../config/features/moderation/index.js';
 
 
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
@@ -257,3 +240,4 @@ class SlowmodeCommand extends BaseCommand {
 }
 
 export default new SlowmodeCommand();
+

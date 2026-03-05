@@ -5,25 +5,11 @@
  */
 
 import cacheService from '../cache/CacheService.js';
-
-// Types
-export interface RateLimiterOptions {
-    cooldownSeconds?: number;
-    maxConcurrent?: number;
-}
-
-export interface DistributedRateLimiterOptions {
-    name?: string;
-    limit?: number;
-    windowSeconds?: number;
-    maxConcurrent?: number;
-}
-
-export interface RateLimitCheckResult {
-    allowed: boolean;
-    remaining: number;
-    resetIn: number;
-}
+import type {
+    RateLimiterOptions,
+    DistributedRateLimiterOptions,
+    RateLimitCheckResult
+} from '../types/middleware/rate-limiter.js';
 
 /**
  * Shard-safe rate limiter using CacheService (Redis with memory fallback)
@@ -125,3 +111,5 @@ export class DistributedRateLimiter {
         this.active.clear();
     }
 }
+
+export { type RateLimiterOptions, type DistributedRateLimiterOptions, type RateLimitCheckResult };

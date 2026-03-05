@@ -7,74 +7,13 @@
 
 import { Result } from '../../../core/Result.js';
 import { ErrorCodes } from '../../../core/ErrorCodes.js';
-import type { MusicTrack } from '../events/MusicEvents.js';
+import type { MusicTrack } from '../../../types/music/events.js';
+import type { MusicQueue, QueueState } from '../../../types/music/queue.js';
 import musicCacheImport from '../../../cache/music/MusicCacheFacade.js';
+import type { MusicCacheFacade } from '../../../types/music/queue-service.js';
 
 // Type assertion for the imported cache
 const musicCache = musicCacheImport as unknown as MusicCacheFacade;
-// TYPES
-interface MusicCacheFacade {
-    getQueue: (guildId: string) => MusicQueue | null;
-    getOrCreateQueue: (guildId: string) => MusicQueue;
-    deleteQueue: (guildId: string) => void;
-    addTrack: (guildId: string, track: MusicTrack) => number | false;
-    addTrackToFront: (guildId: string, track: MusicTrack) => number | false;
-    addTracks: (guildId: string, tracks: MusicTrack[]) => MusicTrack[];
-    removeTrack: (guildId: string, index: number) => MusicTrack | null;
-    clearQueue: (guildId: string) => void;
-    clearTracks: (guildId: string) => void;
-    shuffleQueue: (guildId: string) => boolean;
-    unshuffleQueue: (guildId: string) => boolean;
-    setLoopMode: (guildId: string, mode: string) => void;
-    cycleLoopMode: (guildId: string) => string;
-    getLoopCount: (guildId: string) => number;
-    incrementLoopCount: (guildId: string) => number;
-    resetLoopCount: (guildId: string) => void;
-    getNextTrack: (guildId: string) => MusicTrack | null;
-    getCurrentTrack: (guildId: string) => MusicTrack | null;
-    setCurrentTrack: (guildId: string, track: MusicTrack | null) => void;
-    setVolume: (guildId: string, volume: number) => void;
-    getVolume: (guildId: string) => number;
-    setAutoPlay: (guildId: string, enabled: boolean) => void;
-    isAutoPlayEnabled: (guildId: string) => boolean;
-    startSkipVote: (guildId: string, trackId: string) => void;
-    addSkipVote: (guildId: string, odId: string) => { added: boolean; voteCount: number; required?: number; message?: string } | null;
-    endSkipVote: (guildId: string) => void;
-    hasActiveSkipVote: (guildId: string) => boolean;
-    hasEnoughSkipVotes: (guildId: string, requiredVotes: number) => boolean;
-    addLastPlayedTrack: (guildId: string, trackId: string) => void;
-    getLastPlayedTracks: (guildId: string) => string[];
-    moveTrack: (guildId: string, from: number, to: number) => boolean;
-}
-
-interface MusicQueue {
-    tracks: MusicTrack[];
-    currentTrack: MusicTrack | null;
-    loopMode: 'off' | 'track' | 'queue';
-    isShuffled: boolean;
-    volume: number;
-    autoPlay: boolean;
-    voiceChannelId?: string;
-    textChannelId?: string;
-    textChannel?: unknown;
-    isPaused?: boolean;
-    eventsBound?: boolean;
-    lastAutoplaySearch?: number;
-    lastPlayedTracks?: string[];
-}
-
-interface QueueState {
-    exists: boolean;
-    tracks: MusicTrack[];
-    trackCount?: number;
-    currentTrack: MusicTrack | null;
-    loopMode: string;
-    isShuffled: boolean;
-    volume: number;
-    autoPlay: boolean;
-    voiceChannelId?: string;
-    textChannelId?: string;
-}
 // QUEUE SERVICE CLASS
 class QueueService {
     /**
@@ -397,6 +336,10 @@ class QueueService {
 const queueService = new QueueService();
 
 export { QueueService };
-export type { MusicQueue, QueueState };
+export { type MusicQueue, type QueueState };
 export default queueService;
+
+
+
+
 

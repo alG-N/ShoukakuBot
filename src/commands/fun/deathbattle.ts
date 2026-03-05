@@ -14,72 +14,24 @@ import {
     ButtonBuilder,
     ComponentType
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
-import type { BattleHistoryEntry } from '../../services/fun/deathbattle/BattleService.js';
+import type { Battle, BattleHistoryEntry } from '../../services/fun/deathbattle/BattleService.js';
 import coreLogger from '../../core/Logger.js';
+import type {
+    BattleRoundResult,
+    SkillsetService,
+    BattleService,
+    EmbedBuilderService,
+    LoggerService,
+    DeathBattleConfig
+} from '../../types/fun/deathbattle-command.js';
 
 import _skillsetService from '../../services/fun/deathbattle/SkillsetService.js';
 import _battleService from '../../services/fun/deathbattle/BattleService.js';
 import _embedBuilder from '../../utils/deathbattle/embedBuilder.js';
 import deathBattleLogger from '../../utils/deathbattle/logger.js';
 import deathbattleConfig from '../../config/deathbattle/index.js';
-// TYPES
-// Use the actual Battle interface from BattleService
-interface Battle {
-    player1: User;
-    player2: User;
-    skillsetName: string;
-    player1Health: number;
-    player2Health: number;
-    player1MaxHp: number;
-    player2MaxHp: number;
-    roundCount: number;
-    battleLog: string;
-    history: BattleHistoryEntry[];
-}
-
-interface RoundResult {
-    attacker: User;
-    defender: User;
-    damage: number;
-    skill: string;
-    effectLogs?: string[];
-    historyEntry?: BattleHistoryEntry;
-}
-
-interface SkillsetService {
-    isValidSkillset: (name: string) => boolean;
-    getAllSkillsets: () => string[];
-}
-
-interface BattleService {
-    createBattle: (guildId: string, p1: User, p2: User, skillset: string, hp1: number, hp2: number) => Promise<Battle | null>;
-    isBattleActive: (guildId: string) => Promise<boolean>;
-    executeRound: (battle: Battle) => RoundResult;
-    endBattle: (battleId: string) => Promise<void>;
-    getBattleHistory: (guildId: string) => Promise<BattleHistoryEntry[] | null>;
-    removeBattle: (guildId: string) => Promise<void>;
-}
-
-interface EmbedBuilderService {
-    buildErrorEmbed: (msg: string) => EmbedBuilder;
-    buildCountdownEmbed: (battle: Battle, count: number) => EmbedBuilder;
-    buildRoundEmbed: (battle: Battle, result: RoundResult) => EmbedBuilder;
-    buildWinnerEmbed: (battle: Battle) => { embed: EmbedBuilder; row: ActionRowBuilder<ButtonBuilder> };
-    buildBattleLogEmbed: (battle: Battle, history: BattleHistoryEntry[], page?: number) => { embed: EmbedBuilder; row: ActionRowBuilder<ButtonBuilder> | null };
-}
-
-interface LoggerService {
-    log: (msg: string, interaction?: ChatInputCommandInteraction) => void;
-}
-
-interface DeathBattleConfig {
-    MAX_HP?: number;
-    DEFAULT_HP?: number;
-    COUNTDOWN_SECONDS?: number;
-    ROUND_INTERVAL?: number;
-}
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const skillsetService: SkillsetService = _skillsetService as any;
 const battleService: BattleService = _battleService as any;
@@ -307,3 +259,4 @@ class DeathBattleCommand extends BaseCommand {
 }
 
 export default new DeathBattleCommand();
+

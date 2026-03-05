@@ -10,59 +10,15 @@ import * as path from 'path';
 import { EventEmitter } from 'events';
 import * as videoConfig from '../../config/features/video.js';
 import logger from '../../core/Logger.js';
-// TYPES
-interface VideoAnalysis {
-    needsReencoding: boolean;
-    videoCodec?: string;
-    audioCodec?: string;
-    container?: string;
-    width?: number;
-    height?: number;
-    duration?: number;
-    reason: string;
-}
-
-interface ProcessingOptions {
-    maxDuration?: number;
-}
-
-interface ProgressData {
-    percent: number;
-    stage: string;
-    message: string;
-}
-
-interface StageData {
-    stage: string;
-    message: string;
-}
-
-interface VideoStream {
-    codec_type: string;
-    codec_name?: string;
-    width?: number;
-    height?: number;
-}
-
-interface FFprobeOutput {
-    streams?: VideoStream[];
-    format?: {
-        duration?: string;
-    };
-}
-
-// Type for video config
-interface VideoConfigType {
-    HARDWARE_ENCODERS?: string[];
-    ENABLE_MOBILE_PROCESSING?: boolean;
-    MOBILE_VIDEO_CODEC?: string;
-    MOBILE_AUDIO_CODEC?: string;
-    MOBILE_CRF?: string;
-    MOBILE_PRESET?: string;
-    FFMPEG_THREADS?: number;
-    USE_HARDWARE_ACCEL?: boolean;
-    MAX_VIDEO_DURATION_SECONDS?: number;
-}
+import type { VideoConfigType } from '../../types/video/processing.js';
+import type {
+    VideoAnalysis,
+    ProcessingOptions,
+    VideoStream,
+    FFprobeOutput,
+    ProgressData,
+    StageData
+} from '../../types/video/video-processing-service.js';
 
 const config = videoConfig as unknown as VideoConfigType;
 // VIDEO PROCESSING SERVICE CLASS
@@ -530,5 +486,7 @@ class VideoProcessingService extends EventEmitter {
 const videoProcessingService = new VideoProcessingService();
 
 export { VideoProcessingService };
-export type { VideoAnalysis, ProcessingOptions, ProgressData, StageData };
+export { type VideoAnalysis, type ProcessingOptions, type ProgressData, type StageData };
 export default videoProcessingService;
+
+

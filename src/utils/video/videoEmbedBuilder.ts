@@ -5,33 +5,11 @@
 
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ColorResolvable } from 'discord.js';
 import progressAnimator from './progressAnimator.js';
-// TYPES
-interface ProgressOptions {
-    stage?: string;
-    percent?: number;
-    downloaded?: number;
-    total?: number;
-    speed?: number;
-    eta?: number;
-    method?: string;
-}
+import type { ProgressOptions, SuccessOptions } from '../../types/video/video-embed-builder.js';
 
-interface SuccessOptions {
-    platformName?: string;
-    platformId?: string;
-    sizeMB?: number;
-    format?: string;
-    duration?: string | null;
-    quality?: string | null;
-    method?: string;
-}
-
-interface ColorPalette {
-    [key: string]: ColorResolvable;
-}
 // VIDEO EMBED BUILDER CLASS
 class VideoEmbedBuilder {
-    private colors: ColorPalette;
+    private colors: Record<string, ColorResolvable>;
 
     constructor() {
         // Color palette
@@ -457,4 +435,8 @@ class VideoEmbedBuilder {
 const videoEmbedBuilder = new VideoEmbedBuilder();
 export default videoEmbedBuilder;
 export { VideoEmbedBuilder };
-export type { ProgressOptions, SuccessOptions };
+export { type ProgressOptions, type SuccessOptions };
+
+
+
+

@@ -3,42 +3,7 @@
  * Standardized return type for service operations
  * @module core/Result
  */
-// TYPES
-/**
- * Error details for Result errors
- */
-export interface ErrorDetails {
-    stack?: string;
-    name?: string;
-    [key: string]: unknown;
-}
-
-/**
- * Discord reply options
- */
-export interface ReplyOptions {
-    successMessage?: string;
-    ephemeral?: boolean;
-}
-
-/**
- * Discord reply format
- */
-export interface DiscordReply {
-    content: string;
-    ephemeral: boolean;
-}
-
-/**
- * JSON representation of Result
- */
-export interface ResultJSON<T> {
-    success: boolean;
-    data: T | null;
-    error: string | null;
-    code: string | null;
-    details?: ErrorDetails | null;
-}
+import type { ErrorDetails, ReplyOptions, DiscordReply, ResultJSON } from '../types/core/result.js';
 // RESULT CLASS
 /**
  * Result class for consistent service returns
@@ -183,3 +148,5 @@ export class Result<T> {
         };
     }
 }
+
+export { type ErrorDetails, type ReplyOptions, type DiscordReply, type ResultJSON };

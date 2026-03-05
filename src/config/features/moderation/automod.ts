@@ -3,118 +3,9 @@
  * Default settings for automatic moderation features
  * @module config/features/moderation/automod
  */
-// TYPES
-export interface SpamConfig {
-    enabled: boolean;
-    threshold: number;
-    windowMs: number;
-    action: string;
-    muteDurationMs: number;
-    escalation: {
-        enabled: boolean;
-        multiplier: number;
-        maxDurationMs: number;
-    };
-}
+import type { AutomodConfig } from '../../../types/config/moderation.js';
 
-export interface DuplicateConfig {
-    enabled: boolean;
-    threshold: number;
-    windowMs: number;
-    action: string;
-    similarity: number;
-    ignoreCase: boolean;
-    ignoreWhitespace: boolean;
-}
-
-export interface LinksConfig {
-    enabled: boolean;
-    action: string;
-    whitelistMode: boolean;
-    whitelist: string[];
-    blacklist: string[];
-    allowMedia: boolean;
-    mediaExtensions: string[];
-}
-
-export interface InvitesConfig {
-    enabled: boolean;
-    action: string;
-    whitelist: string[];
-    bypassRoles: string[];
-    patterns: RegExp[];
-}
-
-export interface MentionsConfig {
-    enabled: boolean;
-    userLimit: number;
-    roleLimit: number;
-    totalLimit: number;
-    action: string;
-    countEveryone: boolean;
-}
-
-export interface CapsConfig {
-    enabled: boolean;
-    percent: number;
-    minLength: number;
-    action: string;
-    ignoreEmoji: boolean;
-    ignoreCommands: boolean;
-}
-
-export interface EmojiConfig {
-    enabled: boolean;
-    limit: number;
-    action: string;
-    countCustom: boolean;
-    countUnicode: boolean;
-}
-
-export interface NewAccountConfig {
-    enabled: boolean;
-    minAgeHours: number;
-    action: string;
-    restrictRole: string | null;
-    sendDM: boolean;
-    dmMessage: string;
-}
-
-export interface RaidConfig {
-    enabled: boolean;
-    joinThreshold: number;
-    windowMs: number;
-    action: string;
-    autoUnlockMs: number;
-    checkAccountAge: boolean;
-    minAccountAgeDays: number;
-    lockChannels: string[];
-    verificationChannel: string | null;
-}
-
-export interface GlobalAutomodConfig {
-    logChannel: string | null;
-    bypassRoles: string[];
-    ignoredChannels: string[];
-    bypassUsers: string[];
-    cleanupDelayMs: number;
-    logMessageContent: boolean;
-    maxAutomodWarnsBeforeMute: number;
-    automodMuteDurationMs: number;
-}
-
-export interface AutomodConfig {
-    spam: SpamConfig;
-    duplicate: DuplicateConfig;
-    links: LinksConfig;
-    invites: InvitesConfig;
-    mentions: MentionsConfig;
-    caps: CapsConfig;
-    emoji: EmojiConfig;
-    newAccount: NewAccountConfig;
-    raid: RaidConfig;
-    global: GlobalAutomodConfig;
-}
+export { type AutomodConfig } from '../../../types/config/moderation.js';
 // CONFIG
 const automodConfig: AutomodConfig = {
     // SPAM DETECTION
@@ -231,3 +122,6 @@ const automodConfig: AutomodConfig = {
 };
 
 export default automodConfig;
+
+
+

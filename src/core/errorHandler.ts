@@ -7,20 +7,11 @@
 import type { Client, ChatInputCommandInteraction } from 'discord.js';
 import logger from './Logger.js';
 import { AppError } from '../errors/index.js';
-// TYPES
-type AsyncFunction<T extends unknown[], R> = (...args: T) => Promise<R>;
-
-interface ErrorHandlingOptions {
-    context?: string;
-    retries?: number;
-    retryDelay?: number;
-    onError?: (error: Error, ...args: unknown[]) => Promise<unknown> | unknown;
-    rethrow?: boolean;
-}
-
-interface InteractionErrorBoundaryOptions {
-    ephemeral?: boolean;
-}
+import type {
+    AsyncFunction,
+    ErrorHandlingOptions,
+    InteractionErrorBoundaryOptions
+} from '../types/core/error-handler.js';
 // FUNCTIONS
 /**
  * Initialize global error handlers

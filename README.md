@@ -155,6 +155,24 @@ npm start
 npm run dev  # Auto-restart on file changes
 ```
 
+### Type Guardrails
+
+```bash
+npm run types:guardrails  # Report duplicate type/interface names + any stubs
+npm run types:check       # CI-safe check (fails on `type X = any` stubs)
+```
+
+Type placement rules:
+- Keep a type local when it is only used in one file.
+- Move a type to `src/types/` when it is used across 2+ modules.
+- Never add `type X = any`; define a real contract or import an existing type.
+- Prefer `import type { ... }` for type-only dependencies.
+
+Release checklist (type safety):
+- Run `npm run types:guardrails` and review duplicates.
+- Refresh the type scan artifact in `docs/` when substantial type migrations are included.
+- Run `npm run types:check` and `npm run build` before release.
+
 ---
 
 ## ⚙️ Configuration

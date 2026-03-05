@@ -7,46 +7,19 @@
 
 import * as http from 'http';
 import type { Server, IncomingMessage, ServerResponse } from 'http';
-import type { Client } from 'discord.js';
 import logger from './Logger.js';
 import { getMetrics, getContentType } from './metrics.js';
+import type {
+    HealthStatus,
+    HealthCheckResult,
+    HealthCheckEntry,
+    HealthResponse,
+    ServiceConfig,
+    HealthState
+} from '../types/core/health.js';
+export { type HealthStatus, type HealthCheckResult, type HealthCheckEntry, type HealthResponse, type ServiceConfig, type HealthState };
 // TYPES
-type HealthStatus = 'starting' | 'healthy' | 'unhealthy' | 'shutting_down';
-
-interface HealthCheckResult {
-    healthy: boolean;
-    details?: Record<string, unknown>;
-}
-
-interface HealthCheckEntry {
-    status: 'healthy' | 'unhealthy';
-    latency?: number;
-    error?: string;
-    [key: string]: unknown;
-}
-
-interface HealthResponse {
-    status: 'healthy' | 'unhealthy';
-    timestamp: string;
-    uptime: number;
-    checks: Record<string, HealthCheckEntry>;
-}
-
-interface ServiceConfig {
-    client?: Client;
-    database?: { query: (sql: string) => Promise<unknown> };
-    redis?: { isConnected: boolean; client: { ping: () => Promise<unknown> } };
-    cacheService?: { getStats: () => { hitRate: number; hits: number; misses: number; absenceChecks: number; memoryEntries: number; redisConnected: boolean } };
-    lavalink?: { getNodeStatus?: () => { ready?: boolean; nodes?: unknown[]; activeConnections?: number } };
-    circuitBreakerRegistry?: { getHealth: () => { status: string; breakers: Record<string, { state: string }> }; getSummary: () => { total: number; closed: number; open: number; halfOpen: number } };
-    gracefulDegradation?: { getStatus: () => { level: string; services: Record<string, unknown>; writeQueues?: Record<string, number> } };
-}
 // STATE
-interface HealthState {
-    status: HealthStatus;
-    startTime: number;
-    checks: Record<string, HealthCheckEntry>;
-}
 
 const healthState: HealthState = {
     status: 'starting',
@@ -323,3 +296,6 @@ export function registerDefaultChecks(services: ServiceConfig = {}): void {
         });
     }
 }
+
+
+

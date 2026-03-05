@@ -5,32 +5,11 @@
  */
 
 import { SlashCommandBuilder, ChatInputCommandInteraction, ButtonInteraction } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import logger from '../../core/Logger.js';
 import _musicHandlers from '../../handlers/music/index.js';
-// TYPES
-type MusicHandler = (interaction: ChatInputCommandInteraction, guildId: string, userId: string) => Promise<void>;
-
-interface MusicHandlers {
-    handlePlay?: MusicHandler;
-    handleStop?: MusicHandler;
-    handleSkip?: MusicHandler;
-    handlePause?: MusicHandler;
-    handleQueue?: MusicHandler;
-    handleNowPlaying?: MusicHandler;
-    handleVolume?: MusicHandler;
-    handleLoop?: MusicHandler;
-    handleShuffle?: MusicHandler;
-    handleRemove?: MusicHandler;
-    handleMove?: MusicHandler;
-    handleClear?: MusicHandler;
-    handleSeek?: MusicHandler;
-    fetchLyrics?: (title: string, artist?: string) => Promise<string | null>;
-    handleRecent?: MusicHandler;
-    handleAutoPlay?: MusicHandler;
-    handleButton?: (interaction: ButtonInteraction) => Promise<void>;
-}
+import type { MusicHandler, MusicHandlers } from '../../types/commands/music-command.js';
 // COMMAND
 class MusicCommand extends BaseCommand {
     private _handlers: MusicHandlers | null = null;
@@ -308,3 +287,5 @@ class MusicCommand extends BaseCommand {
 }
 
 export default new MusicCommand();
+
+

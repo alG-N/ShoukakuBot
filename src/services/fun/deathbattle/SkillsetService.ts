@@ -9,47 +9,8 @@ import narutoSkillset from '../../../config/deathbattle/skillsets/naruto.js';
 import demonSlayerSkillset from '../../../config/deathbattle/skillsets/demonslayer.js';
 import onePieceSkillset from '../../../config/deathbattle/skillsets/onepiece.js';
 import crossoverSkillset from '../../../config/deathbattle/skillsets/crossover.js';
-// TYPES
-export interface Power {
-    name: string;
-    type: string;
-    desc: string;
-    char?: string;
-    scale?: number;
-    damage?: number;
-    hits?: number;
-    turns?: number;
-    threshold?: number;
-    weaken?: number;
-    bonus?: number;
-    steal?: number;
-    stacks?: number;
-    speed?: number;
-    recoil?: number;
-    self?: number;
-    illusions?: number;
-    chains?: number;
-    duration?: number;
-    boost?: number;
-    lifesteal?: number;
-    piercing?: boolean;
-    ignore?: number;
-    crit?: number;
-    aoe?: boolean;
-    debuff?: number;
-    heal?: boolean;
-    charges?: number;
-    // Effect name for verse-specific DoT/debuff/buff display
-    effectName?: string;
-}
-
-export interface Skillset {
-    name: string;
-    displayName: string;
-    thumbnail?: string;
-    powers: Power[];
-    summonNames: Record<string, string[]>;
-}
+import type { Power, Skillset } from '../../../config/deathbattle/skillsets/types.js';
+export { type Power, type Skillset } from '../../../config/deathbattle/skillsets/types.js';
 // SKILLSET SERVICE CLASS
 class SkillsetService {
     private skillsets: Map<string, Skillset> = new Map();
@@ -123,3 +84,6 @@ const skillsetService = new SkillsetService();
 
 export { SkillsetService };
 export default skillsetService;
+
+
+

@@ -12,32 +12,10 @@ import logger from '../../../core/Logger.js';
 import { Result } from '../../../core/Result.js';
 import { ErrorCodes } from '../../../core/ErrorCodes.js';
 import { TRACK_TRANSITION_DELAY } from '../../../config/features/music.js';
-import type { MusicTrack } from '../events/MusicEvents.js';
-// TYPES
-interface PlayerLike {
-    paused: boolean;
-    position: number;
-    playTrack(options: { track: { encoded: string } }): Promise<void>;
-    stopTrack(): Promise<void>;
-    setPaused(paused: boolean): Promise<void>;
-    seekTo(position: number): Promise<void>;
-    setGlobalVolume(volume: number): Promise<void>;
-}
-
-interface PlaybackState {
-    hasPlayer: boolean;
-    isPlaying: boolean;
-    isPaused: boolean;
-    position: number;
-    currentTrack: MusicTrack | null;
-    volume: number;
-}
-
-interface PlayNextResult {
-    track: MusicTrack | null;
-    isLooped: boolean;
-    queueEnded?: boolean;
-}
+import type { MusicTrack } from '../../../types/music/events.js';
+import type { PlayNextResult } from '../../../types/music/playback.js';
+import type { PlayerLike } from '../../../types/music/infrastructure.js';
+import type { PlaybackState } from '../../../types/music/playback-state.js';
 // GUILD MUTEX CLASS
 /**
  * Simple mutex implementation for guild-level locking
@@ -421,6 +399,10 @@ class PlaybackService {
 const playbackService = new PlaybackService();
 
 export { PlaybackService };
-export type { PlaybackState, PlayNextResult };
+export { type PlaybackState, type PlayNextResult };
 export default playbackService;
+
+
+
+
 

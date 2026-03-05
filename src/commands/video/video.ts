@@ -13,7 +13,7 @@ import {
     ButtonStyle,
     ChatInputCommandInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import fs from 'fs';
@@ -24,84 +24,20 @@ import _videoEmbedBuilder from '../../utils/video/videoEmbedBuilder.js';
 import urlValidatorModule from '../../middleware/urlValidator.js';
 import _videoConfig from '../../config/features/video.js';
 import logger from '../../core/Logger.js';
-// TYPES
-interface VideoConfig {
-    USER_COOLDOWN_SECONDS?: number;
-    MAX_CONCURRENT_DOWNLOADS?: number;
-    COBALT_VIDEO_QUALITY?: string;
-    MAX_FILE_SIZE_MB?: number;
-    limits?: {
-        maxFileSizeMB?: number;
-    };
-    smartRateLimiting?: {
-        enabled: boolean;
-        globalMaxConcurrent: number;
-        perGuildMaxConcurrent: number;
-        perGuildCooldownSeconds: number;
-        peakHours: {
-            enabled: boolean;
-            start: number;
-            end: number;
-            peakMaxConcurrent: number;
-            peakPerGuildMax: number;
-            peakUserCooldownSeconds: number;
-        };
-        burstProtection: {
-            enabled: boolean;
-            windowSeconds: number;
-            maxRequestsPerWindow: number;
-        };
-    };
-}
-
-interface Platform {
-    name: string;
-    id: string;
-}
-
-interface DownloadResult {
-    path: string;
-    size: number;
-    format: string;
-    error?: string;
-}
-
-interface ProgressData {
-    stage?: string;
-    percent?: number;
-    downloaded?: number;
-    total?: number;
-    speed?: number;
-    eta?: number;
-    method?: string;
-}
-
-interface VideoDownloadService {
-    downloadVideo: (url: string, options: { quality: string }) => Promise<DownloadResult>;
-    getVideoUrl?: (url: string, options: { quality: string }) => Promise<{ url: string; filename?: string; size?: number } | null>;
-    on?: (event: string, handler: (data: ProgressData) => void) => void;
-    off?: (event: string, handler: (data: ProgressData) => void) => void;
-}
-
-interface PlatformDetector {
-    detect: (url: string) => Platform | string;
-}
-
-interface VideoEmbedBuilder {
-    buildLoadingEmbed?: (platformName: string, platformId: string, stage: string) => EmbedBuilder;
-    buildProgressEmbed?: (platformName: string, platformId: string, data: ProgressData) => EmbedBuilder;
-    buildDownloadFailedEmbed?: (message: string) => EmbedBuilder;
-}
-
-interface UrlValidator {
-    validateUrl: (interaction: ChatInputCommandInteraction, url: string) => Promise<boolean>;
-}
+import type { ProgressData } from '../../types/video/processing.js';
+import type {
+    VideoConfig,
+    VideoDownloadService,
+    PlatformDetector,
+    VideoEmbedBuilder,
+    UrlValidator,
+} from '../../types/video/download-command.js';
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const videoDownloadService: VideoDownloadService = _videoDownloadService as any;
 const platformDetector: PlatformDetector = _platformDetector as any;
 const videoEmbedBuilder: VideoEmbedBuilder = _videoEmbedBuilder as any;
 const videoConfig: VideoConfig = _videoConfig as any;
-const { validateUrl } = urlValidatorModule;
+const { validateUrl } = urlValidatorModule as UrlValidator;
 // RATE LIMITING
 const userCooldowns = new Map<string, number>();
 const activeDownloads = new Set<string>();
@@ -752,3 +688,4 @@ class DownloadCommand extends BaseCommand {
 }
 
 export default new DownloadCommand();
+

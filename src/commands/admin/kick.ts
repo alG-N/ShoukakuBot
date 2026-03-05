@@ -12,16 +12,11 @@ import {
     User,
     GuildMember
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import logger from '../../core/Logger.js';
 import { moderationService } from '../../services/moderation/index.js';
-
-interface ValidationResult {
-    valid: boolean;
-    error?: string;
-    member?: GuildMember | null;
-}
+import type { KickValidationResult } from '../../types/commands/admin-actions.js';
 
 class KickCommand extends BaseCommand {
     constructor() {
@@ -120,7 +115,7 @@ class KickCommand extends BaseCommand {
         }
     }
 
-    private async _validateKick(interaction: ChatInputCommandInteraction, targetUser: User): Promise<ValidationResult> {
+    private async _validateKick(interaction: ChatInputCommandInteraction, targetUser: User): Promise<KickValidationResult> {
         // Self check
         if (targetUser.id === interaction.user.id) {
             return { valid: false, error: 'You cannot kick yourself.' };
@@ -159,3 +154,5 @@ class KickCommand extends BaseCommand {
 }
 
 export default new KickCommand();
+
+

@@ -6,13 +6,7 @@
 
 import type { Client as DiscordClient } from 'discord.js';
 import logger from '../../core/Logger.js';
-// TYPES
-interface Event {
-    name: string;
-    once?: boolean;
-    execute: (client: DiscordClient, ...args: unknown[]) => Promise<void> | void;
-    safeExecute?: (client: DiscordClient, ...args: unknown[]) => Promise<void>;
-}
+import type { Event } from '../../types/core/registry.js';
 // EVENT REGISTRY CLASS
 class EventRegistry {
     public events: Map<string, Event> = new Map();
@@ -101,4 +95,8 @@ export { EventRegistry };
 export default eventRegistry;
 
 // Type export
-export type { Event };
+export { type Event };
+
+
+
+

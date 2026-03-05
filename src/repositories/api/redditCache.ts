@@ -11,41 +11,10 @@
  */
 
 import cacheService from '../../cache/CacheService.js';
-
-// ── Interfaces ───────────────────────────────────────────────────────
-interface RedditPost {
-    id: string;
-    title: string;
-    url: string;
-    permalink: string;
-    author: string;
-    subreddit: string;
-    score: number;
-    num_comments: number;
-    created_utc: number;
-    is_video: boolean;
-    is_gallery?: boolean;
-    gallery_data?: any;
-    media_metadata?: any;
-    post_hint?: string;
-    thumbnail?: string;
-    preview?: any;
-    selftext?: string;
-    over_18: boolean;
-    [key: string]: any;
-}
-
-type SortType = 'top' | 'new' | 'hot' | 'rising' | 'controversial';
-
-/** Bundled user session stored in CacheService */
-interface RedditSession {
-    posts: RedditPost[];
-    page: number;
-    sort: SortType;
-    nsfw: boolean;
-    galleryPages: Record<string, number>;  // `${postIndex}` → page
-    updatedAt: number;
-}
+import type { RedditPost } from '../../types/api/reddit.js';
+import type { SortType, RedditSession } from '../../types/api/repositories/reddit-cache.js';
+export { type RedditPost } from '../../types/api/reddit.js';
+export { type SortType, type RedditSession } from '../../types/api/repositories/reddit-cache.js';
 
 // ── CacheService namespace ───────────────────────────────────────────
 const NS = 'reddit:session';
@@ -217,5 +186,7 @@ class RedditCache {
 const redditCache = new RedditCache();
 
 export { redditCache, RedditCache };
-export type { RedditPost, SortType };
 export default redditCache;
+
+
+

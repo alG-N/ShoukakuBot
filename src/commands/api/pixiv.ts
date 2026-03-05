@@ -10,80 +10,24 @@ import {
     AutocompleteInteraction,
     ButtonInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import logger from '../../core/Logger.js';
 import _pixivServiceModule from '../../services/api/pixivService.js';
 import _pixivCacheModule from '../../repositories/api/pixivCache.js';
 import * as _contentHandlerModule from '../../handlers/api/pixivContentHandler.js';
-// TYPES
-interface Artwork {
-    id: number;
-    type?: string;
-    page_count?: number;
-}
-
-interface SearchOptions {
-    type?: string;
-    sort?: string;
-    nsfw?: string;
-    aiFilter?: boolean;
-    qualityFilter?: boolean;
-    translate?: boolean;
-    page?: number;
-    offset?: number;
-    minBookmarks?: number;
-}
-
-interface SearchResult {
-    items?: Artwork[];
-    nextUrl?: string;
-}
-
-interface CachedSearch {
-    items: Artwork[];
-    query: string;
-    options: SearchOptions;
-    hasNextPage: boolean;
-    currentIndex?: number;
-    mangaPageIndex?: number;
-}
-
-interface ContentEmbedResult {
-    embed: import('discord.js').EmbedBuilder;
-    rows?: import('discord.js').ActionRowBuilder<import('discord.js').ButtonBuilder>[];
-}
-
-interface PixivService {
-    getArtwork: (id: string) => Promise<Artwork | null>;
-    search: (query: string, options: SearchOptions) => Promise<SearchResult>;
-    getAutocompleteSuggestions: (query: string) => Promise<Array<{ name?: string; tag_translation?: string; tag?: string; value?: string }>>;
-}
-
-interface PixivCache {
-    getSearchSuggestions?: (query: string) => Array<{ name: string; value: string }> | null;
-    setSearchSuggestions?: (query: string, suggestions: Array<{ name: string; value: string }>) => void;
-    setSearchResults?: (key: string, data: CachedSearch) => void;
-    getSearchResults?: (key: string) => CachedSearch | null;
-    updateSearchResults?: (key: string, updates: Partial<CachedSearch>) => void;
-}
-
-interface ContentHandler {
-    createContentEmbed: (artwork: Artwork, options: {
-        resultIndex: number;
-        totalResults: number;
-        searchPage?: number;
-        cacheKey: string;
-        contentType: string;
-        mangaPageIndex?: number;
-        hasNextPage?: boolean;
-        originalQuery?: string;
-        sortMode?: string;
-        showNsfw?: boolean;
-    }) => Promise<ContentEmbedResult>;
-    createNoResultsEmbed: (query: string) => import('discord.js').EmbedBuilder;
-    createErrorEmbed?: (error: Error) => import('discord.js').EmbedBuilder;
-}
+import type {
+    PixivArtworkSummary as Artwork,
+    PixivCommandSearchOptions,
+    PixivCommandSearchResult,
+    PixivCachedSearch as CachedSearch
+} from '../../types/api/content-session.js';
+import type {
+    PixivContentEmbedResult,
+    PixivService,
+    PixivCache,
+    ContentHandler
+} from '../../types/api/commands/pixiv-command.js';
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const pixivService: PixivService = _pixivServiceModule as any;
 const pixivCache: PixivCache = _pixivCacheModule as any;
@@ -240,7 +184,7 @@ class PixivCommand extends BaseCommand {
         await this.safeReply(interaction, { embeds: [embed], components: rows || [] });
     }
 
-    private async _handleSearch(interaction: ChatInputCommandInteraction, options: SearchOptions & { query: string }): Promise<void> {
+    private async _handleSearch(interaction: ChatInputCommandInteraction, options: PixivCommandSearchOptions & { query: string }): Promise<void> {
         const offset = ((options.page || 1) - 1) * 30;
         
         const searchResult = await pixivService!.search(options.query, {
@@ -458,3 +402,4 @@ class PixivCommand extends BaseCommand {
 }
 
 export default new PixivCommand();
+

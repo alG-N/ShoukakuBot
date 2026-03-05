@@ -3,59 +3,9 @@
  * Bad word filtering settings and default patterns
  * @module config/features/moderation/filters
  */
-// TYPES
-export interface FilterSettings {
-    defaultAction: string;
-    ignoreCase: boolean;
-    normalizeUnicode: boolean;
-    checkLeetspeak: boolean;
-    stripZalgo: boolean;
-    minWordLength: number;
-    logContent: boolean;
-    logChannel: string | null;
-}
+import type { FiltersConfig } from '../../../types/config/moderation.js';
 
-export interface SeverityLevel {
-    name: string;
-    action: string;
-    color: number;
-}
-
-export interface FilterWord {
-    pattern: string;
-    matchType: string;
-    severity: number;
-}
-
-export interface FilterPreset {
-    name: string;
-    description: string;
-    severity?: number;
-    words: FilterWord[];
-}
-
-export interface FilterBypass {
-    roles: string[];
-    channels: string[];
-    users: string[];
-}
-
-export interface FiltersConfig {
-    settings: FilterSettings;
-    matchTypes: {
-        EXACT: string;
-        CONTAINS: string;
-        WORD: string;
-        REGEX: string;
-    };
-    severityLevels: Record<number, SeverityLevel>;
-    leetspeak: Record<string, string>;
-    unicodeMap: Record<string, string>;
-    zalgoPattern: RegExp;
-    presets: Record<string, FilterPreset>;
-    exemptPatterns: RegExp[];
-    bypass: FilterBypass;
-}
+export { type FiltersConfig } from '../../../types/config/moderation.js';
 // CONFIG
 const filtersConfig: FiltersConfig = {
     // FILTER SETTINGS
@@ -180,3 +130,6 @@ const filtersConfig: FiltersConfig = {
 };
 
 export default filtersConfig;
+
+
+

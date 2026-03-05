@@ -12,7 +12,7 @@ import {
     Message,
     Client
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import afkRepository, { type AfkInfo } from '../../repositories/general/AfkRepository.js';
 import logger from '../../core/Logger.js';
 
@@ -188,3 +188,4 @@ export async function onMessage(message: Message, client: Client): Promise<void>
 // Export command and utility functions
 const command = new AfkCommand();
 export default command;
+

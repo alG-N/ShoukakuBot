@@ -21,84 +21,15 @@ import {
     GuildMember,
     Message
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import logger from '../../core/Logger.js';
 import { infractionService as _infractionSvc, moderationService as _moderationSvc } from '../../services/moderation/index.js';
 import _moderationConfigModule from '../../config/features/moderation/index.js';
 import _dbModule from '../../database/index.js';
-interface Infraction {
-    case_id: number;
-    type: string;
-    reason: string;
-}
-
-interface EscalationResult {
-    action: string;
-    reason: string;
-    durationMs?: number;
-}
-
-interface WarningResult {
-    infraction: Infraction;
-    warnCount: number;
-    escalation?: EscalationResult;
-}
-
-interface WarnThreshold {
-    guild_id: string;
-    warn_count: number;
-    action: string;
-    duration_ms: number | null;
-}
-
-interface InfractionService {
-    createWarning?: (
-        guild: ChatInputCommandInteraction['guild'],
-        user: ChatInputCommandInteraction['user'],
-        moderator: ChatInputCommandInteraction['user'],
-        reason: string,
-        options?: { metadata?: Record<string, unknown> }
-    ) => Promise<WarningResult>;
-    logMute?: (
-        guild: ChatInputCommandInteraction['guild'],
-        user: GuildMember['user'],
-        moderator: ChatInputCommandInteraction['user'],
-        reason: string,
-        durationMs: number
-    ) => Promise<void>;
-    logKick?: (
-        guild: ChatInputCommandInteraction['guild'],
-        user: GuildMember['user'],
-        moderator: ChatInputCommandInteraction['user'],
-        reason: string
-    ) => Promise<void>;
-    logBan?: (
-        guild: ChatInputCommandInteraction['guild'],
-        user: GuildMember['user'],
-        moderator: ChatInputCommandInteraction['user'],
-        reason: string
-    ) => Promise<void>;
-}
-
-interface ModerationService {
-    muteUser?: (target: GuildMember, moderator: GuildMember, durationMs: number, reason: string) => Promise<{ success: boolean }>;
-    kickUser?: (target: GuildMember, moderator: GuildMember, reason: string) => Promise<{ success: boolean }>;
-    banUser?: (target: GuildMember, moderator: GuildMember, reason: string) => Promise<{ success: boolean }>;
-}
-
-interface ModerationConfig {
-    COLORS: Record<string, number>;
-    EMOJIS: Record<string, string>;
-    punishments?: {
-        warnings?: {
-            sendDM?: boolean;
-        };
-    };
-}
-
-interface Database {
-    query: (sql: string, params?: (string | number | null)[]) => Promise<{ rows: WarnThreshold[] }>;
-}
+import type { Infraction } from '../../types/moderation/infraction.js';
+import type { EscalationResult, InfractionService } from '../../types/moderation/services.js';
+import type { ModerationConfig } from '../../config/features/moderation/index.js';
+import type { WarnThreshold, ModerationService, Database } from '../../types/commands/admin-warn.js';
 
 
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
@@ -324,7 +255,7 @@ class WarnCommand extends BaseCommand {
                     
                     if (muteResult?.success) {
                         await infractionService?.logMute?.(
-                            interaction.guild,
+                            interaction.guild!,
                             target.user,
                             interaction.client.user!,
                             escalation.reason,
@@ -347,7 +278,7 @@ class WarnCommand extends BaseCommand {
                     
                     if (kickResult?.success) {
                         await infractionService?.logKick?.(
-                            interaction.guild,
+                            interaction.guild!,
                             target.user,
                             interaction.client.user!,
                             escalation.reason
@@ -369,7 +300,7 @@ class WarnCommand extends BaseCommand {
                     
                     if (banResult?.success) {
                         await infractionService?.logBan?.(
-                            interaction.guild,
+                            interaction.guild!,
                             target.user,
                             interaction.client.user!,
                             escalation.reason
@@ -769,3 +700,4 @@ class WarnCommand extends BaseCommand {
 }
 
 export default new WarnCommand();
+

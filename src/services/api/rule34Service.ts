@@ -8,144 +8,29 @@ import * as path from 'path';
 import * as dotenv from 'dotenv';
 import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
 import logger from '../../core/Logger.js';
+import type {
+    Rule34SearchOptions,
+    Rule34RandomOptions as RandomOptions,
+    Rule34TrendingOptions as TrendingOptions,
+    Rule34RawPost,
+    Rule34Post,
+    Rule34SearchResult,
+    Rule34AutocompleteSuggestion as AutocompleteSuggestion,
+    Rule34RelatedTag as RelatedTag,
+    Rule34QueryContentType
+} from '../../types/api/rule34.js';
+import type {
+    Rule34Auth,
+    AutocompleteItem,
+    FilterOptions,
+    BuildQueryOptions,
+    TagInfoResponse,
+    CommentResponse
+} from '../../types/api/services/rule34-service.js';
+export { type Rule34SearchOptions, type Rule34RawPost, type Rule34Post, type Rule34SearchResult, type AutocompleteSuggestion, type RelatedTag, type Rule34Auth, type FilterOptions, type BuildQueryOptions, type TagInfoResponse, type CommentResponse };
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
 // TYPES & INTERFACES
-interface Rule34Auth {
-    userId: string;
-    apiKey: string;
-}
-
-interface SearchOptions {
-    limit?: number;
-    page?: number;
-    sort?: string;
-    rating?: 'safe' | 'questionable' | 'explicit' | null;
-    excludeAi?: boolean;
-    minScore?: number;
-    contentType?: 'animated' | 'comic' | 'photo' | null;
-    excludeTags?: string[];
-    requireTags?: string[];
-    minWidth?: number;
-    minHeight?: number;
-    highQualityOnly?: boolean;
-    excludeLowQuality?: boolean;
-}
-
-interface RandomOptions {
-    tags?: string;
-    count?: number;
-    rating?: 'safe' | 'questionable' | 'explicit' | null;
-    excludeAi?: boolean;
-    minScore?: number;
-}
-
-interface TrendingOptions {
-    timeframe?: 'day' | 'week' | 'month';
-    limit?: number;
-    excludeAi?: boolean;
-}
-
-interface FilterOptions {
-    excludeAi?: boolean;
-    minScore?: number;
-    highQualityOnly?: boolean;
-    excludeLowQuality?: boolean;
-}
-
-interface BuildQueryOptions extends FilterOptions {
-    rating?: 'safe' | 'questionable' | 'explicit' | null;
-    contentType?: 'animated' | 'comic' | 'photo' | null;
-    excludeTags?: string[];
-    requireTags?: string[];
-    minWidth?: number;
-    minHeight?: number;
-    sort?: string;
-}
-
-export interface Rule34RawPost {
-    id: number;
-    hash?: string;
-    md5?: string;
-    width: number;
-    height: number;
-    score: number;
-    rating: string;
-    owner: string;
-    tags: string;
-    file_url: string;
-    sample_url?: string;
-    preview_url?: string;
-    source?: string;
-    parent_id?: number;
-    has_children?: boolean;
-    created_at?: string;
-    change?: number;
-}
-
-export interface Rule34Post {
-    id: number;
-    hash: string | undefined;
-    width: number;
-    height: number;
-    score: number;
-    rating: string;
-    owner: string;
-    tags: string;
-    tagList: string[];
-    tagCount: number;
-    fileUrl: string;
-    sampleUrl: string;
-    previewUrl: string | undefined;
-    hasVideo: boolean;
-    hasSound: boolean;
-    isAnimated: boolean;
-    isAiGenerated: boolean;
-    isHighQuality: boolean;
-    isHighRes: boolean;
-    source: string;
-    parentId: number | undefined;
-    hasChildren: boolean | undefined;
-    createdAt: string | undefined;
-    change: number | undefined;
-    contentType: 'video' | 'gif' | 'comic' | 'animated' | 'image';
-    fileExtension: string;
-    pageUrl: string;
-}
-
-export interface SearchResult {
-    posts: Rule34Post[];
-    totalCount: number;
-    hasMore: boolean;
-    query?: string;
-}
-
-export interface AutocompleteSuggestion {
-    name: string;
-    value: string;
-    type: string;
-    count: number;
-}
-
-export interface RelatedTag {
-    tag: string;
-    count: number;
-}
-
-interface TagInfoResponse {
-    id: number;
-    name: string;
-    count: number;
-    type: number;
-}
-
-interface CommentResponse {
-    id: number;
-    post_id: number;
-    creator: string;
-    body: string;
-    created_at: string;
-}
 // CONSTANTS
 const AI_TAGS = [
     'ai_generated', 'ai-generated', 'ai_art', 'ai-art',
@@ -159,16 +44,16 @@ const QUALITY_TAGS = {
     low: ['low_resolution', 'lowres', 'bad_anatomy', 'bad_proportions', 'poorly_drawn']
 };
 
+const RATINGS: Record<string, string> = {
+    safe: 's',
+    questionable: 'q',
+    explicit: 'e'
+};
+
 const CONTENT_TYPE_TAGS: Record<string, string[]> = {
     animated: ['animated', 'video', 'webm', 'gif', 'animated_gif', 'mp4', 'sound'],
     comic: ['comic', 'manga', 'doujinshi', 'multi-panel', 'page_number'],
     photo: ['photo_(medium)', 'photorealistic', 'realistic', '3d', 'cosplay']
-};
-
-const RATINGS: Record<string, string> = {
-    safe: 'safe',
-    questionable: 'questionable',
-    explicit: 'explicit'
 };
 // RULE34 SERVICE CLASS
 class Rule34Service {
@@ -193,7 +78,7 @@ class Rule34Service {
     /**
      * Search for posts with advanced filtering and circuit breaker
      */
-    async search(query: string, options: SearchOptions & { _silent?: boolean } = {}): Promise<SearchResult> {
+    async search(query: string, options: Rule34SearchOptions & { _silent?: boolean } = {}): Promise<Rule34SearchResult> {
         const {
             limit = 50,
             page = 0,
@@ -352,7 +237,7 @@ class Rule34Service {
     /**
      * Get trending/popular posts filtered by actual timeframe
      */
-    async getTrending(options: TrendingOptions & { page?: number } = {}): Promise<SearchResult> {
+    async getTrending(options: TrendingOptions & { page?: number } = {}): Promise<Rule34SearchResult> {
         const { timeframe = 'day', limit = 50, excludeAi = false, page: pageOffset = 0 } = options;
 
         // Calculate the cutoff date for the timeframe
@@ -443,13 +328,6 @@ class Rule34Service {
 
                 if (!response.ok) {
                     return [];
-                }
-
-                interface AutocompleteItem {
-                    label?: string;
-                    value?: string;
-                    type?: string;
-                    count?: number;
                 }
 
                 const data = await response.json() as AutocompleteItem[];
@@ -857,3 +735,7 @@ const rule34Service = new Rule34Service();
 
 export { rule34Service, Rule34Service };
 export default rule34Service;
+
+
+
+

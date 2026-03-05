@@ -4,10 +4,7 @@
  */
 
 export { default as spotifyService, SpotifyService } from './SpotifyService.js';
-export type {
-    SpotifyToken,
-    SpotifyTrack,
-    SpotifyArtist,
-    SpotifyAlbum,
-    SpotifySearchResult,
-} from './SpotifyService.js';
+export { type SpotifyToken, type SpotifyTrack, type SpotifyArtist, type SpotifyAlbum, type SpotifySearchResult } from './SpotifyService.js';
+
+
+

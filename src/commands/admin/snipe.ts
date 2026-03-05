@@ -11,11 +11,11 @@ import {
     ChatInputCommandInteraction,
     TextChannel
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import logger from '../../core/Logger.js';
 import { GuildSettingsService } from '../../services/guild/index.js';
-import { snipeService, type TrackedMessage } from '../../services/moderation/index.js';
+import { snipeService, TrackedMessage } from '../../services/moderation/index.js';
 
 /**
  * Format time ago from timestamp
@@ -222,3 +222,4 @@ class SnipeCommand extends BaseCommand {
 }
 
 export default new SnipeCommand();
+

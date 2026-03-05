@@ -12,7 +12,7 @@ import {
     ButtonStyle,
     ChatInputCommandInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 
 class InviteCommand extends BaseCommand {
@@ -99,3 +99,4 @@ class InviteCommand extends BaseCommand {
 }
 
 export default new InviteCommand();
+

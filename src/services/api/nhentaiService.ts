@@ -9,7 +9,20 @@ import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
 import logger from '../../core/Logger.js';
 import cacheService from '../../cache/CacheService.js';
 import { nhentai as nhentaiConfig } from '../../config/services.js';
-// TYPES & INTERFACES
+import type {
+    NHentaiGallery,
+    NHentaiTag,
+    NHentaiPage,
+    NHentaiImages,
+    NHentaiTitle,
+    GalleryResult,
+    SearchData,
+    NHentaiSearchResult,
+    PageUrl,
+    ParsedTags
+} from '../../types/api/nhentai.js';
+import type { NHentaiSearchResponse } from '../../types/api/services/nhentai-service.js';
+export { type NHentaiGallery, type NHentaiTag, type NHentaiPage, type NHentaiImages, type NHentaiTitle, type GalleryResult, type SearchData, type NHentaiSearchResult, type PageUrl, type ParsedTags } from '../../types/api/nhentai.js';
 // API Configuration
 const API_BASE = nhentaiConfig.baseUrl;
 const GALLERY_ENDPOINT = '/gallery';
@@ -93,90 +106,6 @@ function getRequestConfig(overrides: Partial<AxiosRequestConfig> = {}): AxiosReq
         maxRedirects: 5,
         ...overrides,
     };
-}
-
-export interface NHentaiTag {
-    id: number;
-    type: 'tag' | 'artist' | 'character' | 'parody' | 'group' | 'language' | 'category';
-    name: string;
-    url: string;
-    count: number;
-}
-
-export interface NHentaiPage {
-    t: string; // Type: j, p, g
-    w: number; // Width
-    h: number; // Height
-}
-
-export interface NHentaiImages {
-    pages: NHentaiPage[];
-    cover: NHentaiPage;
-    thumbnail: NHentaiPage;
-}
-
-export interface NHentaiTitle {
-    english?: string;
-    japanese?: string;
-    pretty?: string;
-}
-
-export interface NHentaiGallery {
-    id: number;
-    media_id: string;
-    title: NHentaiTitle;
-    images: NHentaiImages;
-    scanlator: string;
-    upload_date: number;
-    tags: NHentaiTag[];
-    num_pages: number;
-    num_favorites: number;
-}
-
-export interface GalleryResult {
-    success: boolean;
-    data?: NHentaiGallery;
-    error?: string;
-    code?: string;
-    fromCache?: boolean;
-}
-
-export interface SearchData {
-    results: NHentaiGallery[];
-    numPages: number;
-    perPage: number;
-    totalResults: number;
-}
-
-export interface SearchResult {
-    success: boolean;
-    data?: SearchData;
-    error?: string;
-    code?: string;
-    fromCache?: boolean;
-}
-
-export interface PageUrl {
-    pageNum: number;
-    url: string;
-    width: number;
-    height: number;
-}
-
-export interface ParsedTags {
-    artists: string[];
-    characters: string[];
-    parodies: string[];
-    groups: string[];
-    tags: string[];
-    languages: string[];
-    categories: string[];
-}
-
-interface NHentaiSearchResponse {
-    result: NHentaiGallery[];
-    num_pages: number;
-    per_page: number;
 }
 // NHENTAI SERVICE CLASS
 class NHentaiService {
@@ -311,7 +240,7 @@ class NHentaiService {
         query: string,
         page: number = 1,
         sort: string = 'popular'
-    ): Promise<SearchResult> {
+    ): Promise<NHentaiSearchResult> {
         const cacheKey = `nhentai:search_${query}_${page}_${sort}`;
         const cached = await cacheService.get<SearchData>(this.CACHE_NS, cacheKey);
         if (cached) return { success: true, data: cached, fromCache: true };
@@ -555,3 +484,7 @@ const nhentaiService = new NHentaiService();
 
 export { nhentaiService, NHentaiService };
 export default nhentaiService;
+
+
+
+

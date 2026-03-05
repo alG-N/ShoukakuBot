@@ -6,6 +6,18 @@
 
 import { EventEmitter } from 'events';
 import logger from './Logger.js';
+import type {
+    CircuitBreakerError,
+    CircuitBreakerMetrics,
+    CircuitBreakerOptions,
+    CircuitHealth,
+    CircuitMetrics,
+    CircuitStateType,
+    StateChange
+} from '../types/core/runtime.js';
+
+export { type CircuitBreakerError, type CircuitBreakerMetrics, type CircuitBreakerOptions, type CircuitHealth, type CircuitMetrics, type CircuitStateType, type StateChange } from '../types/core/runtime.js';
+
 // TYPES & INTERFACES
 /**
  * Circuit Breaker States
@@ -15,85 +27,6 @@ export const CircuitState = {
     OPEN: 'OPEN',           // Circuit tripped, requests fail fast
     HALF_OPEN: 'HALF_OPEN'  // Testing if service recovered
 } as const;
-
-export type CircuitStateType = typeof CircuitState[keyof typeof CircuitState];
-
-/**
- * State change record
- */
-export interface StateChange {
-    from: CircuitStateType;
-    to: CircuitStateType;
-    timestamp: string;
-}
-
-/**
- * Circuit Breaker metrics
- */
-export interface CircuitMetrics {
-    totalRequests: number;
-    successfulRequests: number;
-    failedRequests: number;
-    rejectedRequests: number;
-    timeouts: number;
-    fallbackExecutions: number;
-    stateChanges: StateChange[];
-}
-
-/**
- * Circuit Breaker configuration options
- */
-export interface CircuitBreakerOptions {
-    /** Name of the circuit breaker */
-    name?: string;
-    /** Number of failures before opening circuit */
-    failureThreshold?: number;
-    /** Number of successes in half-open to close circuit */
-    successThreshold?: number;
-    /** Request timeout in ms */
-    timeout?: number;
-    /** Time to wait before trying again (half-open) */
-    resetTimeout?: number;
-    /** Fallback function when circuit is open */
-    fallback?: (error: Error) => unknown;
-    /** Custom function to determine if result is a failure */
-    isFailure?: (error: Error) => boolean;
-    /** Whether circuit breaker is enabled */
-    enabled?: boolean;
-}
-
-/**
- * Full metrics with calculated fields
- */
-export interface CircuitBreakerMetrics extends CircuitMetrics {
-    name: string;
-    state: CircuitStateType;
-    failureCount: number;
-    successCount: number;
-    lastFailureTime: number | null;
-    nextAttempt: number | null;
-    successRate: string;
-}
-
-/**
- * Health status
- */
-export interface CircuitHealth {
-    name: string;
-    status: 'healthy' | 'degraded' | 'unhealthy';
-    state: CircuitStateType;
-    failureCount: number;
-    lastFailure: string | null;
-    nextAttempt: string | null;
-}
-
-/**
- * Error with circuit breaker info
- */
-export interface CircuitBreakerError extends Error {
-    code?: string;
-    circuitBreaker?: string;
-}
 // CIRCUIT BREAKER CLASS
 /**
  * Circuit Breaker class
@@ -392,3 +325,6 @@ export class CircuitBreaker extends EventEmitter {
         };
     }
 }
+
+
+

@@ -11,31 +11,13 @@ import { checkVoiceChannelSync, checkVoicePermissionsSync } from '../../middlewa
 import { music } from '../../config/index.js';
 import { musicFacade as musicService } from '../../services/music/core/MusicFacade.js';
 import logger from '../../core/Logger.js';
-
-// Use any for Track type - different but runtime compatible
-type Track = any;
+import type { Track } from '../../types/music/track.js';
+import type { VoteSkipStatus } from '../../types/music/vote.js';
+import type { PendingLongTrack, PlaylistData } from '../../types/music/handlers.js';
 
 // Import voting constants from config
 const { minVotesRequired: MIN_VOTES_REQUIRED = 5 } = music.voting || {};
 const CONFIRMATION_TIMEOUT = music.timeouts?.confirmation || 60000;
-export interface PendingLongTrack {
-    trackData: Track;
-    guildId: string;
-    userId: string;
-    channelId: string;
-    guild: Guild;
-    expiresAt: number;
-}
-
-export interface PlaylistData {
-    name: string;
-    tracks: Track[];
-}
-
-export interface VoteSkipStatus {
-    count: number;
-    required: number;
-}
 // Store pending long track confirmations (internal only — not used externally despite prior export)
 const pendingLongTracks = new Map<string, PendingLongTrack>();
 export const playHandler = {
@@ -473,4 +455,5 @@ export const playHandler = {
 };
 
 export default playHandler;
+
 

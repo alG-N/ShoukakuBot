@@ -12,33 +12,7 @@ import {
     CircuitState 
 } from './CircuitBreaker.js';
 import logger from './Logger.js';
-// TYPES & INTERFACES
-/**
- * Registry health status
- */
-export interface RegistryHealth {
-    status: 'healthy' | 'degraded' | 'unhealthy';
-    breakers: Record<string, CircuitHealth>;
-}
-
-/**
- * Registry summary
- */
-export interface RegistrySummary {
-    total: number;
-    closed: number;
-    open: number;
-    halfOpen: number;
-}
-
-/**
- * Fallback result type
- */
-export interface FallbackResult {
-    success: boolean;
-    error: string;
-    code: string;
-}
+import type { FallbackResult, RegistryHealth, RegistrySummary } from '../types/core/circuit-breaker-registry.js';
 // PRE-CONFIGURED CIRCUIT CONFIGS
 /**
  * Pre-configured circuit breaker configs for different services
@@ -351,4 +325,6 @@ export class CircuitBreakerRegistry {
 const circuitBreakerRegistry = new CircuitBreakerRegistry();
 
 export { circuitBreakerRegistry };
+export { type FallbackResult, type RegistryHealth, type RegistrySummary };
 export default circuitBreakerRegistry;
+

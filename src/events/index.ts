@@ -4,7 +4,8 @@
  * @module presentation/events
  */
 
-export { BaseEvent, type EventOptions } from './BaseEvent.js';
+export { BaseEvent } from './BaseEvent.js';
+export { type EventOptions } from './BaseEvent.js';
 
 // Import events
 import ready from './ready.js';
@@ -41,3 +42,5 @@ export const events = [
 ];
 
 export default events;
+
+

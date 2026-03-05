@@ -16,11 +16,7 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
-
-/**
- * Help category types
- */
-type HelpCategory = 'home' | 'media' | 'music' | 'fun' | 'utility' | 'admin' | 'moderation';
+import type { HelpCategory } from '../../types/commands/general-help.js';
 
 /**
  * Category configuration
@@ -385,3 +381,4 @@ class HelpCommand extends BaseCommand {
 // Export singleton instance
 const helpCommand = new HelpCommand();
 export default helpCommand;
+

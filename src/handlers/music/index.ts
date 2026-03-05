@@ -16,7 +16,7 @@ import { favoritesHandler } from './favoritesHandler.js';
 import { historyHandler } from './historyHandler.js';
 
 // Re-export types
-export type { Track, LoopMode, NowPlayingOptions, ControlButtonsOptions, QueueListOptions } from './trackHandler.js';
+export { type Track, type LoopMode, type NowPlayingOptions, type ControlButtonsOptions, type QueueListOptions } from './trackHandler.js';
 export { trackHandler } from './trackHandler.js';
 
 // Export handlers with bound methods to preserve 'this' context
@@ -97,3 +97,6 @@ export { historyHandler } from './historyHandler.js';
 
 // Default export
 export default handlers;
+
+
+

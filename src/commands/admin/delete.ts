@@ -14,7 +14,7 @@ import {
     Message,
     GuildMember
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import logger from '../../core/Logger.js';
 import { GuildSettingsService } from '../../services/guild/index.js';
@@ -169,3 +169,4 @@ class DeleteCommand extends BaseCommand {
 }
 
 export default new DeleteCommand();
+

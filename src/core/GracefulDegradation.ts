@@ -8,6 +8,9 @@
 import { EventEmitter } from 'events';
 import logger from './Logger.js';
 import { getDefault } from '../utils/common/moduleHelper.js';
+import { DegradationLevel, ServiceState, ServiceInfo, DegradationServiceOptions, ExecuteOptions, ExecuteResult, CachedData, QueuedWrite, ServiceStatusInfo, SystemStatus, HealthResult } from '../types/core/runtime.js';
+
+export { DegradationLevel, ServiceState } from '../types/core/runtime.js';
 
 // Lazy-load cacheService to avoid circular dependency
 let _cacheService: typeof import('../cache/CacheService').default | null = null;
@@ -21,88 +24,6 @@ const getCacheService = () => {
 // Redis key for durable write queue (shard-scoped to prevent cross-shard collisions)
 const WRITE_QUEUE_KEY_PREFIX = 'graceful:writequeue:pending';
 const getWriteQueueKey = (shardId: number): string => `${WRITE_QUEUE_KEY_PREFIX}:shard:${shardId}`;
-// TYPES & ENUMS
-/**
- * Degradation levels for service health
- */
-export enum DegradationLevel {
-    NORMAL = 'NORMAL',           // All services healthy
-    DEGRADED = 'DEGRADED',       // Some services unavailable, fallbacks active
-    CRITICAL = 'CRITICAL',       // Core services down, minimal functionality
-    OFFLINE = 'OFFLINE'          // Cannot serve requests
-}
-
-/**
- * Service states
- */
-export enum ServiceState {
-    HEALTHY = 'HEALTHY',
-    DEGRADED = 'DEGRADED',
-    UNAVAILABLE = 'UNAVAILABLE'
-}
-
-interface ServiceInfo {
-    name: string;
-    state: ServiceState;
-    critical: boolean;
-    lastHealthy: number;
-    failureCount: number;
-    degradedSince: number | null;
-}
-
-interface ServiceOptions {
-    critical?: boolean;
-}
-
-interface ExecuteOptions<T> {
-    fallback?: (error: Error | null) => Promise<T> | T;
-    fallbackValue?: T;
-    cacheKey?: string;
-}
-
-interface ExecuteResult<T> {
-    success: boolean;
-    data: T | null;
-    degraded: boolean;
-    stale?: boolean;
-    cacheAge?: number;
-    error?: string;
-}
-
-interface CachedData<T> {
-    data: T;
-    timestamp: number;
-}
-
-interface QueuedWrite {
-    serviceName: string;
-    operation: string;
-    data: unknown;
-    options: Record<string, unknown>;
-    timestamp: number;
-    retries: number;
-}
-
-interface ServiceStatusInfo {
-    state: ServiceState;
-    critical: boolean;
-    lastHealthy: string | null;
-    degradedSince: string | null;
-    failureCount: number;
-}
-
-interface SystemStatus {
-    level: DegradationLevel;
-    timestamp: string;
-    services: Record<string, ServiceStatusInfo>;
-    queuedWrites: number;
-    cacheEntries: number;
-}
-
-interface HealthResult {
-    healthy: boolean;
-    details: SystemStatus;
-}
 // GRACEFUL DEGRADATION CLASS
 /**
  * Graceful Degradation Manager
@@ -212,7 +133,7 @@ export class GracefulDegradation extends EventEmitter {
      * @param name - Service name
      * @param options - Service options
      */
-    registerService(name: string, options: ServiceOptions = {}): void {
+    registerService(name: string, options: DegradationServiceOptions = {}): void {
         this.services.set(name, {
             name,
             state: ServiceState.HEALTHY,
@@ -735,3 +656,4 @@ const gracefulDegradation = new GracefulDegradation();
 
 export default gracefulDegradation;
 export { gracefulDegradation };
+

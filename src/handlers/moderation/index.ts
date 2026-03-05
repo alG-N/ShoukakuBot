@@ -15,10 +15,7 @@ export {
     TYPE_COLORS,
     TYPE_EMOJIS
 } from './ModLogHandler.js';
-export type {
-    ModActionType,
-    QuickEmbedOptions
-} from './ModLogHandler.js';
+export { type ModActionType, type QuickEmbedOptions } from '../../types/moderation/handlers.js';
 
 export { default as AutoModHandler } from './AutoModHandler.js';
 export {
@@ -27,13 +24,10 @@ export {
     buildSettingsEmbed,
     formatAction
 } from './AutoModHandler.js';
-export type {
-    ViolationType,
-    ActionType,
-    Violation,
-    ActionResult,
-    AutoModSettings
-} from './AutoModHandler.js';
+export { type ViolationType, type ActionResult } from '../../types/moderation/handlers.js';
+export { type ActionType } from '../../config/features/moderation/index.js';
+export { type Violation } from '../../services/moderation/AutoModService.js';
+export { type AutoModSettings } from '../../types/moderation/automod.js';
 
 // Anti-raid handler
 export { handleAntiRaid } from './AntiRaidHandler.js';
@@ -63,8 +57,6 @@ export {
     handleEscalationActionValue
 } from './AutoModSettingsHandlers.js';
 
-export type {
-    AutoModService as AutoModCommandService,
-    ModerationConfig as AutoModModerationConfig,
-    AutoModSettings as AutoModCommandSettings
-} from './AutoModTypes.js';
+export { type AutoModService as AutoModCommandService, type ModerationConfig as AutoModModerationConfig, type AutoModSettings as AutoModCommandSettings } from './AutoModTypes.js';
+
+

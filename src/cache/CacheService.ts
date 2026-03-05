@@ -9,74 +9,18 @@
 import type { Redis } from 'ioredis';
 import gracefulDegradation from '../core/GracefulDegradation.js';
 import logger from '../core/Logger.js';
+import type {
+    CacheFactory,
+    CacheMetrics,
+    CacheServiceOptions,
+    CacheServiceStats,
+    MemoryCacheEntry,
+    NamespaceConfig
+} from '../types/infrastructure/cache.js';
+
+export { type CacheFactory, type CacheMetrics, type CacheServiceOptions, type CacheServiceStats, type NamespaceConfig } from '../types/infrastructure/cache.js';
+
 // TYPES & INTERFACES
-/**
- * Cache namespace configuration
- */
-export interface NamespaceConfig {
-    /** Default TTL in seconds */
-    ttl: number;
-    /** Max entries (for in-memory) */
-    maxSize: number;
-    /** Whether to use Redis for this namespace */
-    useRedis: boolean;
-}
-
-/**
- * Cache entry stored in memory
- */
-interface MemoryCacheEntry<T = unknown> {
-    value: T;
-    expiresAt: number;
-}
-
-/**
- * Cache service metrics
- */
-export interface CacheMetrics {
-    hits: number;
-    misses: number;
-    absenceChecks: number;
-    writes: number;
-    deletes: number;
-    errors: number;
-    redisHits: number;
-    memoryHits: number;
-    redisFallbacks: number;
-    /** Total specialized operations (cooldowns, rate limits, automod) not tracked in hit/miss */
-    specializedOps: number;
-    /** Per-namespace hit/miss counters */
-    namespaceStats: Map<string, { hits: number; misses: number }>;
-}
-
-/**
- * Cache statistics with service state
- */
-export interface CacheServiceStats extends Omit<CacheMetrics, 'namespaceStats'> {
-    hitRate: number;
-    /** Effective hit rate including getOrSet and peek operations */
-    effectiveHitRate: number;
-    redisConnected: boolean;
-    redisState: string;
-    redisFailures: number;
-    memoryEntries: number;
-    namespaces: string[];
-    /** Top namespaces by miss count (for optimization) */
-    topMissNamespaces: Array<{ namespace: string; hits: number; misses: number; hitRate: number }>;
-}
-
-/**
- * Options for CacheService constructor
- */
-export interface CacheServiceOptions {
-    maxRedisFailures?: number;
-    cleanupIntervalMs?: number;
-}
-
-/**
- * Factory function for getOrSet pattern
- */
-export type CacheFactory<T> = () => Promise<T>;
 // DEFAULT CONFIGURATION
 /**
  * Default namespace configurations
@@ -1319,3 +1263,6 @@ const cacheService = new CacheService();
 
 // Default export
 export default cacheService;
+
+
+

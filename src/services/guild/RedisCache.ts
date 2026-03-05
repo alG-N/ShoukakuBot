@@ -12,53 +12,17 @@
 
 import Redis from 'ioredis';
 import logger from '../../core/Logger.js';
+import type {
+    CacheTTL,
+    DuplicateResult,
+    DuplicateTracker,
+    FallbackEntry,
+    GuildCacheStats,
+    RateLimitResult,
+    SpamTracker
+} from '../../types/infrastructure/cache.js';
 
 // TYPES
-interface CacheTTL {
-    GUILD_SETTINGS: number;
-    USER_PREFERENCES: number;
-    COOLDOWN: number;
-    API_RESPONSE: number;
-    MUSIC_QUEUE: number;
-    SPAM_WINDOW: number;
-    DUPLICATE_WINDOW: number;
-    RATE_LIMIT: number;
-    AUTOMOD_WARN: number;
-}
-
-interface FallbackEntry {
-    value: unknown;
-    expiresAt: number;
-}
-
-interface SpamTracker {
-    count: number;
-    start: number;
-}
-
-interface DuplicateTracker {
-    hash: string;
-    count: number;
-    start: number;
-}
-
-interface RateLimitResult {
-    allowed: boolean;
-    remaining: number;
-    resetIn: number;
-}
-
-interface DuplicateResult {
-    count: number;
-    isNew: boolean;
-}
-
-interface CacheStats {
-    connected: boolean;
-    fallbackSize: number;
-    redisInfo: string | null;
-}
-
 // REDIS CACHE CLASS
 export class RedisCache {
     private _client: Redis | null = null;
@@ -329,7 +293,7 @@ export class RedisCache {
         }
     }
 
-    async getStats(): Promise<CacheStats> {
+    async getStats(): Promise<GuildCacheStats> {
         return {
             connected: this._isConnected,
             fallbackSize: this.fallbackCache.size,

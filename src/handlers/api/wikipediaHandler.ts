@@ -11,54 +11,14 @@ import {
     ButtonStyle, 
     StringSelectMenuBuilder 
 } from 'discord.js';
+import type {
+    WikiArticle as WikipediaArticle,
+    WikiSearchResult,
+    OnThisDayEvent,
+    OnThisDayDate
+} from '../../types/api/wikipedia.js';
+export { type WikiArticle as WikipediaArticle, type WikiSearchResult, type OnThisDayEvent, type OnThisDayDate } from '../../types/api/wikipedia.js';
 // TYPES & INTERFACES
-/**
- * Wikipedia article data
- */
-export interface WikipediaArticle {
-    displayTitle?: string;
-    title?: string;
-    url?: string;
-    description?: string;
-    extract?: string;
-    thumbnail?: string;
-    originalImage?: string;
-    type?: 'disambiguation' | 'standard';
-    language?: string;
-    coordinates?: {
-        lat: number;
-        lon: number;
-    };
-}
-
-/**
- * Search result item
- */
-export interface WikiSearchResult {
-    title: string;
-    url: string;
-    description: string;
-}
-
-/**
- * On This Day event
- */
-export interface OnThisDayEvent {
-    year: string | number;
-    text: string;
-    pages?: Array<{
-        title: string;
-        url: string;
-    }>;
-}
-
-/**
- * Date for On This Day
- */
-export interface OnThisDayDate {
-    month: number;
-    day: number;
-}
 // CONSTANTS
 const COLORS = {
     WIKIPEDIA: 0xFFFFFF,
@@ -296,3 +256,6 @@ class WikipediaHandler {
 const wikipediaHandler = new WikipediaHandler();
 export { wikipediaHandler, WikipediaHandler };
 export default wikipediaHandler;
+
+
+

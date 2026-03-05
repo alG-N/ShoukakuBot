@@ -14,55 +14,17 @@
  */
 
 import logger from '../../../core/Logger.js';
+import type {
+    SpotifyToken,
+    SpotifyTrack,
+    SpotifyArtist,
+    SpotifyAlbum,
+    SpotifySearchResult,
+    EmbedTrack
+} from '../../../types/music/spotify-service.js';
+export { type SpotifyToken, type SpotifyTrack, type SpotifyArtist, type SpotifyAlbum, type SpotifySearchResult, type EmbedTrack };
 
 // ── TYPES ────────────────────────────────────────────────────────────
-
-export interface SpotifyToken {
-    accessToken: string;
-    expiresAt: number;
-}
-
-export interface SpotifyTrack {
-    id: string;
-    name: string;
-    artists: SpotifyArtist[];
-    album: SpotifyAlbum;
-    duration_ms: number;
-    uri: string;
-    external_urls: { spotify: string };
-    popularity: number;
-    preview_url: string | null;
-}
-
-export interface SpotifyArtist {
-    id: string;
-    name: string;
-    genres?: string[];
-    external_urls: { spotify: string };
-}
-
-export interface SpotifyAlbum {
-    id: string;
-    name: string;
-    images: { url: string; width: number; height: number }[];
-    release_date: string;
-}
-
-export interface SpotifySearchResult {
-    tracks: {
-        items: SpotifyTrack[];
-        total: number;
-    };
-}
-
-/** Track info extracted from embed scraping */
-export interface EmbedTrack {
-    title: string;
-    artist: string;
-    duration_ms: number;
-    artworkUrl?: string;
-    isrc?: string;
-}
 
 // ── SPOTIFY SERVICE ──────────────────────────────────────────────────
 
@@ -383,3 +345,6 @@ class SpotifyService {
 const spotifyService = new SpotifyService();
 export { SpotifyService };
 export default spotifyService;
+
+
+

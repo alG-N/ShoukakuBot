@@ -13,65 +13,14 @@ import {
     ActionRowBuilder,
     ButtonBuilder
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import logger from '../../core/Logger.js';
 import _nhentaiServiceModule from '../../services/api/nhentaiService.js';
 import _nhentaiHandlerModule from '../../handlers/api/nhentaiHandler.js';
 import type { AttachmentBuilder } from 'discord.js';
-// TYPES
-interface GalleryData {
-    id: number;
-    num_pages: number;
-    title?: {
-        english?: string;
-        japanese?: string;
-        pretty?: string;
-    };
-}
-
-interface GalleryResult {
-    success: boolean;
-    data?: GalleryData;
-    error?: string;
-}
-
-interface SearchResult {
-    success: boolean;
-    data?: GalleryData[];
-}
-
-interface SearchData {
-    results: GalleryData[];
-    numPages: number;
-    perPage: number;
-    totalResults: number;
-}
-
-interface SearchGalleriesResult {
-    success: boolean;
-    data?: SearchData;
-    error?: string;
-}
-
-interface NHentaiService {
-    fetchGallery: (code: number) => Promise<GalleryResult>;
-    fetchRandomGallery: () => Promise<GalleryResult>;
-    fetchPopularGallery: (period?: 'today' | 'week' | 'month' | 'all') => Promise<GalleryResult>;
-    searchGalleries: (query: string, page?: number, sort?: string) => Promise<SearchGalleriesResult>;
-}
-
-interface NHentaiHandler {
-    createGalleryEmbed: (data: GalleryData, options?: { isRandom?: boolean; isPopular?: boolean }) => EmbedBuilder;
-    createGalleryResponse: (data: GalleryData, options?: { isRandom?: boolean; isPopular?: boolean; popularPeriod?: string }) => Promise<{ embed: EmbedBuilder; files: AttachmentBuilder[] }>;
-    createMainButtons: (id: number, userId: string, numPages: number, data: GalleryData) => Promise<ActionRowBuilder<ButtonBuilder>[]>;
-    createSearchResultsEmbed?: (query: string, data: SearchData, page: number, sort: string) => EmbedBuilder;
-    createSearchButtons?: (query: string, data: SearchData, page: number, userId: string) => ActionRowBuilder<ButtonBuilder>[];
-    setSearchSession?: (userId: string, data: any) => Promise<void>;
-    createFavouritesEmbed: (userId: string) => Promise<{ embed?: EmbedBuilder; buttons?: ActionRowBuilder<ButtonBuilder>[] }>;
-    handleButton?: (interaction: ButtonInteraction) => Promise<void>;
-    handleModal?: (interaction: ModalSubmitInteraction) => Promise<void>;
-}
+import type { NHentaiGallery, SearchData } from '../../types/api/nhentai.js';
+import type { GalleryData, NHentaiService, NHentaiHandler } from '../../types/commands/api-nhentai.js';
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const nhentaiService: NHentaiService = _nhentaiServiceModule as any;
 const nhentaiHandler: NHentaiHandler = _nhentaiHandlerModule as any;
@@ -344,3 +293,4 @@ class NHentaiCommand extends BaseCommand {
 }
 
 export default new NHentaiCommand();
+

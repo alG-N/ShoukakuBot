@@ -93,7 +93,10 @@ export class MusicNowPlayingManager {
             await this.disableNowPlayingControls(guildId);
 
             const queueList = queueService.getTracks(guildId) as Track[];
-            const listenerCount = voiceConnectionService.getListenerCount(guildId, queue.textChannel?.guild);
+            const channel = queue.textChannel;
+            const guild = (channel && 'guild' in channel) ? (channel as { guild?: unknown }).guild : undefined;
+            if (!guild || !('id' in (guild as object))) return;
+            const listenerCount = voiceConnectionService.getListenerCount(guildId, guild as any);
             const voteSkipStatus = musicCache.getVoteSkipStatus(guildId, listenerCount);
 
             const embed = trackHandler.createNowPlayingEmbed(currentTrack as any, {
@@ -119,7 +122,8 @@ export class MusicNowPlayingManager {
                 listenerCount: listenerCount
             });
 
-            const nowMessage = await queue.textChannel.send({ embeds: [embed], components: rows });
+            if (!('send' in channel) || typeof channel.send !== 'function') return;
+            const nowMessage = await channel.send({ embeds: [embed], components: rows });
             this.setNowPlayingMessage(guildId, nowMessage);
         } catch (error) {
             // Silent fail
@@ -139,7 +143,10 @@ export class MusicNowPlayingManager {
 
         try {
             const queueList = queueService.getTracks(guildId) as Track[];
-            const listenerCount = voiceConnectionService.getListenerCount(guildId, queue.textChannel?.guild);
+            const channel = queue.textChannel;
+            const guild = (channel && 'guild' in channel) ? (channel as { guild?: unknown }).guild : undefined;
+            if (!guild || !('id' in (guild as object))) return;
+            const listenerCount = voiceConnectionService.getListenerCount(guildId, guild as any);
             const voteSkipStatus = musicCache.getVoteSkipStatus(guildId, listenerCount);
 
             const embed = trackHandler.createNowPlayingEmbed(currentTrack as any, {

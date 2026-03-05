@@ -11,25 +11,11 @@ import {
     ChatInputCommandInteraction,
     User
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import logger from '../../core/Logger.js';
 import { infractionService as _infractionSvc } from '../../services/moderation/index.js';
-interface Infraction {
-    id: number;
-    guild_id: string;
-    user_id: string;
-    moderator_id: string;
-    type: string;
-    reason: string;
-    active: boolean;
-    created_at: Date;
-    metadata?: Record<string, unknown>;
-}
-
-interface InfractionService {
-    getCase?: (guildId: string, caseId: number) => Promise<Infraction | null>;
-    buildCaseEmbed?: (infraction: Infraction, targetUser: User | null) => EmbedBuilder;
-}
+import type { Infraction } from '../../types/moderation/infraction.js';
+import type { InfractionService } from '../../types/moderation/services.js';
 
 
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
@@ -103,7 +89,7 @@ class CaseCommand extends BaseCommand {
                 { name: 'Reason', value: infraction.reason || 'No reason provided', inline: false },
                 { name: 'Status', value: infraction.active ? '🟢 Active' : '🔴 Inactive', inline: true }
             )
-            .setTimestamp(infraction.created_at);
+            .setTimestamp(new Date(infraction.created_at));
 
         if (targetUser) {
             embed.setThumbnail(targetUser.displayAvatarURL());
@@ -114,3 +100,4 @@ class CaseCommand extends BaseCommand {
 }
 
 export default new CaseCommand();
+

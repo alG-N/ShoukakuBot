@@ -18,6 +18,7 @@ import { ShardingManager, ShardingManagerOptions } from 'discord.js';
 import { ChildProcess } from 'child_process';
 import path from 'path';
 import { readFileSync } from 'fs';
+import type { ShardIpcMessage } from './types/core/sharding.js';
 
 // Read version from package.json
 const VERSION = JSON.parse(readFileSync(path.resolve(__dirname, '../package.json'), 'utf-8')).version;
@@ -129,13 +130,7 @@ manager.on('shardCreate', (shard) => {
 // IPC MESSAGE HANDLER
 // ═══════════════════════════════════════════════════════════════
 
-interface ShardMessage {
-    type: string;
-    data?: unknown;
-    requestId?: string;
-}
-
-function handleShardMessage(shardId: number, message: ShardMessage) {
+function handleShardMessage(shardId: number, message: ShardIpcMessage) {
     if (!message || typeof message !== 'object') return;
 
     switch (message.type) {
@@ -327,3 +322,4 @@ const isEntryPoint = typeof require !== 'undefined'
 if (isEntryPoint || process.env.SHARD_START === 'true') {
     start();
 }
+

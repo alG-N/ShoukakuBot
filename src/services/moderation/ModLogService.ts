@@ -4,30 +4,17 @@
  * @module services/moderation/ModLogService
  */
 
-import { EmbedBuilder, type Guild, type User, type Snowflake, type Message } from 'discord.js';
+import { EmbedBuilder, Guild, User, Snowflake, Message } from 'discord.js';
 import { formatDuration } from '../../utils/common/time.js';
 import logger from '../../core/Logger.js';
 import type { Infraction } from './InfractionService.js';
 import ModLogRepository from '../../repositories/moderation/ModLogRepository.js';
 import moderationConfig from '../../config/features/moderation/index.js';
+import type { ModLogSettings } from '../../types/moderation/modlog.js';
 
 // Re-export from config
 const COLORS = moderationConfig.COLORS || {} as Record<string, number>;
 const EMOJIS = moderationConfig.EMOJIS || {} as Record<string, string>;
-// TYPES
-export interface ModLogSettings {
-    log_channel_id: Snowflake | null;
-    include_moderator: boolean;
-    include_reason: boolean;
-    log_warns: boolean;
-    log_mutes: boolean;
-    log_kicks: boolean;
-    log_bans: boolean;
-    log_automod: boolean;
-    log_filters: boolean;
-    log_message_deletes: boolean;
-    log_message_edits: boolean;
-}
 // CORE FUNCTIONS
 /**
  * Log an infraction to the mod log channel
@@ -400,3 +387,4 @@ export default {
     COLORS,
     EMOJIS
 };
+

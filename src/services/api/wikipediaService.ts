@@ -8,69 +8,18 @@ import axios, { AxiosRequestConfig } from 'axios';
 import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
 import logger from '../../core/Logger.js';
 import cacheService from '../../cache/CacheService.js';
-// TYPES & INTERFACES
-export interface WikiSearchResult {
-    title: string;
-    description: string;
-    url: string;
-}
-
-export interface WikiSearchResponse {
-    success: boolean;
-    results?: WikiSearchResult[];
-    query?: string;
-    error?: string;
-    fromCache?: boolean;
-}
-
-export interface WikiArticle {
-    title: string;
-    displayTitle: string;
-    description: string | null;
-    extract: string;
-    extractHtml?: string | null;
-    url: string;
-    mobileUrl?: string | null;
-    thumbnail: string | null;
-    originalImage: string | null;
-    type?: string;
-    timestamp?: string;
-    language: string;
-    coordinates?: { lat: number; lon: number } | null;
-}
-
-export interface WikiArticleResponse {
-    success: boolean;
-    article?: WikiArticle;
-    error?: string;
-    code?: string;
-    fromCache?: boolean;
-}
-
-export interface OnThisDayPage {
-    title: string;
-    url: string;
-}
-
-export interface OnThisDayEvent {
-    year: number;
-    text: string;
-    pages?: OnThisDayPage[];
-}
-
-export interface OnThisDayResponse {
-    success: boolean;
-    events?: OnThisDayEvent[];
-    date?: { month: number; day: number };
-    error?: string;
-}
-
-export interface SearchOptions {
-    language?: string;
-    limit?: number;
-}
-
-type SupportedLanguage = 'en' | 'ja' | 'de' | 'fr' | 'es';
+import type {
+    WikiSearchResult,
+    WikiSearchResponse,
+    WikiArticle,
+    WikiArticleResponse,
+    OnThisDayPage,
+    OnThisDayEvent,
+    OnThisDayResponse,
+    WikipediaSearchOptions
+} from '../../types/api/wikipedia.js';
+import type { SupportedLanguage } from '../../types/api/services/wikipedia-service.js';
+export { type WikiSearchResult, type WikiSearchResponse, type WikiArticle, type WikiArticleResponse, type OnThisDayPage, type OnThisDayEvent, type OnThisDayResponse, type WikipediaSearchOptions } from '../../types/api/wikipedia.js';
 // CONFIGURATION
 const LANGUAGE_ENDPOINTS: Record<SupportedLanguage, { api: string; rest: string }> = {
     en: { api: 'https://en.wikipedia.org/w/api.php', rest: 'https://en.wikipedia.org/api/rest_v1' },
@@ -104,7 +53,7 @@ class WikipediaService {
     /**
      * Search Wikipedia for articles
      */
-    async search(query: string, options: SearchOptions = {}): Promise<WikiSearchResponse> {
+    async search(query: string, options: WikipediaSearchOptions = {}): Promise<WikiSearchResponse> {
         const { language = this.defaultLanguage, limit = 5 } = options;
         const endpoints = this._getEndpoints(language);
 
@@ -323,3 +272,7 @@ const wikipediaService = new WikipediaService();
 
 export { wikipediaService, WikipediaService };
 export default wikipediaService;
+
+
+
+

@@ -1,62 +1,34 @@
 /**
  * Music Services
- * 
- * Architecture (Phase 2 Week 6-7):
- * - MusicFacade: Orchestrator providing backward-compatible API
- * - QueueService: Queue CRUD operations
- * - PlaybackService: Play, pause, skip, stop operations
- * - VoiceConnectionService: Voice channel connection and monitoring
- * - AutoPlayService: Similar track discovery for auto-play
- * - LavalinkService: Low-level Lavalink connection management
- * 
- * Event System (Week 7):
- * - MusicEventBus: Central event emitter for decoupled communication
- * - MusicEvents: Event name constants
- * - PlaybackEventHandler: Handles player lifecycle events
  * @module services/music
  */
 
-// New architecture (Phase 2)
-export { default as musicFacade, musicFacade as MusicFacade } from './core/MusicFacade.js';
-export { queueService, QueueService } from './queue/index.js';
-export { playbackService, PlaybackService } from './playback/index.js';
-export { voiceConnectionService, VoiceConnectionService } from './voice/index.js';
-export { autoPlayService, AutoPlayService } from './autoplay/index.js';
-export { spotifyService, SpotifyService } from './spotify/index.js';
+export { default as musicFacade } from './core/MusicFacade.js';
+export * from './core/MusicFacade.js';
 
-// Core modules
-export { MusicNowPlayingManager } from './core/MusicNowPlayingManager.js';
-export { MusicUserDataService } from './core/MusicUserDataService.js';
-export { MusicSkipVoteManager } from './core/MusicSkipVoteManager.js';
+export { default as queueService } from './queue/QueueService.js';
+export * from './queue/index.js';
 
-// Event system (Week 7)
-export { musicEventBus, MusicEventBus, MusicEvents, playbackEventHandler, PlaybackEventHandler } from './events/index.js';
+export { default as playbackService } from './playback/PlaybackService.js';
+export * from './playback/index.js';
 
-// Core services
-export { default as lavalinkService, LavalinkService } from './core/LavalinkService.js';
+export { default as voiceConnectionService } from './voice/VoiceConnectionService.js';
+export * from './voice/index.js';
 
-// Re-export MusicFacade as MusicService for backward compatibility
+export { default as autoPlayService } from './autoplay/AutoPlayService.js';
+export * from './autoplay/index.js';
+
+export { default as spotifyService } from './spotify/SpotifyService.js';
+export * from './spotify/index.js';
+
+export * from './core/MusicNowPlayingManager.js';
+export * from './core/MusicUserDataService.js';
+export * from './core/MusicSkipVoteManager.js';
+
+export * from './events/index.js';
+
+export { default as lavalinkService } from './core/LavalinkService.js';
+export * from './core/LavalinkService.js';
+
 export { musicFacade as MusicService } from './core/MusicFacade.js';
 
-// Type exports
-export type { MusicQueue, QueueState } from './queue/index.js';
-export type { PlaybackState, PlayNextResult } from './playback/index.js';
-export type { ConnectionState, PlayerEventHandlers } from './voice/index.js';
-export type { SearchResult, PlaylistResult, PreservedState, NodeStatus } from './core/LavalinkService.js';
-export type {
-    MusicEventName,
-    TrackEventData,
-    PlaybackEventData,
-    QueueEventData,
-    VoiceEventData,
-    AutoPlayEventData,
-    SkipVoteEventData,
-    NowPlayingEventData,
-    SystemEventData,
-    MusicTrack,
-    TrackInfo
-} from './events/index.js';
-export type {
-    SpotifyTrack,
-    SpotifyArtist,
-} from './spotify/index.js';

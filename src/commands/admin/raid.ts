@@ -10,59 +10,15 @@ import {
     PermissionFlagsBits,
     ChatInputCommandInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import _antiRaidModule from '../../services/moderation/AntiRaidService.js';
 import _lockdownModule from '../../services/moderation/LockdownService.js';
 import _moderationConfigModule from '../../config/features/moderation/index.js';
-interface ModerationConfig {
-    COLORS: Record<string, number>;
-    EMOJIS: Record<string, string>;
-}
-
-interface RaidState {
-    active: boolean;
-    activatedAt?: number;
-    activatedBy?: string;
-    reason?: string;
-    stats?: {
-        kickedCount?: number;
-        bannedCount?: number;
-    };
-}
-
-interface LockStatus {
-    lockedCount: number;
-}
-
-interface LockResults {
-    success: string[];
-    skipped: string[];
-    failed: string[];
-}
-
-interface DeactivateResult {
-    duration: number;
-    flaggedAccounts: number;
-    stats?: {
-        kickedCount?: number;
-        bannedCount?: number;
-    };
-}
-
-interface AntiRaidService {
-    isRaidModeActive?: (guildId: string) => Promise<boolean>;
-    activateRaidMode?: (guildId: string, userId: string, reason: string) => Promise<void>;
-    deactivateRaidMode?: (guildId: string) => Promise<DeactivateResult>;
-    getRaidModeState?: (guildId: string) => Promise<RaidState | null>;
-    getFlaggedAccounts?: (guildId: string) => Promise<string[]>;
-    updateStats?: (guildId: string, action: 'kick' | 'ban') => Promise<void>;
-}
-
-interface LockdownService {
-    lockServer?: (guild: ChatInputCommandInteraction['guild'], reason: string) => Promise<LockResults>;
-    unlockServer?: (guild: ChatInputCommandInteraction['guild'], reason: string) => Promise<LockResults>;
-    getLockStatus?: (guildId: string) => Promise<LockStatus>;
-}
+import type { ModerationConfig } from '../../config/features/moderation/index.js';
+import type { LockdownService } from '../../types/moderation/services.js';
+import type { LockStatus } from '../../types/moderation/lockdown.js';
+import type { DeactivateResult } from '../../services/moderation/AntiRaidService.js';
+import type { RaidState, LockResults, AntiRaidService } from '../../types/commands/admin-raid.js';
 
 
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
@@ -237,7 +193,7 @@ class RaidCommand extends BaseCommand {
         
         await interaction.deferReply();
         
-        const result = await antiRaidService?.deactivateRaidMode?.(interaction.guild.id) || { 
+        const result: DeactivateResult = await antiRaidService?.deactivateRaidMode?.(interaction.guild.id) || { 
             duration: 0, 
             flaggedAccounts: 0 
         };
@@ -418,3 +374,4 @@ class RaidCommand extends BaseCommand {
 }
 
 export default new RaidCommand();
+

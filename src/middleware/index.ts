@@ -47,22 +47,9 @@ export {
 } from './urlValidator.js';
 
 // Re-export types
-export type {
-    RateLimiterOptions,
-    DistributedRateLimiterOptions,
-    RateLimitCheckResult,
-    ValidationResult,
-    ModerateResult,
-    AccessCheckResult,
-    MaintenanceCheckResult,
-    AccessTypeValue,
-    AnyInteraction
-} from './access.js';
+export { type RateLimiterOptions, type DistributedRateLimiterOptions, type RateLimitCheckResult, type AccessValidationResult, type ModerateResult, type AccessCheckResult, type MaintenanceCheckResult, type AccessTypeValue, type AnyInteraction } from './access.js';
 
-export type {
-    VoiceCheckResult,
-    MusicInteraction
-} from './voiceChannelCheck.js';
+export { type VoiceCheckResult, type MusicInteraction } from './voiceChannelCheck.js';
 
 // Default export with all modules
 export default {
@@ -75,3 +62,6 @@ export default {
     // URL validator
     ...urlValidator
 };
+
+
+

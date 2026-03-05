@@ -1,0 +1,14 @@
+export type CoreErrorCode = (typeof import('../../core/ErrorCodes.js').ErrorCodes)[keyof typeof import('../../core/ErrorCodes.js').ErrorCodes];
+
+export type ErrorMessages = Record<CoreErrorCode, string>;
+
+export type ErrorCategory =
+    | 'GENERAL'
+    | 'USER'
+    | 'MODERATION'
+    | 'MUSIC'
+    | 'API'
+    | 'DATABASE'
+    | 'CACHE'
+    | 'GUILD'
+    | 'VIDEO';

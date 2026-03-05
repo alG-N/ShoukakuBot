@@ -9,6 +9,12 @@
 import { EmbedBuilder } from 'discord.js';
 import { isOwner, OWNER_IDS } from './owner.js';
 import logger from '../core/Logger.js';
+import type {
+    ScheduledMaintenance,
+    MaintenanceState,
+    MaintenanceOptions,
+    MaintenanceStatus
+} from '../types/config/maintenance.js';
 
 import { getDefault } from '../utils/common/moduleHelper.js';
 // Lazy-load cacheService to avoid circular dependency at module init
@@ -23,43 +29,6 @@ const getCacheService = () => {
 // Redis key for persistent maintenance state
 const REDIS_KEY = 'shoukaku:maintenance:state';
 const REDIS_NS = 'maintenance'; // Long-lived, Redis-backed namespace
-
-// ── Types ────────────────────────────────────────────────────────────
-interface ScheduledMaintenance {
-    startTime: number;
-    reason: string;
-    estimatedDuration: number | null;
-    [key: string]: unknown;
-}
-
-interface MaintenanceState {
-    enabled: boolean;
-    reason: string | null;
-    startTime: number | null;
-    estimatedEnd: number | null;
-    partialMode: boolean;
-    disabledFeatures: string[];
-    allowedUsers: string[];
-    scheduledMaintenance: ScheduledMaintenance | null;
-}
-
-interface MaintenanceOptions {
-    reason?: string;
-    estimatedEnd?: number | null;
-    partialMode?: boolean;
-    disabledFeatures?: string[];
-}
-
-interface MaintenanceStatus {
-    active: boolean;
-    enabled?: boolean;
-    reason?: string | null;
-    estimatedEnd?: number | null;
-    startTime?: number | null;
-    message: string | null;
-    partialMode?: boolean;
-    disabledFeatures?: string[];
-}
 
 // ── State ────────────────────────────────────────────────────────────
 let maintenanceState: MaintenanceState = {

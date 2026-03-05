@@ -26,11 +26,7 @@ import { MusicUserDataService } from './MusicUserDataService.js';
 import { MusicSkipVoteManager } from './MusicSkipVoteManager.js';
 
 // Re-export all types from MusicTypes for backward compatibility
-export type {
-    Track, TrackInfo, PlayNextResult, SkipResult, VoteSkipResult,
-    NowPlayingOptions, ControlButtonOptions, QueueState, MusicStats,
-    LoopMode, PlayerEventHandlers
-} from './MusicTypes.js';
+export { type Track, type TrackInfo, type PlayNextResult, type SkipResult, type VoteSkipResult, type NowPlayingOptions, type ControlButtonOptions, type QueueState, type MusicStats, type LoopMode, type PlayerEventHandlers } from './MusicTypes.js';
 import type {
     Track, PlayNextResult, SkipResult, VoteSkipResult,
     QueueState, MusicStats, LoopMode, PlayerEventHandlers
@@ -512,7 +508,7 @@ export class MusicFacade {
                     await this.playTrack(guildId, similarTrack as Track);
 
                     // Notify
-                    if (queue?.textChannel) {
+                    if (queue?.textChannel && 'send' in queue.textChannel && typeof queue.textChannel.send === 'function') {
                         const spotifyLabel = spotifyService.isConfigured() ? ' 🟢' : '';
                         const moodInfo = autoPlayService.getLastMoodProfile();
                         const moodLabel = moodInfo ? ` • ${typeof moodInfo === 'string' ? moodInfo : (moodInfo as { mood: string }).mood}` : '';
@@ -541,7 +537,7 @@ export class MusicFacade {
             try { await player.stopTrack(); } catch (e) { /* already stopped */ }
         }
 
-        if (queue?.textChannel) {
+        if (queue?.textChannel && 'send' in queue.textChannel && typeof queue.textChannel.send === 'function') {
             const finishedEmbed = trackHandler.createQueueFinishedEmbed(lastTrack as any);
             await queue.textChannel.send({ embeds: [finishedEmbed] }).catch(() => {});
         }
@@ -773,5 +769,8 @@ export class MusicFacade {
 // Export singleton instance and class
 export const musicFacade = new MusicFacade();
 export default musicFacade;
+
+
+
 
 

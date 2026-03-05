@@ -9,6 +9,19 @@ import { Pool, PoolClient, QueryResult, PoolConfig } from 'pg';
 import gracefulDegradation, { ServiceState } from '../core/GracefulDegradation.js';
 import { databasePoolSize, databaseQueriesTotal, databaseQueryDuration } from '../core/metrics.js';
 import logger from '../core/Logger.js';
+import type {
+    DatabaseStatus,
+    QueuedResponse,
+    QueryOptions,
+    RetryConfig,
+    TransactionCallback,
+    WriteQueueEntry
+} from '../types/infrastructure/database.js';
+import type { AllowedTable, PgError } from '../types/infrastructure/database-extra.js';
+
+export { type DatabaseStatus, type QueuedResponse, type QueryOptions, type RetryConfig, type TransactionCallback, type WriteQueueEntry } from '../types/infrastructure/database.js';
+export { type AllowedTable, type PgError } from '../types/infrastructure/database-extra.js';
+
 // TYPES & INTERFACES
 /**
  * Allowed table names (whitelist for SQL injection prevention)
@@ -37,8 +50,6 @@ export const ALLOWED_TABLES = [
     'user_music_history'
 ] as const;
 
-export type AllowedTable = typeof ALLOWED_TABLES[number];
-
 /**
  * PostgreSQL error codes that indicate transient failures
  */
@@ -58,73 +69,6 @@ export const TRANSIENT_ERROR_CODES = [
     '53300', // too_many_connections
 ] as const;
 
-/**
- * Retry configuration
- */
-export interface RetryConfig {
-    maxRetries: number;
-    baseDelayMs: number;
-    maxDelayMs: number;
-}
-
-/**
- * Query options
- */
-export interface QueryOptions {
-    retries?: number;
-    noRetry?: boolean;
-    usePrimary?: boolean;
-}
-
-/**
- * Database status info
- */
-export interface DatabaseStatus {
-    isConnected: boolean;
-    state: string;
-    failureCount: number;
-    maxFailures: number;
-    pendingWrites: number;
-    readReplica: {
-        enabled: boolean;
-        host: string | null;
-    };
-    retryConfig: RetryConfig;
-}
-
-/**
- * Write queue entry
- */
-export interface WriteQueueEntry {
-    operation: 'insert' | 'update' | 'delete';
-    params: {
-        table: string;
-        data?: Record<string, unknown>;
-        where?: Record<string, unknown>;
-    };
-    timestamp: number;
-}
-
-/**
- * Queued response
- */
-export interface QueuedResponse {
-    queued: true;
-    operation: string;
-    table: string;
-}
-
-/**
- * Transaction callback function
- */
-export type TransactionCallback<T> = (client: PoolClient) => Promise<T>;
-
-/**
- * PostgreSQL error with code
- */
-interface PgError extends Error {
-    code?: string;
-}
 // VALIDATION HELPERS
 /**
  * Regex for valid SQL identifiers (alphanumeric and underscore only)
@@ -886,3 +830,7 @@ export function isDatabaseReady(): boolean {
 
 // Default export
 export default defaultInstance;
+
+
+
+

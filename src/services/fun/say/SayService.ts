@@ -4,10 +4,9 @@
  * @module services/fun/say/SayService
  */
 
-import { EmbedBuilder, type TextBasedChannel } from 'discord.js';
+import { EmbedBuilder, TextBasedChannel } from 'discord.js';
 import { TYPE_COLORS, OWNER_ID } from '../../../config/say/index.js';
-// TYPES
-export type SayType = 'normal' | 'warning' | 'error' | 'success' | 'info';
+import type { SayType } from '../../../types/fun/say-service.js';
 // SAY SERVICE CLASS
 class SayService {
     /**
@@ -88,4 +87,7 @@ class SayService {
 const sayService = new SayService();
 
 export { SayService };
+export { type SayType };
 export default sayService;
+
+

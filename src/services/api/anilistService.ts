@@ -9,135 +9,23 @@ import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
 import logger from '../../core/Logger.js';
 import cacheService from '../../cache/CacheService.js';
 import gracefulDegradation from '../../core/GracefulDegradation.js';
-// TYPES & INTERFACES
-export interface AnimeTitle {
-    romaji: string | null;
-    english: string | null;
-    native: string | null;
-}
-
-export interface CoverImage {
-    large: string | null;
-    color: string | null;
-}
-
-export interface FuzzyDate {
-    year: number | null;
-    month: number | null;
-    day: number | null;
-}
-
-export interface AiringSchedule {
-    episode: number;
-    airingAt: number;
-    timeUntilAiring: number;
-}
-
-export interface CharacterName {
-    full: string | null;
-}
-
-export interface CharacterNode {
-    name: CharacterName;
-}
-
-export interface CharacterEdge {
-    node: CharacterNode;
-}
-
-export interface Characters {
-    edges: CharacterEdge[];
-}
-
-export interface AnimeRanking {
-    rank: number;
-    allTime: boolean;
-    type: string;
-    context: string;
-}
-
-export interface RelatedAnimeNode {
-    id: number;
-    title: AnimeTitle;
-    type: 'ANIME' | 'MANGA' | 'MOVIE' | string;
-    status: string;
-    averageScore: number | null;
-}
-
-export interface RelationEdge {
-    relationType: 'SEQUEL' | 'PREQUEL' | 'ALTERNATIVE' | 'PARENT' | 'SIDE_STORY' | string;
-    node: RelatedAnimeNode;
-}
-
-export interface Relations {
-    edges: RelationEdge[];
-}
-
-export interface StudioNode {
-    name: string;
-}
-
-export interface Studios {
-    nodes: StudioNode[];
-}
-
-export interface Trailer {
-    id: string | null;
-    site: string | null;
-}
-
-export interface AnimeMedia {
-    id: number;
-    title: AnimeTitle;
-    coverImage: CoverImage | null;
-    description: string | null;
-    episodes: number | null;
-    averageScore: number | null;
-    popularity: number | null;
-    format: string | null;
-    season: string | null;
-    seasonYear: number | null;
-    status: 'FINISHED' | 'RELEASING' | 'NOT_YET_RELEASED' | 'CANCELLED' | 'HIATUS' | string;
-    source: string | null;
-    genres: string[];
-    duration: number | null;
-    startDate: FuzzyDate | null;
-    endDate: FuzzyDate | null;
-    rankings: AnimeRanking[];
-    characters: Characters | null;
-    relations: Relations | null;
-    studios: Studios | null;
-    trailer: Trailer | null;
-    siteUrl: string | null;
-    nextAiringEpisode: AiringSchedule | null;
-    _stale?: boolean;
-    _error?: string;
-    _cachedAt?: number;
-}
-
-export interface AutocompleteMedia {
-    id: number;
-    title: AnimeTitle;
-    format: string | null;
-    status: string;
-    seasonYear: number | null;
-    averageScore: number | null;
-}
-
-interface PageResponse<T> {
-    Page: {
-        media: T[];
-    };
-}
-
-interface MediaResponse {
-    Media: AnimeMedia | null;
-}
-
-interface GracefulDegradationContext {
-    cachedResult?: AnimeMedia;
-    cachedAt?: number;
-}
+import type {
+    AnimeMedia,
+    AnimeTitle,
+    CoverImage,
+    FuzzyDate,
+    AiringSchedule,
+    CharacterEdge,
+    RelationEdge,
+    Trailer
+} from '../../types/api/anime.js';
+import type {
+    AutocompleteMedia,
+    PageResponse,
+    MediaResponse,
+    GracefulDegradationContext
+} from '../../types/api/services/anilist-service.js';
+export { type AnimeMedia, type AnimeTitle, type CoverImage, type FuzzyDate, type AiringSchedule, type CharacterEdge, type RelationEdge, type Trailer, type AutocompleteMedia };
 // ANILIST SERVICE CLASS
 class AnilistService {
     private client: GraphQLClient;
@@ -506,3 +394,6 @@ const anilistService = new AnilistService();
 
 export { anilistService, AnilistService };
 export default anilistService;
+
+
+

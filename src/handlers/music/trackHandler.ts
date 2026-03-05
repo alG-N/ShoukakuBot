@@ -26,7 +26,7 @@ import * as embeds from './trackEmbeds.js';
 import * as buttons from './trackButtons.js';
 
 // Re-export all types and constants for backward compatibility
-export type { Track, LoopMode, SourcePlatform, NowPlayingOptions, ControlButtonsOptions, QueueListOptions, InfoEmbedType } from './trackTypes.js';
+export { type Track, type LoopMode, type SourcePlatform, type NowPlayingOptions, type ControlButtonsOptions, type QueueListOptions, type InfoEmbedType } from './trackTypes.js';
 export { COLORS, LOOP_DISPLAY } from './trackTypes.js';
 
 /**
@@ -121,3 +121,6 @@ export default trackHandler;
 
 // Export class for type usage
 export { TrackHandler };
+
+
+

@@ -6,112 +6,22 @@
 
 import { EmbedBuilder } from 'discord.js';
 import anilistService from '../../services/api/anilistService.js';
+import type { AnimeMedia } from '../../types/api/anime.js';
+import type { AnimeContentSource as MediaSource, MALMediaType as AnimeMediaType } from '../../types/api/mal.js';
+import type {
+    MediaConfig,
+    MediaDate,
+    MediaTitle,
+    MediaImage,
+    MediaTrailer,
+    MediaStudio,
+    MediaRelation,
+    MediaCharacter,
+    MediaRanking
+} from '../../types/api/handlers/anime-handler.js';
 // TYPES & INTERFACES
-interface MediaConfig {
-    emoji: string;
-    color: string;
-    label: string;
-}
-
-interface MediaDate {
-    year?: number | null;
-    month?: number | null;
-    day?: number | null;
-}
-
-interface MediaTitle {
-    romaji?: string;
-    english?: string;
-    native?: string;
-}
-
-interface MediaImage {
-    large?: string;
-    color?: string;
-}
-
-interface MediaTrailer {
-    id?: string | null;
-    site?: string | null;
-}
-
-interface MediaStudio {
-    name: string;
-}
-
-interface MediaRelation {
-    node: {
-        id?: number;
-        title: MediaTitle;
-        siteUrl: string;
-        type?: string;
-        status?: string;
-        averageScore?: number | null;
-    };
-    relationType: string;
-}
-
-interface MediaCharacter {
-    node: {
-        name: {
-            full: string;
-        };
-    };
-}
-
-interface MediaRanking {
-    type: string;
-    rank: number;
-    allTime: boolean;
-}
-
-interface AiringSchedule {
-    episode: number;
-    airingAt: number;
-}
-
-interface AnimeMedia {
-    title: MediaTitle;
-    description?: string;
-    startDate?: MediaDate;
-    endDate?: MediaDate;
-    episodes?: number;
-    duration?: number;
-    status?: string;
-    format?: string;
-    source?: string;
-    averageScore?: number;
-    siteUrl: string;
-    coverImage?: MediaImage;
-    nextAiringEpisode?: AiringSchedule;
-    relations?: { edges: MediaRelation[] };
-    characters?: { edges: MediaCharacter[] };
-    rankings?: MediaRanking[];
-    trailer?: MediaTrailer;
-    genres?: string[];
-    studios?: { nodes: MediaStudio[] };
-    // MAL specific fields
-    score?: number;
-    members?: number;
-    favorites?: number;
-    rank?: number;
-    popularity_rank?: number;
-    scoredBy?: number;
-    rating?: string;
-    broadcast?: string;
-    // Manga specific fields
-    chapters?: number;
-    volumes?: number;
-    authors?: Array<{ name: string; role: string }>;
-    serialization?: string[];
-    themes?: string[];
-    demographics?: string[];
-}
-
-type MediaSource = 'anilist' | 'mal';
-type MediaType = 'anime' | 'manga' | 'lightnovel' | 'webnovel' | 'oneshot';
 // CONSTANTS
-const MEDIA_CONFIG: Record<MediaType, MediaConfig> = {
+const MEDIA_CONFIG: Record<AnimeMediaType, MediaConfig> = {
     anime: { emoji: '📺', color: '#3498db', label: 'Anime' },
     manga: { emoji: '📚', color: '#e74c3c', label: 'Manga' },
     lightnovel: { emoji: '📖', color: '#9b59b6', label: 'Light Novel' },
@@ -138,7 +48,7 @@ function formatNumber(num: number): string {
 async function createMediaEmbed(
     media: AnimeMedia, 
     source: MediaSource = 'anilist', 
-    mediaType: MediaType = 'anime'
+    mediaType: AnimeMediaType = 'anime'
 ): Promise<EmbedBuilder> {
     if (source === 'mal' && mediaType !== 'anime') {
         return createMALMangaEmbed(media, mediaType);
@@ -186,7 +96,7 @@ async function createAniListEmbed(anime: AnimeMedia): Promise<EmbedBuilder> {
     }
 
     const relatedEntries = anilistService.formatRelatedEntries(anime.relations?.edges as any);
-    const mainCharacters = anime.characters?.edges?.map((c: MediaCharacter) => c.node.name.full).join(', ') || 'N/A';
+    const mainCharacters = anime.characters?.edges?.map(c => c.node.name.full || 'Unknown').join(', ') || 'N/A';
 
     const rankingObj = anime.rankings?.find((r: MediaRanking) => r.type === 'RATED' && r.allTime);
     const rankings = rankingObj ? `#${rankingObj.rank}` : '#??? (No Info)';
@@ -273,7 +183,7 @@ async function createMALAnimeEmbed(anime: AnimeMedia): Promise<EmbedBuilder> {
 /**
  * Create MAL manga/lightnovel/webnovel embed
  */
-async function createMALMangaEmbed(manga: AnimeMedia, mediaType: MediaType = 'manga'): Promise<EmbedBuilder> {
+async function createMALMangaEmbed(manga: AnimeMedia, mediaType: AnimeMediaType = 'manga'): Promise<EmbedBuilder> {
     const config = MEDIA_CONFIG[mediaType] || MEDIA_CONFIG.manga;
     const title = manga.title.romaji || manga.title.english || manga.title.native || 'Unknown';
     const description = manga.description
@@ -348,11 +258,10 @@ export {
     createMALMangaEmbed
 };
 
-export type {
-    AnimeMedia,
-    MediaSource,
-    MediaType,
-    MediaConfig,
-    MediaTitle,
-    MediaDate
-};
+export { type AnimeMedia, type MediaSource, type AnimeMediaType as MediaType, type MediaConfig, type MediaTitle, type MediaDate };
+
+export { type MediaImage, type MediaTrailer, type MediaStudio, type MediaRelation, type MediaCharacter, type MediaRanking } from '../../types/api/handlers/anime-handler.js';
+
+
+
+

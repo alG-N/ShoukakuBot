@@ -6,25 +6,10 @@
  */
 
 import { EventEmitter } from 'events';
-import { MusicEvents, type MusicTrack } from './MusicEvents.js';
+import { MusicEvents, MusicTrack } from './MusicEvents.js';
 import logger from '../../../core/Logger.js';
-// TYPES
-interface EventStats {
-    totalEvents: number;
-    activeGuilds: number;
-    listenerCount: number;
-    eventCounts: Record<string, number>;
-}
-
-interface EventData {
-    guildId?: string;
-    track?: MusicTrack | null;
-    tracks?: MusicTrack[];
-    reason?: string;
-    error?: Error | string;
-    lastTrack?: MusicTrack | null;
-    [key: string]: unknown;
-}
+import type { MusicEventData as EventData } from '../../../types/music/infrastructure.js';
+import type { EventStats } from '../../../types/music/event-bus.js';
 // MUSIC EVENT BUS CLASS
 class MusicEventBus extends EventEmitter {
     /** Guild-specific listeners */
@@ -291,3 +276,5 @@ const musicEventBus = new MusicEventBus();
 
 export { MusicEventBus };
 export default musicEventBus;
+
+

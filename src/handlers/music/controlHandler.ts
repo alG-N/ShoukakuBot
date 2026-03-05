@@ -11,18 +11,11 @@ import { checkSameVoiceChannel } from '../../middleware/voiceChannelCheck.js';
 import { music } from '../../config/index.js';
 import { musicFacade as musicService } from '../../services/music/core/MusicFacade.js';
 import logger from '../../core/Logger.js';
-
-// Use any for Track type - different but runtime compatible
-type Track = any;
+import type { Track } from '../../types/music/track.js';
 
 // Import voting constants from config
 const { minVotesRequired: MIN_VOTES_REQUIRED = 5 } = music.voting || {};
 const SKIP_VOTE_TIMEOUT = 15000;
-export interface VoteResult {
-    added: boolean;
-    voteCount: number;
-    required: number;
-}
 export const controlHandler = {
     async handleStop(interaction: ChatInputCommandInteraction, guildId: string): Promise<void> {
         if (!musicService.isConnected(guildId)) {

@@ -6,12 +6,7 @@
 
 import { PermissionFlagsBits } from 'discord.js';
 import type { GuildMember } from 'discord.js';
-
-// Types
-export interface ModerateResult {
-    allowed: boolean;
-    reason?: string;
-}
+import type { ModerateResult } from '../types/middleware/permissions.js';
 
 /**
  * Check if user has required permissions
@@ -76,3 +71,6 @@ export const validators = {
     canModerate,
     botCanModerate
 };
+
+export { type ModerateResult };
+

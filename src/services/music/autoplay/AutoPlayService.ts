@@ -10,37 +10,7 @@ import lavalinkService from '../core/LavalinkService.js';
 import { queueService } from '../queue/index.js';
 import logger from '../../../core/Logger.js';
 import type { MusicTrack, TrackInfo } from '../events/MusicEvents.js';
-
-// TYPES
-
-interface SearchStrategy {
-    name: string;
-    query: string;
-    /** Higher weight = higher priority (tried first) */
-    weight: number;
-    /** Strategy category for diversity */
-    category: 'artist' | 'genre' | 'mood' | 'discovery' | 'related' | 'context';
-}
-
-interface GenrePattern {
-    pattern: RegExp;
-    genre: string;
-    /** Related genres for cross-recommendations */
-    related: string[];
-}
-
-interface ListeningProfile {
-    /** Top genres detected from history */
-    genres: Map<string, number>;
-    /** Top artists from history */
-    artists: Map<string, number>;
-    /** Detected mood/energy (chill, energetic, mixed) */
-    mood: string;
-    /** Average track duration in seconds */
-    avgDuration: number;
-    /** Language hints */
-    language: string;
-}
+import type { SearchStrategy, GenrePattern, ListeningProfile } from '../../../types/music/autoplay.js';
 
 // Expanded genre patterns with related genres for cross-recommendations
 const GENRE_PATTERNS: GenrePattern[] = [
@@ -880,3 +850,4 @@ const autoPlayService = new AutoPlayService();
 
 export { AutoPlayService };
 export default autoPlayService;
+

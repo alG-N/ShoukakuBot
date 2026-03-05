@@ -24,11 +24,11 @@ import {
     RoleSelectMenuInteraction,
     Message
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import logger from '../../core/Logger.js';
 import _GuildSettingsService, { DEFAULT_GUILD_SETTINGS } from '../../services/guild/GuildSettingsService.js';
-import { autoModService as _autoModService, lockdownService as _lockdownService, antiRaidService as _antiRaidService, modLogService as _modLogService, type AutoModSettings } from '../../services/moderation/index.js';
+import { autoModService as _autoModService, lockdownService as _lockdownService, antiRaidService as _antiRaidService, modLogService as _modLogService, AutoModSettings } from '../../services/moderation/index.js';
 
 class SettingCommand extends BaseCommand {
     constructor() {
@@ -407,3 +407,4 @@ class SettingCommand extends BaseCommand {
 }
 
 export default new SettingCommand();
+

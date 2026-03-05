@@ -8,63 +8,14 @@
 import postgres from '../../database/postgres.js';
 import cacheService from '../CacheService.js';
 import logger from '../../core/Logger.js';
-// Types
-export interface UserPreferences {
-    defaultVolume: number;
-    autoPlay: boolean;
-    announceTrack: boolean;
-    compactMode: boolean;
-    djMode: boolean;
-    maxTrackDuration: number;
-    maxQueueSize: number;
-    preferredSource: string;
-    showThumbnails: boolean;
-    autoLeaveEmpty: boolean;
-    voteSkipEnabled: boolean;
-    updatedAt: number;
-    lastAccessed?: number;
-}
-
-export interface FavoriteTrack {
-    url: string;
-    title: string;
-    author?: string;
-    duration?: number;
-    thumbnail?: string;
-    addedAt: number;
-}
-
-export interface HistoryTrack {
-    url: string;
-    title: string;
-    author?: string;
-    duration?: number;
-    thumbnail?: string;
-    playedAt: number;
-}
-
-export interface FavoritesEntry {
-    tracks: FavoriteTrack[];
-    _lastAccessed: number;
-}
-
-export interface HistoryEntry {
-    tracks: HistoryTrack[];
-    _lastAccessed: number;
-}
-
-export interface AddFavoriteResult {
-    success: boolean;
-    message?: string;
-    count?: number;
-}
-
-export interface UserMusicStats {
-    preferences: number;
-    favorites: number;
-    history: number;
-    maxUsers: number;
-}
+import type {
+    UserPreferences,
+    FavoriteTrack,
+    HistoryTrack,
+    AddFavoriteResult,
+    UserMusicStats
+} from '../../types/music/preferences.js';
+export { type UserPreferences, type FavoriteTrack, type HistoryTrack, type FavoritesEntry, type HistoryEntry, type AddFavoriteResult, type UserMusicStats } from '../../types/music/preferences.js';
 // UserMusicCache Class — PostgreSQL-backed, CacheService-cached
 class UserMusicCache {
     private readonly CACHE_NS = 'music';
@@ -526,3 +477,6 @@ class UserMusicCache {
 
 export const userMusicCache = new UserMusicCache();
 export default userMusicCache;
+
+
+

@@ -7,22 +7,7 @@
 import postgres, { initializeDatabase, isDatabaseReady } from './postgres.js';
 
 // RE-EXPORTS FROM POSTGRES
-export {
-    initializeDatabase,
-    isDatabaseReady,
-    ALLOWED_TABLES,
-    TRANSIENT_ERROR_CODES,
-    validateTable,
-    validateIdentifier,
-    PostgresDatabase,
-    type AllowedTable,
-    type RetryConfig,
-    type QueryOptions,
-    type DatabaseStatus,
-    type WriteQueueEntry,
-    type QueuedResponse,
-    type TransactionCallback
-} from './postgres.js';
+export * from './postgres.js';
 
 // DIRECT MODULE ACCESS
 export { postgres };
@@ -45,3 +30,4 @@ export const deleteRows = postgres.delete.bind(postgres);
 
 // DEFAULT EXPORT
 export default postgres;
+

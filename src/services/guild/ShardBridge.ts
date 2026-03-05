@@ -13,45 +13,12 @@
 import { EventEmitter } from 'events';
 import type { Client } from 'discord.js';
 import logger from '../../core/Logger.js';
-
-// ═══════════════════════════════════════════════════════════════
-// TYPES
-// ═══════════════════════════════════════════════════════════════
-
-export interface ShardMessage {
-    type: string;
-    shardId: number;
-    requestId?: string;
-    data?: unknown;
-    timestamp: number;
-}
-
-export interface ShardRequest {
-    type: string;
-    data?: unknown;
-    timeout?: number;
-}
-
-export interface ShardResponse {
-    shardId: number;
-    data: unknown;
-    error?: string;
-}
-
-export interface AggregateStats {
-    totalGuilds: number;
-    totalUsers: number;
-    totalChannels: number;
-    totalVoiceConnections: number;
-    shardCount: number;
-    shards: Array<{
-        id: number;
-        guilds: number;
-        users: number;
-        ping: number;
-        uptime: number;
-    }>;
-}
+import type {
+    ShardMessage,
+    ShardRequest,
+    ShardResponse,
+    AggregateStats
+} from '../../types/guild/shard-bridge.js';
 
 // ═══════════════════════════════════════════════════════════════
 // SHARD BRIDGE CLASS
@@ -513,3 +480,4 @@ const shardBridge = new ShardBridge();
 
 export default shardBridge;
 export { ShardBridge };
+export { type ShardMessage, type ShardRequest, type ShardResponse, type AggregateStats };

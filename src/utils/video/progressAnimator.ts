@@ -4,45 +4,14 @@
  */
 
 import { EventEmitter } from 'events';
-// TYPES
-interface AnimationFrames {
-    [key: string]: string[];
-}
-
-interface ProgressStyle {
-    filled: string;
-    empty: string;
-    length: number;
-}
-
-interface ProgressStyles {
-    [key: string]: ProgressStyle;
-}
-
-interface StatusIcons {
-    [key: string]: string;
-}
-
-interface DetailedProgressOptions {
-    percent?: number;
-    downloaded?: number;
-    total?: number;
-    speed?: number;
-    eta?: number;
-    style?: string;
-}
-
-interface StepInfo {
-    name: string;
-    status: string;
-    detail?: string;
-}
-
-interface PlatformStyle {
-    color: string;
-    emoji: string;
-    gradient: string[];
-}
+import type {
+    AnimationFrames,
+    ProgressStyles,
+    StatusIcons,
+    DetailedProgressOptions,
+    StepInfo,
+    PlatformStyle,
+} from '../../types/video/progress-animator.js';
 // PROGRESS ANIMATOR CLASS
 class ProgressAnimator extends EventEmitter {
     private animations: AnimationFrames;
@@ -248,4 +217,7 @@ class ProgressAnimator extends EventEmitter {
 const progressAnimator = new ProgressAnimator();
 export default progressAnimator;
 export { ProgressAnimator };
-export type { DetailedProgressOptions, StepInfo, PlatformStyle };
+export { type DetailedProgressOptions, type StepInfo, type PlatformStyle };
+
+
+

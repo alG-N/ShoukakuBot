@@ -4,6 +4,23 @@
  * @module services/music/events/MusicEvents
  */
 
+import type { MusicTrack } from '../../../types/music/events.js';
+import type {
+    TrackEventData,
+    PlaybackEventData,
+    QueueEventData,
+    VoiceEventData,
+    AutoPlayEventData,
+    SkipVoteEventData,
+    NowPlayingEventData,
+    SystemEventData
+} from '../../../types/music/session.js';
+import type { MusicEventName } from '../../../types/music/events-constants.js';
+export { type TrackInfo } from '../../../types/music/track.js';
+export { type MusicTrack } from '../../../types/music/events.js';
+export { type TrackEventData, type PlaybackEventData, type QueueEventData, type VoiceEventData, type AutoPlayEventData, type SkipVoteEventData, type NowPlayingEventData, type SystemEventData } from '../../../types/music/session.js';
+export { type MusicEventName } from '../../../types/music/events-constants.js';
+
 export const MusicEvents = {
     // TRACK LIFECYCLE EVENTS
     /** Emitted when a track starts playing */
@@ -118,102 +135,9 @@ export const MusicEvents = {
     DEBUG: 'system:debug'
 } as const;
 
-// Type for event names
-export type MusicEventName = typeof MusicEvents[keyof typeof MusicEvents];
-
-// Event data types
-export interface TrackEventData {
-    guildId: string;
-    track?: MusicTrack | null;
-    reason?: string;
-    error?: string;
-    threshold?: number;
-}
-
-export interface PlaybackEventData {
-    guildId: string;
-    paused?: boolean;
-    volume?: number;
-    position?: number;
-}
-
-export interface QueueEventData {
-    guildId: string;
-    track?: MusicTrack;
-    tracks?: MusicTrack[];
-    count?: number;
-    index?: number;
-    position?: string | number;
-    fromIndex?: number;
-    toIndex?: number;
-}
-
-export interface VoiceEventData {
-    guildId: string;
-    voiceChannelId?: string;
-    textChannelId?: string;
-    reason?: string;
-    code?: number;
-}
-
-export interface AutoPlayEventData {
-    guildId: string;
-    track?: MusicTrack;
-    basedOn?: MusicTrack;
-    enabled?: boolean;
-    error?: string;
-}
-
-export interface SkipVoteEventData {
-    guildId: string;
-    userId?: string;
-    required?: number;
-    current?: number;
-}
-
-export interface NowPlayingEventData {
-    guildId: string;
-    track?: MusicTrack;
-    loopCount?: number;
-}
-
-export interface SystemEventData {
-    guildId?: string;
-    error?: Error | string;
-    reason?: string;
-    message?: string;
-}
-
 // Music track interface (placeholder - should match actual track structure)
-export interface MusicTrack {
-    track?: {
-        encoded?: string;
-        info?: TrackInfo;
-    };
-    encoded?: string;
-    url?: string;
-    title?: string;
-    lengthSeconds?: number;
-    thumbnail?: string | null;
-    author?: string;
-    requestedBy?: unknown;
-    source?: string;
-    viewCount?: number | null;
-    identifier?: string;
-    info?: TrackInfo;
-    searchedByLink?: boolean;
-    originalQuery?: string | null;
-}
-
-export interface TrackInfo {
-    title?: string;
-    author?: string;
-    uri?: string;
-    length?: number;
-    identifier?: string;
-    sourceName?: string;
-    artworkUrl?: string;
-    viewCount?: number;
-}
-
 export default MusicEvents;
+
+
+
+

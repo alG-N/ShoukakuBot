@@ -8,10 +8,9 @@ import { ChatInputCommandInteraction } from 'discord.js';
 import { trackHandler } from './trackHandler.js';
 import { checkVoiceChannel, checkVoicePermissions } from '../../middleware/voiceChannelCheck.js';
 import { musicFacade as musicService } from '../../services/music/core/MusicFacade.js';
+import type { Track } from '../../types/music/track.js';
+import type { FavoritesSubcommand } from '../../types/music/handlers.js';
 
-// Use any for Track type - different but runtime compatible
-type Track = any;
-export type FavoritesSubcommand = 'list' | 'play' | 'remove' | 'clear';
 export const favoritesHandler = {
     async handleFavorites(interaction: ChatInputCommandInteraction, subcommand: FavoritesSubcommand, userId: string): Promise<void> {
         switch (subcommand) {
@@ -124,3 +123,4 @@ export const favoritesHandler = {
 };
 
 export default favoritesHandler;
+

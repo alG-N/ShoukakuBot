@@ -12,21 +12,10 @@ import {
     User,
     Guild
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import logger from '../../core/Logger.js';
 import { infractionService as _infractionSvc } from '../../services/moderation/index.js';
-interface InfractionService {
-    getWarningCount?: (guildId: string, userId: string) => Promise<number>;
-    clearWarnings?: (guildId: string, userId: string) => Promise<number>;
-    createInfraction?: (data: {
-        guild: Guild;
-        user: User;
-        moderator: User;
-        type: string;
-        reason: string;
-        metadata?: Record<string, unknown>;
-    }) => Promise<unknown>;
-}
+import type { InfractionService } from '../../types/moderation/services.js';
 
 
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
@@ -123,3 +112,4 @@ class ClearWarnsCommand extends BaseCommand {
 }
 
 export default new ClearWarnsCommand();
+

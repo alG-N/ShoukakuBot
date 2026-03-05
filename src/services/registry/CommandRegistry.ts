@@ -4,29 +4,19 @@
  * @module services/registry/CommandRegistry
  */
 
-import { Collection, type Client as DiscordClient } from 'discord.js';
+import { Collection, Client as DiscordClient } from 'discord.js';
 import logger from '../../core/Logger.js';
-// TYPES
-interface Command {
-    data: {
-        name: string;
-        toJSON?: () => unknown;
-    };
-    execute: (interaction: unknown) => Promise<void>;
-    category?: string;
-    modalHandler?: (interaction: unknown) => Promise<void>;
-    autocomplete?: (interaction: unknown) => Promise<void>;
-}
+import type { RegistryCommand } from '../../types/core/registry.js';
 
 // COMMAND REGISTRY CLASS
 class CommandRegistry {
-    public commands: Collection<string, Command> = new Collection();
-    public modalHandlers: Map<string, Command> = new Map();
+    public commands: Collection<string, RegistryCommand> = new Collection();
+    public modalHandlers: Map<string, RegistryCommand> = new Map();
 
     /**
      * Load commands from all sources
      */
-    async loadCommands(): Promise<Collection<string, Command>> {
+    async loadCommands(): Promise<Collection<string, RegistryCommand>> {
         logger.info('CommandRegistry', 'Loading commands...');
 
         // Load all commands from commands/ folder
@@ -50,7 +40,7 @@ class CommandRegistry {
                 const commandExports = (commands.default || commands) as Record<string, unknown>;
 
                 for (const [_name, command] of Object.entries(commandExports)) {
-                    const cmd = (command as { default?: Command }).default || command as Command;
+                    const cmd = (command as { default?: RegistryCommand }).default || command as RegistryCommand;
                     if (cmd?.data?.name) {
                         this.commands.set(cmd.data.name, cmd);
                         logger.info('CommandRegistry', `Loaded: ${cmd.data.name} (${category})`);
@@ -70,7 +60,7 @@ class CommandRegistry {
     /**
      * Get a command by name
      */
-    get(name: string): Command | undefined {
+    get(name: string): RegistryCommand | undefined {
         return this.commands.get(name);
     }
 
@@ -96,14 +86,14 @@ class CommandRegistry {
     /**
      * Get modal handler for a command
      */
-    getModalHandler(commandName: string): Command | undefined {
+    getModalHandler(commandName: string): RegistryCommand | undefined {
         return this.modalHandlers.get(commandName);
     }
 
     /**
      * Get commands by category
      */
-    getByCategory(category: string): Command[] {
+    getByCategory(category: string): RegistryCommand[] {
         return [...this.commands.values()].filter(cmd =>
             cmd.category?.toLowerCase() === category.toLowerCase()
         );
@@ -119,7 +109,7 @@ class CommandRegistry {
     /**
      * Iterator for commands
      */
-    [Symbol.iterator](): IterableIterator<[string, Command]> {
+    [Symbol.iterator](): IterableIterator<[string, RegistryCommand]> {
         return this.commands[Symbol.iterator]();
     }
 
@@ -140,4 +130,8 @@ export { CommandRegistry };
 export default commandRegistry;
 
 // Type export for client usage
-export type { Command };
+export { type RegistryCommand };
+
+
+
+

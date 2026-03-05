@@ -4,22 +4,8 @@
  */
 
 import { AppError } from './AppError.js';
-
-/**
- * Music error codes
- */
-export type MusicErrorCode =
-    | 'MUSIC_ERROR'
-    | 'NO_VOICE_CHANNEL'
-    | 'DIFFERENT_VOICE_CHANNEL'
-    | 'NO_PLAYER'
-    | 'EMPTY_QUEUE'
-    | 'TRACK_NOT_FOUND'
-    | 'LAVALINK_NOT_READY'
-    | 'QUEUE_FULL'
-    | 'TRACK_TOO_LONG'
-    | 'DJ_ONLY'
-    | 'VOICE_PERMISSION';
+import type { MusicErrorCode } from '../types/errors/music-error.js';
+export { type MusicErrorCode } from '../types/errors/music-error.js';
 
 /**
  * Base music error - use only for catch blocks or instanceof checks.
@@ -31,3 +17,4 @@ export class MusicError extends AppError {
         super(message, code, 400);
     }
 }
+

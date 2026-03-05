@@ -7,59 +7,16 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import logger from '../../core/Logger.js';
 import pixivService from '../../services/api/pixivService.js';
+import type {
+    PixivContentUser,
+    PixivItem,
+    ContentEmbedOptions,
+    ContentEmbedResult,
+    BuildEmbedOptions
+} from '../../types/api/handlers/pixiv-handler.js';
+import type { PixivTag } from '../../types/api/pixiv.js';
+export { type PixivItem, type PixivTag, type PixivContentUser, type ContentEmbedOptions, type ContentEmbedResult, type BuildEmbedOptions };
 // TYPES & INTERFACES
-interface PixivTag {
-    name: string;
-    translated_name?: string;
-}
-
-interface PixivUser {
-    id: number;
-    name: string;
-}
-
-interface PixivImageUrls {
-    large?: string;
-    medium?: string;
-    square_medium?: string;
-}
-
-interface PixivItem {
-    id: number;
-    title: string;
-    user: PixivUser;
-    tags?: PixivTag[];
-    page_count: number;
-    x_restrict: number; // 0 = SFW, 1 = R18, 2 = R18G
-    illust_ai_type?: number; // 2 = AI generated
-    type?: string; // 'illust', 'manga', 'ugoira'
-    total_view?: number;
-    total_bookmarks?: number;
-    create_date: string;
-    image_urls?: PixivImageUrls;
-    text?: string; // For novels
-    text_length?: number; // For novels
-}
-
-interface ContentEmbedOptions {
-    resultIndex?: number;
-    totalResults?: number;
-    searchPage?: number;
-    cacheKey?: string;
-    contentType?: 'illust' | 'novel';
-    hasNextPage?: boolean;
-    shouldTranslate?: boolean;
-    originalQuery?: string;
-    translatedQuery?: string;
-    mangaPageIndex?: number;
-    sortMode?: string;
-    showNsfw?: boolean;
-}
-
-interface ContentEmbedResult {
-    embed: EmbedBuilder;
-    rows: ActionRowBuilder<ButtonBuilder>[];
-}
 // CONSTANTS
 const SORT_MODE_TEXT: Record<string, string> = {
     'popular': '🔥 Popular',
@@ -203,20 +160,6 @@ async function createContentEmbed(
     return { embed, rows };
 }
 
-interface BuildEmbedOptions {
-    sortModeText: string;
-    nsfwStatus: string;
-    aiStatus: string;
-    searchPage: number;
-    resultIndex: number;
-    totalResults: number;
-    shouldTranslate: boolean;
-    originalQuery: string;
-    views: number;
-    bookmarks: number;
-    bookmarkRate: string;
-    mangaPageIndex?: number;
-}
 
 async function buildNovelEmbed(
     embed: EmbedBuilder, 
@@ -379,10 +322,6 @@ export {
     createErrorEmbed
 };
 
-export type {
-    PixivItem,
-    PixivTag,
-    PixivUser,
-    ContentEmbedOptions,
-    ContentEmbedResult
-};
+
+
+

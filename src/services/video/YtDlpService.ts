@@ -9,76 +9,17 @@ import * as path from 'path';
 import { EventEmitter } from 'events';
 import * as videoConfig from '../../config/features/video.js';
 import logger from '../../core/Logger.js';
-
-// ── Types ──
-interface VideoInfo {
-    title: string;
-    duration: number;
-    filesize?: number;
-    uploader?: string;
-    thumbnail?: string;
-    url?: string;
-}
-
-interface DownloadOptions {
-    quality?: string;
-}
-
-interface ProgressData {
-    percent: number;
-    total: number;
-    downloaded: number;
-    speed: string | null;
-    eta: string | null;
-}
-
-interface StageData {
-    stage: string;
-    message: string;
-}
-
-interface CompleteData {
-    path: string;
-    size: number;
-}
-
-interface VideoConfigType {
-    MAX_VIDEO_DURATION_SECONDS?: number;
-    MAX_FILE_SIZE_MB?: number;
-    YTDLP_VIDEO_QUALITY?: string;
-    COBALT_VIDEO_QUALITY?: string;
-    MAX_RETRIES?: number;
-    FRAGMENT_RETRIES?: number;
-    network?: {
-        maxRetries?: number;
-        fragmentRetries?: number;
-    };
-}
-
-interface ApiDownloadResponse {
-    filename: string;
-    size_mb: number;
-    duration: number;
-    title: string;
-    format: string;
-}
-
-interface ApiInfoResponse {
-    title: string;
-    duration: number;
-    filesize?: number;
-    uploader?: string;
-    thumbnail?: string;
-    url?: string;
-}
-
-interface ApiHealthResponse {
-    status: string;
-    version: string;
-    active_downloads: number;
-    max_concurrent: number;
-    disk_free_mb: number;
-}
+import type { VideoConfigType } from '../../types/video/processing.js';
+import type {
+    VideoInfo,
+    YtDlpCompleteData,
+    ApiDownloadResponse,
+    ApiInfoResponse,
+    ApiHealthResponse,
+    DownloadOptions,
+    ProgressData,
+    StageData
+} from '../../types/video/ytdlp-service.js';
 
 const config = videoConfig as unknown as VideoConfigType;
 
@@ -234,7 +175,7 @@ class YtDlpService extends EventEmitter {
         this.emit('complete', {
             path: finalPath,
             size: fileSizeInMB
-        } as CompleteData);
+        } as YtDlpCompleteData);
 
         return finalPath;
     }
@@ -316,5 +257,7 @@ class YtDlpService extends EventEmitter {
 const ytDlpService = new YtDlpService();
 
 export { YtDlpService };
-export type { VideoInfo, DownloadOptions, ProgressData, StageData, CompleteData };
+export { type VideoInfo, type DownloadOptions, type ProgressData, type StageData, type YtDlpCompleteData };
 export default ytDlpService;
+
+

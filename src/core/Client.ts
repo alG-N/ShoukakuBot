@@ -12,18 +12,7 @@ import {
     Options,
     PresenceStatusData
 } from 'discord.js';
-// TYPES
-export interface ClientStats {
-    guilds: number;
-    users: number;
-    channels: number;
-    memory: {
-        heapUsed: string;
-        heapTotal: string;
-        rss: string;
-    };
-    uptime: string;
-}
+import type { ClientStats } from '../types/core/client.js';
 // CLIENT CONFIGURATION
 /**
  * Client configuration optimized for 1000+ servers
@@ -129,5 +118,7 @@ export function getClientStats(client: Client): ClientStats {
     };
 }
 
+export { type ClientStats };
 // Re-export ActivityType for convenience
 export { ActivityType };
+

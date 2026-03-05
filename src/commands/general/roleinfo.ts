@@ -11,7 +11,7 @@ import {
     ChatInputCommandInteraction,
     Role
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 
 class RoleInfoCommand extends BaseCommand {
@@ -97,3 +97,4 @@ class RoleInfoCommand extends BaseCommand {
 }
 
 export default new RoleInfoCommand();
+

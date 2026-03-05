@@ -7,16 +7,21 @@
 import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
 import logger from '../../core/Logger.js';
 import cacheService from '../../cache/CacheService.js';
+import type { MALMediaType as MediaType, MALMediaTypeConfig as MediaTypeConfig } from '../../types/api/mal.js';
+import type {
+    MALAnimeData,
+    MALMangaData,
+    MALAutocompleteItem,
+    MALDate,
+    JikanAnimeData,
+    JikanMangaData,
+    JikanSearchResponse,
+    JikanSingleResponse
+} from '../../types/api/services/mal-service.js';
+export { type MALTitle, type MALCoverImage, type MALDate, type MALRanking, type MALRelatedNode, type MALRelationEdge, type MALRelations, type MALStudio, type MALStudios, type MALTrailer, type MALCharacters, type MALAnimeData, type MALAuthor, type MALMangaData, type MALAutocompleteItem } from '../../types/api/services/mal-service.js';
 // TYPES & INTERFACES
 // Jikan API v4 (unofficial MAL API)
 const JIKAN_BASE = 'https://api.jikan.moe/v4';
-
-type MediaType = 'anime' | 'manga' | 'lightnovel' | 'webnovel' | 'oneshot';
-
-interface MediaTypeConfig {
-    endpoint: 'anime' | 'manga';
-    typeFilter: string | null;
-}
 
 const MEDIA_TYPE_CONFIG: Record<MediaType, MediaTypeConfig> = {
     anime: { endpoint: 'anime', typeFilter: null },
@@ -25,278 +30,6 @@ const MEDIA_TYPE_CONFIG: Record<MediaType, MediaTypeConfig> = {
     webnovel: { endpoint: 'manga', typeFilter: 'webnovel' },
     oneshot: { endpoint: 'manga', typeFilter: 'oneshot' }
 };
-
-export interface MALTitle {
-    romaji: string | null;
-    english: string | null;
-    native: string | null;
-}
-
-export interface MALCoverImage {
-    large: string | null;
-    color: null;
-}
-
-export interface MALDate {
-    year: number;
-    month: number;
-    day: number;
-}
-
-export interface MALRanking {
-    rank: number;
-    type: string;
-    allTime: boolean;
-}
-
-export interface MALRelatedNode {
-    id: number;
-    title: { romaji: string; english: null };
-    type: string;
-}
-
-export interface MALRelationEdge {
-    relationType: string;
-    node: MALRelatedNode;
-}
-
-export interface MALRelations {
-    edges: MALRelationEdge[];
-}
-
-export interface MALStudio {
-    name: string;
-}
-
-export interface MALStudios {
-    nodes: MALStudio[];
-}
-
-export interface MALTrailer {
-    id: string;
-    site: string;
-}
-
-export interface MALCharacters {
-    edges: unknown[];
-}
-
-export interface MALAnimeData {
-    id: number;
-    source: string;
-    title: MALTitle;
-    coverImage: MALCoverImage;
-    description: string | null;
-    episodes: number | null;
-    averageScore: number | null;
-    popularity: number | null;
-    format: string | null;
-    season: string | null;
-    seasonYear: number | null;
-    status: string;
-    genres: string[];
-    duration: number | null;
-    startDate: MALDate | null;
-    endDate: MALDate | null;
-    rankings: MALRanking[];
-    characters: MALCharacters;
-    relations: MALRelations;
-    studios: MALStudios;
-    trailer: MALTrailer | null;
-    siteUrl: string;
-    nextAiringEpisode: null;
-    malId: number;
-    score: number | null;
-    scoredBy: number | null;
-    rank: number | null;
-    popularity_rank: number | null;
-    members: number | null;
-    favorites: number | null;
-    rating: string | null;
-    broadcast: string | null;
-    mediaType: 'anime';
-}
-
-export interface MALAuthor {
-    name: string;
-    role: string;
-}
-
-export interface MALMangaData {
-    id: number;
-    source: string;
-    mediaType: string;
-    title: MALTitle;
-    coverImage: MALCoverImage;
-    description: string | null;
-    chapters: number | null;
-    volumes: number | null;
-    averageScore: number | null;
-    popularity: number | null;
-    format: string | null;
-    status: string;
-    genres: string[];
-    themes: string[];
-    demographics: string[];
-    startDate: MALDate | null;
-    endDate: MALDate | null;
-    authors: MALAuthor[];
-    serialization: string[];
-    relations: MALRelations;
-    siteUrl: string;
-    malId: number;
-    score: number | null;
-    scoredBy: number | null;
-    rank: number | null;
-    popularity_rank: number | null;
-    members: number | null;
-    favorites: number | null;
-}
-
-export interface MALAutocompleteItem {
-    id: number;
-    title: {
-        romaji: string | null;
-        english: string | null;
-        japanese: string | null;
-    };
-    format: string | null;
-    status: string;
-    seasonYear: number | null;
-    startYear: number | null;
-    averageScore: number | null;
-}
-
-// Jikan API response types
-interface JikanImage {
-    image_url: string;
-    large_image_url?: string;
-}
-
-interface JikanImages {
-    jpg?: JikanImage;
-}
-
-interface JikanGenre {
-    mal_id: number;
-    name: string;
-}
-
-interface JikanStudio {
-    mal_id: number;
-    name: string;
-}
-
-interface JikanAired {
-    from?: string;
-    to?: string;
-}
-
-interface JikanPublished {
-    from?: string;
-    to?: string;
-}
-
-interface JikanTrailer {
-    youtube_id?: string;
-}
-
-interface JikanRelationEntry {
-    mal_id: number;
-    name: string;
-    type?: string;
-}
-
-interface JikanRelation {
-    relation: string;
-    entry: JikanRelationEntry[];
-}
-
-interface JikanAuthor {
-    name: string;
-    type: string;
-}
-
-interface JikanSerialization {
-    name: string;
-}
-
-interface JikanTheme {
-    name: string;
-}
-
-interface JikanDemographic {
-    name: string;
-}
-
-interface JikanBroadcast {
-    string?: string;
-}
-
-interface JikanAnimeData {
-    mal_id: number;
-    title: string;
-    title_english?: string;
-    title_japanese?: string;
-    images?: JikanImages;
-    synopsis?: string;
-    episodes?: number;
-    score?: number;
-    scored_by?: number;
-    rank?: number;
-    popularity?: number;
-    members?: number;
-    favorites?: number;
-    type?: string;
-    season?: string;
-    year?: number;
-    status?: string;
-    source?: string;
-    genres?: JikanGenre[];
-    duration?: string;
-    aired?: JikanAired;
-    studios?: JikanStudio[];
-    trailer?: JikanTrailer;
-    url?: string;
-    rating?: string;
-    broadcast?: JikanBroadcast;
-    relations?: JikanRelation[];
-}
-
-interface JikanMangaData {
-    mal_id: number;
-    title: string;
-    title_english?: string;
-    title_japanese?: string;
-    images?: JikanImages;
-    synopsis?: string;
-    chapters?: number;
-    volumes?: number;
-    score?: number;
-    scored_by?: number;
-    rank?: number;
-    popularity?: number;
-    members?: number;
-    favorites?: number;
-    type?: string;
-    status?: string;
-    genres?: JikanGenre[];
-    themes?: JikanTheme[];
-    demographics?: JikanDemographic[];
-    published?: JikanPublished;
-    authors?: JikanAuthor[];
-    serializations?: JikanSerialization[];
-    url?: string;
-    relations?: JikanRelation[];
-}
-
-interface JikanSearchResponse<T> {
-    data: T[];
-}
-
-interface JikanSingleResponse<T> {
-    data: T;
-}
 // MYANIMEIST SERVICE CLASS
 class MyAnimeListService {
     private readonly CACHE_NS = 'api:anime';
@@ -679,3 +412,7 @@ const myAnimeListService = new MyAnimeListService();
 
 export { myAnimeListService, MyAnimeListService };
 export default myAnimeListService;
+
+
+
+

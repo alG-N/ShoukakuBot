@@ -3,10 +3,24 @@
  * @module config/features/video
  */
 
+import type {
+    SmartRateLimitingConfig,
+    VideoCleanupConfig,
+    VideoFeatureConfig,
+    VideoLimitsConfig,
+    VideoMessagesConfig,
+    VideoMobileConfig,
+    VideoNetworkConfig,
+    VideoQualityConfig,
+    VideoUiConfig
+} from '../../types/config/video.js';
+
+export { type SmartRateLimitingConfig, type VideoCleanupConfig, type VideoFeatureConfig, type VideoLimitsConfig, type VideoMessagesConfig, type VideoMobileConfig, type VideoNetworkConfig, type VideoQualityConfig, type VideoUiConfig } from '../../types/config/video.js';
+
 // Quality settings
 export const COBALT_VIDEO_QUALITY = '720';
 export const YTDLP_VIDEO_QUALITY = '720';
-export const quality = {
+export const quality: VideoQualityConfig = {
     video: '720',
     audio: '192'
 };
@@ -20,7 +34,7 @@ export const MOBILE_PRESET = 'ultrafast';
 export const USE_HARDWARE_ACCEL = true;
 export const HARDWARE_ENCODERS = ['h264_nvenc', 'h264_qsv', 'h264_vaapi'];
 export const FFMPEG_THREADS = 0;
-export const mobile = {
+export const mobile: VideoMobileConfig = {
     enabled: true,
     videoCodec: 'libx264',
     audioCodec: 'aac',
@@ -35,7 +49,7 @@ export const MAX_FILE_SIZE_MB = 100;
 export const MAX_VIDEO_DURATION_SECONDS = 600;
 export const MAX_CONCURRENT_DOWNLOADS = 5;
 export const USER_COOLDOWN_SECONDS = 30;
-export const limits = {
+export const limits: VideoLimitsConfig = {
     maxFileSizeMB: 100,
     maxDurationSeconds: 600,
     maxConcurrentDownloads: 5,
@@ -43,7 +57,7 @@ export const limits = {
 };
 
 // Smart Rate Limiting
-export const smartRateLimiting = {
+export const smartRateLimiting: SmartRateLimitingConfig = {
     enabled: true,
     // Global limits
     globalMaxConcurrent: 10,
@@ -72,7 +86,7 @@ export const smartRateLimiting = {
 export const TEMP_FILE_CLEANUP_INTERVAL = 5 * 60 * 1000;
 export const TEMP_FILE_MAX_AGE = 15 * 60 * 1000;
 export const FILE_DELETE_DELAY = 5000;
-export const cleanup = {
+export const cleanup: VideoCleanupConfig = {
     tempFileInterval: 5 * 60 * 1000,
     tempFileMaxAge: 15 * 60 * 1000,
     fileDeleteDelay: 5000
@@ -82,7 +96,7 @@ export const cleanup = {
 export const DOWNLOAD_TIMEOUT = 120000;
 export const MAX_RETRIES = 5;
 export const FRAGMENT_RETRIES = 5;
-export const network = {
+export const network: VideoNetworkConfig = {
     downloadTimeout: 120000,
     maxRetries: 5,
     fragmentRetries: 5,
@@ -92,7 +106,7 @@ export const network = {
 };
 
 // UI
-export const ui = {
+export const ui: VideoUiConfig = {
     progressUpdateInterval: 1500,
     progressBarStyle: 'default',
     showDownloadSpeed: true,
@@ -102,7 +116,7 @@ export const ui = {
 };
 
 // Messages
-export const messages = {
+export const messages: VideoMessagesConfig = {
     downloadTip: ' *Tip: Lower quality = faster download & smaller file size*',
     successTip: '> *Video will be attached below* '
 };
@@ -122,7 +136,7 @@ export const COBALT_INSTANCES = process.env.COBALT_INSTANCES
         'http://localhost:9003'
     ];
 
-export default {
+const videoConfig: VideoFeatureConfig = {
     COBALT_VIDEO_QUALITY,
     YTDLP_VIDEO_QUALITY,
     quality,
@@ -154,3 +168,8 @@ export default {
     userAgent,
     COBALT_INSTANCES
 };
+
+export default videoConfig;
+
+
+

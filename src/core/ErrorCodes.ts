@@ -3,6 +3,7 @@
  * Centralized error codes for consistent error handling
  * @module core/ErrorCodes
  */
+import type { CoreErrorCode, ErrorCategory, ErrorMessages } from '../types/core/error-codes.js';
 // ERROR CODES
 /**
  * Error codes organized by domain
@@ -92,9 +93,7 @@ export const ErrorCodes = {
     UNSUPPORTED_FORMAT: 'UNSUPPORTED_FORMAT',
 } as const;
 
-export type ErrorCode = typeof ErrorCodes[keyof typeof ErrorCodes];
 // ERROR MESSAGES
-type ErrorMessages = Record<ErrorCode, string>;
 
 const ERROR_MESSAGES_EN: ErrorMessages = {
     // General
@@ -189,7 +188,7 @@ const ERROR_MESSAGES_EN: ErrorMessages = {
     UNSUPPORTED_FORMAT: 'Unsupported format.',
 };
 // ERROR CATEGORIES
-const ERROR_CATEGORIES: Record<string, ErrorCode[]> = {
+const ERROR_CATEGORIES: Record<string, CoreErrorCode[]> = {
     GENERAL: ['INTERNAL_ERROR', 'INVALID_INPUT', 'NOT_FOUND', 'UNAUTHORIZED', 'RATE_LIMITED', 'TIMEOUT', 'DISABLED', 'MAINTENANCE'],
     USER: ['USER_NOT_FOUND', 'USER_IS_BOT', 'USER_IS_SELF', 'USER_IS_OWNER', 'USER_HIGHER_ROLE', 'USER_ALREADY_BANNED', 'USER_NOT_BANNED', 'USER_ALREADY_MUTED', 'USER_NOT_MUTED', 'USER_NOT_IN_VOICE', 'USER_IN_DIFFERENT_VOICE'],
     MODERATION: ['CANNOT_BAN', 'CANNOT_KICK', 'CANNOT_MUTE', 'CANNOT_WARN', 'CANNOT_DELETE', 'WARN_NOT_FOUND', 'CASE_NOT_FOUND', 'MUTE_ROLE_NOT_FOUND', 'MOD_LOG_NOT_FOUND', 'AUTOMOD_DISABLED', 'INVALID_DURATION'],
@@ -201,18 +200,20 @@ const ERROR_CATEGORIES: Record<string, ErrorCode[]> = {
     VIDEO: ['VIDEO_NOT_FOUND', 'VIDEO_TOO_LONG', 'VIDEO_TOO_LARGE', 'DOWNLOAD_FAILED', 'PROCESSING_FAILED', 'UNSUPPORTED_FORMAT'],
 };
 
-export type ErrorCategory = keyof typeof ERROR_CATEGORIES;
 // FUNCTIONS
 /**
  * Get user-friendly message for error code
  */
 export function getErrorMessage(code: string, _locale: string = 'en'): string {
-    return ERROR_MESSAGES_EN[code as ErrorCode] || 'An error occurred.';
+    return ERROR_MESSAGES_EN[code as CoreErrorCode] || 'An error occurred.';
 }
 
 /**
  * Check if error code belongs to a category
  */
 export function isErrorCategory(code: string, category: ErrorCategory): boolean {
-    return ERROR_CATEGORIES[category]?.includes(code as ErrorCode) || false;
+    return ERROR_CATEGORIES[category]?.includes(code as CoreErrorCode) || false;
 }
+
+export { type CoreErrorCode, type ErrorCategory, type ErrorMessages };
+

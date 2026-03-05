@@ -5,67 +5,21 @@
  * @module services/music/events/PlaybackEventHandler
  */
 
-import type { Message, ActionRowData, MessageActionRowComponentData, TextBasedChannel, TextChannel } from 'discord.js';
+import type { Message, MessageEditOptions, TextBasedChannel, TextChannel } from 'discord.js';
 import musicEventBus from './MusicEventBus.js';
-import { MusicEvents, type MusicTrack } from './MusicEvents.js';
+import { MusicEvents, MusicTrack } from './MusicEvents.js';
 import logger from '../../../core/Logger.js';
 import musicCache from '../../../cache/music/MusicCacheFacade.js';
 import type { MessageRef } from '../../../cache/music/QueueCache.js';
-import trackHandler, { type Track, type LoopMode } from '../../../handlers/music/trackHandler.js';
+import trackHandler, { type Track, LoopMode } from '../../../handlers/music/trackHandler.js';
 import { TRACK_TRANSITION_DELAY } from '../../../config/features/music.js';
+import type { PlayerLike, MusicEventData } from '../../../types/music/infrastructure.js';
+import type {
+    MessageComponents,
+    ServiceReferences,
+    EventData
+} from '../../../types/music/playback-handler.js';
 // TYPES
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type MessageComponents = any[];
-// TYPES
-interface ServiceReferences {
-    queueService?: QueueServiceLike;
-    playbackService?: PlaybackServiceLike;
-    voiceService?: VoiceServiceLike;
-    autoPlayService?: AutoPlayServiceLike;
-}
-
-interface QueueServiceLike {
-    getLoopMode(guildId: string): string;
-    getCurrentTrack(guildId: string): MusicTrack | null;
-    setCurrentTrack(guildId: string, track: MusicTrack | null): void;
-    getTracks(guildId: string): MusicTrack[];
-    getVolume(guildId: string): number;
-    isShuffled(guildId: string): boolean;
-    isAutoPlayEnabled(guildId: string): boolean;
-    addTrack(guildId: string, track: MusicTrack): void;
-    getNextTrack(guildId: string): MusicTrack | null;
-    resetLoopCount(guildId: string): void;
-}
-
-interface PlaybackServiceLike {
-    getPlayer(guildId: string): PlayerLike | null;
-    acquireTransitionLock(guildId: string, timeout: number): Promise<boolean>;
-    releaseTransitionLock(guildId: string): void;
-}
-
-interface VoiceServiceLike {
-    setInactivityTimer(guildId: string, callback: () => void): void;
-    clearInactivityTimer(guildId: string): void;
-    getListenerCount(guildId: string, guild: unknown): number;
-}
-
-interface AutoPlayServiceLike {
-    findSimilarTrack(guildId: string, lastTrack: MusicTrack): Promise<MusicTrack | null>;
-}
-
-interface PlayerLike {
-    playTrack(options: { track: { encoded: string } }): Promise<void>;
-}
-
-interface EventData {
-    guildId: string;
-    reason?: string;
-    error?: string;
-    lastTrack?: MusicTrack | null;
-    track?: MusicTrack | null;
-    loopCount?: number;
-    [key: string]: unknown;
-}
 // PLAYBACK EVENT HANDLER CLASS
 class PlaybackEventHandler {
     /** Cleanup handlers per guild */
@@ -574,4 +528,5 @@ const playbackEventHandler = new PlaybackEventHandler();
 
 export { PlaybackEventHandler };
 export default playbackEventHandler;
+
 

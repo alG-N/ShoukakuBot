@@ -11,39 +11,8 @@ import path from 'path';
 import { EventEmitter } from 'events';
 import * as videoConfig from '../../config/features/video.js';
 import logger from '../../core/Logger.js';
-// TYPES
-interface DownloadInfo {
-    url?: string;
-    filename?: string;
-    error?: string;
-}
-
-interface CobaltResponse {
-    status?: string;
-    url?: string;
-    filename?: string;
-    error?: { code?: string } | string;
-    text?: string;
-    picker?: Array<{ type?: string; url?: string; filename?: string }>;
-}
-
-interface ProgressData {
-    downloaded: number;
-    total: number;
-    percent: number;
-    speed: number;
-    eta: number;
-}
-
-interface CompleteData {
-    path: string;
-    size: number;
-    filename?: string;
-}
-
-interface DownloadOptions {
-    quality?: string;
-}
+import type { DownloadOptions, ProgressData } from '../../types/video/processing.js';
+import type { CobaltCompleteData, CobaltResponse, DownloadInfo } from '../../types/video/cobalt-service.js';
 // COBALT SERVICE CLASS
 class CobaltService extends EventEmitter {
     private apiUrls: string[];
@@ -129,7 +98,7 @@ class CobaltService extends EventEmitter {
             path: outputPath, 
             size: fileSizeInMB,
             filename: downloadInfo.filename 
-        } as CompleteData);
+        } as CobaltCompleteData);
 
         return outputPath;
     }
@@ -420,5 +389,9 @@ class CobaltService extends EventEmitter {
 const cobaltService = new CobaltService();
 
 export { CobaltService };
-export type { DownloadInfo, ProgressData, CompleteData, DownloadOptions };
+export { type DownloadInfo, type ProgressData, type CobaltCompleteData, type DownloadOptions };
 export default cobaltService;
+
+
+
+

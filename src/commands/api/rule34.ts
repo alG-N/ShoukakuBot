@@ -20,117 +20,27 @@ import {
     StringSelectMenuInteraction,
     PermissionFlagsBits
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import _rule34Service from '../../services/api/rule34Service.js';
 import _rule34Cache from '../../repositories/api/rule34Cache.js';
 import _postHandler from '../../handlers/api/rule34PostHandler.js';
 import logger from '../../core/Logger.js';
+import type {
+    Post,
+    Rule34CommandSearchOptions,
+    Rule34CommandSearchResult,
+    Session,
+    Preferences,
+    Rule34ServiceContract,
+    Rule34CacheContract,
+    Rule34PostHandlerContract
+} from '../../types/api/commands/rule34-command.js';
 // TYPES
-interface Post {
-    id: number;
-    tags?: string;
-    tagList?: string[];
-    score?: number;
-    rating?: string;
-    hasVideo?: boolean;
-}
-
-interface SearchOptions {
-    limit?: number;
-    page?: number;
-    sort?: string;
-    rating?: string | null;
-    excludeAi?: boolean;
-    minScore?: number;
-    contentType?: string;
-    excludeTags?: string[];
-    minWidth?: number;
-    minHeight?: number;
-    highQualityOnly?: boolean;
-    excludeLowQuality?: boolean;
-}
-
-interface SearchResult {
-    posts?: Post[];
-    hasMore?: boolean;
-}
-
-interface Session {
-    type: string;
-    query?: string;
-    posts: Post[];
-    options?: SearchOptions;
-    currentIndex: number;
-    currentPage?: number;
-    hasMore?: boolean;
-    timeframe?: string;
-    showTags?: boolean;
-}
-
-interface Preferences {
-    aiFilter?: boolean;
-    minScore?: number;
-    sortMode?: string;
-    defaultRating?: string;
-    highQualityOnly?: boolean;
-    excludeLowQuality?: boolean;
-}
-
-interface Rule34Service {
-    search: (tags: string, options: SearchOptions) => Promise<SearchResult>;
-    getRandom?: (options: { tags?: string; count?: number; excludeAi?: boolean; minScore?: number }) => Promise<Post[]>;
-    getPostById?: (id: number) => Promise<Post | null>;
-    getTrending?: (options: { timeframe?: string; excludeAi?: boolean; page?: number }) => Promise<SearchResult>;
-    getRelatedTags?: (tag: string, limit: number) => Promise<Array<{ name?: string }>>;
-    getAutocompleteSuggestions?: (query: string) => Promise<Array<{ name: string; count?: number; value?: string }>>;
-}
-
-interface Rule34Cache {
-    getPreferences?: (userId: string) => Preferences | null;
-    setPreferences?: (userId: string, prefs: Partial<Preferences>) => void;
-    resetPreferences?: (userId: string) => void;
-    getBlacklist?: (userId: string) => string[];
-    addToBlacklist?: (userId: string, tag: string) => boolean;
-    removeFromBlacklist?: (userId: string, tag: string) => boolean;
-    clearBlacklist?: (userId: string) => void;
-    getSession?: (userId: string) => Session | null;
-    setSession?: (userId: string, session: Session) => void;
-    updateSession?: (userId: string, updates: Partial<Session>) => void;
-    addToHistory?: (userId: string, postId: number, data: { score?: number }) => void;
-    isFavorited?: (userId: string, postId: number) => boolean;
-    addFavorite?: (userId: string, postId: number, data: { score?: number; rating?: string }) => void;
-    removeFavorite?: (userId: string, postId: number) => void;
-    getAutocompleteSuggestions?: (query: string) => Array<{ name: string; count?: number; value?: string }> | null;
-    setAutocompleteSuggestions?: (query: string, suggestions: Array<{ name: string; count?: number; value?: string }>) => void;
-}
-
-interface PostHandler {
-    createPostEmbed: (post: Post, options: {
-        resultIndex: number;
-        totalResults: number;
-        query?: string;
-        userId: string;
-        searchPage?: number;
-        showTags?: boolean;
-    }) => Promise<{ embed: EmbedBuilder; rows: ActionRowBuilder<ButtonBuilder>[] }>;
-    createVideoEmbed?: (post: Post, options: {
-        resultIndex: number;
-        totalResults: number;
-        userId: string;
-        searchPage?: number;
-        showTags?: boolean;
-    }) => { embed: EmbedBuilder; rows: ActionRowBuilder<ButtonBuilder>[] };
-    createNoResultsEmbed?: (tags: string) => EmbedBuilder;
-    createRelatedTagsEmbed?: (tag: string, relatedTags: Array<{ name?: string }>) => EmbedBuilder;
-    createSettingsEmbed?: (userId: string) => EmbedBuilder;
-    createSettingsComponents?: (userId: string) => ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[];
-    createErrorEmbed?: (error: Error) => EmbedBuilder;
-}
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
-const rule34Service: Rule34Service = _rule34Service as any;
-const rule34Cache: Rule34Cache = _rule34Cache as any;
-const postHandler: PostHandler = _postHandler as any;
+const rule34Service: Rule34ServiceContract = _rule34Service as any;
+const rule34Cache: Rule34CacheContract = _rule34Cache as any;
+const postHandler: Rule34PostHandlerContract = _postHandler as any;
 // COMMAND
 class Rule34Command extends BaseCommand {
     constructor() {
@@ -435,15 +345,17 @@ class Rule34Command extends BaseCommand {
 
         const prefs = rule34Cache?.getPreferences?.(userId) || {};
         const blacklist = rule34Cache?.getBlacklist?.(userId) || [];
+        const normalizedRating = (rating === 'all' ? null : (rating || prefs.defaultRating)) as Rule34CommandSearchOptions['rating'];
+        const normalizedContentType = (contentType || undefined) as Rule34CommandSearchOptions['contentType'];
 
-        const searchOptions: SearchOptions = {
+        const searchOptions: Rule34CommandSearchOptions = {
             limit: 50,
             page: page - 1,
             sort: sort || prefs.sortMode || 'score:desc',
-            rating: rating === 'all' ? null : (rating || prefs.defaultRating),
+            rating: normalizedRating,
             excludeAi: aiFilter ?? prefs.aiFilter,
             minScore: minScore ?? prefs.minScore ?? 0,
-            contentType: contentType || undefined,
+            contentType: normalizedContentType,
             excludeTags: [...blacklist, ...(exclude ? exclude.split(/\s+/) : [])],
             minWidth: minWidth || 0,
             minHeight: minHeight || 0,
@@ -595,7 +507,7 @@ class Rule34Command extends BaseCommand {
     private async _handleTrending(interaction: ChatInputCommandInteraction, userId: string): Promise<void> {
         await interaction.deferReply();
 
-        const timeframe = interaction.options.getString('timeframe') || 'day';
+        const timeframe = (interaction.options.getString('timeframe') || 'day') as 'day' | 'week' | 'month';
         const aiFilter = interaction.options.getBoolean('ai_filter');
 
         const prefs = rule34Cache?.getPreferences?.(userId) || {};
@@ -1383,3 +1295,5 @@ class Rule34Command extends BaseCommand {
 }
 
 export default new Rule34Command();
+
+

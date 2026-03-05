@@ -6,25 +6,8 @@
 
 import FilterRepository from '../../repositories/moderation/FilterRepository.js';
 import filterConfig from '../../config/features/moderation/filters.js';
-// TYPES
-export interface Filter {
-    id: number;
-    guild_id: string;
-    pattern: string;
-    match_type: 'exact' | 'word' | 'contains' | 'regex';
-    action: string;
-    severity: number;
-    created_by: string;
-    created_at: Date;
-}
-
-export interface FilterMatch {
-    filter: Filter;
-    matched: boolean;
-    pattern: string;
-    action: string;
-    severity: number;
-}
+import type { Filter, FilterMatch } from '../../types/moderation/filter-service.js';
+export { type Filter, type FilterMatch } from '../../types/moderation/filter-service.js';
 
 import cacheService from '../../cache/CacheService.js';
 
@@ -255,3 +238,4 @@ export default {
     getFilterCount,
     searchFilters
 };
+

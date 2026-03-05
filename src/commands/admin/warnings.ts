@@ -15,36 +15,15 @@ import {
     User,
     Message
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { formatDuration } from '../../utils/common/time.js';
 import logger from '../../core/Logger.js';
 import { infractionService as _infractionSvc } from '../../services/moderation/index.js';
 import _moderationConfigModule from '../../config/features/moderation/index.js';
+import type { Infraction } from '../../types/moderation/infraction.js';
+import type { InfractionService } from '../../types/moderation/services.js';
+import type { ModerationConfig } from '../../config/features/moderation/index.js';
 const WARNINGS_PER_PAGE = 5;
-
-interface Infraction {
-    case_id: number;
-    type: string;
-    reason: string;
-    moderator_id: string;
-    created_at: Date | string;
-    duration_ms?: number;
-    active: boolean;
-}
-
-interface InfractionService {
-    getUserHistory?: (guildId: string, userId: string, options: {
-        type?: string | null;
-        activeOnly?: boolean;
-        limit?: number;
-    }) => Promise<Infraction[]>;
-    getWarningCount?: (guildId: string, userId: string) => Promise<number>;
-}
-
-interface ModerationConfig {
-    COLORS: Record<string, number>;
-    EMOJIS: Record<string, string>;
-}
 
 
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
@@ -244,3 +223,4 @@ class WarningsCommand extends BaseCommand {
 }
 
 export default new WarningsCommand();
+

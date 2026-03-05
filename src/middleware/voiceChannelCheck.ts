@@ -7,18 +7,9 @@ import trackHandler from '../handlers/music/trackHandler.js';
 import { MessageFlags } from 'discord.js';
 import type { 
     GuildMember, 
-    VoiceBasedChannel,
-    ChatInputCommandInteraction,
-    ButtonInteraction,
-    StringSelectMenuInteraction
+    VoiceBasedChannel
 } from 'discord.js';
-// Types
-interface VoiceCheckResult {
-    valid: boolean;
-    error?: string;
-}
-
-type MusicInteraction = ChatInputCommandInteraction | ButtonInteraction | StringSelectMenuInteraction;
+import type { MusicInteraction, VoiceCheckResult } from '../types/middleware/voice-channel-check.js';
 // Validators
 const validators = {
     isInVoiceChannel: (member: GuildMember | null | undefined): boolean => {
@@ -154,7 +145,7 @@ export {
     validators
 };
 
-export type { VoiceCheckResult, MusicInteraction };
+export { type VoiceCheckResult, type MusicInteraction };
 
 export default {
     checkVoiceChannel,
@@ -164,3 +155,7 @@ export default {
     checkVoicePermissionsSync,
     validators
 };
+
+
+
+

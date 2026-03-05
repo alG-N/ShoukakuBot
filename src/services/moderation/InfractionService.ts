@@ -4,44 +4,15 @@
  * @module services/moderation/InfractionService
  */
 
-import { EmbedBuilder, type Guild, type User, type Snowflake } from 'discord.js';
+import { EmbedBuilder, Guild, User, Snowflake } from 'discord.js';
 import * as ModLogService from './ModLogService.js';
 import { formatDuration } from '../../utils/common/time.js';
 import InfractionRepository from '../../repositories/moderation/InfractionRepository.js';
 import moderationConfig from '../../config/features/moderation/index.js';
 import db from '../../database/index.js';
-// TYPES
-export interface Infraction {
-    id: number;
-    case_id: number;
-    guild_id: Snowflake;
-    user_id: Snowflake;
-    moderator_id: Snowflake;
-    type: string;
-    reason: string;
-    duration_ms?: number;
-    expires_at?: Date;
-    active: boolean;
-    created_at: Date;
-    metadata?: Record<string, unknown>;
-}
-
-interface CreateInfractionOptions {
-    guild: Guild;
-    user: User | { id: string; tag?: string; username?: string };
-    moderator: User | { id: string; tag?: string; username?: string };
-    type: string;
-    reason: string;
-    durationMs?: number;
-    expiryDays?: number;
-    metadata?: Record<string, unknown>;
-}
-
-interface EscalationResult {
-    action: string;
-    durationMs?: number;
-    reason: string;
-}
+import type { Infraction } from '../../types/moderation/infraction.js';
+import type { CreateInfractionOptions, EscalationResult } from '../../types/moderation/services.js';
+import type { ThresholdRow } from '../../types/moderation/infraction-service.js';
 
 // Re-export config values
 export const INFRACTION_TYPES = moderationConfig.INFRACTION_TYPES as Record<string, string>;
@@ -320,13 +291,6 @@ export async function checkEscalation(
         [guild.id]
     );
 
-    interface ThresholdRow {
-        warn_count: number;
-        action: string;
-        duration_ms?: number;
-        reason?: string;
-    }
-
     let thresholds = result.rows as unknown as ThresholdRow[];
 
     if (thresholds.length === 0) {
@@ -439,3 +403,9 @@ export default {
     COLORS,
     EMOJIS
 };
+
+export { type Infraction };
+
+
+
+

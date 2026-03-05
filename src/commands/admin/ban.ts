@@ -17,15 +17,7 @@ import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import logger from '../../core/Logger.js';
 import { moderationService } from '../../services/moderation/index.js';
-
-/**
- * Validation result interface
- */
-interface ValidationResult {
-    valid: boolean;
-    error?: string;
-    member?: GuildMember | null;
-}
+import type { BanValidationResult } from '../../types/commands/admin-actions.js';
 
 class BanCommand extends BaseCommand {
     constructor() {
@@ -258,7 +250,7 @@ class BanCommand extends BaseCommand {
         }
     }
 
-    private async _validateBan(interaction: ChatInputCommandInteraction, targetUser: User): Promise<ValidationResult> {
+    private async _validateBan(interaction: ChatInputCommandInteraction, targetUser: User): Promise<BanValidationResult> {
         if (!interaction.guild || !interaction.member) {
             return { valid: false, error: 'This command can only be used in a server.' };
         }
@@ -303,3 +295,4 @@ class BanCommand extends BaseCommand {
 // Export singleton instance
 const banCommand = new BanCommand();
 export default banCommand;
+

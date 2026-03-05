@@ -16,15 +16,10 @@ import musicCache, { GuildMusicSettings } from '../../cache/music/MusicCacheFaca
 import { music } from '../../config/index.js';
 import { formatTime } from '../../utils/music/index.js';
 import { musicFacade as musicService } from '../../services/music/core/MusicFacade.js';
-
-// Use any for Track type - different but runtime compatible
-type Track = any;
+import type { Track } from '../../types/music/track.js';
+import type { PlayerStatus } from '../../types/music/handlers.js';
 
 const DEFAULT_VOLUME = (music as { defaults?: { defaultVolume?: number } }).defaults?.defaultVolume || 100;
-export interface PlayerStatus {
-    position: number;
-    ping?: number;
-}
 function createProgressBar(percent: number, length: number = 20): string {
     const filled = Math.round((percent / 100) * length);
     const empty = length - filled;
@@ -194,4 +189,5 @@ export const settingsHandler = {
 };
 
 export default settingsHandler;
+
 

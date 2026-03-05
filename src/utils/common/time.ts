@@ -3,8 +3,8 @@
  * Shared time formatting and parsing
  * @module utils/common/time
  */
-// TYPES
-type DiscordTimestampStyle = 'R' | 'F' | 'f' | 'D' | 'd' | 'T' | 't';
+import type { DiscordTimestampStyle } from '../../types/utils/common/time.js';
+
 // DURATION FORMATTING
 /**
  * Format duration from milliseconds to human readable
@@ -191,3 +191,4 @@ export function formatUptime(uptimeMs: number): string {
     
     return parts.join(' ');
 }
+

@@ -10,10 +10,7 @@ import antiRaidService, { type JoinAnalysis } from '../../services/moderation/An
 import moderationConfig from '../../config/features/moderation/index.js';
 import { ModLogRepository } from '../../repositories/moderation/index.js';
 import { logger } from '../../core/Logger.js';
-
-interface ModLogSettings {
-    log_channel_id: string | null;
-}
+import type { ModLogSettings } from '../../types/moderation/modlog.js';
 
 /**
  * Handle anti-raid detection for a new member join

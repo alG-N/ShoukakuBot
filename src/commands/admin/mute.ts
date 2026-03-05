@@ -12,16 +12,11 @@ import {
     User,
     GuildMember
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import logger from '../../core/Logger.js';
 import { moderationService } from '../../services/moderation/index.js';
-
-interface ValidationResult {
-    valid: boolean;
-    error?: string;
-    member?: GuildMember | null;
-}
+import type { MuteValidationResult } from '../../types/commands/admin-actions.js';
 
 /**
  * Duration choices for mute
@@ -304,7 +299,7 @@ class MuteCommand extends BaseCommand {
         }
     }
 
-    private async _validateMute(interaction: ChatInputCommandInteraction, targetUser: User): Promise<ValidationResult> {
+    private async _validateMute(interaction: ChatInputCommandInteraction, targetUser: User): Promise<MuteValidationResult> {
         // Self check
         if (targetUser.id === interaction.user.id) {
             return { valid: false, error: 'You cannot timeout yourself.' };
@@ -343,3 +338,5 @@ class MuteCommand extends BaseCommand {
 }
 
 export default new MuteCommand();
+
+

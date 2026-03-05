@@ -24,8 +24,9 @@ import 'dotenv/config';
 import { validateOrExit } from './config/validation.js';
 validateOrExit();
 
-import { REST, Routes, Events, Client, Interaction, ChatInputCommandInteraction, AutocompleteInteraction, ButtonInteraction, ModalSubmitInteraction, StringSelectMenuInteraction } from 'discord.js';
+import { REST, Routes, Events, Interaction } from 'discord.js';
 import http from 'http';
+import type { BootstrapCommand, ClientWithCommands } from './types/core/bootstrap.js';
 
 // Core utilities (from src/core)
 import { 
@@ -63,21 +64,6 @@ let commandReg: CommandRegistry;
 let eventReg: EventRegistry;
 let redisCache: RedisCache;
 let cacheService: CacheService;
-// Types
-interface Command {
-    data?: { name: string };
-    deferReply?: boolean;
-    ephemeral?: boolean;
-    execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
-    autocomplete?: (interaction: AutocompleteInteraction) => Promise<void>;
-    handleButton?: (interaction: ButtonInteraction) => Promise<void>;
-    handleModal?: (interaction: ModalSubmitInteraction) => Promise<void>;
-    handleSelectMenu?: (interaction: StringSelectMenuInteraction) => Promise<void>;
-}
-
-interface ClientWithCommands extends Client {
-    commands?: Map<string, Command>;
-}
 // APPLICATION INITIALIZATION
 class ShoukakuBot {
     public client: ClientWithCommands;
@@ -296,7 +282,7 @@ class ShoukakuBot {
             try {
                 // Handle slash commands
                 if (interaction.isChatInputCommand()) {
-                    const command = commandReg.get(interaction.commandName) as Command | undefined;
+                    const command = commandReg.get(interaction.commandName) as BootstrapCommand | undefined;
                     
                     if (!command) {
                         logger.warn('Interaction', `Unknown command: ${interaction.commandName}`);
@@ -310,7 +296,7 @@ class ShoukakuBot {
                 
                 // Handle autocomplete
                 else if (interaction.isAutocomplete()) {
-                    const command = commandReg.get(interaction.commandName) as Command | undefined;
+                    const command = commandReg.get(interaction.commandName) as BootstrapCommand | undefined;
                     
                     if (command?.autocomplete) {
                         await command.autocomplete(interaction);
@@ -321,7 +307,7 @@ class ShoukakuBot {
                 else if (interaction.isButton()) {
                     // Button handling logic
                     const [commandName] = interaction.customId.split('_');
-                    const command = commandReg.get(commandName) as Command | undefined;
+                    const command = commandReg.get(commandName) as BootstrapCommand | undefined;
                     
                     if (command?.handleButton) {
                         await command.handleButton(interaction);
@@ -332,7 +318,7 @@ class ShoukakuBot {
                 else if (interaction.isModalSubmit()) {
                     const [commandName] = interaction.customId.split('_');
                     const command = (commandReg.getModalHandler(commandName) || 
-                                   commandReg.get(commandName)) as Command | undefined;
+                                   commandReg.get(commandName)) as BootstrapCommand | undefined;
                     
                     if (command?.handleModal) {
                         await command.handleModal(interaction);
@@ -342,7 +328,7 @@ class ShoukakuBot {
                 // Handle select menus
                 else if (interaction.isStringSelectMenu()) {
                     const [commandName] = interaction.customId.split('_');
-                    const command = commandReg.get(commandName) as Command | undefined;
+                    const command = commandReg.get(commandName) as BootstrapCommand | undefined;
                     
                     if (command?.handleSelectMenu) {
                         await command.handleSelectMenu(interaction);
@@ -447,3 +433,4 @@ if (isEntryPoint || process.env.BOT_START === 'true') {
 // Export for external access
 export { bot_instance as bot, ShoukakuBot };
 export default { bot: bot_instance };
+

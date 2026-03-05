@@ -5,32 +5,8 @@
  */
 
 import type { GuildMember, VoiceBasedChannel } from 'discord.js';
-// TYPES
-interface TrackInfo {
-    url: string;
-    title: string;
-    lengthSeconds: number;
-    track?: {
-        encoded: string;
-    };
-}
-
-interface QueueInfo {
-    tracks: unknown[];
-}
-
-interface Validators {
-    _youtubeRegex: RegExp;
-    _idRegex: RegExp;
-    isValidUrl: (url: string) => boolean;
-    isYouTubeUrl: (url: string) => boolean;
-    isValidTrack: (track: unknown) => track is TrackInfo;
-    isValidQueue: (queue: unknown) => queue is QueueInfo;
-    isValidDuration: (seconds: number, maxSeconds: number) => boolean;
-    isInVoiceChannel: (member: GuildMember | null | undefined) => boolean;
-    isInSameVoiceChannel: (member: GuildMember | null | undefined, botChannelId: string | null | undefined) => boolean;
-    hasVoicePermissions: (channel: VoiceBasedChannel | null | undefined) => boolean;
-}
+import type { Track } from '../../types/music/track.js';
+import type { QueueInfo, Validators } from '../../types/utils/music.js';
 // TIME UTILITIES
 /**
  * Format milliseconds to time string
@@ -110,7 +86,7 @@ export const validators: Validators = {
         return this._youtubeRegex.test(url);
     },
 
-    isValidTrack(track: unknown): track is TrackInfo {
+    isValidTrack(track: unknown): track is Track {
         if (!track || typeof track !== 'object') return false;
         const t = track as Record<string, unknown>;
         return !!(t && 

@@ -9,43 +9,13 @@ import type { Client, Message, Snowflake } from 'discord.js';
 import GuildSettingsService from '../guild/GuildSettingsService.js';
 import cacheService from '../../cache/CacheService.js';
 import logger from '../../core/Logger.js';
+import type {
+    TrackedAttachment,
+    TrackedEmbed,
+    TrackedMessage
+} from '../../types/moderation/snipe-service.js';
+export { type TrackedMessage, type TrackedAttachment, type TrackedEmbed };
 // TYPES
-interface TrackedAttachment {
-    url: string;
-    proxyUrl: string;
-    name: string;
-    type: string | null;
-    size: number;
-}
-
-interface TrackedEmbed {
-    title?: string;
-    description?: string;
-    url?: string;
-}
-
-interface TrackedAuthor {
-    id: string;
-    tag: string;
-    displayName: string;
-    avatarURL: string | null;
-}
-
-interface TrackedChannel {
-    id: string;
-    name: string;
-}
-
-interface TrackedMessage {
-    id: string;
-    content: string;
-    author: TrackedAuthor;
-    channel: TrackedChannel;
-    attachments: TrackedAttachment[];
-    embeds: TrackedEmbed[];
-    createdAt: number;
-    deletedAt: number;
-}
 
 // Constants
 const SNIPE_NAMESPACE = 'snipe';
@@ -238,4 +208,5 @@ export default {
     clearMessages
 };
 
-export type { TrackedMessage, TrackedAttachment, TrackedEmbed };
+
+

@@ -5,17 +5,7 @@
  */
 
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-// TYPES
-interface ParsedPaginationButton {
-    prefix: string;
-    action: 'first' | 'prev' | 'next' | 'last' | 'page';
-    userId: string;
-}
-
-interface PaginationStateEntry<T> {
-    value: T;
-    timestamp: number;
-}
+import type { ParsedPaginationButton, PaginationStateEntry } from '../../types/utils/common/pagination.js';
 // PAGINATION BUTTON FUNCTIONS
 /**
  * Create pagination buttons

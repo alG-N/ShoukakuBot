@@ -4,4 +4,7 @@
  */
 
 export { SayService, default as sayService } from './SayService.js';
-export type { SayType } from './SayService.js';
+export { type SayType } from './SayService.js';
+
+
+

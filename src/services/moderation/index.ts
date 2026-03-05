@@ -15,26 +15,12 @@ export { default as lockdownService } from './LockdownService.js';
 export { default as antiRaidService } from './AntiRaidService.js';
 
 // Type exports - only types that actually exist in TypeScript files
-export type { 
-    Filter,
-    FilterMatch 
-} from './FilterService.js';
+export { type Filter, type FilterMatch } from './FilterService.js';
+export { type AutoModSettings, type Violation } from './AutoModService.js';
+export { type Infraction } from './InfractionService.js';
+export { type ModLogSettings } from '../../types/moderation/modlog.js';
+export { type TrackedMessage } from './SnipeService.js';
 
-export type { 
-    AutoModSettings,
-    Violation 
-} from './AutoModService.js';
 
-export type { 
-    Infraction 
-} from './InfractionService.js';
-
-export type { 
-    ModLogSettings 
-} from './ModLogService.js';
-
-export type { 
-    TrackedMessage 
-} from './SnipeService.js';
 
 

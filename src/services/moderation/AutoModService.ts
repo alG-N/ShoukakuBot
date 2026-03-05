@@ -4,7 +4,7 @@
  * @module services/moderation/AutoModService
  */
 
-import type { Message, GuildMember, Snowflake } from 'discord.js';
+import type { Message, GuildMember } from 'discord.js';
 import * as FilterService from './FilterService.js';
 import * as InfractionService from './InfractionService.js';
 import logger from '../../core/Logger.js';
@@ -12,49 +12,9 @@ import cacheService from '../../cache/CacheService.js';
 import { trackAutomodViolation } from '../../core/metrics.js';
 import AutoModRepository from '../../repositories/moderation/AutoModRepository.js';
 import automodConfig from '../../config/features/moderation/automod.js';
-// TYPES
-export interface AutoModSettings {
-    enabled: boolean;
-    filter_enabled: boolean;
-    filtered_words: string[];
-    invites_enabled: boolean;
-    invites_action: string;
-    invites_whitelist: string[];
-    links_enabled: boolean;
-    links_action: string;
-    links_whitelist: string[];
-    spam_enabled: boolean;
-    spam_threshold: number;
-    spam_window_ms: number;
-    spam_action: string;
-    spam_mute_duration_ms: number;
-    duplicate_enabled: boolean;
-    duplicate_threshold: number;
-    duplicate_window_ms: number;
-    duplicate_action: string;
-    mention_enabled: boolean;
-    mention_limit: number;
-    mention_action: string;
-    caps_enabled: boolean;
-    caps_percent: number;
-    caps_min_length: number;
-    caps_action: string;
-    ignored_channels: Snowflake[];
-    ignored_roles: Snowflake[];
-    warn_threshold: number;
-    warn_reset_hours: number;
-    warn_action: string;
-    mute_duration: number;
-}
-
-export interface Violation {
-    type: string;
-    trigger: string;
-    action: string;
-    severity: number;
-    muteDuration?: number;
-    details?: unknown;
-}
+import type { AutoModSettings } from '../../types/moderation/automod.js';
+import type { Violation, ExecuteActionResult } from '../../types/moderation/automod-service.js';
+export { type Violation, type ExecuteActionResult } from '../../types/moderation/automod-service.js';
 
 const CACHE_TTL_SECONDS = 300; // 5 minutes
 // SETTINGS MANAGEMENT
@@ -110,9 +70,11 @@ export function shouldBypass(member: GuildMember, settings: AutoModSettings): bo
     if (member.id === member.guild.ownerId) return true;
     if (member.permissions.has('Administrator')) return true;
 
-    if (settings.ignored_roles?.length > 0) {
+    const ignoredRoles = settings.ignored_roles ?? [];
+
+    if (ignoredRoles.length > 0) {
         const hasIgnoredRole = member.roles.cache.some(r =>
-            settings.ignored_roles.includes(r.id)
+            ignoredRoles.includes(r.id)
         );
         if (hasIgnoredRole) return true;
     }
@@ -410,17 +372,6 @@ export function checkCaps(message: Message, settings: AutoModSettings): Violatio
 }
 // ACTION EXECUTION
 
-export interface ExecuteActionResult {
-    deleted: boolean;
-    warned: boolean;
-    muted: boolean;
-    escalated: boolean;
-    warnCount: number;
-    warnThreshold: number;
-    muteDuration: number;
-    error: string | null;
-}
-
 /**
  * Execute auto-mod action with warn tracking and escalation
  */
@@ -595,3 +546,9 @@ export default {
     checkMentions,
     checkCaps
 };
+
+export { type AutoModSettings };
+
+
+
+

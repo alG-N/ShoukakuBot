@@ -3,105 +3,33 @@
  * Re-exports all API services (TypeScript)
  * @module services/api
  */
-// GENERAL API SERVICES
-// Embed Service
-export { default as embedService, EmbedService, EMBED_FIX_RULES } from './embedService.js';
-export type {
-    EmbedFixRule,
-    EmbedFixResult,
-    EmbedFixStats
-} from './embedService.js';
 
-// Wikipedia Service
-export { wikipediaService, WikipediaService } from './wikipediaService.js';
-export type {
-    WikiSearchResult,
-    WikiSearchResponse,
-    WikiArticle,
-    WikiArticleResponse,
-    OnThisDayEvent,
-    OnThisDayResponse,
-    OnThisDayPage,
-    SearchOptions as WikiSearchOptions
-} from './wikipediaService.js';
-// ANIME/MANGA SERVICES
-// AniList Service
-export { anilistService, AnilistService } from './anilistService.js';
-export type {
-    AnimeMedia,
-    AnimeTitle,
-    CoverImage,
-    FuzzyDate,
-    AiringSchedule,
-    CharacterEdge,
-    RelationEdge,
-    Trailer,
-    AutocompleteMedia
-} from './anilistService.js';
+export { default as embedService } from './embedService.js';
+export * from './embedService.js';
 
-// MyAnimeList Service
-export { myAnimeListService, MyAnimeListService } from './myAnimeListService.js';
-export type {
-    MALAnimeData,
-    MALMangaData,
-    MALTitle,
-    MALDate,
-    MALAuthor,
-    MALAutocompleteItem
-} from './myAnimeListService.js';
-// GAMING SERVICES
-// Steam Service
-export { steamService, SteamService } from './steamService.js';
-export type {
-    SteamGame,
-    SteamSaleResponse,
-    SteamPriceOverview,
-    SteamAppDetailsResponse,
-    SteamFeaturedGame,
-    SteamSpyData
-} from './steamService.js';
-// SOCIAL MEDIA SERVICES
-// Reddit Service
-export { redditService, RedditService } from './redditService.js';
-export type {
-    SubredditInfo,
-    RedditPost,
-    RedditPostsResult
-} from './redditService.js';
+export { default as wikipediaService } from './wikipediaService.js';
+export * from './wikipediaService.js';
 
-// Pixiv Service
-export { pixivService, PixivService } from './pixivService.js';
-export type {
-    PixivIllust,
-    PixivNovel,
-    PixivUser,
-    PixivTag,
-    PixivImageUrls,
-    SearchOptions as PixivSearchOptions,
-    SearchResult as PixivSearchResult,
-    RankingOptions
-} from './pixivService.js';
-// NSFW SERVICES
-// NHentai Service
-export { nhentaiService, NHentaiService } from './nhentaiService.js';
-export type {
-    NHentaiGallery,
-    NHentaiTag,
-    NHentaiTitle,
-    NHentaiImages,
-    GalleryResult,
-    SearchResult as NHentaiSearchResult,
-    SearchData as NHentaiSearchData,
-    PageUrl,
-    ParsedTags
-} from './nhentaiService.js';
+export { default as anilistService } from './anilistService.js';
+export * from './anilistService.js';
 
-// Rule34 Service
-export { rule34Service, Rule34Service } from './rule34Service.js';
-export type {
-    Rule34Post,
-    Rule34RawPost,
-    SearchResult as Rule34SearchResult,
-    AutocompleteSuggestion as Rule34Suggestion,
-    RelatedTag
-} from './rule34Service.js';
+export { default as myAnimeListService } from './myAnimeListService.js';
+export * from './myAnimeListService.js';
+
+export { default as steamService } from './steamService.js';
+export * from './steamService.js';
+
+export { default as redditService } from './redditService.js';
+export * from './redditService.js';
+
+export { default as pixivService } from './pixivService.js';
+export * from './pixivService.js';
+
+export { default as nhentaiService } from './nhentaiService.js';
+export * from './nhentaiService.js';
+
+export { default as rule34Service } from './rule34Service.js';
+export { Rule34Service } from './rule34Service.js';
+export { type Rule34Post, type Rule34RawPost, type Rule34SearchResult, type RelatedTag, type Rule34SearchOptions, type Rule34Auth, type FilterOptions, type BuildQueryOptions, type TagInfoResponse, type CommentResponse } from './rule34Service.js';
+export { type AutocompleteSuggestion as Rule34Suggestion } from './rule34Service.js';
+

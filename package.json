@@ -17,7 +17,9 @@
     "db:migrate:status": "npx knex migrate:status",
     "db:migrate:make": "npx knex migrate:make",
     "lint": "eslint src/",
-    "test": "jest"
+    "test": "jest",
+    "types:guardrails": "node scripts/type-guardrails.js --report",
+    "types:check": "node scripts/type-guardrails.js --check"
   },
   "dependencies": {
     "@discordjs/opus": "^0.10.0",

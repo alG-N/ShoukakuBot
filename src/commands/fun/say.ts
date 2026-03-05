@@ -13,7 +13,7 @@ import {
     ButtonBuilder,
     ButtonStyle
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import logger from '../../core/Logger.js';
@@ -163,3 +163,4 @@ class SayCommand extends BaseCommand {
 }
 
 export default new SayCommand();
+

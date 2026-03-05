@@ -10,22 +10,7 @@
  */
 
 import cacheService from '../../cache/CacheService.js';
-
-// ── Interfaces ───────────────────────────────────────────────────────
-interface PixivSearchResult {
-    query: string;
-    results: any[];
-    timestamp?: number;
-}
-
-interface PixivResultData {
-    results: any[];
-    currentIndex: number;
-    mangaPageIndex: number;
-    query?: string;
-    userId?: string;
-    [key: string]: any;
-}
+import type { PixivCacheSearchResult, PixivResultData } from '../../types/api/repositories/pixiv-cache.js';
 
 // ── CacheService namespace constants ─────────────────────────────────
 const NS = {
@@ -170,5 +155,9 @@ class PixivCache {
 const pixivCache = new PixivCache();
 
 export { pixivCache, PixivCache };
-export type { PixivSearchResult, PixivResultData };
+export { type PixivCacheSearchResult, type PixivResultData };
 export default pixivCache;
+
+
+
+

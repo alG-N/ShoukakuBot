@@ -8,16 +8,7 @@ export { default as MusicEvents } from './MusicEvents.js';
 export { default as playbackEventHandler, PlaybackEventHandler } from './PlaybackEventHandler.js';
 
 // Re-export types
-export type {
-    MusicEventName,
-    TrackEventData,
-    PlaybackEventData,
-    QueueEventData,
-    VoiceEventData,
-    AutoPlayEventData,
-    SkipVoteEventData,
-    NowPlayingEventData,
-    SystemEventData,
-    MusicTrack,
-    TrackInfo
-} from './MusicEvents.js';
+export { type MusicEventName, type TrackEventData, type PlaybackEventData, type QueueEventData, type VoiceEventData, type AutoPlayEventData, type SkipVoteEventData, type NowPlayingEventData, type SystemEventData, type MusicTrack, type TrackInfo } from './MusicEvents.js';
+
+
+

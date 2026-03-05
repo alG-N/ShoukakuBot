@@ -3,6 +3,7 @@
  * Centralized constants for the entire application
  * @module constants
  */
+import type { ColorKey, ColorValue, CooldownCategory, EmojiKey } from './types/core/constants.js';
 // EMBED COLORS
 /**
  * Color codes for Discord embeds
@@ -38,9 +39,6 @@ export const COLORS = {
     WIKIPEDIA: 0xFFFFFF,
     MAL: 0x2E51A2,
 } as const;
-
-export type ColorKey = keyof typeof COLORS;
-export type ColorValue = typeof COLORS[ColorKey];
 // CACHE LIMITS (Optimized for 1K+ servers)
 /**
  * Cache configuration limits
@@ -127,8 +125,6 @@ export const COOLDOWNS = {
     ADMIN: 5000,
     OWNER: 0,
 } as const;
-
-export type CooldownCategory = keyof typeof COOLDOWNS;
 // EMOJIS
 /**
  * Emoji constants for UI elements
@@ -180,8 +176,6 @@ export const EMOJIS = {
     FIRST: '⏮️',
     LAST: '⏭️',
 } as const;
-
-export type EmojiKey = keyof typeof EMOJIS;
 // REGEX PATTERNS
 /**
  * Common regex patterns for validation
@@ -233,4 +227,6 @@ export const LIMITS = {
     FAVORITES_SIZE: 200,
     HISTORY_SIZE: 100,
 } as const;
+
+export { type ColorKey, type ColorValue, type CooldownCategory, type EmojiKey };
 

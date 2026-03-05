@@ -14,94 +14,8 @@ import cacheService from '../../../cache/CacheService.js';
 import { updateLavalinkMetrics } from '../../../core/metrics.js';
 import type { MusicTrack } from '../events/MusicEvents.js';
 import spotifyService from '../spotify/SpotifyService.js';
-// TYPES
-interface NodeConfig {
-    name: string;
-    url: string;
-    auth: string;
-    secure?: boolean;
-}
-
-interface SearchResult {
-    track: unknown;
-    encoded: string;
-    url: string;
-    title: string;
-    lengthSeconds: number;
-    thumbnail: string | null;
-    author: string;
-    requestedBy: unknown;
-    source: string;
-    viewCount: number | null;
-    identifier: string | null;
-    searchedByLink: boolean;
-    originalQuery: string | null;
-}
-
-interface PlaylistResult {
-    playlistName: string;
-    tracks: SearchResult[];
-}
-
-interface PreservedState {
-    timestamp: number;
-    track: unknown;
-    position: number;
-    paused: boolean;
-    volume: number;
-}
-
-interface NodeStatus {
-    ready: boolean;
-    activeConnections: number;
-    error?: string;
-    nodes?: Array<{
-        name: string;
-        state: number;
-        stats: unknown;
-    }>;
-    players?: Array<{
-        guildId: string;
-        paused: boolean;
-        track: unknown;
-    }>;
-}
-
-interface CircuitBreaker {
-    execute<T>(fn: () => Promise<T>): Promise<T>;
-}
-
-interface ShoukakuNode {
-    name: string;
-    state: number;
-    stats: unknown;
-    rest: {
-        resolve(query: string): Promise<{
-            loadType: string;
-            data?: unknown;
-            tracks?: unknown[];
-        } | null>;
-    };
-}
-
-interface ShoukakuPlayer {
-    guildId: string;
-    paused: boolean;
-    track: unknown;
-    position: number;
-    volume: number;
-    connection: {
-        disconnect(): Promise<void>;
-        channelId?: string;
-    };
-    playTrack(options: { track: { encoded: string } }): Promise<void>;
-    stopTrack(): Promise<void>;
-    setPaused(paused: boolean): Promise<void>;
-    seekTo(position: number): Promise<void>;
-    setGlobalVolume(volume: number): Promise<void>;
-    on(event: string, listener: (...args: unknown[]) => void): void;
-    removeAllListeners(): void;
-}
+import type { NodeConfig, LavalinkSearchResult, PlaylistResult, PreservedState, NodeStatus } from '../../../types/music/lavalink.js';
+import type { CircuitBreaker, ShoukakuNode, ShoukakuPlayer, TrackData } from '../../../types/music/lavalink-service.js';
 // LAVALINK SERVICE CLASS
 class LavalinkService {
     public shoukaku: Shoukaku | null = null;
@@ -367,7 +281,7 @@ class LavalinkService {
     /**
      * Search for tracks with circuit breaker protection
      */
-    async search(query: string, requester?: unknown): Promise<SearchResult> {
+    async search(query: string, requester?: unknown): Promise<LavalinkSearchResult> {
         // Use circuit breaker for search operations
         return this.circuitBreaker!.execute(async () => {
             return this._searchInternal(query, requester);
@@ -377,7 +291,7 @@ class LavalinkService {
     /**
      * Internal search implementation
      */
-    private async _searchInternal(query: string, requester?: unknown): Promise<SearchResult> {
+    private async _searchInternal(query: string, requester?: unknown): Promise<LavalinkSearchResult> {
         if (!this.shoukaku) {
             logger.error('Lavalink', 'Cannot search: Shoukaku not initialized');
             throw new Error('Shoukaku not initialized');
@@ -534,7 +448,7 @@ class LavalinkService {
     /**
      * Spotify track fallback: use Spotify Web API to get track metadata, then search YouTube
      */
-    private async _spotifyTrackFallback(query: string, node: ShoukakuNode, requester?: unknown): Promise<SearchResult | null> {
+    private async _spotifyTrackFallback(query: string, node: ShoukakuNode, requester?: unknown): Promise<LavalinkSearchResult | null> {
         if (!spotifyService.isConfigured()) return null;
 
         try {
@@ -552,7 +466,6 @@ class LavalinkService {
 
             if (!result || result.loadType === 'error' || result.loadType === 'empty') return null;
 
-            type TrackData = { encoded?: string; info?: { uri?: string; title?: string; length?: number; artworkUrl?: string; author?: string; sourceName?: string; identifier?: string; viewCount?: number }; pluginInfo?: { viewCount?: number; playCount?: number } };
             let track: TrackData | undefined;
             if (result.loadType === 'track') {
                 track = result.data as TrackData;
@@ -605,7 +518,7 @@ class LavalinkService {
                 : await spotifyService.getPlaylistTracks(spotifyId.id);
             if (spotifyTracks.length === 0) return null;
 
-            const resolvedTracks: SearchResult[] = [];
+            const resolvedTracks: LavalinkSearchResult[] = [];
             const searchPlatform = (lavalinkConfig as { defaultSearchPlatform?: string }).defaultSearchPlatform;
 
             // Search each track on YouTube (with concurrency limit)
@@ -629,7 +542,6 @@ class LavalinkService {
 
                         if (!result || result.loadType === 'error' || result.loadType === 'empty') return null;
 
-                        type TrackData = { encoded?: string; info?: { uri?: string; title?: string; length?: number; artworkUrl?: string; author?: string; sourceName?: string; identifier?: string; viewCount?: number }; pluginInfo?: { viewCount?: number; playCount?: number } };
                         let track: TrackData | undefined;
                         if (result.loadType === 'track') {
                             track = result.data as TrackData;
@@ -655,7 +567,7 @@ class LavalinkService {
                             identifier: youtubeId || track.info.identifier || null,
                             searchedByLink: true,
                             originalQuery: null
-                        } as SearchResult;
+                        } as LavalinkSearchResult;
                     } catch {
                         return null;
                     }
@@ -1028,5 +940,8 @@ class LavalinkService {
 const lavalinkService = new LavalinkService();
 
 export { LavalinkService };
-export type { SearchResult, PlaylistResult, PreservedState, NodeStatus };
+export { type LavalinkSearchResult, type PlaylistResult, type PreservedState, type NodeStatus };
 export default lavalinkService;
+
+
+

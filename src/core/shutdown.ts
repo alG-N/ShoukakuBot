@@ -7,22 +7,7 @@
 import logger from './Logger.js';
 import container from '../container.js';
 import * as readline from 'readline';
-// TYPES
-interface ShutdownHandler {
-    name: string;
-    handler: () => Promise<void>;
-    priority: number;
-}
-
-interface ShutdownResult {
-    name: string;
-    success: boolean;
-    error?: string;
-}
-
-interface ShutdownOptions {
-    timeout?: number;
-}
+import type { ShutdownHandler, ShutdownResult, ShutdownOptions } from '../types/core/shutdown.js';
 // STATE
 const shutdownHandlers: ShutdownHandler[] = [];
 let isShuttingDown = false;

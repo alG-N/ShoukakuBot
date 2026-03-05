@@ -5,23 +5,7 @@
 
 import postgres from '../../database/postgres.js';
 import logger from '../../core/Logger.js';
-// Interfaces
-interface AnimeFavourite {
-    anime_id: number;
-    anime_title: string;
-    source?: string;
-    created_at?: Date;
-    // Mapped properties for easier access
-    title?: string;
-}
-
-interface AnimeNotification {
-    user_id: string;
-    anime_id: number;
-    notify: boolean;
-    created_at?: Date;
-    updated_at?: Date;
-}
+import type { AnimeFavourite, AnimeNotification } from '../../types/api/repositories/anime-repository.js';
 
 
 // AnimeRepository Class
@@ -200,5 +184,9 @@ class AnimeRepository {
 const animeRepository = new AnimeRepository();
 
 export { animeRepository, AnimeRepository };
-export type { AnimeFavourite, AnimeNotification };
+export { type AnimeFavourite, type AnimeNotification };
 export default animeRepository;
+
+
+
+

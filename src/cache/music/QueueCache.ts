@@ -6,100 +6,8 @@
 
 import { CACHE_LIMITS } from '../../constants.js';
 import logger from '../../core/Logger.js';
-
-/**
- * Lightweight reference to a Discord message.
- * Avoids holding full Message objects (which retain Client → Guild → Channel chains).
- * Resolve to a real Message via channel.messages.fetch(messageId) when needed.
- */
-export interface MessageRef {
-    messageId: string;
-    channelId: string;
-}
-// Types
-export interface MusicTrack {
-    url?: string;
-    title?: string;
-    author?: string;
-    thumbnail?: string | null;
-    lengthSeconds?: number;
-    track?: {
-        encoded?: string;
-        info?: any;
-    };
-    info?: {
-        title?: string;
-        author?: string;
-        uri?: string;
-    };
-    requestedBy?: any;
-}
-
-export interface MusicQueue {
-    guildId: string;
-    tracks: MusicTrack[];
-    originalTracks: MusicTrack[];
-    currentTrack: MusicTrack | null;
-    position: number;
-    
-    // Playback state
-    isPaused: boolean;
-    loopMode: 'off' | 'track' | 'queue';
-    loopCount: number;
-    isShuffled: boolean;
-    volume: number;
-    
-    // Messages (lightweight refs — resolve via channel.messages.fetch() when needed)
-    nowPlayingMessage: MessageRef | null;
-    controlsMessage: MessageRef | null;
-    
-    // Priority queue
-    priorityQueue: MusicTrack[];
-    
-    // Timers
-    inactivityTimer: NodeJS.Timeout | null;
-    vcMonitorInterval: NodeJS.Timeout | null;
-    
-    // State flags
-    eventsBound: boolean;
-    isTransitioning: boolean;
-    isReplacing: boolean; // Flag to indicate a track is being replaced (prevents error handling)
-    
-    // Auto-play feature
-    autoPlay: boolean;
-    lastPlayedTracks: string[];
-    
-    // Metadata
-    createdAt: number;
-    updatedAt: number;
-    lastAccessed: number;
-    textChannelId: string | null;
-    textChannel: any; // TextBasedChannel reference for runtime
-    voiceChannelId: string | null;
-    requesterId: string | null;
-}
-
-export interface AddTrackResult {
-    success: boolean;
-    position: number;
-    reason?: string;
-    maxSize?: number;
-}
-
-export interface AddTracksResult {
-    success: boolean;
-    added: number;
-    skipped: number;
-    totalLength: number;
-}
-
-export interface QueueStats {
-    totalQueues: number;
-    activeQueues: number;
-    totalTracks: number;
-    maxGuilds: number;
-    maxQueueSize: number;
-}
+import type { MusicTrack, MusicQueue, MessageRef } from '../../types/music/queue.js';
+import type { AddTrackResult, AddTracksResult, QueueStats } from '../../types/cache/music/queue-cache.js';
 // QueueCache Class
 class QueueCache {
     private guildQueues: Map<string, MusicQueue>;
@@ -508,4 +416,10 @@ class QueueCache {
 }
 
 export const queueCache = new QueueCache();
+export { type MusicTrack, type MusicQueue, type MessageRef } from '../../types/music/queue.js';
+export { type AddTrackResult, type AddTracksResult, type QueueStats } from '../../types/cache/music/queue-cache.js';
 export default queueCache;
+
+
+
+

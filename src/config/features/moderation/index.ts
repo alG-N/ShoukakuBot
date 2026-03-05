@@ -7,40 +7,9 @@
 import automod, { type AutomodConfig } from './automod.js';
 import punishments, { type PunishmentsConfig } from './punishments.js';
 import filters, { type FiltersConfig } from './filters.js';
-// TYPES
-export type InfractionType = 
-    | 'warn' | 'mute' | 'unmute' | 'kick' 
-    | 'ban' | 'unban' | 'softban' 
-    | 'filter' | 'automod' | 'note';
+import type { ActionType, ModerationConfig } from '../../../types/config/moderation.js';
 
-export type ActionType = 
-    | 'delete' | 'delete_warn' | 'warn' 
-    | 'mute' | 'kick' | 'ban';
-
-export interface RateLimitConfig {
-    window: number;
-    max: number;
-}
-
-export interface CacheConfig {
-    automodSettingsTTL: number;
-    filtersTTL: number;
-    warnCountTTL: number;
-    recentJoinsTTL: number;
-}
-
-export interface ModerationConfig {
-    automod: AutomodConfig;
-    punishments: PunishmentsConfig;
-    filters: FiltersConfig;
-    INFRACTION_TYPES: Record<string, InfractionType>;
-    ACTION_TYPES: Record<string, ActionType>;
-    COLORS: Record<string, number>;
-    EMOJIS: Record<string, string>;
-    permissions: Record<string, string[]>;
-    rateLimits: Record<string, RateLimitConfig>;
-    cache: CacheConfig;
-}
+export { type ActionType, type ModerationConfig } from '../../../types/config/moderation.js';
 // CONFIG
 const moderationConfig: ModerationConfig = {
     automod,
@@ -148,6 +117,9 @@ const moderationConfig: ModerationConfig = {
 
 // Re-export sub-configs
 export { automod, punishments, filters };
-export type { AutomodConfig, PunishmentsConfig, FiltersConfig };
+export { type AutomodConfig, type PunishmentsConfig, type FiltersConfig };
 
 export default moderationConfig;
+
+
+

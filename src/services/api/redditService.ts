@@ -5,169 +5,20 @@ import { withRetry } from '../../utils/common/apiUtils.js';
 import logger from '../../core/Logger.js';
 import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
 import cacheService from '../../cache/CacheService.js';
+import type { SubredditInfo, RedditPost, RedditPostsResult } from '../../types/api/reddit.js';
+import type {
+    RedditTokenResponse,
+    RawRedditPostData,
+    RawRedditListingResponse,
+    RawSubredditAboutResponse,
+    RawSubredditSearchResponse,
+    RedditSortBy,
+    RedditTimeFilter,
+    RedditRegion
+} from '../../types/api/services/reddit-service.js';
+export { type SubredditInfo, type RedditPost, type RedditPostsResult } from '../../types/api/reddit.js';
+export { type RedditSortBy, type RedditTimeFilter, type RedditRegion } from '../../types/api/services/reddit-service.js';
 // TYPES & INTERFACES
-/**
- * Reddit OAuth token response
- */
-interface RedditTokenResponse {
-    access_token: string;
-    token_type: string;
-    expires_in: number;
-    scope: string;
-}
-
-/**
- * Subreddit search result
- */
-export interface SubredditInfo {
-    name: string;
-    title: string;
-    displayName: string;
-}
-
-/**
- * Parsed Reddit post
- */
-export interface RedditPost {
-    title: string;
-    url: string;
-    image: string | null;
-    gallery: string[];
-    video: string | null;
-    isVideo: boolean;
-    contentType: 'text' | 'image' | 'video' | 'gallery' | 'gif';
-    selftext: string;
-    permalink: string;
-    upvotes: number;
-    downvotes: number;
-    comments: number;
-    awards: number;
-    author: string;
-    nsfw: boolean;
-    created: number | null;
-}
-
-/**
- * Result type for post fetching operations
- */
-export interface RedditPostsResult {
-    posts?: RedditPost[];
-    error?: 'not_found' | 'rate_limited' | 'no_posts' | 'fetch_failed';
-}
-
-/**
- * Raw Reddit post data from API
- */
-interface RawRedditPostData {
-    title?: string;
-    url?: string;
-    url_overridden_by_dest?: string;
-    post_hint?: string;
-    preview?: {
-        images?: Array<{
-            source?: {
-                url: string;
-            };
-            variants?: {
-                gif?: {
-                    source?: {
-                        url: string;
-                    };
-                };
-                mp4?: {
-                    source?: {
-                        url: string;
-                    };
-                };
-            };
-        }>;
-        reddit_video_preview?: {
-            fallback_url: string;
-            is_gif?: boolean;
-        };
-    };
-    gallery_data?: {
-        items: Array<{
-            media_id: string;
-        }>;
-    };
-    media_metadata?: Record<string, {
-        s?: {
-            u?: string;
-            gif?: string;
-            mp4?: string;
-        };
-        e?: string;
-    }>;
-    is_video?: boolean;
-    media?: {
-        reddit_video?: {
-            fallback_url: string;
-            is_gif?: boolean;
-        };
-    };
-    selftext?: string;
-    permalink?: string;
-    ups?: number;
-    downs?: number;
-    num_comments?: number;
-    total_awards_received?: number;
-    author?: string;
-    over_18?: boolean;
-    created_utc?: number;
-    domain?: string;
-}
-
-/**
- * Raw Reddit API response for posts
- */
-interface RawRedditListingResponse {
-    data?: {
-        children?: Array<{
-            data: RawRedditPostData;
-        }>;
-    };
-}
-
-/**
- * Raw Reddit API response for subreddit about
- */
-interface RawSubredditAboutResponse {
-    kind?: string;
-    data?: {
-        display_name: string;
-    };
-}
-
-/**
- * Raw Reddit subreddit search response
- */
-interface RawSubredditSearchResponse {
-    data: {
-        children: Array<{
-            data: {
-                display_name: string;
-                title?: string;
-                display_name_prefixed: string;
-            };
-        }>;
-    };
-}
-
-/**
- * Sort options for Reddit posts
- */
-export type RedditSortBy = 'hot' | 'new' | 'top' | 'rising' | 'controversial';
-
-/**
- * Time filter for top posts
- */
-export type RedditTimeFilter = 'hour' | 'day' | 'week' | 'month' | 'year' | 'all';
-
-/**
- * Region filter for trending posts
- */
-export type RedditRegion = 'global' | 'us' | 'uk' | 'ar' | 'au' | 'de' | 'es' | 'fr' | 'in' | 'it' | 'jp' | 'mx' | 'nl' | 'pl' | 'pt' | 'se';
 // REDDIT SERVICE CLASS
 /**
  * Service for interacting with Reddit API
@@ -593,3 +444,6 @@ const redditService = new RedditService();
 
 export { redditService };
 export default redditService;
+
+
+

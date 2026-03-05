@@ -13,42 +13,9 @@ import { Result } from '../../../core/Result.js';
 import { ErrorCodes } from '../../../core/ErrorCodes.js';
 import { INACTIVITY_TIMEOUT, VC_CHECK_INTERVAL } from '../../../config/features/music.js';
 import cacheService from '../../../cache/CacheService.js';
-// TYPES
-interface PlayerLike {
-    removeAllListeners(): void;
-    on(event: string, listener: (...args: unknown[]) => void): void;
-    connection?: {
-        channelId?: string;
-    };
-}
-
-interface EventBusLike {
-    emitEvent(event: string, data: Record<string, unknown>): void;
-    emitTrackStart(guildId: string, track: unknown, data: unknown): void;
-    emitTrackEnd(guildId: string, track: unknown, reason?: string): void;
-    emitTrackError(guildId: string, track: unknown, error: string): void;
-}
-
-interface EventsModule {
-    musicEventBus: EventBusLike;
-    MusicEvents: Record<string, string>;
-}
-
-interface ConnectionState {
-    isConnected: boolean;
-    voiceChannelId: string | null;
-    eventsBound: boolean;
-    hasInactivityTimer: boolean;
-    hasVCMonitor: boolean;
-}
-
-interface PlayerEventHandlers {
-    onStart?: (data: unknown) => void;
-    onEnd?: (data: unknown) => void;
-    onException?: (data: unknown) => void;
-    onStuck?: (data: unknown) => void;
-    onClosed?: (data: unknown) => void;
-}
+import type { PlayerLike, MusicEventData } from '../../../types/music/infrastructure.js';
+import type { PlayerEventHandlers } from '../../../types/music/events.js';
+import type { EventBusLike, EventsModule, ConnectionState } from '../../../types/music/voice.js';
 
 // Lazy-load to avoid circular dependency
 let musicEventBus: EventBusLike | null = null;
@@ -474,5 +441,9 @@ class VoiceConnectionService {
 const voiceConnectionService = new VoiceConnectionService();
 
 export { VoiceConnectionService };
-export type { ConnectionState, PlayerEventHandlers };
+export { type ConnectionState, type PlayerEventHandlers };
 export default voiceConnectionService;
+
+
+
+

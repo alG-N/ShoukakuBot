@@ -9,10 +9,8 @@ import { trackHandler } from './trackHandler.js';
 import musicCache from '../../cache/music/MusicCacheFacade.js';
 import { checkSameVoiceChannel } from '../../middleware/voiceChannelCheck.js';
 import { musicFacade as musicService } from '../../services/music/core/MusicFacade.js';
+import type { Track } from '../../types/music/track.js';
 
-// Use any for Track type since MusicFacade.Track and trackHandler.Track have different structures
-// but are compatible at runtime
-type Track = any;
 export const queueHandler = {
     async handleQueue(interaction: ChatInputCommandInteraction, guildId: string): Promise<void> {
         const tracks = musicService.getQueueList(guildId) as Track[];

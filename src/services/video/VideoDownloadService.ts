@@ -12,52 +12,13 @@ import ytDlpService from './YtDlpService.js';
 import videoProcessingService from './VideoProcessingService.js';
 import * as videoConfig from '../../config/features/video.js';
 import logger from '../../core/Logger.js';
-// TYPES
-interface DownloadOptions {
-    onProgress?: (data: ProgressData) => void;
-    onStage?: (data: StageData) => void;
-    quality?: string;
-}
-
-interface ProgressData {
-    percent?: number;
-    total?: number;
-    downloaded?: number;
-    speed?: string | null;
-    eta?: string | null;
-    method?: string;
-}
-
-interface StageData {
-    stage: string;
-    message: string;
-    method?: string;
-}
-
-interface DownloadResult {
-    success: boolean;
-    path: string;
-    size: number;
-    format: string;
-    method: string;
-}
-
-interface DirectUrlResult {
-    directUrl: string;
-    size: string;
-    title: string;
-    thumbnail: string | null;
-    method: string;
-}
-
-// Type for video config
-interface VideoConfigType {
-    COBALT_VIDEO_QUALITY?: string;
-    MAX_FILE_SIZE_MB?: number;
-    TEMP_FILE_MAX_AGE?: number;
-    TEMP_FILE_CLEANUP_INTERVAL?: number;
-    FILE_DELETE_DELAY?: number;
-}
+import type {
+    DownloadProgressOptions as DownloadOptions,
+    ProgressData,
+    StageData,
+    VideoConfigType
+} from '../../types/video/processing.js';
+import type { DirectUrlResult, DownloadResult } from '../../types/video/video-download-service.js';
 
 const config = videoConfig as unknown as VideoConfigType;
 // VIDEO DOWNLOAD SERVICE CLASS
@@ -474,5 +435,9 @@ class VideoDownloadService extends EventEmitter {
 const videoDownloadService = new VideoDownloadService();
 
 export { VideoDownloadService };
-export type { DownloadOptions, DownloadResult, DirectUrlResult };
+export { type DownloadOptions, type DownloadResult, type DirectUrlResult };
 export default videoDownloadService;
+
+
+
+

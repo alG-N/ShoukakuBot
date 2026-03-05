@@ -5,20 +5,7 @@
  */
 
 import logger from '../../core/Logger.js';
-// TYPES
-interface RetryOptions {
-    name?: string;
-    maxRetries?: number;
-    retryDelay?: number;
-    retryableStatusCodes?: number[];
-    onRetry?: (attempt: number, error: Error) => void;
-}
-
-interface ErrorWithResponse extends Error {
-    code?: string;
-    response?: { status?: number };
-    status?: number;
-}
+import type { RetryOptions, ErrorWithResponse } from '../../types/utils/common/api-utils.js';
 // CONFIGURATION
 /**
  * Default configuration for API utilities

@@ -5,27 +5,19 @@
  */
 // TYPESCRIPT MODULES
 // Logger
-export { default as logger, Logger, LOG_LEVELS, LOG_CHANNEL_ID } from './Logger.js';
-export type { LogLevel, LogFormat, LogMetadata, RequestLogOptions } from './Logger.js';
+export { default as logger } from './Logger.js';
+export * from './Logger.js';
 
 // Result Pattern
 export { Result } from './Result.js';
-export type { ErrorDetails, ReplyOptions, DiscordReply, ResultJSON } from './Result.js';
+export { type ErrorDetails, type ReplyOptions, type DiscordReply, type ResultJSON } from './Result.js';
 
 // Error Codes
 export { ErrorCodes, getErrorMessage, isErrorCategory } from './ErrorCodes.js';
-export type { ErrorCode, ErrorCategory } from './ErrorCodes.js';
+export { type CoreErrorCode, type ErrorCategory } from './ErrorCodes.js';
 
 // Circuit Breaker
-export { CircuitBreaker, CircuitState } from './CircuitBreaker.js';
-export type { 
-    CircuitStateType,
-    CircuitBreakerOptions,
-    CircuitMetrics,
-    CircuitBreakerMetrics,
-    CircuitHealth,
-    StateChange
-} from './CircuitBreaker.js';
+export * from './CircuitBreaker.js';
 
 // Circuit Breaker Registry
 export { 
@@ -33,7 +25,7 @@ export {
     CircuitBreakerRegistry, 
     CIRCUIT_CONFIGS 
 } from './CircuitBreakerRegistry.js';
-export type { RegistryHealth, RegistrySummary, FallbackResult } from './CircuitBreakerRegistry.js';
+export { type RegistryHealth, type RegistrySummary, type FallbackResult } from './CircuitBreakerRegistry.js';
 
 // Client
 export { 
@@ -43,7 +35,7 @@ export {
     ActivityType,
     CLIENT_OPTIONS 
 } from './Client.js';
-export type { ClientStats } from './Client.js';
+export { type ClientStats } from './Client.js';
 
 // Shutdown
 export { 
@@ -96,4 +88,6 @@ export {
     DegradationLevel, 
     ServiceState 
 } from './GracefulDegradation.js';
+
+
 

@@ -4,17 +4,7 @@
  * Call this before any other initialization
  * @module config/validation
  */
-
-interface EnvRule {
-    /** Environment variable name */
-    name: string;
-    /** Whether the variable is required (fatal if missing) */
-    required: boolean;
-    /** Description for error messages */
-    description: string;
-    /** Category for grouping in output */
-    category: 'core' | 'database' | 'api' | 'music' | 'video';
-}
+import type { ConfigValidationResult, EnvRule } from '../types/config/validation.js';
 
 /**
  * All environment variables the application uses
@@ -58,21 +48,12 @@ const ENV_RULES: EnvRule[] = [
 ];
 
 /**
- * Validation result
- */
-export interface ValidationResult {
-    valid: boolean;
-    missing: { name: string; description: string; category: string }[];
-    warnings: { name: string; description: string; category: string }[];
-}
-
-/**
  * Validate all required environment variables are present.
  * Logs warnings for missing optional variables.
  * @returns Validation result
  */
-export function validateEnvironment(): ValidationResult {
-    const result: ValidationResult = {
+export function validateEnvironment(): ConfigValidationResult {
+    const result: ConfigValidationResult = {
         valid: true,
         missing: [],
         warnings: [],
@@ -140,6 +121,8 @@ export function validateOrExit(): void {
     }
 }
 
+export { type ConfigValidationResult, type EnvRule };
+
 /**
  * Group items by category for display
  */
@@ -153,3 +136,4 @@ function groupByCategory<T extends { category: string }>(items: T[]): Record<str
 }
 
 // Named exports only — use `import { validateEnvironment, validateOrExit } from '...'`
+

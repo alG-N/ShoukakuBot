@@ -15,30 +15,8 @@ import {
 } from 'discord.js';
 import logger from '../../core/Logger.js';
 import steamService from '../../services/api/steamService.js';
-// TYPES & INTERFACES
-interface SteamGame {
-    id: number;
-    name: string;
-    original_price: number;
-    final_price: number;
-    discount_percent: number;
-    usdPrice?: {
-        currency: string;
-        initial: number;
-        final: number;
-        discount_percent: number;
-    };
-    owners?: string;
-    positive?: number;
-    negative?: number;
-}
-
-interface SaleState {
-    games: SteamGame[];
-    currentPage: number;
-    minDiscount: number;
-    showDetailed: boolean;
-}
+import type { SteamGame } from '../../types/api/steam.js';
+import type { SaleState } from '../../types/api/handlers/steam-sale-handler.js';
 // CONSTANTS
 const ITEMS_PER_PAGE = 5;
 const COLLECTOR_TIMEOUT = 300000; // 5 minutes
@@ -259,7 +237,8 @@ function setupCollector(message: Message, userId: string, state: SaleState): voi
 // EXPORTS
 export { handleSaleCommand };
 
-export type {
-    SteamGame,
-    SaleState
-};
+export { type SteamGame, type SaleState };
+
+
+
+

@@ -22,82 +22,18 @@ import logger from '../../core/Logger.js';
 import nhentaiService from '../../services/api/nhentaiService.js';
 import axios from 'axios';
 import { nhentai as nhentaiConfig } from '../../config/services.js';
+import type { NHentaiTitle, NHentaiTag, NHentaiImages, ParsedTags, SearchData } from '../../types/api/nhentai.js';
+import type {
+    Gallery,
+    GalleryTitle,
+    GalleryTag,
+    GalleryImages,
+    PageSession,
+    SearchSession,
+    FavouritesData,
+    Favourite
+} from '../../types/api/handlers/nhentai-handler.js';
 // TYPES & INTERFACES
-interface GalleryTitle {
-    english?: string;
-    japanese?: string;
-    pretty?: string;
-}
-
-interface GalleryImage {
-    t: string; // 'j' | 'p' | 'g'
-}
-
-interface GalleryImages {
-    cover?: GalleryImage;
-    pages?: GalleryImage[];
-}
-
-interface GalleryTag {
-    type: string;
-    name: string;
-}
-
-interface Gallery {
-    id: number;
-    media_id: string;
-    title: GalleryTitle;
-    tags: GalleryTag[];
-    num_pages: number;
-    upload_date: number;
-    images?: GalleryImages;
-}
-
-interface ParsedTags {
-    artists: string[];
-    characters: string[];
-    parodies: string[];
-    groups: string[];
-    tags: string[];
-    languages: string[];
-    categories: string[];
-}
-
-interface PageSession {
-    galleryId: number;
-    gallery: Gallery;
-    currentPage: number;
-    totalPages: number;
-    expiresAt: number;
-}
-
-interface SearchSession {
-    query?: string;
-    sort?: string;
-    results?: Gallery[];
-    currentPage?: number;
-    numPages?: number;
-    favPage?: number;
-    expiresAt: number;
-}
-
-interface SearchData {
-    results: Gallery[];
-    numPages: number;
-    totalResults: number;
-}
-
-interface FavouritesData {
-    embed: EmbedBuilder;
-    totalPages: number;
-    totalCount: number;
-}
-
-interface Favourite {
-    gallery_id: number;
-    gallery_title: string;
-    num_pages: number;
-}
 // CONSTANTS
 const COLORS = {
     NHENTAI: 0xED2553,
@@ -1228,14 +1164,10 @@ export default nhentaiHandler;
 
 export { NHentaiHandler };
 
-export type {
-    Gallery,
-    GalleryTitle,
-    GalleryTag,
-    GalleryImages,
-    ParsedTags,
-    PageSession,
-    SearchSession,
-    SearchData,
-    Favourite
-};
+export { type Gallery, type GalleryTitle, type GalleryTag, type GalleryImages, type ParsedTags, type PageSession, type SearchSession, type SearchData, type Favourite };
+
+export { type FavouritesData } from '../../types/api/handlers/nhentai-handler.js';
+
+
+
+

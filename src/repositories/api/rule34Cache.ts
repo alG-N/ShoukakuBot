@@ -14,6 +14,17 @@
  */
 
 import cacheService from '../../cache/CacheService.js';
+import type {
+    Rule34Session,
+    PaginationState,
+    SearchCacheEntry,
+    AutocompleteEntry,
+    Rule34Favorite,
+    Rule34HistoryEntry,
+    Rule34UserPreferences,
+    Rule34CacheStats,
+    FavoriteResult
+} from '../../types/api/repositories/rule34-cache.js';
 
 // ── CacheService namespace constants ─────────────────────────────────
 const NS = {
@@ -46,84 +57,6 @@ function registerNamespaces(): void {
     cacheService.registerNamespace(NS.PREFERENCES,  { ttl: TTL.PREFERENCES,  maxSize: 5000, useRedis: true });
     cacheService.registerNamespace(NS.FAVORITES,    { ttl: TTL.FAVORITES,    maxSize: 5000, useRedis: true });
     cacheService.registerNamespace(NS.HISTORY,      { ttl: TTL.HISTORY,      maxSize: 5000, useRedis: true });
-}
-
-// ── Interfaces ───────────────────────────────────────────────────────
-interface Rule34Session {
-    userId: string;
-    createdAt: number;
-    updatedAt: number;
-    pagination?: PaginationState;
-    query?: string;
-    results?: any[];
-    currentIndex?: number;
-    [key: string]: any;
-}
-
-interface PaginationState {
-    currentIndex: number;
-    currentPage: number;
-    totalResults: number;
-    hasMore: boolean;
-}
-
-interface SearchCacheEntry {
-    timestamp: number;
-    results?: any[];
-    totalCount?: number;
-    [key: string]: any;
-}
-
-interface AutocompleteEntry {
-    suggestions: string[];
-    timestamp: number;
-}
-
-interface Rule34Favorite {
-    id: number | string;
-    addedAt: number;
-    url?: string;
-    tags?: string[];
-    score?: number;
-    [key: string]: any;
-}
-
-interface HistoryEntry {
-    id: number | string;
-    viewedAt: number;
-    url?: string;
-    tags?: string[];
-    [key: string]: any;
-}
-
-interface UserPreferences {
-    aiFilter: boolean;
-    defaultRating: string | null;
-    minScore: number;
-    excludeLowQuality: boolean;
-    highQualityOnly: boolean;
-    showAnimatedOnly: boolean;
-    resultsPerPage: number;
-    autoplay: boolean;
-    compactMode: boolean;
-    sortMode: string;
-    safeMode: boolean;
-}
-
-interface CacheStats {
-    sessions: number;
-    searchCache: number;
-    blacklists: number;
-    preferences: number;
-    favorites: number;
-    history: number;
-    autocomplete: number;
-}
-
-interface FavoriteResult {
-    success: boolean;
-    message?: string;
-    favorites?: Rule34Favorite[];
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -160,10 +93,10 @@ class Rule34Cache {
     private searchCache = new Map<string, SearchCacheEntry>();
     private userSessions = new Map<string, Rule34Session>();
     private userBlacklists = new Map<string, string[]>();
-    private userPreferences = new Map<string, Partial<UserPreferences>>();
+    private userPreferences = new Map<string, Partial<Rule34UserPreferences>>();
     private autocompleteCache = new Map<string, AutocompleteEntry>();
     private userFavorites = new Map<string, Rule34Favorite[]>();
-    private viewHistory = new Map<string, HistoryEntry[]>();
+    private viewHistory = new Map<string, Rule34HistoryEntry[]>();
 
     // Cache durations (ms) — used for local TTL checks
     private readonly SEARCH_CACHE_DURATION = 10 * 60 * 1000;      // 10 minutes
@@ -317,7 +250,7 @@ class Rule34Cache {
     // PREFERENCES (persistent — 7d TTL, user-critical)
     // ══════════════════════════════════════════════════════════════════
 
-    getDefaultPreferences(): UserPreferences {
+    getDefaultPreferences(): Rule34UserPreferences {
         return {
             aiFilter: true,
             defaultRating: null,
@@ -333,7 +266,7 @@ class Rule34Cache {
         };
     }
 
-    getPreferences(userId: string): UserPreferences {
+    getPreferences(userId: string): Rule34UserPreferences {
         const local = this.userPreferences.get(userId);
         if (local !== undefined) {
             return { ...this.getDefaultPreferences(), ...local };
@@ -342,7 +275,7 @@ class Rule34Cache {
         return this.getDefaultPreferences();
     }
 
-    setPreferences(userId: string, preferences: Partial<UserPreferences>): UserPreferences {
+    setPreferences(userId: string, preferences: Partial<Rule34UserPreferences>): Rule34UserPreferences {
         const current = this.getPreferences(userId);
         const updated = { ...current, ...preferences };
         this.userPreferences.set(userId, updated);
@@ -351,7 +284,7 @@ class Rule34Cache {
         return updated;
     }
 
-    resetPreferences(userId: string): UserPreferences {
+    resetPreferences(userId: string): Rule34UserPreferences {
         this.userPreferences.delete(userId);
         unpersist(NS.PREFERENCES, userId);
         return this.getDefaultPreferences();
@@ -421,7 +354,7 @@ class Rule34Cache {
     // VIEW HISTORY (semi-persistent — 24h TTL)
     // ══════════════════════════════════════════════════════════════════
 
-    addToHistory(userId: string, postId: number | string, postInfo: Record<string, any> = {}): HistoryEntry[] {
+    addToHistory(userId: string, postId: number | string, postInfo: Record<string, any> = {}): Rule34HistoryEntry[] {
         let history = this.viewHistory.get(userId) || [];
         history = history.filter(h => h.id !== postId);
         history.unshift({ id: postId, ...postInfo, viewedAt: Date.now() });
@@ -434,7 +367,7 @@ class Rule34Cache {
         return history;
     }
 
-    getHistory(userId: string, limit: number = 20): HistoryEntry[] {
+    getHistory(userId: string, limit: number = 20): Rule34HistoryEntry[] {
         const history = this.viewHistory.get(userId) || [];
         return history.slice(0, limit);
     }
@@ -468,7 +401,7 @@ class Rule34Cache {
     // STATS & LIFECYCLE
     // ══════════════════════════════════════════════════════════════════
 
-    getStats(): CacheStats {
+    getStats(): Rule34CacheStats {
         return {
             sessions: this.userSessions.size,
             searchCache: this.searchCache.size,
@@ -511,15 +444,9 @@ class Rule34Cache {
 const rule34Cache = new Rule34Cache();
 
 export { rule34Cache, Rule34Cache };
-export type {
-    Rule34Session,
-    PaginationState,
-    SearchCacheEntry,
-    AutocompleteEntry,
-    Rule34Favorite,
-    HistoryEntry,
-    UserPreferences,
-    CacheStats,
-    FavoriteResult,
-};
+export { type Rule34Session, type PaginationState, type SearchCacheEntry, type AutocompleteEntry, type Rule34Favorite, type Rule34HistoryEntry, type Rule34UserPreferences, type Rule34CacheStats, type FavoriteResult };
 export default rule34Cache;
+
+
+
+

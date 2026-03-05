@@ -15,42 +15,14 @@ export { default as guildMusicCache, guildMusicCache as GuildMusicCache } from '
 export { default as voteCache, voteCache as VoteCache } from './VoteCache.js';
 
 // Type exports
-export type {
-    MusicTrack,
-    MusicQueue,
-    MessageRef,
-    AddTrackResult,
-    AddTracksResult,
-    QueueStats
-} from './QueueCache.js';
+export { type MusicTrack, type MusicQueue, type MessageRef, type AddTrackResult, type AddTracksResult, type QueueStats } from './QueueCache.js';
 
-export type {
-    UserPreferences,
-    FavoriteTrack,
-    HistoryTrack,
-    FavoritesEntry,
-    HistoryEntry,
-    AddFavoriteResult,
-    UserMusicStats
-} from './UserMusicCache.js';
+export { type UserPreferences, type FavoriteTrack, type HistoryTrack, type FavoritesEntry, type HistoryEntry, type AddFavoriteResult, type UserMusicStats } from './UserMusicCache.js';
 
-export type {
-    SkipVoteSession,
-    PriorityVoteSession,
-    VoteResult,
-    AddVoteResult,
-    PriorityVoteEndResult,
-    VoteSkipStatus,
-    VoteCacheStats
-} from './VoteCache.js';
+export { type SkipVoteSession, type PriorityVoteSession, type VoteResult, type AddVoteResult, type PriorityVoteEndResult, type VoteSkipStatus, type VoteCacheStats } from './VoteCache.js';
 
-export type {
-    GuildMusicSettings,
-    RecentlyPlayedTrack,
-    RecentlyPlayedEntry,
-    DJLockState,
-    CachedPlaylist,
-    GuildMusicCacheStats
-} from './GuildMusicCache.js';
+export { type GuildMusicSettings, type RecentlyPlayedTrack, type RecentlyPlayedEntry, type DJLockState, type CachedPlaylist, type GuildMusicCacheStats } from './GuildMusicCache.js';
 
-export type { MusicCacheStats } from './MusicCacheFacade.js';
+export { type MusicCacheStats } from './MusicCacheFacade.js';
+
+

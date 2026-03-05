@@ -8,21 +8,7 @@
 import { EmbedBuilder, User } from 'discord.js';
 import musicCache from '../../cache/music/MusicCacheFacade.js';
 import { formatSecondsToTime as fmtDur } from '../../utils/music/index.js';
-import {
-    type Track,
-    type LoopMode,
-    type SourcePlatform,
-    type NowPlayingOptions,
-    type QueueListOptions,
-    type InfoEmbedType,
-    type SourceInfo,
-    COLORS,
-    LOOP_DISPLAY,
-    SOURCE_PLATFORM,
-    DECORATIONS,
-    NOW_PLAYING_EMOJI,
-    PAUSED_EMOJI
-} from './trackTypes.js';
+import { type Track, LoopMode, SourcePlatform, NowPlayingOptions, QueueListOptions, InfoEmbedType, SourceInfo, COLORS, LOOP_DISPLAY, SOURCE_PLATFORM, DECORATIONS, NOW_PLAYING_EMOJI, PAUSED_EMOJI } from './trackTypes.js';
 
 // Utility Functions
 
@@ -690,3 +676,4 @@ export function createLongVideoConfirmEmbed(track: Track, maxDuration: number): 
 
     return embed;
 }
+

@@ -5,13 +5,12 @@
  */
 
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import logger from '../../core/Logger.js';
 import * as _steamHandler from '../../handlers/api/steamSaleHandler.js';
 import _steamService from '../../services/api/steamService.js';
-// TYPES
-type SaleHandler = (interaction: ChatInputCommandInteraction) => Promise<void>;
+import type { SaleHandler, SteamAppDetail, SteamStoreSearchItem } from '../../types/commands/api-steam.js';
 // SERVICE IMPORTS
 const handleSaleCommand: SaleHandler | undefined = (_steamHandler as any)?.handleSaleCommand;
 const steamService: any = _steamService;
@@ -129,19 +128,6 @@ class SteamCommand extends BaseCommand {
                 return;
             }
 
-            interface SteamStoreSearchItem {
-                id: number;
-                name: string;
-                tiny_image?: string;
-                metascore?: string;
-                price?: {
-                    currency: string;
-                    initial: number;
-                    final: number;
-                    discount_percent: number;
-                };
-            }
-
             const searchData = await searchResponse.json() as { total: number; items?: SteamStoreSearchItem[] };
             
             if (!searchData.items || searchData.items.length === 0) {
@@ -163,33 +149,6 @@ class SteamCommand extends BaseCommand {
                 }
             );
             clearTimeout(detailTimeoutId);
-
-            interface SteamAppDetail {
-                success: boolean;
-                data?: {
-                    name: string;
-                    steam_appid: number;
-                    short_description?: string;
-                    header_image?: string;
-                    developers?: string[];
-                    publishers?: string[];
-                    release_date?: { coming_soon: boolean; date: string };
-                    genres?: Array<{ description: string }>;
-                    metacritic?: { score: number; url: string };
-                    price_overview?: {
-                        currency: string;
-                        initial: number;
-                        final: number;
-                        discount_percent: number;
-                        initial_formatted: string;
-                        final_formatted: string;
-                    };
-                    platforms?: { windows: boolean; mac: boolean; linux: boolean };
-                    recommendations?: { total: number };
-                    categories?: Array<{ description: string }>;
-                    is_free?: boolean;
-                };
-            }
 
             let detail: SteamAppDetail['data'] | undefined;
             if (detailResponse.ok) {
@@ -393,3 +352,5 @@ class SteamCommand extends BaseCommand {
 }
 
 export default new SteamCommand();
+
+

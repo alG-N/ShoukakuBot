@@ -12,42 +12,19 @@ import {
     ActionRowBuilder,
     ButtonBuilder
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import logger from '../../core/Logger.js';
 import _wikipediaServiceModule from '../../services/api/wikipediaService.js';
 import _wikipediaHandlerModule from '../../handlers/api/wikipediaHandler.js';
-// TYPES
-interface WikiArticle {
-    title: string;
-    url: string;
-    extract?: string;
-    thumbnail?: string;
-}
-
-interface WikiSearchResult {
-    results?: WikiArticle[];
-}
-
-interface WikiEvent {
-    year: string;
-    text: string;
-}
-
-interface WikipediaService {
-    search: (query: string) => Promise<WikiSearchResult>;
-    getArticle: (title: string, language: string) => Promise<WikiArticle | null>;
-    getRandomArticle: (language: string) => Promise<WikiArticle | null>;
-    getOnThisDay: () => Promise<WikiEvent[] | null>;
-    autocomplete: (query: string) => Promise<string[]>;
-}
-
-interface WikipediaHandler {
-    createSearchResultsEmbed: (query: string, results: WikiArticle[]) => EmbedBuilder;
-    createArticleEmbed: (article: WikiArticle) => EmbedBuilder;
-    createArticleButtons: (article: WikiArticle) => ActionRowBuilder<ButtonBuilder>;
-    createOnThisDayEmbed: (events: WikiEvent[]) => EmbedBuilder;
-}
+import type {
+    WikiArticle,
+    WikiSearchResult,
+    WikiSearchResponse,
+    OnThisDayEvent,
+    OnThisDayDate
+} from '../../types/api/wikipedia.js';
+import type { WikipediaHandler, WikipediaService } from '../../types/commands/api-wikipedia.js';
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const wikipediaService: WikipediaService = _wikipediaServiceModule as any;
 const wikipediaHandler: WikipediaHandler = _wikipediaHandlerModule as any;
@@ -203,7 +180,9 @@ class WikipediaCommand extends BaseCommand {
             return;
         }
 
-        const embed = wikipediaHandler!.createOnThisDayEmbed(events);
+        const now = new Date();
+        const date: OnThisDayDate = { month: now.getMonth() + 1, day: now.getDate() };
+        const embed = wikipediaHandler!.createOnThisDayEmbed(events, date);
         await this.safeReply(interaction, { embeds: [embed] });
     }
 
@@ -229,3 +208,5 @@ class WikipediaCommand extends BaseCommand {
 }
 
 export default new WikipediaCommand();
+
+

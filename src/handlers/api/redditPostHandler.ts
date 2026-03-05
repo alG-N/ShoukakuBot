@@ -14,38 +14,12 @@ import {
 } from 'discord.js';
 import { formatNumber, truncateText } from '../../utils/common/embed.js';
 import redditCache from '../../repositories/api/redditCache.js';
-// TYPES & INTERFACES
-interface RedditPost {
-    title: string;
-    author: string;
-    permalink: string;
-    url?: string;
-    upvotes?: number;
-    ups?: number;
-    comments?: number;
-    num_comments?: number;
-    awards?: number;
-    nsfw?: boolean;
-    over_18?: boolean;
-    created?: number;
-    contentType?: 'video' | 'gallery' | 'image' | 'text' | 'gif';
-    selftext?: string;
-    image?: string;
-    thumbnail?: string;
-    video?: string;
-    gallery?: string[];
-}
-
-type SortType = 'hot' | 'best' | 'top' | 'new' | 'rising';
-
-interface SortConfigItem {
-    emoji: string;
-    name: string;
-}
+import type { RedditPost } from '../../types/api/reddit.js';
+import type { RedditSortType, SortConfigItem } from '../../types/api/handlers/reddit-post-handler.js';
 // CONSTANTS
 const POSTS_PER_PAGE = 5;
 
-const SORT_CONFIG: Record<SortType, SortConfigItem> = {
+const SORT_CONFIG: Record<RedditSortType, SortConfigItem> = {
     hot: { emoji: '🔥', name: 'Hot' },
     best: { emoji: '⭐', name: 'Best' },
     top: { emoji: '🏆', name: 'Top' },
@@ -64,7 +38,7 @@ const CONTENT_ICONS: Record<string, string> = {
 function createPostListEmbed(
     subreddit: string, 
     posts: RedditPost[], 
-    sortBy: SortType, 
+    sortBy: RedditSortType, 
     currentPage: number
 ): EmbedBuilder {
     const totalPosts = posts.length;
@@ -217,7 +191,7 @@ async function sendPostListEmbed(
     interaction: ChatInputCommandInteraction, 
     subreddit: string, 
     posts: RedditPost[], 
-    sortBy: SortType, 
+    sortBy: RedditSortType, 
     currentPage: number, 
     isNsfwChannel: boolean = false
 ): Promise<void> {
@@ -373,7 +347,8 @@ export {
     POSTS_PER_PAGE
 };
 
-export type {
-    RedditPost,
-    SortType
-};
+export { type RedditPost, type RedditSortType as SortType };
+
+
+
+

@@ -19,23 +19,7 @@ import {
 import { logger } from '../../core/Logger.js';
 import { formatDuration } from '../../utils/common/time.js';
 import ModLogService from '../../services/moderation/ModLogService.js';
-/**
- * Moderation action types
- */
-export type ModActionType = 'warn' | 'mute' | 'kick' | 'ban' | 'unmute' | 'unban';
-
-/**
- * Quick embed options
- */
-export interface QuickEmbedOptions {
-    type: ModActionType;
-    user: User | GuildMember | { id: string; displayAvatarURL?: () => string };
-    moderator: User | GuildMember | { id: string };
-    reason?: string;
-    duration?: number;
-    caseId?: number | string;
-    color?: number;
-}
+import type { ModActionType, QuickEmbedOptions } from '../../types/moderation/handlers.js';
 
 /**
  * Type colors mapping
@@ -213,3 +197,4 @@ export default {
     sendConfirmation,
     formatDuration
 };
+

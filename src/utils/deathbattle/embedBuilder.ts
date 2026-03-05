@@ -5,38 +5,7 @@
 
 import { EmbedBuilder, User, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import type { BattleHistoryEntry } from '../../services/fun/deathbattle/BattleService.js';
-
-// TYPES
-interface Player {
-    username: string;
-}
-
-interface Skillset {
-    displayName: string;
-    thumbnail: string;
-}
-
-interface BattleState {
-    skillset?: Skillset;
-    skillsetName?: string;
-    player1: Player | User;
-    player2: Player | User;
-    player1Health: number;
-    player2Health: number;
-    player1MaxHp?: number;
-    player2MaxHp?: number;
-    battleLog: string;
-    roundCount?: number;
-}
-
-interface RoundResult {
-    attacker: Player | User;
-    defender: Player | User;
-    damage: number;
-    skill: string;
-    effectLogs?: string[];
-    historyEntry?: BattleHistoryEntry;
-}
+import type { Player, BattleSkillset, BattleState, RoundResult } from '../../types/fun/deathbattle-embed-builder.js';
 // DEATHBATTLE EMBED BUILDER CLASS
 class DeathBattleEmbedBuilder {
     private getUsername(player: Player | User): string {
@@ -238,4 +207,7 @@ class DeathBattleEmbedBuilder {
 const deathBattleEmbedBuilder = new DeathBattleEmbedBuilder();
 export default deathBattleEmbedBuilder;
 export { DeathBattleEmbedBuilder };
-export type { BattleState, Player, Skillset, RoundResult };
+export { type BattleState, type Player, type BattleSkillset, type RoundResult };
+
+
+

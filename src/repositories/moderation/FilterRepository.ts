@@ -4,44 +4,14 @@
  */
 
 import db from '../../database/postgres.js';
-// Interfaces
-type FilterMatchType = 'contains' | 'exact' | 'regex' | 'word';
-type FilterAction = 'delete' | 'delete_warn' | 'warn' | 'mute' | 'kick' | 'ban';
-
-interface WordFilter {
-    id: number;
-    guild_id: string;
-    pattern: string;
-    match_type: FilterMatchType;
-    action: FilterAction;
-    severity: number;
-    created_by: string;
-    created_at?: Date;
-}
-
-interface FilterAddData {
-    guildId: string;
-    pattern: string;
-    matchType?: FilterMatchType;
-    action?: FilterAction;
-    severity?: number;
-    createdBy: string;
-}
-
-interface FilterBulkItem {
-    pattern: string;
-    matchType?: FilterMatchType;
-    action?: FilterAction;
-    severity?: number;
-}
-
-interface FilterUpdateData {
-    pattern?: string;
-    match_type?: FilterMatchType;
-    matchType?: FilterMatchType;
-    action?: FilterAction;
-    severity?: number;
-}
+import type {
+    WordFilter,
+    FilterMatchType,
+    FilterAction,
+    FilterAddData,
+    FilterBulkItem,
+    FilterUpdateData
+} from '../../types/moderation/filter-repository.js';
 // Repository Functions
 /**
  * Get all filters for a guild
@@ -268,5 +238,7 @@ export {
     getBySeverity,
     search
 };
-export type { WordFilter, FilterMatchType, FilterAction, FilterAddData, FilterBulkItem, FilterUpdateData };
+export { type WordFilter, type FilterMatchType, type FilterAction, type FilterAddData, type FilterBulkItem, type FilterUpdateData };
 export default FilterRepository;
+
+

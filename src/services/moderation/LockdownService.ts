@@ -5,33 +5,10 @@
  * @module services/moderation/LockdownService
  */
 
-import { PermissionFlagsBits, ChannelType, type Guild, type TextChannel, type Snowflake } from 'discord.js';
+import { PermissionFlagsBits, ChannelType, Guild, TextChannel, Snowflake } from 'discord.js';
 import cacheService from '../../cache/CacheService.js';
 import logger from '../../core/Logger.js';
-// TYPES
-interface SavedPermissions {
-    allow: string; // bigint as string for JSON serialization
-    deny: string;
-}
-
-interface LockdownState {
-    locked: boolean;
-    permissions: Record<Snowflake, SavedPermissions | null>;
-}
-
-interface LockResult {
-    success: boolean;
-    error?: string;
-    channelId: string;
-    channelName: string;
-}
-
-interface ServerLockResult {
-    success: LockResult[];
-    failed: LockResult[];
-    skipped: LockResult[];
-    message?: string;
-}
+import type { SavedPermissions, LockdownState, LockResult, ServerLockResult, LockStatus } from '../../types/moderation/lockdown.js';
 
 // Redis key helpers
 const LOCKDOWN_NAMESPACE = 'lockdown';
@@ -283,7 +260,7 @@ class LockdownService {
      * Get lock status for a guild
      * SHARD-SAFE: Reads from Redis
      */
-    async getLockStatus(guildId: Snowflake): Promise<{ lockedCount: number; channelIds: Snowflake[] }> {
+    async getLockStatus(guildId: Snowflake): Promise<LockStatus> {
         const channelIds = await this.getLockedChannels(guildId);
         return { lockedCount: channelIds.length, channelIds };
     }
@@ -315,3 +292,4 @@ const lockdownService = new LockdownService();
 
 export { LockdownService };
 export default lockdownService;
+

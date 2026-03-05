@@ -28,6 +28,13 @@ import { trackCommand, commandsActive, commandErrorsTotal } from '../core/metric
 import { isOwner } from '../config/owner.js';
 import { logger } from '../core/Logger.js';
 import { globalCooldownManager } from '../utils/common/cooldown.js';
+import type {
+    CommandCategoryType,
+    CommandOptions,
+    CooldownResult,
+    CommandContext,
+    CommandData
+} from '../types/commands/base-command.js';
 // TYPES & INTERFACES
 /**
  * Command categories enum
@@ -41,58 +48,6 @@ export const CommandCategory = {
     API: 'api',
     FUN: 'fun',
 } as const;
-
-export type CommandCategoryType = typeof CommandCategory[keyof typeof CommandCategory];
-
-/**
- * Command options for constructor
- */
-export interface CommandOptions {
-    /** Command category */
-    category?: CommandCategoryType;
-    /** Cooldown in seconds */
-    cooldown?: number;
-    /** Owner only command */
-    ownerOnly?: boolean;
-    /** Admin only command */
-    adminOnly?: boolean;
-    /** Guild only command */
-    guildOnly?: boolean;
-    /** NSFW only command */
-    nsfw?: boolean;
-    /** Required user permissions */
-    userPermissions?: PermissionResolvable[];
-    /** Required bot permissions */
-    botPermissions?: PermissionResolvable[];
-    /** Whether to defer reply */
-    deferReply?: boolean;
-    /** Whether reply should be ephemeral */
-    ephemeral?: boolean;
-}
-
-/**
- * Cooldown check result
- */
-interface CooldownResult {
-    onCooldown: boolean;
-    remaining?: number;
-}
-
-/**
- * Command execution context
- */
-export interface CommandContext {
-    client: Client;
-    guild: Guild | null;
-    user: User;
-    member: GuildMember | null;
-}
-
-/**
- * Command data type - accepts any SlashCommand variant
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type CommandData = any;
 // BASE COMMAND CLASS
 /**
  * Base command class - extend this for all commands
@@ -485,3 +440,7 @@ export abstract class BaseCommand {
         return this.safeReply(interaction, { embeds: [embed], ephemeral });
     }
 }
+
+export { type CommandCategoryType, type CommandOptions, type CooldownResult, type CommandContext, type CommandData };
+
+

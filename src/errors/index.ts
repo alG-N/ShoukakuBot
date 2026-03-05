@@ -18,7 +18,7 @@ export {
     CooldownError,
 } from './AppError.js';
 
-export type { SerializedError, ErrorCode } from './AppError.js';
+export { type SerializedError, type AppErrorCode } from '../types/errors/app-error.js';
 
 // Domain base errors (for instanceof checks only)
 export { MusicError } from './MusicError.js';
@@ -26,8 +26,11 @@ export { VideoError } from './VideoError.js';
 export { ApiError } from './ApiError.js';
 
 // Type exports
-export type { MusicErrorCode } from './MusicError.js';
-export type { VideoErrorCode } from './VideoError.js';
-export type { ApiErrorCode } from './ApiError.js';
+export { type MusicErrorCode } from '../types/errors/music-error.js';
+export { type VideoErrorCode } from '../types/errors/video-error.js';
+export { type ApiErrorCode } from '../types/errors/api-error.js';
+
+
+
 
 

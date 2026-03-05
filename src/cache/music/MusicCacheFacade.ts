@@ -11,33 +11,16 @@
  * @module modules/music/repository/MusicCacheFacade
  */
 
-import queueCache, { MusicTrack, MusicQueue, type MessageRef } from './QueueCache.js';
+import queueCache, { MusicTrack, MusicQueue, MessageRef } from './QueueCache.js';
 import userMusicCache, { UserPreferences, FavoriteTrack, HistoryTrack, AddFavoriteResult, UserMusicStats } from './UserMusicCache.js';
 import voteCache, { VoteResult, AddVoteResult, VoteSkipStatus } from './VoteCache.js';
 import guildMusicCache, { GuildMusicSettings, RecentlyPlayedTrack, DJLockState, CachedPlaylist } from './GuildMusicCache.js';
 import logger from '../../core/Logger.js';
-// Types
-export interface MusicCacheStats {
-    queue: ReturnType<typeof queueCache.getStats>;
-    user: UserMusicStats;
-    vote: ReturnType<typeof voteCache.getStats>;
-    guild: ReturnType<typeof guildMusicCache.getStats>;
-}
+import type { MusicCacheStats } from '../../types/cache/music/music-cache-facade.js';
 
 // Re-export types for convenience
-export type {
-    MusicTrack,
-    MusicQueue,
-    UserPreferences,
-    FavoriteTrack,
-    HistoryTrack,
-    GuildMusicSettings,
-    RecentlyPlayedTrack,
-    DJLockState,
-    VoteResult,
-    AddVoteResult,
-    VoteSkipStatus
-};
+export { type MusicTrack, type MusicQueue, type UserPreferences, type FavoriteTrack, type HistoryTrack, type GuildMusicSettings, type RecentlyPlayedTrack, type DJLockState, type VoteResult, type AddVoteResult, type VoteSkipStatus };
+export { type MusicCacheStats };
 // MusicCacheFacade Class
 /**
  * Facade for backward compatibility
@@ -327,3 +310,7 @@ class MusicCacheFacade {
 // Export singleton (backward compatible)
 export const musicCacheFacade = new MusicCacheFacade();
 export default musicCacheFacade;
+
+
+
+

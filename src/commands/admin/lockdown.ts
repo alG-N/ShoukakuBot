@@ -12,38 +12,12 @@ import {
     ChatInputCommandInteraction,
     TextChannel
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import _lockdownModule from '../../services/moderation/LockdownService.js';
 import _moderationConfigModule from '../../config/features/moderation/index.js';
-interface ModerationConfig {
-    COLORS: Record<string, number>;
-    EMOJIS: Record<string, string>;
-}
-
-interface LockResult {
-    success: boolean;
-    error?: string;
-}
-
-interface ServerLockResult {
-    success: string[];
-    skipped: string[];
-    failed: string[];
-    message?: string;
-}
-
-interface LockStatus {
-    lockedCount: number;
-    channelIds: string[];
-}
-
-interface LockdownService {
-    lockChannel?: (channel: TextChannel, reason: string) => Promise<LockResult>;
-    unlockChannel?: (channel: TextChannel, reason: string) => Promise<LockResult>;
-    lockServer?: (guild: ChatInputCommandInteraction['guild'], reason: string) => Promise<ServerLockResult>;
-    unlockServer?: (guild: ChatInputCommandInteraction['guild'], reason: string) => Promise<ServerLockResult>;
-    getLockStatus?: (guildId: string) => Promise<LockStatus>;
-}
+import type { ModerationConfig } from '../../config/features/moderation/index.js';
+import type { LockdownService } from '../../types/moderation/services.js';
+import type { LockResult, ServerLockResult, LockStatus } from '../../types/moderation/lockdown.js';
 
 
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
@@ -138,7 +112,7 @@ class LockdownCommand extends BaseCommand {
         
         await interaction.deferReply({ ephemeral: true });
         
-        const result = await lockdownService?.lockChannel?.(
+        const result: LockResult | undefined = await lockdownService?.lockChannel?.(
             channel,
             `${reason} | By: ${interaction.user.tag}`
         );
@@ -230,7 +204,7 @@ class LockdownCommand extends BaseCommand {
             ]
         });
         
-        const results = await lockdownService?.lockServer?.(
+        const results: ServerLockResult = await lockdownService?.lockServer?.(
             interaction.guild,
             `${reason} | By: ${interaction.user.tag}`
         ) || { success: [], skipped: [], failed: [] };
@@ -259,7 +233,7 @@ class LockdownCommand extends BaseCommand {
         
         await interaction.deferReply({ ephemeral: true });
         
-        const result = await lockdownService?.unlockChannel?.(
+        const result: LockResult | undefined = await lockdownService?.unlockChannel?.(
             channel,
             `Unlocked by ${interaction.user.tag}`
         );
@@ -304,7 +278,7 @@ class LockdownCommand extends BaseCommand {
 
         await interaction.deferReply({ ephemeral: true });
         
-        const results = await lockdownService?.unlockServer?.(
+        const results: ServerLockResult = await lockdownService?.unlockServer?.(
             interaction.guild,
             `Server unlock by ${interaction.user.tag}`
         ) || { success: [], skipped: [], failed: [], message: undefined };
@@ -344,7 +318,7 @@ class LockdownCommand extends BaseCommand {
             return;
         }
 
-        const status = await lockdownService?.getLockStatus?.(interaction.guild.id) || { lockedCount: 0, channelIds: [] };
+        const status: LockStatus = await lockdownService?.getLockStatus?.(interaction.guild.id) || { lockedCount: 0, channelIds: [] };
         
         let description: string;
         if (status.lockedCount === 0) {
@@ -377,3 +351,4 @@ class LockdownCommand extends BaseCommand {
 }
 
 export default new LockdownCommand();
+

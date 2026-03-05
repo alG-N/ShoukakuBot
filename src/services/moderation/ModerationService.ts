@@ -4,50 +4,15 @@
  * @module services/moderation/ModerationService
  */
 
-import { EmbedBuilder, type Guild, type GuildMember, type User } from 'discord.js';
+import { EmbedBuilder, Guild, GuildMember, User } from 'discord.js';
 import GuildSettingsService from '../guild/GuildSettingsService.js';
 import { formatDuration } from '../../utils/common/time.js';
 import { Result } from '../../core/Result.js';
 import { ErrorCodes } from '../../core/ErrorCodes.js';
 import logger from '../../core/Logger.js';
-// TYPES
-interface ModAction {
-    type: string;
-    target: GuildMember | User | { user?: User; id: string };
-    moderator: GuildMember;
-    reason: string;
-    duration?: number;
-    deleteMessageDays?: number;
-    count?: number;
-    channel?: string;
-    filters?: string;
-}
-
-interface ModerationConfig {
-    COLORS: {
-        SUCCESS: number;
-        ERROR: number;
-        WARNING: number;
-        MODERATION: number;
-    };
-    DEFAULT_REASONS: {
-        KICK: string;
-        MUTE: string;
-        BAN: string;
-    };
-    LOG_ACTIONS: {
-        KICK: string;
-        MUTE: string;
-        UNMUTE: string;
-        BAN: string;
-        UNBAN: string;
-        DELETE: string;
-    };
-    MAX_MUTE_DURATION_MS: number;
-    DURATION_PRESETS: Record<string, number>;
-}
+import type { ModAction, ModerationServiceConfig } from '../../types/moderation/moderation-service.js';
 // CONFIG
-export const CONFIG: ModerationConfig = {
+export const CONFIG: ModerationServiceConfig = {
     COLORS: {
         SUCCESS: 0x00FF00,
         ERROR: 0xFF0000,
@@ -440,3 +405,5 @@ export default {
     parseDuration,
     formatDuration
 };
+
+

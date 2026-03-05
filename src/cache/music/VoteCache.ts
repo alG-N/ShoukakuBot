@@ -6,56 +6,15 @@
 
 import type { MessageRef } from './QueueCache.js';
 import { MusicTrack } from './QueueCache.js';
-// Types
-export interface SkipVoteSession {
-    votes: Set<string>;
-    listenerCount: number;
-    required: number;
-    startedAt: number;
-    startedBy: string;
-    timeout: NodeJS.Timeout | null;
-    message: MessageRef | null;
-}
-
-export interface PriorityVoteSession {
-    track: MusicTrack;
-    votes: Set<string>;
-    listenerCount: number;
-    required: number;
-    startedAt: number;
-    startedBy: string;
-    timeout: NodeJS.Timeout | null;
-    message: MessageRef | null;
-}
-
-export interface VoteResult {
-    voteCount: number;
-    required: number;
-}
-
-export interface AddVoteResult {
-    added: boolean;
-    voteCount: number;
-    required?: number;
-    message?: string;
-}
-
-export interface PriorityVoteEndResult {
-    track: MusicTrack;
-    voteCount: number;
-    passed: boolean;
-}
-
-export interface VoteSkipStatus {
-    active: boolean;
-    count: number;
-    required: number;
-}
-
-export interface VoteCacheStats {
-    activeSkipVotes: number;
-    activePriorityVotes: number;
-}
+import type {
+    SkipVoteSession,
+    PriorityVoteSession,
+    AddVoteResult,
+    PriorityVoteEndResult,
+    VoteCacheStats,
+    VoteResult,
+    VoteSkipStatus
+} from '../../types/cache/music/vote-cache.js';
 // VoteCache Class
 class VoteCache {
     // Skip vote sessions
@@ -313,4 +272,7 @@ class VoteCache {
 }
 
 export const voteCache = new VoteCache();
+export { type SkipVoteSession, type PriorityVoteSession, type AddVoteResult, type PriorityVoteEndResult, type VoteCacheStats, type VoteResult, type VoteSkipStatus };
 export default voteCache;
+
+

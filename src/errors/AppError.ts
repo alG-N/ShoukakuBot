@@ -3,33 +3,8 @@
  * All custom errors extend from this class
  * @module errors/AppError
  */
-
-/**
- * Error code type
- */
-export type ErrorCode = 
-    | 'UNKNOWN_ERROR'
-    | 'VALIDATION_ERROR'
-    | 'NOT_FOUND'
-    | 'PERMISSION_DENIED'
-    | 'RATE_LIMITED'
-    | 'EXTERNAL_SERVICE_ERROR'
-    | 'DATABASE_ERROR'
-    | 'CONFIGURATION_ERROR'
-    | 'TIMEOUT'
-    | 'COOLDOWN';
-
-/**
- * Serialized error format
- */
-export interface SerializedError {
-    name: string;
-    message: string;
-    code: string;
-    statusCode: number;
-    timestamp: Date;
-    [key: string]: unknown;
-}
+import type { AppErrorCode, SerializedError } from '../types/errors/app-error.js';
+export { type AppErrorCode, type SerializedError } from '../types/errors/app-error.js';
 
 /**
  * Base application error class.
@@ -259,3 +234,4 @@ export class CooldownError extends AppError {
         };
     }
 }
+

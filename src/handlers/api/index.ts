@@ -6,12 +6,7 @@
 
 // TypeScript handlers
 export { wikipediaHandler, WikipediaHandler } from './wikipediaHandler.js';
-export type { 
-    WikipediaArticle, 
-    WikiSearchResult, 
-    OnThisDayEvent, 
-    OnThisDayDate 
-} from './wikipediaHandler.js';
+export { type WikipediaArticle, type WikiSearchResult, type OnThisDayEvent, type OnThisDayDate } from './wikipediaHandler.js';
 
 // Anime handler
 import * as animeHandlerModule from './animeHandler.js';
@@ -22,29 +17,12 @@ export {
     createMALAnimeEmbed,
     createMALMangaEmbed
 } from './animeHandler.js';
-export type {
-    AnimeMedia,
-    MediaSource,
-    MediaType,
-    MediaConfig,
-    MediaTitle,
-    MediaDate
-} from './animeHandler.js';
+export { type AnimeMedia, type MediaSource, type MediaType, type MediaConfig, type MediaTitle, type MediaDate } from './animeHandler.js';
 
 // NHentai handler
 import nhentaiHandlerInstance from './nhentaiHandler.js';
 export { default as nhentaiHandler, NHentaiHandler } from './nhentaiHandler.js';
-export type {
-    Gallery,
-    GalleryTitle,
-    GalleryTag,
-    GalleryImages,
-    ParsedTags,
-    PageSession,
-    SearchSession,
-    SearchData,
-    Favourite
-} from './nhentaiHandler.js';
+export { type Gallery, type GalleryTitle, type GalleryTag, type GalleryImages, type ParsedTags, type PageSession, type SearchSession, type SearchData, type Favourite } from './nhentaiHandler.js';
 
 // Pixiv handler
 import * as pixivContentHandlerModule from './pixivContentHandler.js';
@@ -53,13 +31,7 @@ export {
     createNoResultsEmbed as createPixivNoResultsEmbed,
     createErrorEmbed as createPixivErrorEmbed
 } from './pixivContentHandler.js';
-export type {
-    PixivItem,
-    PixivTag,
-    PixivUser,
-    ContentEmbedOptions,
-    ContentEmbedResult
-} from './pixivContentHandler.js';
+export { type PixivItem, type PixivTag, type PixivContentUser, type ContentEmbedOptions, type ContentEmbedResult } from './pixivContentHandler.js';
 
 // Reddit handler
 import * as redditPostHandlerModule from './redditPostHandler.js';
@@ -71,10 +43,7 @@ export {
     createNotFoundEmbed,
     POSTS_PER_PAGE
 } from './redditPostHandler.js';
-export type {
-    RedditPost,
-    SortType
-} from './redditPostHandler.js';
+export { type RedditPost, type SortType } from './redditPostHandler.js';
 
 // Rule34 handler
 import * as rule34PostHandlerModule from './rule34PostHandler.js';
@@ -96,28 +65,12 @@ export {
     CONTENT_EMOJIS,
     SORT_DISPLAY
 } from './rule34PostHandler.js';
-export type {
-    Rule34Post,
-    PostRating,
-    ContentType,
-    SortMode,
-    SearchResults,
-    PostEmbedOptions,
-    SearchFilters,
-    UserPreferences,
-    FavoriteEntry,
-    HistoryEntry,
-    RelatedTag,
-    EmbedResult
-} from './rule34PostHandler.js';
+export { type Rule34Post, type PostRating, type ContentType, type SortMode, type SearchResults, type PostEmbedOptions, type SearchFilters, type Rule34HandlerPreferences as UserPreferences, type FavoriteEntry, type Rule34HistoryEntry, type RelatedTag, type EmbedResult } from './rule34PostHandler.js';
 
 // Steam handler
 import * as steamSaleHandlerModule from './steamSaleHandler.js';
 export { handleSaleCommand } from './steamSaleHandler.js';
-export type {
-    SteamGame,
-    SaleState
-} from './steamSaleHandler.js';
+export { type SteamGame, type SaleState } from './steamSaleHandler.js';
 
 // Re-export as namespace objects for backward compatibility
 export const animeHandler = animeHandlerModule;
@@ -126,3 +79,5 @@ export const redditPostHandler = redditPostHandlerModule;
 export const steamSaleHandler = steamSaleHandlerModule;
 export const rule34PostHandler = rule34PostHandlerModule;
 export { nhentaiHandlerInstance };
+
+

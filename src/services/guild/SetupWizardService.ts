@@ -22,22 +22,7 @@ import {
 } from 'discord.js';
 import { COLORS } from '../../constants.js';
 import logger from '../../core/Logger.js';
-
-/**
- * Setup step types
- */
-type SetupStep = 'welcome' | 'automod' | 'features' | 'complete';
-
-/**
- * AutoMod feature options
- */
-interface AutoModOptions {
-    antiSpam: boolean;
-    antiInvite: boolean;
-    antiCaps: boolean;
-    antiMassMention: boolean;
-    badWordFilter: boolean;
-}
+import type { AutoModOptions, SetupStep } from '../../types/guild/setup-wizard-service.js';
 
 /**
  * Setup Wizard Service Class
@@ -609,3 +594,4 @@ export class SetupWizardService {
 // Export singleton
 export const setupWizardService = SetupWizardService.getInstance();
 export default setupWizardService;
+

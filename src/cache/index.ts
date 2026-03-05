@@ -6,7 +6,7 @@
 
 // Cache Service
 export { CacheService, DEFAULT_NAMESPACES } from './CacheService.js';
-export type { NamespaceConfig, CacheMetrics, CacheServiceStats, CacheServiceOptions } from './CacheService.js';
+export { type NamespaceConfig, type CacheMetrics, type CacheServiceStats, type CacheServiceOptions } from './CacheService.js';
 
 // Music Caches (moved from repositories/music)
 export * as music from './music/index.js';
@@ -25,3 +25,6 @@ export default cacheService;
 
 // Re-export cacheService as named export
 export { cacheService };
+
+
+

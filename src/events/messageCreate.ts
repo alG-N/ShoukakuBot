@@ -9,10 +9,7 @@ import { BaseEvent } from './BaseEvent.js';
 import { handleAutoModMessage } from '../handlers/moderation/index.js';
 import { handleAfkMessage } from '../handlers/general/index.js';
 import logger from '../core/Logger.js';
-// TYPES
-interface AutoModResult {
-    deleted?: boolean;
-}
+import type { AutoModResult } from '../types/core/events.js';
 // MESSAGE CREATE EVENT
 class MessageCreateEvent extends BaseEvent {
     constructor() {
@@ -64,3 +61,4 @@ class MessageCreateEvent extends BaseEvent {
 }
 
 export default new MessageCreateEvent();
+

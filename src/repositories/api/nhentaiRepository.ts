@@ -5,38 +5,13 @@
 
 import postgres from '../../database/postgres.js';
 import logger from '../../core/Logger.js';
-// Interfaces
-interface NHentaiGallery {
-    id: number;
-    title?: {
-        english?: string;
-        japanese?: string;
-        pretty?: string;
-    };
-    num_pages?: number;
-    tags?: NHentaiTag[];
-}
-
-interface NHentaiTag {
-    id?: number;
-    type: string;
-    name: string;
-    url?: string;
-    count?: number;
-}
-
-interface NHentaiFavourite {
-    gallery_id: number;
-    gallery_title: string;
-    num_pages: number;
-    tags: string;
-    created_at?: Date;
-}
-
-interface ToggleFavouriteResult {
-    added: boolean;
-    removed: boolean;
-}
+import type { NHentaiGallery, NHentaiTag } from '../../types/api/nhentai.js';
+import type {
+    NHentaiFavouriteGalleryInput,
+    NHentaiFavourite,
+    ToggleFavouriteResult
+} from '../../types/api/repositories/nhentai-repository.js';
+export { type NHentaiGallery, type NHentaiTag } from '../../types/api/nhentai.js';
 
 
 // NHentaiRepository Class
@@ -135,7 +110,7 @@ class NHentaiRepository {
     /**
      * Add a gallery to favourites
      */
-    async addFavourite(userId: string, gallery: NHentaiGallery): Promise<boolean> {
+    async addFavourite(userId: string, gallery: NHentaiFavouriteGalleryInput): Promise<boolean> {
         await this._initialize();
         try {
             const title = gallery.title?.english || gallery.title?.japanese || gallery.title?.pretty || 'Unknown';
@@ -174,7 +149,7 @@ class NHentaiRepository {
     /**
      * Toggle favourite status
      */
-    async toggleFavourite(userId: string, gallery: NHentaiGallery): Promise<ToggleFavouriteResult> {
+    async toggleFavourite(userId: string, gallery: NHentaiFavouriteGalleryInput): Promise<ToggleFavouriteResult> {
         const isFav = await this.isFavourited(userId, gallery.id);
         if (isFav) {
             await this.removeFavourite(userId, gallery.id);
@@ -233,5 +208,8 @@ class NHentaiRepository {
 const nhentaiRepository = new NHentaiRepository();
 
 export { nhentaiRepository, NHentaiRepository };
-export type { NHentaiGallery, NHentaiTag, NHentaiFavourite, ToggleFavouriteResult };
+export { type NHentaiFavourite, type ToggleFavouriteResult };
 export default nhentaiRepository;
+
+
+

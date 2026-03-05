@@ -4,18 +4,8 @@
  */
 
 import { AppError } from './AppError.js';
-
-/**
- * Video error codes
- */
-export type VideoErrorCode =
-    | 'VIDEO_ERROR'
-    | 'INVALID_URL'
-    | 'VIDEO_NOT_FOUND'
-    | 'VIDEO_TOO_LONG'
-    | 'VIDEO_TOO_LARGE'
-    | 'DOWNLOAD_FAILED'
-    | 'UNSUPPORTED_PLATFORM';
+import type { VideoErrorCode } from '../types/errors/video-error.js';
+export { type VideoErrorCode } from '../types/errors/video-error.js';
 
 /**
  * Base video error - use only for catch blocks or instanceof checks.
@@ -27,5 +17,6 @@ export class VideoError extends AppError {
         super(message, code, 400);
     }
 }
+
 
 

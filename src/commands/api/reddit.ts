@@ -11,61 +11,25 @@ import {
     AutocompleteInteraction,
     ButtonInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import _redditService from '../../services/api/redditService.js';
 import _redditCache from '../../repositories/api/redditCache.js';
 import * as _postHandler from '../../handlers/api/redditPostHandler.js';
 import logger from '../../core/Logger.js';
-// TYPES
-interface RedditPost {
-    nsfw?: boolean;
-    over_18?: boolean;
-    gallery?: string[];
-}
-
-interface SubredditSuggestion {
-    displayName: string;
-    title: string;
-    name: string;
-}
-
-interface FetchResult {
-    posts?: RedditPost[];
-    error?: string;
-}
-
-interface RedditService {
-    fetchSubredditPosts: (subreddit: string, sort: string, count: number) => Promise<FetchResult>;
-    searchSimilarSubreddits: (query: string) => Promise<SubredditSuggestion[]>;
-    fetchTrendingPosts?: (region: string, count: number) => Promise<FetchResult>;
-    fetchAllPosts?: (sort: string, count: number) => Promise<FetchResult>;
-    searchSubreddits: (query: string, limit: number) => Promise<SubredditSuggestion[]>;
-}
-
-interface RedditCache {
-    setPosts: (userId: string, posts: RedditPost[]) => void;
-    getPosts: (userId: string) => RedditPost[] | null;
-    setPage: (userId: string, page: number) => void;
-    getPage: (userId: string) => number;
-    setSort: (userId: string, sort: string) => void;
-    getSort: (userId: string) => string;
-    setNsfwChannel: (userId: string, isNsfw: boolean) => void;
-    getNsfwChannel: (userId: string) => boolean;
-    getGalleryPage: (userId: string, postIndex: number) => number;
-    setGalleryPage: (userId: string, postIndex: number, page: number) => void;
-}
-
-interface PostHandler {
-    createNotFoundEmbed: (subreddit: string, suggestions: SubredditSuggestion[]) => EmbedBuilder;
-    sendPostListEmbed: (interaction: ChatInputCommandInteraction | ButtonInteraction, subreddit: string, posts: RedditPost[], sortBy: string, page: number, isNsfw: boolean) => Promise<void>;
-    showPostDetails: (interaction: ButtonInteraction, post: RedditPost, postIndex: number, userId: string) => Promise<void>;
-}
+import type { RedditPost } from '../../types/api/reddit.js';
+import type {
+    SubredditSuggestion,
+    FetchResult,
+    RedditService,
+    RedditCache,
+    RedditPostHandler
+} from '../../types/api/commands/reddit-command.js';
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const redditService: RedditService = _redditService as any;
 const redditCache: RedditCache = _redditCache as any;
-const postHandler: PostHandler = _postHandler as any;
+const postHandler: RedditPostHandler = _postHandler as any;
 // COMMAND
 class RedditCommand extends BaseCommand {
     constructor() {
@@ -391,3 +355,4 @@ class RedditCommand extends BaseCommand {
 }
 
 export default new RedditCommand();
+

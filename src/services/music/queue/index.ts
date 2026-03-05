@@ -4,4 +4,7 @@
  */
 
 export { default as queueService, QueueService } from './QueueService.js';
-export type { MusicQueue, QueueState } from './QueueService.js';
+export { type MusicQueue, type QueueState } from './QueueService.js';
+
+
+

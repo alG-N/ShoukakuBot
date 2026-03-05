@@ -4,67 +4,15 @@
  */
 
 import db from '../../database/postgres.js';
-// Interfaces
-type InfractionType = 'warn' | 'mute' | 'kick' | 'ban' | 'unban' | 'unmute' | 'note';
-
-interface Infraction {
-    id?: number;
-    case_id: number;
-    guild_id: string;
-    user_id: string;
-    moderator_id: string;
-    type: InfractionType;
-    reason: string | null;
-    duration_ms: number | null;
-    expires_at: Date | null;
-    reference_id: number | null;
-    metadata: Record<string, any>;
-    active: boolean;
-    created_at: Date;
-}
-
-interface InfractionCreateData {
-    guildId: string;
-    userId: string;
-    moderatorId: string;
-    type: InfractionType;
-    reason?: string;
-    durationMs?: number;
-    expiresAt?: Date;
-    referenceId?: number;
-    metadata?: Record<string, any>;
-}
-
-interface InfractionQueryOptions {
-    type?: InfractionType;
-    activeOnly?: boolean;
-    limit?: number;
-    offset?: number;
-}
-
-interface InfractionSearchCriteria {
-    userId?: string;
-    moderatorId?: string;
-    type?: InfractionType;
-    reason?: string;
-    startDate?: Date;
-    endDate?: Date;
-    limit?: number;
-}
-
-interface InfractionStats {
-    type: InfractionType;
-    total: number;
-    active: number;
-    last_7_days: number;
-    last_30_days: number;
-}
-
-interface InfractionUpdateData {
-    reason?: string;
-    active?: boolean;
-    metadata?: Record<string, any>;
-}
+import type {
+    Infraction,
+    InfractionType,
+    InfractionCreateData,
+    InfractionQueryOptions,
+    InfractionSearchCriteria,
+    InfractionStats,
+    InfractionUpdateData
+} from '../../types/moderation/infraction.js';
 // Repository Functions
 /**
  * Get next case ID for a guild (atomic — safe under concurrent access)
@@ -371,13 +319,8 @@ export {
     getStats,
     search
 };
-export type { 
-    Infraction, 
-    InfractionType, 
-    InfractionCreateData, 
-    InfractionQueryOptions, 
-    InfractionSearchCriteria,
-    InfractionStats,
-    InfractionUpdateData
-};
+export { type Infraction, type InfractionType, type InfractionCreateData, type InfractionQueryOptions, type InfractionSearchCriteria, type InfractionStats, type InfractionUpdateData };
 export default InfractionRepository;
+
+
+

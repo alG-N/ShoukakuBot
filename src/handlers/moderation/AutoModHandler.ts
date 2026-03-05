@@ -8,75 +8,10 @@ import { EmbedBuilder, Message, Guild, GuildTextBasedChannel } from 'discord.js'
 import { logger } from '../../core/Logger.js';
 import AutoModService from '../../services/moderation/AutoModService.js';
 import moderationConfig from '../../config/features/moderation/index.js';
-/**
- * Violation types
- */
-export type ViolationType = 
-    | 'spam' 
-    | 'duplicate' 
-    | 'links' 
-    | 'invites' 
-    | 'mentions' 
-    | 'caps' 
-    | 'banned_words';
-
-/**
- * Action types for auto-mod
- */
-export type ActionType = 'delete' | 'delete_warn' | 'warn' | 'mute' | 'kick' | 'ban';
-
-/**
- * Violation result from auto-mod processing
- */
-export interface Violation {
-    type: ViolationType;
-    trigger: string;
-    severity?: number;
-    action?: ActionType;
-}
-
-/**
- * Action execution result
- */
-export interface ActionResult {
-    deleted: boolean;
-    warned: boolean;
-    muted?: boolean;
-    kicked?: boolean;
-    banned?: boolean;
-    escalated?: boolean;
-    warnCount?: number;
-    warnThreshold?: number;
-    muteDuration?: number;
-}
-
-/**
- * Auto-mod settings structure
- */
-export interface AutoModSettings {
-    enabled: boolean;
-    spam_enabled?: boolean;
-    spam_threshold?: number;
-    spam_window_ms?: number;
-    duplicate_enabled?: boolean;
-    duplicate_threshold?: number;
-    links_enabled?: boolean;
-    links_action?: ActionType;
-    invites_enabled?: boolean;
-    invites_action?: ActionType;
-    mention_enabled?: boolean;
-    mention_limit?: number;
-    caps_enabled?: boolean;
-    caps_percent?: number;
-    ignored_channels?: string[];
-    ignored_roles?: string[];
-    log_channel_id?: string;
-}
-
-/**
- * Feature configuration tuple
- */
-type FeatureConfig = [string, boolean | undefined, string];
+import type { AutoModSettings } from '../../types/moderation/automod.js';
+import type { ActionType } from '../../config/features/moderation/index.js';
+import type { Violation } from '../../services/moderation/AutoModService.js';
+import type { ActionResult, FeatureConfig, ViolationType } from '../../types/moderation/handlers.js';
 /**
  * Action type display mapping
  */
@@ -256,3 +191,4 @@ export default {
     buildSettingsEmbed,
     formatAction
 };
+

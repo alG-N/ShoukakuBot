@@ -10,7 +10,7 @@ import nhentaiRepository, { NHentaiRepository } from './nhentaiRepository.js';
 import type { NHentaiGallery, NHentaiTag, NHentaiFavourite, ToggleFavouriteResult } from './nhentaiRepository.js';
 
 import pixivCache, { PixivCache } from './pixivCache.js';
-import type { PixivSearchResult, PixivResultData } from './pixivCache.js';
+import type { PixivCacheSearchResult, PixivResultData } from './pixivCache.js';
 
 import redditCache, { RedditCache } from './redditCache.js';
 import type { RedditPost, SortType as RedditSortType } from './redditCache.js';
@@ -22,9 +22,9 @@ import type {
     SearchCacheEntry,
     AutocompleteEntry,
     Rule34Favorite,
-    HistoryEntry,
-    UserPreferences,
-    CacheStats,
+    Rule34HistoryEntry,
+    Rule34UserPreferences,
+    Rule34CacheStats,
     FavoriteResult
 } from './rule34Cache.js';
 
@@ -46,36 +46,12 @@ export {
 };
 
 // Re-export types separately
-export type {
-    // Types - Anime
-    AnimeFavourite,
-    AnimeNotification,
-    
-    // Types - NHentai
-    NHentaiGallery,
-    NHentaiTag,
-    NHentaiFavourite,
-    ToggleFavouriteResult,
-    
-    // Types - Pixiv
-    PixivSearchResult,
-    PixivResultData,
-    
-    // Types - Reddit
-    RedditPost,
-    RedditSortType,
-    
-    // Types - Rule34
-    Rule34Session,
-    PaginationState,
-    SearchCacheEntry,
-    AutocompleteEntry,
-    Rule34Favorite,
-    HistoryEntry,
-    UserPreferences,
-    CacheStats,
-    FavoriteResult
-};
+export { type // Types - Anime
+    AnimeFavourite, type AnimeNotification, type // Types - NHentai
+    NHentaiGallery, type NHentaiTag, type NHentaiFavourite, type ToggleFavouriteResult, type // Types - Pixiv
+    PixivCacheSearchResult, type PixivResultData, type // Types - Reddit
+    RedditPost, type RedditSortType, type // Types - Rule34
+    Rule34Session, type PaginationState, type SearchCacheEntry, type AutocompleteEntry, type Rule34Favorite, type Rule34HistoryEntry, type Rule34UserPreferences, type Rule34CacheStats, type FavoriteResult };
 
 // Default export for CommonJS compatibility
 export default {
@@ -85,3 +61,6 @@ export default {
     redditCache,
     rule34Cache
 };
+
+
+

@@ -14,24 +14,13 @@ import type {
 import { isServerAdmin } from './permissions.js';
 import { createErrorEmbed, createWarningEmbed } from './embeds';
 import { isBlockedHost } from './urlValidator.js';
-
-// Types
-export interface ValidationResult {
-    valid: boolean;
-    error?: string;
-}
-
-export interface AccessCheckResult {
-    blocked: boolean;
-    embed?: EmbedBuilder;
-}
-
-export interface MaintenanceCheckResult {
-    inMaintenance: boolean;
-    embed?: EmbedBuilder;
-}
-
-export type AnyInteraction = ChatInputCommandInteraction | ButtonInteraction;
+import type {
+    AccessValidationResult,
+    AccessCheckResult,
+    MaintenanceCheckResult,
+    AnyInteraction,
+    AccessTypeValue
+} from '../types/middleware/checks.js';
 
 // Access Types
 export const AccessType = {
@@ -45,12 +34,10 @@ export const AccessType = {
     NSFW: 'nsfw',
 } as const;
 
-export type AccessTypeValue = typeof AccessType[keyof typeof AccessType];
-
 /**
  * Check if channel is NSFW
  */
-export function checkNSFW(channel: TextChannel | null): ValidationResult {
+export function checkNSFW(channel: TextChannel | null): AccessValidationResult {
     if (!channel?.nsfw) {
         return { 
             valid: false, 
@@ -139,7 +126,7 @@ export function checkMaintenance(): MaintenanceCheckResult {
 /**
  * Validate URL for video downloads
  */
-export function validateVideoUrl(url: string): ValidationResult {
+export function validateVideoUrl(url: string): AccessValidationResult {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
         return { valid: false, error: 'URL must start with http:// or https://' };
     }
@@ -165,3 +152,7 @@ export function validateVideoUrl(url: string): ValidationResult {
 
     return { valid: true };
 }
+
+export { type AccessValidationResult, type AccessCheckResult, type MaintenanceCheckResult, type AnyInteraction, type AccessTypeValue };
+
+

@@ -3,83 +3,9 @@
  * Warning thresholds, escalation rules, and punishment defaults
  * @module config/features/moderation/punishments
  */
-// TYPES
-export interface WarningsConfig {
-    defaultExpiryDays: number;
-    maxActive: number;
-    showCountInDM: boolean;
-    sendDM: boolean;
-}
+import type { PunishmentsConfig } from '../../../types/config/moderation.js';
 
-export interface Threshold {
-    warnCount: number;
-    action: string;
-    durationMs?: number;
-    reason: string;
-}
-
-export interface MuteConfig {
-    defaultDurationMs: number;
-    maxDurationMs: number;
-    minDurationMs: number;
-    presets: Record<string, number>;
-    sendDM: boolean;
-}
-
-export interface KickConfig {
-    sendDM: boolean;
-    includeInvite: boolean;
-}
-
-export interface BanConfig {
-    defaultDeleteDays: number;
-    maxDeleteDays: number;
-    sendDM: boolean;
-    includeAppealInfo: boolean;
-    appealMessage: string | null;
-}
-
-export interface SoftbanConfig {
-    deleteDays: number;
-    sendDM: boolean;
-}
-
-export interface AutomodPunishmentConfig {
-    warnReasonPrefix: string;
-    trackSeparately: boolean;
-    warnsBeforeMute: number;
-    muteDurationMs: number;
-    escalation: {
-        enabled: boolean;
-        durationMultiplier: number;
-        maxDurationMs: number;
-        resetAfterMs: number;
-    };
-}
-
-export interface DMTemplateField {
-    name: string;
-    value: string;
-}
-
-export interface DMTemplate {
-    title: string;
-    description: string;
-    fields: DMTemplateField[];
-    footer?: string;
-}
-
-export interface PunishmentsConfig {
-    warnings: WarningsConfig;
-    defaultThresholds: Threshold[];
-    mute: MuteConfig;
-    kick: KickConfig;
-    ban: BanConfig;
-    softban: SoftbanConfig;
-    defaultReasons: Record<string, string>;
-    automod: AutomodPunishmentConfig;
-    dmTemplates: Record<string, DMTemplate>;
-}
+export { type PunishmentsConfig } from '../../../types/config/moderation.js';
 // CONFIG
 const punishmentsConfig: PunishmentsConfig = {
     // WARNING SYSTEM
@@ -211,3 +137,6 @@ const punishmentsConfig: PunishmentsConfig = {
 };
 
 export default punishmentsConfig;
+
+
+

@@ -14,120 +14,20 @@ import {
 } from 'discord.js';
 
 import rule34Service from '../../services/api/rule34Service.js';
-import { rule34Cache, UserPreferences as CacheUserPreferences } from '../../repositories/api/rule34Cache.js';
+import { rule34Cache } from '../../repositories/api/rule34Cache.js';
 import { truncateText, formatNumber } from '../../utils/common/embed.js';
-/**
- * Post rating types
- */
-export type PostRating = 'safe' | 'questionable' | 'explicit';
+import type { Rule34Post, PostRating, Rule34ContentType as ContentType, SortMode, Rule34RelatedTag as RelatedTag, Rule34HistoryEntry } from '../../types/api/rule34.js';
+import type {
+    SearchResults,
+    PostEmbedOptions,
+    SearchFilters,
+    Rule34HandlerPreferences,
+    FavoriteEntry,
+    EmbedResult
+} from '../../types/api/handlers/rule34-post-handler.js';
 
-/**
- * Content type enum
- */
-export type ContentType = 'video' | 'gif' | 'animated' | 'comic' | 'image';
+export { type Rule34Post, type PostRating, type ContentType, type SortMode, type RelatedTag, type Rule34HistoryEntry, type SearchResults, type PostEmbedOptions, type SearchFilters, type Rule34HandlerPreferences, type FavoriteEntry, type EmbedResult };
 
-/**
- * Sort mode options
- */
-export type SortMode = 'score:desc' | 'score:asc' | 'id:desc' | 'id:asc' | 'updated:desc' | 'random';
-
-/**
- * Rule34 post structure
- */
-export interface Rule34Post {
-    id: number;
-    rating: PostRating;
-    score: number;
-    width: number;
-    height: number;
-    fileUrl: string;
-    sampleUrl?: string;
-    previewUrl?: string;
-    pageUrl: string;
-    contentType: ContentType;
-    fileExtension: string;
-    isAiGenerated?: boolean;
-    isAnimated?: boolean;
-    hasSound?: boolean;
-    hasVideo?: boolean;
-    isHighQuality?: boolean;
-    isHighRes?: boolean;
-    owner?: string;
-    source?: string;
-    tags?: string[];
-    createdAt?: string | Date;
-}
-
-/**
- * Search results structure
- */
-export interface SearchResults {
-    posts: Rule34Post[];
-    hasMore: boolean;
-    totalCount?: number;
-}
-
-/**
- * Post embed options
- */
-export interface PostEmbedOptions {
-    resultIndex?: number;
-    totalResults?: number;
-    searchPage?: number;
-    query?: string;
-    userId?: string;
-    showTags?: boolean;
-    compactMode?: boolean;
-}
-
-/**
- * Search filter options
- */
-export interface SearchFilters {
-    excludeAi?: boolean;
-    rating?: PostRating;
-    minScore?: number;
-    highQualityOnly?: boolean;
-    contentType?: ContentType;
-}
-
-/**
- * User preferences (alias from cache)
- */
-export type UserPreferences = CacheUserPreferences;
-
-/**
- * Favorite entry
- */
-export interface FavoriteEntry {
-    id: number;
-    score?: number;
-    addedAt?: number;
-}
-
-/**
- * History entry
- */
-export interface HistoryEntry {
-    id: number;
-    viewedAt: number;
-}
-
-/**
- * Related tag entry
- */
-export interface RelatedTag {
-    tag: string;
-    count: number;
-}
-
-/**
- * Embed result with components
- */
-export interface EmbedResult {
-    embed: EmbedBuilder;
-    rows: ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[];
-}
 /**
  * Rating colors
  */
@@ -197,8 +97,9 @@ export async function createPostEmbed(
         compactMode = false
     } = options;
 
-    const ratingColor = RATING_COLORS[post.rating] || RATING_COLORS.default;
-    const ratingEmoji = RATING_EMOJIS[post.rating] || '❓';
+    const postRating = post.rating as PostRating;
+    const ratingColor = RATING_COLORS[postRating] || RATING_COLORS.default;
+    const ratingEmoji = RATING_EMOJIS[postRating] || '❓';
     const contentEmoji = CONTENT_EMOJIS[post.contentType] || '🖼️';
 
     const embed = new EmbedBuilder()
@@ -250,8 +151,8 @@ export async function createPostEmbed(
     embed.setDescription(description);
 
     // Tags field (optional, for expanded view)
-    if (showTags && post.tags) {
-        const formattedTags = rule34Service.formatTagsForDisplay?.(post.tags, 1000) || post.tags.slice(0, 20).join(', ');
+    if (showTags && post.tagList?.length) {
+        const formattedTags = rule34Service.formatTagsForDisplay?.(post.tagList, 1000) || post.tagList.slice(0, 20).join(', ');
         embed.addFields({ name: '🏷️ Tags', value: formattedTags || 'No tags', inline: false });
     }
 
@@ -389,10 +290,11 @@ export function createVideoEmbed(
 ): EmbedResult {
     const { resultIndex = 0, totalResults = 1, userId = '' } = options;
     
-    const ratingEmoji = RATING_EMOJIS[post.rating] || '❓';
+    const postRating = post.rating as PostRating;
+    const ratingEmoji = RATING_EMOJIS[postRating] || '❓';
     
     const embed = new EmbedBuilder()
-        .setColor(RATING_COLORS[post.rating] || RATING_COLORS.default)
+        .setColor(RATING_COLORS[postRating] || RATING_COLORS.default)
         .setTitle(`🎬 Video Post #${post.id}`)
         .setURL(post.pageUrl)
         .setDescription(
@@ -608,7 +510,7 @@ export function createFavoritesEmbed(
  * Create settings embed
  */
 export function createSettingsEmbed(userId: string): EmbedBuilder {
-    const prefs: UserPreferences = rule34Cache.getPreferences(userId) || {};
+    const prefs: Rule34HandlerPreferences = rule34Cache.getPreferences(userId) || {};
     const blacklist: string[] = rule34Cache.getBlacklist(userId) || [];
     
     const embed = new EmbedBuilder()
@@ -647,7 +549,7 @@ export function createSettingsEmbed(userId: string): EmbedBuilder {
 export function createSettingsComponents(
     userId: string
 ): ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[] {
-    const prefs: UserPreferences = rule34Cache.getPreferences(userId) || {};
+    const prefs: Rule34HandlerPreferences = rule34Cache.getPreferences(userId) || {};
     const rows: ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[] = [];
 
     // AI Filter toggle
@@ -805,7 +707,7 @@ export function createRelatedTagsEmbed(originalTag: string, relatedTags: Related
 /**
  * Create history embed
  */
-export function createHistoryEmbed(userId: string, history: HistoryEntry[]): EmbedBuilder {
+export function createHistoryEmbed(userId: string, history: Rule34HistoryEntry[]): EmbedBuilder {
     const embed = new EmbedBuilder()
         .setColor('#9B59B6')
         .setTitle('📜 Your View History')
@@ -858,3 +760,6 @@ export default {
     CONTENT_EMOJIS,
     SORT_DISPLAY
 };
+
+
+

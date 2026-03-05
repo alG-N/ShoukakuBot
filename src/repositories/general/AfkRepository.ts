@@ -7,36 +7,7 @@
 
 import db from '../../database/postgres.js';
 import logger from '../../core/Logger.js';
-
-// ============================================================================
-// TYPES
-// ============================================================================
-
-export type AfkType = 'guild' | 'global';
-
-export interface AfkRecord {
-    [key: string]: unknown;
-    user_id: string;
-    guild_id: string | null;
-    reason: string;
-    timestamp: number;
-    type: AfkType;
-    created_at?: Date;
-    updated_at?: Date;
-}
-
-export interface AfkInfo {
-    reason: string;
-    timestamp: number;
-    type: AfkType;
-}
-
-export interface SetAfkData {
-    userId: string;
-    guildId: string | null;
-    reason: string;
-    type: AfkType;
-}
+import type { AfkType, AfkRecord, AfkInfo, SetAfkData } from '../../types/guild/afk-repository.js';
 
 // ============================================================================
 // REPOSITORY CLASS
@@ -250,3 +221,5 @@ class AfkRepository {
 const afkRepository = new AfkRepository();
 export { AfkRepository };
 export default afkRepository;
+export { type AfkType, type AfkRecord, type AfkInfo, type SetAfkData };
+

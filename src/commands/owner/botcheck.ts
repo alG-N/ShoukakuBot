@@ -6,7 +6,7 @@
 
 import { SlashCommandBuilder, EmbedBuilder, ChatInputCommandInteraction, ActionRowBuilder, ButtonBuilder, ButtonStyle, version as djsVersion } from 'discord.js';
 import os from 'os';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import { isOwner } from '../../config/owner.js';
 import { formatUptime } from '../../utils/common/time.js';
@@ -439,3 +439,4 @@ class BotCheckCommand extends BaseCommand {
 }
 
 export default new BotCheckCommand();
+

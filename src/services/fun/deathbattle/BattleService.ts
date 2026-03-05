@@ -8,105 +8,13 @@ import type { User } from 'discord.js';
 import skillsetService from './SkillsetService.js';
 import type { Power, Skillset } from './SkillsetService.js';
 import cacheService from '../../../cache/CacheService.js';
+import type {
+    NamedEffect,
+    BattleEffects,
+    BattleHistoryEntry,
+    Battle
+} from '../../../types/fun/deathbattle-battle-service.js';
 
-// NAMED EFFECT - tracks DoT/debuff with source name
-export interface NamedEffect {
-    name: string;       // e.g., "Amaterasu", "Wisteria Venom"
-    turns: number;      // remaining turns
-    value: number;      // damage per turn or debuff multiplier
-    source?: string;    // character who applied it
-}
-
-// TYPES
-export interface BattleEffects {
-    shrine: number;
-    speech: number;
-    speechTurns: number;
-    binding: boolean;
-    burn: number;
-    slow: number;
-    lightning: number;
-    bleed: number;
-    poison: number;
-    poisonWeaken: number;
-    constrict: number;
-    constrictDmg: number;
-    dodge: number;
-    reflect: boolean;
-    frozen: number;
-    markBoost: number;
-    critNext: boolean;
-    burnStacks: number;
-    momentum: number;
-    berserk: boolean;
-    speedBoost: number;
-    foresight: number;
-    transform: number;
-    transformBoost: number;
-    ghostMode: boolean;
-    revive?: boolean;
-    illusionCopy?: number;
-    trapped?: number;
-    waterPrison?: number;
-    redirect?: boolean;
-    // New effects for JJK skillset types
-    stunned?: number;
-    dot?: number;
-    dotDmg?: number;
-    debuff?: number;
-    debuffTurns?: number;
-    slowed?: number;
-    slowAmount?: number;
-    buff?: number;
-    buffTurns?: number;
-    // Named effects for detailed tracking
-    namedDots: NamedEffect[];
-    namedDebuffs: NamedEffect[];
-    namedBuffs: NamedEffect[];
-    armor: number;          // Damage reduction multiplier (1.0 = no reduction)
-    armorSource?: string;   // Source of armor
-    [key: string]: number | boolean | undefined | NamedEffect[] | string; // Allow dynamic charge tracking
-}
-
-// Battle history entry for logs
-export interface BattleHistoryEntry {
-    round: number;
-    attacker: string;
-    action: string;
-    baseDamage: number;
-    finalDamage: number;
-    modifiers: string[];
-    effectsApplied: string[];
-    p1HpAfter: number;
-    p2HpAfter: number;
-}
-
-export interface Battle {
-    player1: User;
-    player2: User;
-    skillsetName: string;
-    skillset: Skillset | undefined;
-    player1Health: number;
-    player2Health: number;
-    player1MaxHp: number;
-    player2MaxHp: number;
-    roundCount: number;
-    player1Stunned: boolean;
-    player2Stunned: boolean;
-    player1Immune: boolean;
-    player2Immune: boolean;
-    usedPowers: string[];
-    effects: {
-        user1: BattleEffects;
-        user2: BattleEffects;
-    };
-    lastDamageDealt: { user1: number; user2: number };
-    battleLog: string;
-    interval: NodeJS.Timeout | null;
-    revivedOnce: { user1: boolean; user2: boolean };
-    // New: Battle history for detailed logs
-    history: BattleHistoryEntry[];
-}
 // DEFAULT EFFECTS
 const createDefaultEffects = (): BattleEffects => ({
     shrine: 0,
@@ -1361,4 +1269,5 @@ class BattleService {
 const battleService = new BattleService();
 
 export { BattleService };
+export { type NamedEffect, type BattleEffects, type BattleHistoryEntry, type Battle };
 export default battleService;

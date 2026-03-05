@@ -12,35 +12,12 @@ import { checkSameVoiceChannel } from '../../middleware/voiceChannelCheck.js';
 import { music } from '../../config/index.js';
 import { logger } from '../../core/Logger.js';
 import { musicFacade as musicService } from '../../services/music/core/MusicFacade.js';
-
-// Use any for Track type - MusicFacade.Track and trackHandler.Track are different but runtime compatible
-type Track = any;
+import type { Track } from '../../types/music/track.js';
+import type { NowPlayingOptions } from '../../types/music/playback.js';
+import type { VoteResult, VoteSkipStatus } from '../../types/music/vote.js';
 
 const { minVotesRequired: MIN_VOTES_REQUIRED = 5 } = music.voting || {};
 const SKIP_VOTE_TIMEOUT = 15000;
-export interface NowPlayingOptions {
-    volume: number;
-    isPaused: boolean;
-    loopMode: LoopMode;
-    isShuffled: boolean;
-    queueLength: number;
-    nextTrack: Track | null;
-    loopCount: number;
-    voteSkipCount: number;
-    voteSkipRequired: number;
-    listenerCount: number;
-}
-
-export interface VoteResult {
-    added: boolean;
-    voteCount: number;
-    required: number;
-}
-
-export interface VoteSkipStatus {
-    count: number;
-    required: number;
-}
 /**
  * Build now playing embed options consistently
  */

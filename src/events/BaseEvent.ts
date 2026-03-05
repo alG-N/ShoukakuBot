@@ -6,11 +6,7 @@
 
 import type { Client } from 'discord.js';
 import logger from '../core/Logger.js';
-// TYPES
-export interface EventOptions {
-    name: string;
-    once?: boolean;
-}
+import type { EventOptions } from '../types/core/events.js';
 // BASE EVENT CLASS
 /**
  * Abstract base class for events
@@ -63,3 +59,6 @@ export abstract class BaseEvent {
 }
 
 export default BaseEvent;
+
+export { type EventOptions };
+

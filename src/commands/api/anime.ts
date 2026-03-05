@@ -14,68 +14,29 @@ import {
     AutocompleteInteraction,
     ButtonInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, type CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import _anilistService from '../../services/api/anilistService.js';
 import _myAnimeListService from '../../services/api/myAnimeListService.js';
 import * as _animeHandler from '../../handlers/api/animeHandler.js';
 import _animeRepository from '../../repositories/api/animeRepository.js';
+import type { AnimeFavourite as AnimeRepositoryFavourite } from '../../repositories/api/animeRepository.js';
 import logger from '../../core/Logger.js';
-// TYPES
-interface AnimeTitle {
-    english?: string;
-    romaji?: string;
-    native?: string;
-    default?: string;
-}
+import type {
+    AnimeCommandTitle,
+    AnimeLookupItem as Anime,
+    AnimeCachedSearch as CachedAnime,
+    TimedAutocompleteCache as AutocompleteCache
+} from '../../types/api/content-session.js';
+import type { AnimeContentSource, MALMediaType, MALTypeDisplay } from '../../types/api/mal.js';
+import type {
+    AnilistService,
+    MyAnimeListService,
+    AnimeHandler,
+    AnimeRepository
+} from '../../types/api/commands/anime-command.js';
 
-interface Anime {
-    id: number;
-    idMal?: number;
-    title?: AnimeTitle | string;
-    siteUrl?: string;
-    url?: string;
-    name?: string;
-}
-
-interface Favourite {
-    title: string;
-    source: string;
-}
-
-interface AnilistService {
-    searchAnime: (name: string) => Promise<Anime | null>;
-    searchAnimeAutocomplete: (query: string) => Promise<Anime[]>;
-}
-
-interface MyAnimeListService {
-    searchMedia: (name: string, type: string) => Promise<Anime | null>;
-    searchMediaAutocomplete: (query: string, type: string) => Promise<Anime[]>;
-}
-
-interface AnimeHandler {
-    createMediaEmbed: (anime: Anime, source: string, mediaType: string) => Promise<EmbedBuilder>;
-}
-
-interface AnimeRepository {
-    getUserFavourites: (userId: string) => Promise<Favourite[]>;
-    isFavourited: (userId: string, animeId: number | string) => Promise<boolean>;
-    addFavourite: (userId: string, animeId: number | string, title: string, source?: string) => Promise<void>;
-    removeFavourite: (userId: string, animeId: number | string) => Promise<void>;
-}
-
-interface CachedAnime {
-    anime: Anime;
-    source: string;
-    mediaType: string;
-    timestamp: number;
-}
-
-interface AutocompleteCache {
-    results: Array<{ name: string; value: string }>;
-    timestamp: number;
-}
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const anilistService: AnilistService = _anilistService as any;
 const myAnimeListService: MyAnimeListService = _myAnimeListService as any;
@@ -104,7 +65,7 @@ const cacheCleanupTimer = setInterval(() => {
 cacheCleanupTimer.unref(); // Don't prevent process exit
 
 // MAL media types
-const MAL_TYPES: Record<string, { emoji: string; label: string; endpoint: string }> = {
+const MAL_TYPES: Record<MALMediaType, MALTypeDisplay> = {
     anime: { emoji: '📺', label: 'Anime', endpoint: 'anime' },
     manga: { emoji: '📚', label: 'Manga', endpoint: 'manga' },
     lightnovel: { emoji: '📖', label: 'Light Novel', endpoint: 'manga' },
@@ -215,7 +176,7 @@ class AnimeCommand extends BaseCommand {
 
     private async _searchMAL(interaction: ChatInputCommandInteraction): Promise<void> {
         const name = interaction.options.getString('name', true);
-        const mediaType = interaction.options.getString('type') || 'anime';
+        const mediaType = (interaction.options.getString('type') || 'anime') as MALMediaType;
 
         try {
             const result = await myAnimeListService!.searchMedia(name, mediaType);
@@ -267,7 +228,7 @@ class AnimeCommand extends BaseCommand {
         }
     }
 
-    private async _createActionRow(anime: Anime, source: string, mediaType: string, userId: string): Promise<ActionRowBuilder<ButtonBuilder>> {
+    private async _createActionRow(anime: Anime, source: AnimeContentSource, mediaType: MALMediaType, userId: string): Promise<ActionRowBuilder<ButtonBuilder>> {
         const typeInfo = MAL_TYPES[mediaType] || MAL_TYPES.anime;
         const animeId = anime.id || anime.idMal;
         
@@ -327,7 +288,7 @@ class AnimeCommand extends BaseCommand {
             if (subcommand === 'search') {
                 const suggestions = await anilistService!.searchAnimeAutocomplete(focusedValue);
                 results = suggestions.slice(0, 25).map(s => {
-                    const titleObj = s.title as AnimeTitle | undefined;
+                    const titleObj = s.title as AnimeCommandTitle | undefined;
                     const title = titleObj?.english || titleObj?.romaji || titleObj?.native || 'Unknown';
                     return {
                         name: title.length > 100 ? title.slice(0, 97) + '...' : title,
@@ -335,13 +296,13 @@ class AnimeCommand extends BaseCommand {
                     };
                 });
             } else if (subcommand === 'mal') {
-                const mediaType = interaction.options.getString('type') || 'anime';
+                const mediaType = (interaction.options.getString('type') || 'anime') as MALMediaType;
                 const suggestions = await myAnimeListService!.searchMediaAutocomplete(focusedValue, mediaType);
                 results = suggestions.slice(0, 25).map(s => {
                     const titleObj = s.title;
                     const title = typeof titleObj === 'string' 
                         ? titleObj 
-                        : ((titleObj as AnimeTitle)?.english || (titleObj as AnimeTitle)?.romaji || (titleObj as AnimeTitle)?.default || s.name || 'Unknown');
+                        : ((titleObj as AnimeCommandTitle)?.english || (titleObj as AnimeCommandTitle)?.romaji || (titleObj as AnimeCommandTitle)?.default || s.name || 'Unknown');
                     return {
                         name: title.length > 100 ? title.slice(0, 97) + '...' : title,
                         value: title.slice(0, 100)
@@ -369,7 +330,7 @@ class AnimeCommand extends BaseCommand {
 
                 const cached = searchResultCache.get(userId);
                 let animeTitle = 'Unknown';
-                let source = 'anilist';
+                let source: AnimeContentSource = 'anilist';
                 
                 if (cached && cached.anime) {
                     const anime = cached.anime;
@@ -377,7 +338,7 @@ class AnimeCommand extends BaseCommand {
                     const titleObj = anime.title;
                     animeTitle = typeof titleObj === 'string' 
                         ? titleObj 
-                        : ((titleObj as AnimeTitle)?.english || (titleObj as AnimeTitle)?.romaji || (titleObj as AnimeTitle)?.native || 'Unknown');
+                        : ((titleObj as AnimeCommandTitle)?.english || (titleObj as AnimeCommandTitle)?.romaji || (titleObj as AnimeCommandTitle)?.native || 'Unknown');
                 }
 
                 const isFav = await animeRepository!.isFavourited(userId, animeId);
@@ -425,3 +386,4 @@ class AnimeCommand extends BaseCommand {
 }
 
 export default new AnimeCommand();
+

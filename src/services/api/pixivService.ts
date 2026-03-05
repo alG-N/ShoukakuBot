@@ -9,155 +9,32 @@ import * as dotenv from 'dotenv';
 import logger from '../../core/Logger.js';
 import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
 import cacheService from '../../cache/CacheService.js';
+import type {
+    PixivImageUrls,
+    PixivMetaPage,
+    PixivTag,
+    PixivUser,
+    PixivIllust,
+    PixivNovel,
+    PixivSearchOptions,
+    RankingOptions,
+    PixivSearchResult
+} from '../../types/api/pixiv.js';
+import type {
+    PixivAuth,
+    PixivTokenResponse,
+    InternalSearchResult,
+    PixivSearchResponse,
+    PixivIllustDetailResponse,
+    AutocompleteSuggestion,
+    PixivAutocompleteCandidate,
+    PixivAutocompleteResponse
+} from '../../types/api/services/pixiv-service.js';
+export { type PixivImageUrls, type PixivMetaPage, type PixivTag, type PixivUser, type PixivIllust, type PixivNovel, type PixivSearchOptions, type RankingOptions, type PixivSearchResult } from '../../types/api/pixiv.js';
+export { type PixivAuth, type PixivTokenResponse, type InternalSearchResult, type PixivSearchResponse, type PixivIllustDetailResponse, type AutocompleteSuggestion, type PixivAutocompleteCandidate, type PixivAutocompleteResponse } from '../../types/api/services/pixiv-service.js';
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
 // TYPES & INTERFACES
-interface PixivAuth {
-    accessToken: string | null;
-    refreshToken: string | undefined;
-    expiresAt: number;
-}
-
-interface PixivTokenResponse {
-    access_token: string;
-    refresh_token: string;
-    expires_in: number;
-}
-
-export interface PixivImageUrls {
-    square_medium?: string;
-    medium?: string;
-    large?: string;
-    original?: string;
-}
-
-export interface PixivMetaPage {
-    image_urls: PixivImageUrls;
-}
-
-export interface PixivTag {
-    name: string;
-    translated_name?: string | null;
-}
-
-export interface PixivUser {
-    id: number;
-    name: string;
-    account: string;
-    profile_image_urls: {
-        medium: string;
-    };
-}
-
-export interface PixivIllust {
-    id: number;
-    title: string;
-    type: 'illust' | 'manga' | 'ugoira';
-    image_urls: PixivImageUrls;
-    caption: string;
-    restrict: number;
-    user: PixivUser;
-    tags: PixivTag[];
-    tools: string[];
-    create_date: string;
-    page_count: number;
-    width: number;
-    height: number;
-    sanity_level: number;
-    x_restrict: number; // 0 = SFW, 1 = R18, 2 = R18G
-    series: unknown;
-    meta_single_page: { original_image_url?: string };
-    meta_pages: PixivMetaPage[];
-    total_view: number;
-    total_bookmarks: number;
-    is_bookmarked: boolean;
-    visible: boolean;
-    is_muted: boolean;
-    illust_ai_type: number; // 0 = unknown, 1 = not AI, 2 = AI
-}
-
-export interface PixivNovel {
-    id: number;
-    title: string;
-    caption: string;
-    restrict: number;
-    x_restrict: number;
-    is_original: boolean;
-    image_urls: PixivImageUrls;
-    create_date: string;
-    tags: PixivTag[];
-    page_count: number;
-    text_length: number;
-    user: PixivUser;
-    series: unknown;
-    is_bookmarked: boolean;
-    total_bookmarks: number;
-    total_view: number;
-    visible: boolean;
-    total_comments: number;
-    is_muted: boolean;
-    is_mypixiv_only: boolean;
-    is_x_restricted: boolean;
-    illust_ai_type?: number;
-}
-
-export interface SearchOptions {
-    offset?: number;
-    contentType?: 'illust' | 'manga' | 'novel' | 'all';
-    showNsfw?: boolean;
-    r18Only?: boolean;
-    aiFilter?: boolean;
-    qualityFilter?: boolean;
-    minBookmarks?: number;
-    sort?: string;
-    fetchMultiple?: boolean;
-}
-
-export interface RankingOptions {
-    mode?: 'day' | 'week' | 'month' | 'day_r18' | 'week_r18' | 'month_r18';
-    contentType?: string;
-    showNsfw?: boolean;
-    r18Only?: boolean;
-    aiFilter?: boolean;
-    offset?: number;
-    qualityFilter?: boolean;
-    minBookmarks?: number;
-}
-
-export interface SearchResult {
-    items: (PixivIllust | PixivNovel)[];
-    nextUrl?: string | null;
-    error?: string;
-}
-
-interface InternalSearchResult {
-    items: PixivIllust[];
-    nextUrl: string | null;
-}
-
-interface PixivSearchResponse {
-    illusts?: PixivIllust[];
-    novels?: PixivNovel[];
-    next_url?: string | null;
-}
-
-interface PixivIllustDetailResponse {
-    illust: PixivIllust;
-}
-
-interface AutocompleteSuggestion {
-    name: string;
-    value: string;
-}
-
-interface PixivAutocompleteCandidate {
-    tag_name?: string;
-    tag_translation?: string;
-}
-
-interface PixivAutocompleteResponse {
-    candidates?: PixivAutocompleteCandidate[];
-}
 // CONSTANTS
 const SERIES_MAP: Record<string, string> = {
     'アズールレーン': 'Azur Lane',
@@ -308,7 +185,7 @@ class PixivService {
     /**
      * Search for illustrations/novels with circuit breaker
      */
-    async search(query: string, options: SearchOptions = {}): Promise<SearchResult> {
+    async search(query: string, options: PixivSearchOptions = {}): Promise<PixivSearchResult> {
         const {
             offset = 0,
             contentType = 'illust',
@@ -493,7 +370,7 @@ class PixivService {
     /**
      * Get ranking illustrations with circuit breaker
      */
-    async getRanking(options: RankingOptions = {}): Promise<SearchResult> {
+    async getRanking(options: RankingOptions = {}): Promise<PixivSearchResult> {
         const {
             mode = 'day',
             contentType = 'illust',
@@ -560,7 +437,7 @@ class PixivService {
         qualityFilter: boolean = false,
         minBookmarks: number = 0,
         r18Only: boolean = false
-    ): SearchResult {
+    ): PixivSearchResult {
         const isNovel = contentType === 'novel';
         let items = (isNovel ? data.novels : data.illusts) as PixivIllust[] | undefined;
 
@@ -932,3 +809,7 @@ const pixivService = new PixivService();
 
 export { pixivService, PixivService };
 export default pixivService;
+
+
+
+

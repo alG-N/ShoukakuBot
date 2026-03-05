@@ -3,18 +3,10 @@
  * @module errors/ApiError
  */
 
-import { AppError, SerializedError } from './AppError.js';
-
-/**
- * API error codes
- */
-export type ApiErrorCode =
-    | 'API_ERROR'
-    | 'API_UNAVAILABLE'
-    | 'API_RATE_LIMITED'
-    | 'NO_RESULTS'
-    | 'NSFW_CONTENT'
-    | 'CONTENT_BLOCKED';
+import { AppError } from './AppError.js';
+import type { SerializedError } from '../types/errors/app-error.js';
+import type { ApiErrorCode } from '../types/errors/api-error.js';
+export { type ApiErrorCode } from '../types/errors/api-error.js';
 
 /**
  * Base API error - use only for catch blocks or instanceof checks.
@@ -36,3 +28,4 @@ export class ApiError extends AppError {
         };
     }
 }
+
