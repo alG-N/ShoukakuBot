@@ -275,7 +275,17 @@ class LavalinkService {
 
         } catch (error) {
             const err = error as Error;
-            logger.error('Lavalink', `Failed to create player: ${err.message}`);
+            // Shoukaku RestError has extra properties (status, path, error, trace)
+            const restErr = err as Error & { status?: number; path?: string; error?: string; trace?: string };
+            const details = [
+                `msg=${err.message}`,
+                restErr.status ? `status=${restErr.status}` : null,
+                restErr.path ? `path=${restErr.path}` : null,
+                restErr.error ? `error=${restErr.error}` : null,
+                restErr.trace ? `trace=${restErr.trace}` : null
+            ].filter(Boolean).join(' | ');
+            logger.error('Lavalink', `Failed to create player: ${details}`);
+            sentry.captureException(err, { tags: { component: 'lavalink', action: 'createPlayer', guildId, restStatus: String(restErr.status ?? ''), restPath: restErr.path ?? '' } });
             throw error;
         }
     }

@@ -11,7 +11,7 @@ networks:
 
 services:
   lavalink-1:
-    image: ghcr.io/lavalink-devs/lavalink:latest
+    image: ghcr.io/lavalink-devs/lavalink:4.0.8
     container_name: lavalink-1
     restart: on-failure:3
     networks:
@@ -48,7 +48,7 @@ services:
       start_period: 20s
 
   lavalink-2:
-    image: ghcr.io/lavalink-devs/lavalink:latest
+    image: ghcr.io/lavalink-devs/lavalink:4.0.8
     container_name: lavalink-2
     restart: on-failure:3
     networks:
@@ -85,7 +85,7 @@ services:
       start_period: 20s
 
   lavalink-3:
-    image: ghcr.io/lavalink-devs/lavalink:latest
+    image: ghcr.io/lavalink-devs/lavalink:4.0.8
     container_name: lavalink-3
     restart: on-failure:3
     networks:

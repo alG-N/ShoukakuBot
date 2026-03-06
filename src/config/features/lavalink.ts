@@ -43,10 +43,11 @@ export const shoukakuOptions = {
     resumeTimeout: 30,
     resumeByLibrary: false,
     reconnectTries: 30,
-    reconnectInterval: 5000,
-    restTimeout: 60000,
+    reconnectInterval: 5,        // seconds (Shoukaku 4.x)
+    restTimeout: 60,             // seconds (Shoukaku 4.x)
     moveOnDisconnect: false,
-    userAgent: 'Shoukaku/2.0'
+    voiceConnectionTimeout: 15,  // seconds
+    userAgent: 'Shoukaku/4.2'
 };
 
 export default {
