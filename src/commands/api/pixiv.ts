@@ -8,7 +8,11 @@ import {
     SlashCommandBuilder, 
     ChatInputCommandInteraction,
     AutocompleteInteraction,
-    ButtonInteraction
+    ButtonInteraction,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ComponentType,
+    EmbedBuilder
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
@@ -306,11 +310,15 @@ class PixivCommand extends BaseCommand {
                     break;
                 case 'searchnext':
                     searchPage++;
-                    await this._loadSearchPage(interaction, cached, cacheKey, searchPage);
+                    await this._withFetchingState(interaction, 'other artworks', async () => {
+                        await this._loadSearchPage(interaction, cached, cacheKey, searchPage);
+                    });
                     return;
                 case 'searchprev':
                     searchPage = Math.max(1, searchPage - 1);
-                    await this._loadSearchPage(interaction, cached, cacheKey, searchPage);
+                    await this._withFetchingState(interaction, 'other artworks', async () => {
+                        await this._loadSearchPage(interaction, cached, cacheKey, searchPage);
+                    });
                     return;
                 case 'counter':
                 case 'pagecounter':
@@ -394,6 +402,72 @@ class PixivCommand extends BaseCommand {
                 content: '❌ Failed to load next page.',
                 ephemeral: true
             }).catch(() => {});
+        }
+    }
+
+    private _buildDisabledButtonRows(interaction: ButtonInteraction): ActionRowBuilder<ButtonBuilder>[] {
+        const rows: ActionRowBuilder<ButtonBuilder>[] = [];
+
+        for (const row of interaction.message.components) {
+            if (row.type !== ComponentType.ActionRow) continue;
+            const rowComponents: any[] = (row as unknown as { components?: any[] }).components || [];
+            const buttonRow = new ActionRowBuilder<ButtonBuilder>();
+            for (const component of rowComponents) {
+                if (component.type !== ComponentType.Button) continue;
+                buttonRow.addComponents(ButtonBuilder.from(component as any).setDisabled(true));
+            }
+            if (buttonRow.components.length > 0) rows.push(buttonRow);
+        }
+
+        return rows;
+    }
+
+    private _buildFetchingEmbed(currentEmbed: EmbedBuilder, context: string, elapsedSec: number, totalSec: number = 60): EmbedBuilder {
+        const embed = EmbedBuilder.from(currentEmbed);
+        const statusLine = `⏳ Shoukaku is fetching ${context}... (${Math.min(elapsedSec, totalSec)}s / ${totalSec}s)`;
+        const currentDescription = embed.data.description || '';
+        const cleaned = currentDescription.replace(/^⏳ Shoukaku is fetching[^\n]*\n\n?/i, '');
+        embed.setDescription(cleaned ? `${statusLine}\n\n${cleaned}` : statusLine);
+        return embed;
+    }
+
+    private async _withFetchingState(
+        interaction: ButtonInteraction,
+        context: string,
+        task: () => Promise<void>
+    ): Promise<void> {
+        if (!interaction.message.embeds.length) {
+            await task();
+            return;
+        }
+
+        const baseEmbed = EmbedBuilder.from(interaction.message.embeds[0]!);
+        const disabledRows = this._buildDisabledButtonRows(interaction);
+        let elapsed = 0;
+        let stopped = false;
+
+        const pushStatus = async (): Promise<void> => {
+            if (stopped) return;
+            const loadingEmbed = this._buildFetchingEmbed(baseEmbed, context, elapsed, 60);
+            await interaction.editReply({ embeds: [loadingEmbed], components: disabledRows }).catch(() => {});
+        };
+
+        await pushStatus();
+
+        const timer = setInterval(() => {
+            elapsed += 1;
+            if (elapsed <= 60) {
+                void pushStatus();
+            } else {
+                clearInterval(timer);
+            }
+        }, 1000);
+
+        try {
+            await task();
+        } finally {
+            stopped = true;
+            clearInterval(timer);
         }
     }
 }

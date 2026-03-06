@@ -277,7 +277,8 @@ class BanCommand extends BaseCommand {
         
         if (targetMember) {
             // Role hierarchy check
-            if (targetMember.roles.highest.position >= member.roles.highest.position) {
+            const isGuildOwner = interaction.user.id === interaction.guild.ownerId;
+            if (!isGuildOwner && targetMember.roles.highest.position >= member.roles.highest.position) {
                 return { valid: false, error: 'You cannot ban someone with equal or higher role than you.' };
             }
 

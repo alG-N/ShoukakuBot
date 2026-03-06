@@ -39,6 +39,17 @@ class MyAnimeListService {
     private readonly RATE_LIMIT_TTL = 2; // seconds — just long enough for cross-shard coordination
     private lastRequest: number = 0; // Local fallback when Redis unavailable
 
+    private _isTransientNetworkError(error: unknown): boolean {
+        const message = (error as Error)?.message?.toLowerCase() || '';
+        return message.includes('fetch failed')
+            || message.includes('network')
+            || message.includes('timeout')
+            || message.includes('aborted')
+            || message.includes('econnreset')
+            || message.includes('enotfound')
+            || message.includes('eai_again');
+    }
+
     constructor() {
         // No local cache setup needed
     }
@@ -205,7 +216,11 @@ class MyAnimeListService {
                 }
                 return results;
             } catch (error) {
-                logger.error('MAL', `Autocomplete error: ${(error as Error).message}`);
+                if (this._isTransientNetworkError(error)) {
+                    logger.debug('MAL', `Autocomplete transient failure: ${(error as Error).message}`);
+                } else {
+                    logger.error('MAL', `Autocomplete error: ${(error as Error).message}`);
+                }
                 return [];
             }
         });

@@ -15,14 +15,13 @@ import type {
 } from '../../types/moderation/infraction.js';
 // Repository Functions
 /**
- * Get next case ID for a guild (atomic — safe under concurrent access)
+ * Get next candidate case ID for a guild
  */
 async function getNextCaseId(guildId: string): Promise<number> {
     const result = await db.query(
-        `SELECT COALESCE(MAX(case_id), 0) + 1 as next_id 
-         FROM mod_infractions 
-         WHERE guild_id = $1
-         FOR UPDATE`,
+        `SELECT COALESCE(MAX(case_id), 0) + 1 as next_id
+         FROM mod_infractions
+         WHERE guild_id = $1`,
         [guildId]
     );
     return (result.rows[0] as { next_id: number })?.next_id || 1;
@@ -30,7 +29,7 @@ async function getNextCaseId(guildId: string): Promise<number> {
 
 /**
  * Create a new infraction
- * Uses atomic case ID generation to prevent race conditions
+ * Uses optimistic retry on unique constraint collisions to handle concurrency
  */
 async function create(data: InfractionCreateData): Promise<Infraction> {
     const {
@@ -45,19 +44,32 @@ async function create(data: InfractionCreateData): Promise<Infraction> {
         metadata
     } = data;
     
-    // Atomic: generate case_id and insert in a single transaction
-    const result = await db.query(
-        `INSERT INTO mod_infractions 
-         (case_id, guild_id, user_id, moderator_id, type, reason, duration_ms, expires_at, reference_id, metadata)
-         VALUES (
-            (SELECT COALESCE(MAX(case_id), 0) + 1 FROM mod_infractions WHERE guild_id = $1 FOR UPDATE),
-            $1, $2, $3, $4, $5, $6, $7, $8, $9
-         )
-         RETURNING *`,
-        [guildId, userId, moderatorId, type, reason, durationMs, expiresAt, referenceId, metadata || {}]
-    );
-    
-    return result.rows[0] as unknown as Infraction;
+    const MAX_RETRIES = 5;
+
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        const nextCaseId = await getNextCaseId(guildId);
+
+        try {
+            const result = await db.query(
+                `INSERT INTO mod_infractions 
+                 (case_id, guild_id, user_id, moderator_id, type, reason, duration_ms, expires_at, reference_id, metadata)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                 RETURNING *`,
+                [nextCaseId, guildId, userId, moderatorId, type, reason, durationMs, expiresAt, referenceId, metadata || {}]
+            );
+
+            return result.rows[0] as unknown as Infraction;
+        } catch (error) {
+            const message = (error as Error).message || '';
+            const isCaseConflict = message.includes('unique_guild_case') || message.includes('duplicate key value');
+
+            if (!isCaseConflict || attempt === MAX_RETRIES - 1) {
+                throw error;
+            }
+        }
+    }
+
+    throw new Error('Failed to allocate a unique case ID after retries');
 }
 
 /**

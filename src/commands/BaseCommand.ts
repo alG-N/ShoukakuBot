@@ -46,6 +46,19 @@ export const CommandCategory = {
     API: 'api',
     FUN: 'fun',
 } as const;
+
+const PERMISSION_NAME_BY_VALUE = new Map<bigint, string>(
+    Object.entries(PermissionFlagsBits)
+        .filter(([, value]) => typeof value === 'bigint')
+        .map(([name, value]) => [value as bigint, name])
+);
+
+function formatPermissionName(permission: PermissionResolvable): string {
+    if (typeof permission === 'bigint') {
+        return PERMISSION_NAME_BY_VALUE.get(permission) || permission.toString();
+    }
+    return String(permission);
+}
 // BASE COMMAND CLASS
 /**
  * Base command class - extend this for all commands
@@ -258,11 +271,15 @@ export abstract class BaseCommand {
         // User permissions check
         if (this.userPermissions.length > 0 && interaction.guild && interaction.member) {
             const member = interaction.member as GuildMember;
-            const missing = this.userPermissions.filter(
-                perm => !member.permissions.has(perm)
-            );
-            if (missing.length > 0) {
-                throw new AppError(`Missing permissions: ${missing.join(', ')}`, ErrorCodes.MISSING_PERMISSIONS, 403);
+            const isGuildOwner = interaction.guild.ownerId === interaction.user.id;
+            if (!isGuildOwner) {
+                const missing = this.userPermissions.filter(
+                    perm => !member.permissions.has(perm)
+                );
+                if (missing.length > 0) {
+                    const missingNames = missing.map(formatPermissionName);
+                    throw new AppError(`Missing permissions: ${missingNames.join(', ')}`, ErrorCodes.MISSING_PERMISSIONS, 403);
+                }
             }
         }
 
@@ -274,7 +291,8 @@ export abstract class BaseCommand {
                     perm => !botMember.permissions.has(perm)
                 );
                 if (missing.length > 0) {
-                    throw new AppError(`I'm missing permissions: ${missing.join(', ')}`, ErrorCodes.MISSING_PERMISSIONS, 403);
+                    const missingNames = missing.map(formatPermissionName);
+                    throw new AppError(`I'm missing permissions: ${missingNames.join(', ')}`, ErrorCodes.MISSING_PERMISSIONS, 403);
                 }
             }
         }

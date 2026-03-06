@@ -129,6 +129,7 @@ class SnipeCommand extends BaseCommand {
         return new SlashCommandBuilder()
             .setName('snipe')
             .setDescription('Recover recently deleted messages')
+            .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
             .addIntegerOption(opt =>
                 opt.setName('count')
                     .setDescription('Number of messages to recover (default: 1)')

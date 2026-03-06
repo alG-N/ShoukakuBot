@@ -3,6 +3,7 @@ import {
     AttachmentBuilder,
     ButtonBuilder,
     ButtonInteraction,
+    ComponentType,
     EmbedBuilder,
     ModalBuilder,
     ModalSubmitInteraction,
@@ -91,10 +92,12 @@ export async function handleNhentaiButtonInteraction(
         switch (action) {
             case 'view': {
                 const galleryId = parts[2];
-                const result = await nhentaiService.fetchGallery(galleryId);
+                const result = await withNhentaiFetchingState(interaction, 'other doujin', async () =>
+                    nhentaiService.fetchGallery(galleryId)
+                );
                 if (!result.success || !result.data) {
                     await interaction.editReply({
-                        embeds: [deps.createErrorEmbed('Gallery not found')],
+                        embeds: [deps.createErrorEmbed(result.error || 'Gallery not found')],
                         components: []
                     });
                     return;
@@ -217,10 +220,12 @@ export async function handleNhentaiButtonInteraction(
                     ? Math.max(1, (searchSession.currentPage || 1) - 1)
                     : Math.min(searchSession.numPages || 1, (searchSession.currentPage || 1) + 1);
 
-                const searchResult = await nhentaiService.searchGalleries(searchSession.query || '', newPage, searchSession.sort as 'popular' | 'recent' || 'popular');
+                const searchResult = await withNhentaiFetchingState(interaction, 'other doujin', async () =>
+                    nhentaiService.searchGalleries(searchSession.query || '', newPage, searchSession.sort as 'popular' | 'recent' || 'popular')
+                );
                 if (!searchResult.success || !searchResult.data || searchResult.data.results.length === 0) {
                     await interaction.editReply({
-                        embeds: [deps.createErrorEmbed('No results found')],
+                        embeds: [deps.createErrorEmbed(searchResult.error || 'No results found')],
                         components: []
                     });
                     return;
@@ -255,10 +260,12 @@ export async function handleNhentaiButtonInteraction(
             }
 
             case 'random': {
-                const result = await nhentaiService.fetchRandomGallery();
+                const result = await withNhentaiFetchingState(interaction, 'other doujin', async () =>
+                    nhentaiService.fetchRandomGallery()
+                );
                 if (!result.success || !result.data) {
                     await interaction.editReply({
-                        embeds: [deps.createErrorEmbed('Could not fetch random gallery')],
+                        embeds: [deps.createErrorEmbed(result.error || 'Could not fetch random gallery')],
                         components: []
                     });
                     return;
@@ -271,10 +278,12 @@ export async function handleNhentaiButtonInteraction(
             }
 
             case 'popular': {
-                const result = await nhentaiService.fetchPopularGallery();
+                const result = await withNhentaiFetchingState(interaction, 'other doujin', async () =>
+                    nhentaiService.fetchPopularGallery()
+                );
                 if (!result.success || !result.data) {
                     await interaction.editReply({
-                        embeds: [deps.createErrorEmbed('Could not fetch popular gallery')],
+                        embeds: [deps.createErrorEmbed(result.error || 'Could not fetch popular gallery')],
                         components: []
                     });
                     return;
@@ -306,10 +315,12 @@ export async function handleNhentaiButtonInteraction(
                     return;
                 }
                 const randomFav = favourites[Math.floor(Math.random() * favourites.length)];
-                const result = await nhentaiService.fetchGallery(randomFav.gallery_id);
+                const result = await withNhentaiFetchingState(interaction, 'other doujin', async () =>
+                    nhentaiService.fetchGallery(randomFav.gallery_id)
+                );
                 if (!result.success || !result.data) {
                     await interaction.editReply({
-                        embeds: [deps.createErrorEmbed('Gallery not found')],
+                        embeds: [deps.createErrorEmbed(result.error || 'Gallery not found')],
                         components: []
                     });
                     return;
@@ -330,6 +341,71 @@ export async function handleNhentaiButtonInteraction(
             content: '❌ An error occurred. Please try again.',
             ephemeral: true
         }).catch(() => {});
+    }
+}
+
+function buildDisabledButtonRows(interaction: ButtonInteraction): ActionRowBuilder<ButtonBuilder>[] {
+    const rows: ActionRowBuilder<ButtonBuilder>[] = [];
+
+    for (const row of interaction.message.components) {
+        if (row.type !== ComponentType.ActionRow) continue;
+        const rowComponents = (row as unknown as { components?: Array<unknown> }).components || [];
+        const buttonRow = new ActionRowBuilder<ButtonBuilder>();
+        for (const component of rowComponents as Array<any>) {
+            if (component.type !== ComponentType.Button) continue;
+            buttonRow.addComponents(ButtonBuilder.from(component as any).setDisabled(true));
+        }
+        if (buttonRow.components.length > 0) rows.push(buttonRow);
+    }
+
+    return rows;
+}
+
+function buildFetchingEmbed(currentEmbed: EmbedBuilder, context: string, elapsedSec: number, totalSec: number = 60): EmbedBuilder {
+    const embed = EmbedBuilder.from(currentEmbed);
+    const statusLine = `⏳ Shoukaku is fetching ${context}... (${Math.min(elapsedSec, totalSec)}s / ${totalSec}s)`;
+    const currentDescription = embed.data.description || '';
+    const cleaned = currentDescription.replace(/^⏳ Shoukaku is fetching[^\n]*\n\n?/i, '');
+    embed.setDescription(cleaned ? `${statusLine}\n\n${cleaned}` : statusLine);
+    return embed;
+}
+
+async function withNhentaiFetchingState<T>(
+    interaction: ButtonInteraction,
+    context: string,
+    task: () => Promise<T>
+): Promise<T> {
+    if (!interaction.message.embeds.length) {
+        return task();
+    }
+
+    const baseEmbed = EmbedBuilder.from(interaction.message.embeds[0]!);
+    const disabledRows = buildDisabledButtonRows(interaction);
+    let elapsed = 0;
+    let stopped = false;
+
+    const pushStatus = async (): Promise<void> => {
+        if (stopped) return;
+        const loadingEmbed = buildFetchingEmbed(baseEmbed, context, elapsed, 60);
+        await interaction.editReply({ embeds: [loadingEmbed], components: disabledRows }).catch(() => {});
+    };
+
+    await pushStatus();
+
+    const timer = setInterval(() => {
+        elapsed += 1;
+        if (elapsed <= 60) {
+            void pushStatus();
+        } else {
+            clearInterval(timer);
+        }
+    }, 1000);
+
+    try {
+        return await task();
+    } finally {
+        stopped = true;
+        clearInterval(timer);
     }
 }
 

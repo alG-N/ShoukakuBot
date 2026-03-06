@@ -10,6 +10,7 @@ import {
     ActionRowBuilder,
     ButtonBuilder,
     ButtonStyle,
+    ComponentType,
     StringSelectMenuBuilder,
     ModalBuilder,
     TextInputBuilder,
@@ -421,7 +422,13 @@ class Rule34Command extends BaseCommand {
 
         const filteredPosts = rawPosts.filter(post => {
             const postTags = (post.tags || '').split(' ');
-            return !postTags.some(t => blacklist.includes(t));
+            const isBlacklisted = postTags.some(t => blacklist.includes(t));
+            if (isBlacklisted) return false;
+            if ((aiFilter ?? prefs.aiFilter) && post.isAiGenerated) return false;
+            if (post.score < (prefs.minScore ?? 0)) return false;
+            if (prefs.highQualityOnly && !post.isHighQuality) return false;
+            if (prefs.excludeLowQuality && !post.isHighQuality) return false;
+            return true;
         });
 
         if (filteredPosts.length === 0) {
@@ -434,6 +441,14 @@ class Rule34Command extends BaseCommand {
             type: 'random',
             query: tags || '',
             posts: filteredPosts,
+            options: {
+                limit: Math.max(10, Math.min(50, count * 10)),
+                excludeAi: aiFilter ?? prefs.aiFilter,
+                minScore: prefs.minScore ?? 0,
+                highQualityOnly: prefs.highQualityOnly ?? false,
+                excludeLowQuality: prefs.excludeLowQuality ?? false,
+                rating: prefs.defaultRating
+            } as any,
             currentIndex: 0,
             currentPage: 1
         });
@@ -518,7 +533,13 @@ class Rule34Command extends BaseCommand {
         
         const filteredPosts = rawPosts.filter(post => {
             const postTags = (post.tags || '').split(' ');
-            return !postTags.some(t => blacklist.includes(t));
+            const isBlacklisted = postTags.some(t => blacklist.includes(t));
+            if (isBlacklisted) return false;
+            if ((aiFilter ?? prefs.aiFilter) && post.isAiGenerated) return false;
+            if (post.score < (prefs.minScore ?? 0)) return false;
+            if (prefs.highQualityOnly && !post.isHighQuality) return false;
+            if (prefs.excludeLowQuality && !post.isHighQuality) return false;
+            return true;
         });
 
         if (filteredPosts.length === 0) {
@@ -534,7 +555,13 @@ class Rule34Command extends BaseCommand {
             currentIndex: 0,
             currentPage: 1,
             timeframe,
-            options: { timeframe, excludeAi: aiFilter ?? prefs.aiFilter } as any
+            options: {
+                timeframe,
+                excludeAi: aiFilter ?? prefs.aiFilter,
+                minScore: prefs.minScore ?? 0,
+                highQualityOnly: prefs.highQualityOnly ?? false,
+                excludeLowQuality: prefs.excludeLowQuality ?? false
+            } as any
         });
 
         const post = filteredPosts[0];
@@ -667,6 +694,9 @@ class Rule34Command extends BaseCommand {
                 case 'random':
                     await this._handleNavigation(interaction, action, userId);
                     break;
+                case 'related':
+                    await this._handleRelatedFromSession(interaction, userId);
+                    break;
                 case 'prevpage':
                 case 'nextpage':
                     await this._handlePageNavigation(interaction, action, userId);
@@ -729,7 +759,62 @@ class Rule34Command extends BaseCommand {
         } else if (action === 'next') {
             newIndex = Math.min(session.posts.length - 1, newIndex + 1);
         } else if (action === 'random') {
-            newIndex = Math.floor(Math.random() * session.posts.length);
+            await this._withFetchingState(interaction, 'other posts', async () => {
+                const randomResult = await rule34Service?.getRandom?.({
+                    tags: session.query || '',
+                    count: Math.max(10, Math.min(50, session.posts.length || 25)),
+                    excludeAi: session.options?.excludeAi,
+                    minScore: session.options?.minScore
+                }) || [];
+
+                const blacklist = rule34Cache?.getBlacklist?.(userId) || [];
+                const randomPosts = randomResult.filter(post => {
+                    const postTags = (post.tags || '').split(' ');
+                    return !postTags.some(t => blacklist.includes(t));
+                });
+
+                if (randomPosts.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * randomPosts.length);
+                    rule34Cache?.updateSession?.(userId, {
+                        posts: randomPosts,
+                        currentIndex: randomIndex,
+                        currentPage: 1,
+                        hasMore: true
+                    });
+
+                    const post = randomPosts[randomIndex];
+                    rule34Cache?.addToHistory?.(userId, post.id, { score: post.score });
+
+                    if (post.hasVideo && postHandler?.createVideoEmbed) {
+                        const { embed, rows } = postHandler.createVideoEmbed(post, {
+                            resultIndex: randomIndex,
+                            totalResults: randomPosts.length,
+                            userId,
+                            searchPage: 1
+                        });
+                        await interaction.editReply({ embeds: [embed], components: rows });
+                        return;
+                    }
+
+                    const { embed, rows } = await postHandler.createPostEmbed(post, {
+                        resultIndex: randomIndex,
+                        totalResults: randomPosts.length,
+                        query: session.query,
+                        userId,
+                        searchPage: 1
+                    });
+
+                    await interaction.editReply({ embeds: [embed], components: rows });
+                    return;
+                }
+
+                // Fallback to local random if API random did not return usable posts.
+                newIndex = Math.floor(Math.random() * session.posts.length);
+            });
+
+            if (newIndex === session.currentIndex) {
+                return;
+            }
         }
 
         rule34Cache?.updateSession?.(userId, { currentIndex: newIndex });
@@ -774,35 +859,60 @@ class Rule34Command extends BaseCommand {
 
         const currentPage = session.currentPage || 1;
         const newPage = action === 'nextpage' ? currentPage + 1 : Math.max(1, currentPage - 1);
+        const prefs = rule34Cache?.getPreferences?.(userId) || {};
+        const blacklist = rule34Cache?.getBlacklist?.(userId) || [];
+        const effectiveExcludeAi = session.options?.excludeAi ?? prefs.aiFilter;
+        const effectiveMinScore = session.options?.minScore ?? prefs.minScore ?? 0;
+        const effectiveHighQualityOnly = session.options?.highQualityOnly ?? prefs.highQualityOnly ?? false;
+        const effectiveExcludeLowQuality = session.options?.excludeLowQuality ?? prefs.excludeLowQuality ?? false;
 
         let posts: Post[] = [];
         let hasMore = false;
+        const randomRating = session.options?.rating === 'all' ? null : session.options?.rating;
 
-        if (session.type === 'search' && session.options) {
-            const result = await rule34Service.search(session.query || '', {
-                ...session.options,
-                page: newPage - 1
-            });
-            posts = result?.posts || [];
-            hasMore = result?.hasMore || false;
-        } else if (session.type === 'random') {
-            // For random, fetch new random posts using getRandom
-            const result = await rule34Service.getRandom?.({
-                count: session.options?.limit || 50,
-                excludeAi: session.options?.excludeAi,
-                minScore: session.options?.minScore
-            });
-            posts = result || [];
-            hasMore = true; // Random can always get more
-        } else if (session.type === 'trending') {
-            // For trending, fetch next page
-            const result = await rule34Service.getTrending?.({
-                ...session.options,
-                page: newPage - 1
-            });
-            posts = result?.posts || [];
-            hasMore = result?.hasMore || false;
-        }
+        await this._withFetchingState(interaction, 'other posts', async () => {
+            if (session.type === 'search' && session.options) {
+                const result = await rule34Service.search(session.query || '', {
+                    ...session.options,
+                    excludeAi: effectiveExcludeAi,
+                    minScore: effectiveMinScore,
+                    page: newPage - 1
+                });
+                posts = result?.posts || [];
+                hasMore = result?.hasMore || false;
+            } else if (session.type === 'random') {
+                // For random, fetch new random posts using getRandom.
+                const result = await rule34Service.getRandom?.({
+                    tags: session.query || '',
+                    count: session.options?.limit || 50,
+                    rating: randomRating,
+                    excludeAi: effectiveExcludeAi,
+                    minScore: effectiveMinScore
+                });
+                posts = result || [];
+                hasMore = true;
+            } else if (session.type === 'trending') {
+                const result = await rule34Service.getTrending?.({
+                    ...session.options,
+                    excludeAi: effectiveExcludeAi,
+                    page: newPage - 1
+                });
+                posts = result?.posts || [];
+                hasMore = result?.hasMore || false;
+            }
+        });
+
+        // Keep pagination consistent with user settings and blacklist, not only first page.
+        posts = posts.filter(post => {
+            const postTags = (post.tags || '').split(' ');
+            const isBlacklisted = postTags.some(t => blacklist.includes(t));
+            if (isBlacklisted) return false;
+            if (effectiveExcludeAi && post.isAiGenerated) return false;
+            if (post.score < effectiveMinScore) return false;
+            if (effectiveHighQualityOnly && !post.isHighQuality) return false;
+            if (effectiveExcludeLowQuality && !post.isHighQuality) return false;
+            return true;
+        });
 
         if (posts.length === 0) {
             await interaction.followUp({
@@ -842,6 +952,108 @@ class Rule34Command extends BaseCommand {
         });
 
         await interaction.editReply({ embeds: [embed], components: rows });
+    }
+
+    private async _handleRelatedFromSession(interaction: ButtonInteraction, userId: string): Promise<void> {
+        const session = rule34Cache?.getSession?.(userId);
+
+        if (!session) {
+            await interaction.reply({
+                content: '⏱️ Session expired. Please run the command again.',
+                ephemeral: true
+            });
+            return;
+        }
+
+        await interaction.deferUpdate();
+
+        const currentPost = session.posts[session.currentIndex];
+        const queryFallback = (session.query || '').split(/\s+/).find(Boolean) || '';
+        const baseTag = currentPost?.tagList?.[0] || queryFallback;
+
+        if (!baseTag) {
+            await interaction.followUp({
+                content: '❌ Cannot determine a tag for related search.',
+                ephemeral: true
+            });
+            return;
+        }
+
+        let relatedTags: Array<{ name?: string; tag?: string; count?: number }> = [];
+        await this._withFetchingState(interaction, 'related tags', async () => {
+            relatedTags = await rule34Service?.getRelatedTags?.(baseTag, 20) || [];
+        });
+
+        const embed = postHandler?.createRelatedTagsEmbed?.(baseTag, relatedTags as any)
+            || this.infoEmbed('Related Tags', relatedTags.map(t => `• ${t.name || t.tag || 'unknown'}`).join('\n') || 'No related tags found');
+
+        await interaction.followUp({ embeds: [embed], ephemeral: true });
+    }
+
+    private _buildDisabledButtonRows(interaction: ButtonInteraction): ActionRowBuilder<ButtonBuilder>[] {
+        const rows: ActionRowBuilder<ButtonBuilder>[] = [];
+
+        for (const row of interaction.message.components) {
+            if (row.type !== ComponentType.ActionRow) continue;
+            const rowComponents: any[] = (row as unknown as { components?: any[] }).components || [];
+            const buttonRow = new ActionRowBuilder<ButtonBuilder>();
+            for (const component of rowComponents) {
+                if (component.type !== ComponentType.Button) continue;
+                buttonRow.addComponents(ButtonBuilder.from(component as any).setDisabled(true));
+            }
+            if (buttonRow.components.length > 0) rows.push(buttonRow);
+        }
+
+        return rows;
+    }
+
+    private _buildFetchingEmbed(currentEmbed: EmbedBuilder, context: string, elapsedSec: number, totalSec: number = 60): EmbedBuilder {
+        const embed = EmbedBuilder.from(currentEmbed);
+        const statusLine = `⏳ Shoukaku is fetching ${context}... (${Math.min(elapsedSec, totalSec)}s / ${totalSec}s)`;
+        const currentDescription = embed.data.description || '';
+        const cleaned = currentDescription.replace(/^⏳ Shoukaku is fetching[^\n]*\n\n?/i, '');
+        embed.setDescription(cleaned ? `${statusLine}\n\n${cleaned}` : statusLine);
+        return embed;
+    }
+
+    private async _withFetchingState(
+        interaction: ButtonInteraction,
+        context: string,
+        task: () => Promise<void>
+    ): Promise<void> {
+        if (!interaction.message.embeds.length) {
+            await task();
+            return;
+        }
+
+        const baseEmbed = EmbedBuilder.from(interaction.message.embeds[0]!);
+        const disabledRows = this._buildDisabledButtonRows(interaction);
+        let elapsed = 0;
+        let stopped = false;
+
+        const pushStatus = async (): Promise<void> => {
+            if (stopped) return;
+            const loadingEmbed = this._buildFetchingEmbed(baseEmbed, context, elapsed, 60);
+            await interaction.editReply({ embeds: [loadingEmbed], components: disabledRows }).catch(() => {});
+        };
+
+        await pushStatus();
+
+        const timer = setInterval(() => {
+            elapsed += 1;
+            if (elapsed <= 60) {
+                void pushStatus();
+            } else {
+                clearInterval(timer);
+            }
+        }, 1000);
+
+        try {
+            await task();
+        } finally {
+            stopped = true;
+            clearInterval(timer);
+        }
     }
 
     private async _handleFavoriteToggle(interaction: ButtonInteraction, postIdStr: string, userId: string): Promise<void> {
