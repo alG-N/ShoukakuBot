@@ -15,7 +15,19 @@ export * from './services/embed-service.js';
 export * from './services/wikipedia-service.js';
 export * from './services/nhentai-service.js';
 export * from './handlers/anime-handler.js';
-export * from './handlers/nhentai-handler.js';
+// Avoid re-exporting the generic `UserPreferences` name to prevent
+// ambiguity with music `UserPreferences` in `src/types/index.ts`.
+export {
+	type Gallery,
+	type GalleryTitle,
+	type GalleryTag,
+	type GalleryImages,
+	type PageSession,
+	type SearchSession,
+	type FavouritesData,
+	type Favourite,
+	type UserPreferences as NHentaiUserPreferences
+} from './handlers/nhentai-handler.js';
 export * from './handlers/reddit-post-handler.js';
 export * from './handlers/steam-sale-handler.js';
 export * from './commands/rule34-command.js';
