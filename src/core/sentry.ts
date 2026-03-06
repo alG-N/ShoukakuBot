@@ -10,6 +10,103 @@ import type { SentryInitOptions, SentryContext, BreadcrumbData } from '../types/
 // STATE
 let isInitialized = false;
 let currentShardId: number | null = null;
+let consoleForwardingInstalled = false;
+let processWarningHookInstalled = false;
+
+const originalConsoleWarn = console.warn.bind(console);
+const originalConsoleError = console.error.bind(console);
+
+function stringifyConsoleArgs(args: unknown[]): string {
+    return args
+        .map(arg => {
+            if (arg instanceof Error) {
+                return arg.stack || arg.message;
+            }
+            if (typeof arg === 'string') {
+                return arg;
+            }
+            try {
+                return JSON.stringify(arg);
+            } catch {
+                return String(arg);
+            }
+        })
+        .join(' ')
+        .slice(0, 1500);
+}
+
+function toError(arg: unknown): Error {
+    if (arg instanceof Error) {
+        return arg;
+    }
+    return new Error(typeof arg === 'string' ? arg : stringifyConsoleArgs([arg]));
+}
+
+/**
+ * Install global forwarding of console warn/error and Node warnings to Sentry.
+ * This is intentionally idempotent.
+ */
+export function installConsoleForwarding(): void {
+    if (!consoleForwardingInstalled) {
+        console.warn = (...args: unknown[]): void => {
+            originalConsoleWarn(...args);
+
+            if (!isInitialized) {
+                return;
+            }
+
+            const message = stringifyConsoleArgs(args);
+            if (message) {
+                captureMessage(message, 'warning', {
+                    tags: { source: 'console.warn' },
+                    extra: { argsCount: args.length }
+                });
+            }
+        };
+
+        console.error = (...args: unknown[]): void => {
+            originalConsoleError(...args);
+
+            if (!isInitialized) {
+                return;
+            }
+
+            const errorArg = args.find(arg => arg instanceof Error);
+            if (errorArg) {
+                captureException(errorArg, {
+                    tags: { source: 'console.error' },
+                    extra: { args: stringifyConsoleArgs(args) }
+                });
+                return;
+            }
+
+            const message = stringifyConsoleArgs(args);
+            if (message) {
+                captureException(toError(message), {
+                    tags: { source: 'console.error' },
+                    extra: { argsCount: args.length }
+                });
+            }
+        };
+
+        consoleForwardingInstalled = true;
+    }
+
+    if (!processWarningHookInstalled) {
+        process.on('warning', (warning: Error) => {
+            if (!isInitialized) {
+                return;
+            }
+            captureMessage(`[process.warning] ${warning.name}: ${warning.message}`, 'warning', {
+                tags: { source: 'process.warning' },
+                extra: {
+                    stack: warning.stack
+                }
+            });
+        });
+        processWarningHookInstalled = true;
+    }
+}
 // FUNCTIONS
 /**
  * Initialize Sentry error tracking

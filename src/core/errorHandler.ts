@@ -6,6 +6,7 @@
 
 import type { Client, ChatInputCommandInteraction } from 'discord.js';
 import logger from './Logger.js';
+import * as sentry from './sentry.js';
 import { AppError } from '../errors/index.js';
 import type {
     AsyncFunction,
@@ -29,9 +30,25 @@ export function initializeErrorHandlers(_client: Client): void {
         // Check if operational error
         if (AppError.isOperationalError(error)) {
             logger.error('ErrorHandler', `Operational Error: ${error.message}`);
+            sentry.captureException(error, {
+                level: 'warning',
+                extra: {
+                    phase: 'uncaughtException',
+                    operational: true
+                }
+            });
         } else {
             logger.critical('ErrorHandler', `Uncaught Exception: ${error.message}`);
             logger.error('ErrorHandler', `Stack: ${error.stack}`);
+            sentry.captureException(error, {
+                level: 'fatal',
+                extra: {
+                    phase: 'uncaughtException',
+                    file,
+                    line,
+                    function: fn
+                }
+            });
             
             // Log detailed error to Discord
             logger.logErrorDetailed({
@@ -64,9 +81,25 @@ export function initializeErrorHandlers(_client: Client): void {
         
         if (AppError.isOperationalError(error)) {
             logger.error('ErrorHandler', `Unhandled Rejection (Operational): ${error.message}`);
+            sentry.captureException(error, {
+                level: 'warning',
+                extra: {
+                    phase: 'unhandledRejection',
+                    operational: true
+                }
+            });
         } else {
             logger.critical('ErrorHandler', `Unhandled Rejection: ${error.message}`);
             logger.error('ErrorHandler', `Stack: ${error.stack}`);
+            sentry.captureException(error, {
+                level: 'error',
+                extra: {
+                    phase: 'unhandledRejection',
+                    file,
+                    line,
+                    function: fn
+                }
+            });
             
             // Log detailed error to Discord
             logger.logErrorDetailed({

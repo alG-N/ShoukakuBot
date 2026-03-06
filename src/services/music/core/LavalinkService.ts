@@ -7,6 +7,7 @@
 import { Shoukaku, Connectors } from 'shoukaku';
 import type { Client } from 'discord.js';
 import logger from '../../../core/Logger.js';
+import * as sentry from '../../../core/sentry.js';
 import * as lavalinkConfig from '../../../config/features/lavalink.js';
 import circuitBreakerRegistry from '../../../core/CircuitBreakerRegistry.js';
 import gracefulDegradation from '../../../core/GracefulDegradation.js';
@@ -178,6 +179,18 @@ class LavalinkService {
 
         this.shoukaku.on('error', (name: string, error: Error) => {
             logger.error('Lavalink', `Node "${name}" error: ${error.message}`);
+            sentry.captureException(error, {
+                level: 'error',
+                tags: {
+                    component: 'lavalink',
+                    node: name
+                },
+                extra: {
+                    phase: 'shoukaku.node.error',
+                    readyNodes: this.readyNodes.size,
+                    isReady: this.isReady
+                }
+            });
             gracefulDegradation.markDegraded('lavalink', error.message);
         });
 

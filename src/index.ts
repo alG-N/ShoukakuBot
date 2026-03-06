@@ -81,6 +81,7 @@ class ShoukakuBot {
             logger.info('Startup', 'Initializing Shoukaku v4.1...');
 
             // Initialize Sentry error tracking first
+            sentry.installConsoleForwarding();
             sentry.initialize({
                 release: '4.1.0',
                 tags: { bot: 'Shoukaku' }
