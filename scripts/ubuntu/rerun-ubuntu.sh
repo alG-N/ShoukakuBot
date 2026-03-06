@@ -28,7 +28,7 @@ log_ok "yt-dlp API image rebuilt"
 log_section "[4/7] Restarting Lavalink..."
 $COMPOSE -f docker-compose.lavalink.yml up -d --force-recreate
 wait_stack_running "docker-compose.lavalink.yml" "Lavalink" 90
-wait_http_ok "http://localhost:2333/version" 60 "Lavalink /version"
+wait_lavalink_version_ready 180
 
 log_section "[5/7] Restarting Cobalt..."
 $COMPOSE -f docker-compose.cobalt.yml up -d --force-recreate

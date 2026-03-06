@@ -143,6 +143,55 @@ wait_http_ok() {
   return 1
 }
 
+get_env_var_from_dotenv() {
+  local key="$1"
+  local env_file="$ROOT_DIR/.env"
+
+  if [[ ! -f "$env_file" ]]; then
+    return 1
+  fi
+
+  local raw
+  raw="$(grep -E "^${key}=" "$env_file" | tail -n 1 || true)"
+  if [[ -z "$raw" ]]; then
+    return 1
+  fi
+
+  local value="${raw#*=}"
+  value="${value%\"}"
+  value="${value#\"}"
+  printf '%s' "$value"
+}
+
+wait_lavalink_version_ready() {
+  local timeout_seconds="$1"
+  local password="${LAVALINK_PASSWORD:-}"
+
+  if [[ -z "$password" ]]; then
+    password="$(get_env_var_from_dotenv "LAVALINK_PASSWORD" || true)"
+  fi
+  if [[ -z "$password" ]]; then
+    password="youshallnotpass"
+  fi
+
+  local waited=0
+  while [[ "$waited" -lt "$timeout_seconds" ]]; do
+    # Lavalink /version often requires Authorization header depending on config.
+    if curl -fsS --max-time 3 -H "Authorization: ${password}" "http://localhost:2333/version" >/dev/null 2>&1; then
+      log_ok "Lavalink /version is reachable (authorized)"
+      return 0
+    fi
+
+    sleep 3
+    waited=$((waited + 3))
+    printf "  Waiting for Lavalink /version... (%ss/%ss)\r" "$waited" "$timeout_seconds"
+  done
+
+  echo
+  log_warn "Lavalink /version did not become reachable after ${timeout_seconds}s"
+  return 1
+}
+
 wait_stack_running() {
   local compose_file="$1"
   local stack_name="$2"

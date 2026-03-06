@@ -20,7 +20,7 @@ ensure_network "shoukaku-net"
 log_section "[2/6] Starting Lavalink stack..."
 $COMPOSE -f docker-compose.lavalink.yml up -d
 wait_stack_running "docker-compose.lavalink.yml" "Lavalink" 90
-wait_http_ok "http://localhost:2333/version" 60 "Lavalink /version"
+wait_lavalink_version_ready 180
 
 log_section "[3/6] Starting Cobalt stack..."
 $COMPOSE -f docker-compose.cobalt.yml up -d
