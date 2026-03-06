@@ -1,32 +1,37 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Stop and remove the entire Shoukaku stack (containers, volumes, images, network)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-cd "$ROOT_DIR"
+source "$SCRIPT_DIR/common.sh"
 
-COMPOSE="docker compose"
+setup_error_trap
+cd "$ROOT_DIR"
 
 echo "=============================================="
 echo "  Shoukaku - Wipe All Services (Linux)"
 echo "=============================================="
 
+check_docker_ready
+
 echo
 echo "[1/5] Removing Bot + Database + Cache..."
 $COMPOSE -f docker-compose.yml down -v --remove-orphans --rmi all || true
+wait_stack_removed "docker-compose.yml" "Bot stack" 30
 
 echo
 echo "[2/5] Removing Monitoring stack..."
 $COMPOSE -f docker-compose.monitoring.yml down -v --remove-orphans --rmi all || true
+wait_stack_removed "docker-compose.monitoring.yml" "Monitoring" 30
 
 echo
 echo "[3/5] Removing Cobalt stack..."
 $COMPOSE -f docker-compose.cobalt.yml down -v --remove-orphans --rmi all || true
+wait_stack_removed "docker-compose.cobalt.yml" "Cobalt" 30
 
 echo
 echo "[4/5] Removing Lavalink stack..."
 $COMPOSE -f docker-compose.lavalink.yml down -v --remove-orphans --rmi all || true
+wait_stack_removed "docker-compose.lavalink.yml" "Lavalink" 30
 
 echo
 echo "[5/5] Removing shared network..."
@@ -41,3 +46,5 @@ echo
 echo "=============================================="
 echo "  Wipe complete"
 echo "=============================================="
+
+print_container_summary
