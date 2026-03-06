@@ -328,7 +328,11 @@ export class MusicFacade {
         if (!voiceChannel) throw new Error('NO_VOICE_CHANNEL');
 
         const result = await voiceConnectionService.connect(interaction);
-        if (result.isErr()) throw new Error(result.code);
+        if (result.isErr()) {
+            const err = new Error(result.error || result.code || 'Voice connection failed') as Error & { code?: string };
+            err.code = result.code || undefined;
+            throw err;
+        }
 
         // Initialize event handler if not done
         this.initializeEventHandler();

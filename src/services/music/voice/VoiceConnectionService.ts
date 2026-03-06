@@ -88,11 +88,37 @@ class VoiceConnectionService {
             let player = lavalinkService.getPlayer(guildId);
 
             if (!player) {
-                player = await lavalinkService.createPlayer(
-                    guildId,
-                    voiceChannel.id,
-                    interaction.channel!.id
-                );
+                const maxAttempts = 2;
+                let lastError: Error | null = null;
+
+                for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                    try {
+                        player = await lavalinkService.createPlayer(
+                            guildId,
+                            voiceChannel.id,
+                            interaction.channel!.id
+                        );
+                        break;
+                    } catch (error) {
+                        lastError = error as Error;
+                        const message = lastError.message || '';
+                        const isBadRequest = /bad request|400/i.test(message);
+
+                        if (!isBadRequest || attempt === maxAttempts) {
+                            throw lastError;
+                        }
+
+                        logger.warn(
+                            'VoiceConnectionService',
+                            `Lavalink createPlayer returned Bad Request (attempt ${attempt}/${maxAttempts}), retrying...`
+                        );
+                        await new Promise(resolve => setTimeout(resolve, 700));
+                    }
+                }
+
+                if (!player && lastError) {
+                    throw lastError;
+                }
             }
 
             // Update queue with channel info
@@ -115,7 +141,8 @@ class VoiceConnectionService {
                 textChannelId: interaction.channel!.id 
             });
         } catch (error) {
-            logger.error('VoiceConnectionService', `Connect error: ${(error as Error).message}`);
+            const err = error as Error;
+            logger.error('VoiceConnectionService', `Connect error: ${err.message}`);
             return Result.fromError(error as Error, ErrorCodes.LAVALINK_ERROR);
         }
     }
