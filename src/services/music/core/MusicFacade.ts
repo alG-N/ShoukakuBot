@@ -153,15 +153,7 @@ export class MusicFacade {
     }
     // PLAYBACK OPERATIONS (delegated to PlaybackService)
     async playTrack(guildId: string, track: Track): Promise<Track> {
-        const queue = musicCache.getQueue(guildId);
-        
-        // Set replacing flag if a track is already playing
-        // This prevents the exception handler from skipping when we're just replacing
-        if (queue && queue.currentTrack) {
-            queue.isReplacing = true;
-        }
-        
-        queueService.setCurrentTrack(guildId, track);
+        // Validate player BEFORE modifying any state
         const player = playbackService.getPlayer(guildId);
         if (!player) throw new Error('NO_PLAYER');
         
@@ -172,6 +164,17 @@ export class MusicFacade {
             logger.error('MusicFacade', `Cannot play track "${trackTitle}": no encoded data (possibly unresolved Spotify track)`);
             throw new Error(`Cannot play this track. It may not be available for streaming.`);
         }
+
+        const queue = musicCache.getQueue(guildId);
+        
+        // Set replacing flag if a track is already playing
+        // This prevents the exception handler from skipping when we're just replacing
+        if (queue && queue.currentTrack) {
+            queue.isReplacing = true;
+        }
+        
+        // Only set currentTrack after all validation passes
+        queueService.setCurrentTrack(guildId, track);
         
         try {
             await player.playTrack({ track: { encoded } });
@@ -179,6 +182,10 @@ export class MusicFacade {
             const source = track?.info?.sourceName || 'unknown';
             musicTracksPlayedTotal.inc({ source });
             this.updateMetrics();
+        } catch (error) {
+            // Rollback currentTrack on Lavalink playback failure
+            queueService.setCurrentTrack(guildId, null);
+            throw error;
         } finally {
             // Clear replacing flag after a short delay
             if (queue) {

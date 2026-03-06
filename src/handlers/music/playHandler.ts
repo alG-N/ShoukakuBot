@@ -170,10 +170,18 @@ export const playHandler = {
             let errorMessage = error instanceof Error ? error.message : 'Failed to play track';
             
             // Provide user-friendly messages for known errors
-            if (errorMessage === 'NO_RESULTS' && query.includes('spotify.com')) {
+            if (errorMessage === 'NO_PLAYER') {
+                errorMessage = 'Failed to connect to the music player. Please try again.';
+                // Clean up orphaned connection/queue state
+                musicService.cleanup(guildId).catch(() => {});
+            } else if (errorMessage === 'NO_RESULTS' && query.includes('spotify.com')) {
                 errorMessage = 'Could not resolve this Spotify track. The track may be unavailable or region-restricted.';
             } else if (errorMessage === 'NO_RESULTS') {
                 errorMessage = `No results found for: \`${query}\``;
+            } else if (/bad request|rest request failed/i.test(errorMessage)) {
+                errorMessage = 'Music server returned an error. Please try again in a moment.';
+                // Clean up so next attempt starts fresh
+                musicService.cleanup(guildId).catch(() => {});
             }
             
             await interaction.editReply({
