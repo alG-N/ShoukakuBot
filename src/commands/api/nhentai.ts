@@ -9,6 +9,7 @@ import {
     ChatInputCommandInteraction,
     AutocompleteInteraction,
     ButtonInteraction,
+    StringSelectMenuInteraction,
     ModalSubmitInteraction
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
@@ -182,7 +183,7 @@ class NHentaiCommand extends BaseCommand {
             return;
         }
 
-        const { embed, files } = await nhentaiHandler!.createGalleryResponse(result.data, { isRandom: true });
+        const { embed, files } = await nhentaiHandler!.createGalleryResponse(result.data, { isRandom: true, spoilerCover: true });
         const buttons = await nhentaiHandler!.createMainButtons(
             result.data.id, 
             interaction.user.id, 
@@ -286,6 +287,10 @@ class NHentaiCommand extends BaseCommand {
 
     async handleModal(interaction: ModalSubmitInteraction): Promise<void> {
         await nhentaiHandler?.handleModal?.(interaction);
+    }
+
+    async handleSelectMenu(interaction: StringSelectMenuInteraction): Promise<void> {
+        await nhentaiHandler?.handleSelectMenu?.(interaction);
     }
 
     async autocomplete(interaction: AutocompleteInteraction): Promise<void> {

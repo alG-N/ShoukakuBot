@@ -4,7 +4,8 @@ import type { NHentaiTitle, NHentaiTag, NHentaiImages } from '../nhentai.js';
 import type {
     NHentaiPageSession,
     NHentaiSearchSession,
-    NHentaiFavouriteEntry
+    NHentaiFavouriteEntry,
+    NHentaiUserPreferences
 } from '../content-session.js';
 
 export type Gallery = NHentaiGallery;
@@ -13,6 +14,7 @@ export type GalleryTag = NHentaiTag;
 export type GalleryImages = NHentaiImages;
 export type PageSession = NHentaiPageSession;
 export type SearchSession = NHentaiSearchSession;
+export type UserPreferences = NHentaiUserPreferences;
 
 export interface FavouritesData {
     embed: EmbedBuilder;

@@ -1,5 +1,19 @@
 export { RATING_COLORS, RATING_EMOJIS, CONTENT_EMOJIS, SORT_DISPLAY } from './constants.js';
 
+export {
+    handleRule34GetByIdCommand,
+    handleRule34RandomCommand,
+    handleRule34RelatedCommand,
+    handleRule34SearchCommand,
+    handleRule34SettingsCommand,
+    handleRule34TrendingCommand
+} from './commandHandlers.js';
+
+export {
+    handleRule34ButtonInteraction,
+    handleRule34SelectMenuInteraction
+} from './interactions.js';
+
 export { createPostButtons, createSettingsComponents } from './buttons.js';
 
 export {

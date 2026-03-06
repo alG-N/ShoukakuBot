@@ -11,6 +11,27 @@ import {
     parseTags,
     truncate
 } from './utils.js';
+import type { UserPreferences } from '../../../types/api/handlers/nhentai-handler.js';
+
+function periodLabel(period: UserPreferences['popularPeriod']): string {
+    const labels: Record<UserPreferences['popularPeriod'], string> = {
+        today: 'Today',
+        week: 'This Week',
+        month: 'This Month',
+        all: 'All Time'
+    };
+    return labels[period] || 'All Time';
+}
+
+function randomPeriodLabel(period: UserPreferences['randomPeriod']): string {
+    const labels: Record<UserPreferences['randomPeriod'], string> = {
+        today: 'From popular today',
+        week: 'From popular this week',
+        month: 'From popular this month',
+        all: 'From all-time popular'
+    };
+    return labels[period] || 'From all-time popular';
+}
 
 export function createGalleryEmbed(
     cdn: NhentaiCdnClient,
@@ -18,7 +39,7 @@ export function createGalleryEmbed(
     options: { isRandom?: boolean; isPopular?: boolean; popularPeriod?: string } = {}
 ): EmbedBuilder {
     const { isRandom = false, isPopular = false, popularPeriod } = options;
-    const { id, media_id, title, tags, num_pages, upload_date, images } = gallery;
+    const { id, media_id, title, tags, num_pages, upload_date, images, num_favorites } = gallery;
 
     const embed = new EmbedBuilder()
         .setColor(COLORS.NHENTAI)
@@ -56,6 +77,9 @@ export function createGalleryEmbed(
     }
     if (parsedTags.categories.length > 0) {
         fields.push({ name: '📂 Category', value: formatTagList(parsedTags.categories), inline: true });
+    }
+    if (typeof num_favorites === 'number') {
+        fields.push({ name: '❤️ Favourite', value: num_favorites.toLocaleString('en-US'), inline: true });
     }
     if (parsedTags.tags.length > 0) {
         fields.push({ name: '🏷️ Tags', value: formatTagList(parsedTags.tags, 500), inline: false });
@@ -128,6 +152,33 @@ export function createErrorEmbed(message: string): EmbedBuilder {
         .setTitle('❌ Error')
         .setDescription(message)
         .setTimestamp();
+}
+
+export function createSettingsEmbed(userId: string, prefs: UserPreferences): EmbedBuilder {
+    return new EmbedBuilder()
+        .setColor(COLORS.NHENTAI)
+        .setTitle('⚙️ NHentai Settings')
+        .setDescription('These settings apply to button actions for `Popular` and `Random`.')
+        .addFields(
+            { name: '🔥 Popular Timeframe', value: periodLabel(prefs.popularPeriod), inline: true },
+            { name: '🎲 Random Pool', value: randomPeriodLabel(prefs.randomPeriod), inline: true },
+            { name: '👤 User', value: `<@${userId}>`, inline: false }
+        )
+        .setFooter({ text: 'Use the dropdown menus below to update your preferences' });
+}
+
+export function applyTranslatedTitle(
+    embed: EmbedBuilder,
+    originalTitle: string,
+    translatedTitle: string
+): EmbedBuilder {
+    const updated = EmbedBuilder.from(embed);
+    updated.setTitle(translatedTitle);
+
+    const existingDescription = updated.data.description || '';
+    const translationNote = `**Original:** ${originalTitle}`;
+    updated.setDescription(existingDescription ? `${existingDescription}\n\n${translationNote}` : translationNote);
+    return updated;
 }
 
 export function createCooldownEmbed(remaining: number): EmbedBuilder {

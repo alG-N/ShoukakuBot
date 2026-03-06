@@ -14,3 +14,8 @@ export interface ToggleFavouriteResult {
     added: boolean;
     removed: boolean;
 }
+
+export interface NHentaiUserSettings {
+    popular_period: 'today' | 'week' | 'month' | 'all';
+    random_period: 'today' | 'week' | 'month' | 'all';
+}

@@ -9,7 +9,8 @@ import type { NHentaiTag } from '../../types/api/nhentai.js';
 import type {
     NHentaiFavouriteGalleryInput,
     NHentaiFavourite,
-    ToggleFavouriteResult
+    ToggleFavouriteResult,
+    NHentaiUserSettings
 } from '../../types/api/repositories/nhentai-repository.js';
 export { type NHentaiGallery, type NHentaiTag } from '../../types/api/nhentai.js';
 
@@ -44,6 +45,19 @@ class NHentaiRepository {
                 CREATE INDEX IF NOT EXISTS idx_nhentai_favourites_user 
                 ON nhentai_favourites(user_id)
             `);
+
+            await postgres.query(`
+                CREATE TABLE IF NOT EXISTS nhentai_user_settings (
+                    user_id VARCHAR(20) PRIMARY KEY,
+                    popular_period VARCHAR(10) NOT NULL DEFAULT 'all',
+                    random_period VARCHAR(10) NOT NULL DEFAULT 'all',
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+
+            // Backward compatibility for older deployments that used `any`.
+            await postgres.query(`ALTER TABLE nhentai_user_settings ALTER COLUMN random_period SET DEFAULT 'all'`);
+            await postgres.query(`UPDATE nhentai_user_settings SET random_period = 'all' WHERE random_period = 'any'`);
             
             this.initialized = true;
             logger.info('NHentaiRepository', 'Initialized successfully');
@@ -160,6 +174,66 @@ class NHentaiRepository {
         }
     }
 
+    async getUserSettings(userId: string): Promise<NHentaiUserSettings | null> {
+        await this._initialize();
+
+        try {
+            const row = await postgres.getOne(
+                `SELECT popular_period, random_period FROM nhentai_user_settings WHERE user_id = $1`,
+                [userId]
+            ) as NHentaiUserSettings | null;
+
+            if (!row) return null;
+
+            const popular_period = ['today', 'week', 'month', 'all'].includes(row.popular_period)
+                ? row.popular_period
+                : 'all';
+            const random_period = ['today', 'week', 'month', 'all'].includes(row.random_period)
+                ? row.random_period
+                : 'all';
+
+            return { popular_period, random_period };
+        } catch (error: any) {
+            logger.error('NHentaiRepository', `Error getting user settings: ${error.message}`);
+            return null;
+        }
+    }
+
+    async setUserSettings(userId: string, settings: Partial<NHentaiUserSettings>): Promise<NHentaiUserSettings> {
+        await this._initialize();
+
+        const current = (await this.getUserSettings(userId)) || {
+            popular_period: 'all',
+            random_period: 'all'
+        };
+
+        const next: NHentaiUserSettings = {
+            popular_period: (settings.popular_period && ['today', 'week', 'month', 'all'].includes(settings.popular_period))
+                ? settings.popular_period
+                : current.popular_period,
+            random_period: (settings.random_period && ['today', 'week', 'month', 'all'].includes(settings.random_period))
+                ? settings.random_period
+                : current.random_period
+        };
+
+        try {
+            await postgres.query(
+                `INSERT INTO nhentai_user_settings (user_id, popular_period, random_period, updated_at)
+                 VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+                 ON CONFLICT (user_id)
+                 DO UPDATE SET
+                    popular_period = EXCLUDED.popular_period,
+                    random_period = EXCLUDED.random_period,
+                    updated_at = CURRENT_TIMESTAMP`,
+                [userId, next.popular_period, next.random_period]
+            );
+        } catch (error: any) {
+            logger.error('NHentaiRepository', `Error setting user settings: ${error.message}`);
+        }
+
+        return next;
+    }
+
     /**
      * Search favourites by title
      * @param userId - User ID
@@ -208,7 +282,7 @@ class NHentaiRepository {
 const nhentaiRepository = new NHentaiRepository();
 
 export { nhentaiRepository, NHentaiRepository };
-export { type NHentaiFavourite, type ToggleFavouriteResult };
+export { type NHentaiFavourite, type ToggleFavouriteResult, type NHentaiUserSettings };
 export default nhentaiRepository;
 
 

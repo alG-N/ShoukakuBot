@@ -7,6 +7,7 @@ import {
     EmbedBuilder,
     ModalBuilder,
     ModalSubmitInteraction,
+    StringSelectMenuBuilder,
     TextInputBuilder,
     TextInputStyle
 } from 'discord.js';
@@ -18,13 +19,16 @@ import type {
     FavouritesData,
     Gallery,
     PageSession,
-    SearchSession
+    SearchSession,
+    UserPreferences
 } from '../../../types/api/handlers/nhentai-handler.js';
+import { applyTranslatedTitle } from './embeds.js';
 
 type GalleryResponseOptions = {
     isRandom?: boolean;
     isPopular?: boolean;
     popularPeriod?: string;
+    spoilerCover?: boolean;
 };
 
 export interface NhentaiButtonInteractionDeps {
@@ -37,6 +41,10 @@ export interface NhentaiButtonInteractionDeps {
     createPageButtons: (galleryId: number, userId: string, currentPage: number, totalPages: number) => ActionRowBuilder<ButtonBuilder>[];
     createGalleryResponse: (gallery: Gallery, options?: GalleryResponseOptions) => Promise<{ embed: EmbedBuilder; files: AttachmentBuilder[] }>;
     createMainButtons: (galleryId: number, userId: string, numPages: number, gallery?: Gallery | null) => Promise<ActionRowBuilder<ButtonBuilder>[]>;
+    getUserPreferences: (userId: string) => Promise<UserPreferences>;
+    setUserPreferences: (userId: string, prefs: Partial<UserPreferences>) => Promise<UserPreferences>;
+    createSettingsEmbed: (userId: string, prefs: UserPreferences) => EmbedBuilder;
+    createSettingsComponents: (userId: string, prefs: UserPreferences) => ActionRowBuilder<StringSelectMenuBuilder>[];
     getSearchSession: (userId: string) => Promise<SearchSession | null>;
     setSearchSession: (userId: string, data: Partial<SearchSession>) => Promise<void>;
     createSearchResultsEmbed: (query: string, data: SearchData, page: number, sort: string) => EmbedBuilder;
@@ -260,8 +268,9 @@ export async function handleNhentaiButtonInteraction(
             }
 
             case 'random': {
+                const prefs = await deps.getUserPreferences(userId);
                 const result = await withNhentaiFetchingState(interaction, 'other doujin', async () =>
-                    nhentaiService.fetchRandomGallery()
+                    nhentaiService.fetchRandomGalleryByPeriod(prefs.randomPeriod)
                 );
                 if (!result.success || !result.data) {
                     await interaction.editReply({
@@ -271,15 +280,16 @@ export async function handleNhentaiButtonInteraction(
                     return;
                 }
                 const gallery = result.data;
-                const { embed, files } = await deps.createGalleryResponse(gallery, { isRandom: true });
+                const { embed, files } = await deps.createGalleryResponse(gallery, { isRandom: true, spoilerCover: true });
                 const rows = await deps.createMainButtons(gallery.id, userId, gallery.num_pages, gallery);
                 await interaction.editReply({ embeds: [embed], components: rows, files });
                 break;
             }
 
             case 'popular': {
+                const prefs = await deps.getUserPreferences(userId);
                 const result = await withNhentaiFetchingState(interaction, 'other doujin', async () =>
-                    nhentaiService.fetchPopularGallery()
+                    nhentaiService.fetchPopularGallery(prefs.popularPeriod)
                 );
                 if (!result.success || !result.data) {
                     await interaction.editReply({
@@ -289,9 +299,53 @@ export async function handleNhentaiButtonInteraction(
                     return;
                 }
                 const gallery = result.data;
-                const { embed, files } = await deps.createGalleryResponse(gallery, { isPopular: true });
+                const periodLabels: Record<UserPreferences['popularPeriod'], string> = {
+                    today: 'Today',
+                    week: 'This Week',
+                    month: 'This Month',
+                    all: 'All Time'
+                };
+                const { embed, files } = await deps.createGalleryResponse(gallery, {
+                    isPopular: true,
+                    popularPeriod: periodLabels[prefs.popularPeriod] || 'All Time'
+                });
                 const rows = await deps.createMainButtons(gallery.id, userId, gallery.num_pages, gallery);
                 await interaction.editReply({ embeds: [embed], components: rows, files });
+                break;
+            }
+
+            case 'settings': {
+                const prefs = await deps.getUserPreferences(userId);
+                const embed = deps.createSettingsEmbed(userId, prefs);
+                const rows = deps.createSettingsComponents(userId, prefs);
+                await interaction.editReply({ embeds: [embed], components: rows, files: [] });
+                break;
+            }
+
+            case 'translate': {
+                const galleryId = parts[2];
+                const result = await withNhentaiFetchingState(interaction, 'translation', async () =>
+                    nhentaiService.fetchGallery(galleryId)
+                );
+                if (!result.success || !result.data) {
+                    await interaction.editReply({
+                        embeds: [deps.createErrorEmbed(result.error || 'Gallery not found')],
+                        components: []
+                    });
+                    return;
+                }
+
+                const gallery = result.data;
+                const { embed, files } = await deps.createGalleryResponse(gallery);
+                const originalTitle = gallery.title.japanese || gallery.title.pretty || gallery.title.english || 'Unknown Title';
+                const translatedTitle = await nhentaiService.translateToEnglish(originalTitle);
+
+                const finalEmbed = translatedTitle && translatedTitle.toLowerCase() !== originalTitle.toLowerCase()
+                    ? applyTranslatedTitle(embed, originalTitle, translatedTitle)
+                    : embed;
+
+                const rows = await deps.createMainButtons(gallery.id, userId, gallery.num_pages, gallery);
+                await interaction.editReply({ embeds: [finalEmbed], components: rows, files });
                 break;
             }
 

@@ -19,6 +19,8 @@ export type Post = Rule34Post;
 export type Rule34CommandSearchOptions = Omit<Rule34SearchOptions, 'rating' | 'contentType'> & {
     rating?: Rule34SearchOptions['rating'] | 'all';
     contentType?: Rule34SearchOptions['contentType'] | 'image';
+    followSettings?: boolean;
+    hasAiOverride?: boolean;
 };
 
 export type Rule34CommandSearchResult = Rule34SearchResult;

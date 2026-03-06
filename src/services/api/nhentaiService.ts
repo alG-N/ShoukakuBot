@@ -93,6 +93,7 @@ function getRequestConfig(overrides: Partial<AxiosRequestConfig> = {}): AxiosReq
 class NHentaiService {
     private readonly CACHE_NS = 'api:nhentai';
     private readonly CACHE_TTL = 300; // 5 minutes in seconds
+    private readonly TRANSLATE_CACHE_NS = 'api:translate';
 
     constructor() {
         // No local cache setup needed — uses centralized cacheService
@@ -139,6 +140,14 @@ class NHentaiService {
 
         // Fallback to known popular galleries
         return this.fetchPopularGallery();
+    }
+
+    /**
+     * Fetch random gallery from a specific period bucket.
+     */
+    async fetchRandomGalleryByPeriod(period: 'today' | 'week' | 'month' | 'all' = 'all'): Promise<GalleryResult> {
+        // Random picks from the selected popular pool for deterministic behavior.
+        return this.fetchPopularGallery(period);
     }
 
     /**
@@ -302,6 +311,31 @@ class NHentaiService {
                 return [];
             }
         });
+    }
+
+    async translateToEnglish(text: string): Promise<string | null> {
+        const normalized = (text || '').trim();
+        if (!normalized) return null;
+
+        const cacheKey = `translate:nhentai:auto_en:${normalized}`;
+        const cached = await cacheService.get<string>(this.TRANSLATE_CACHE_NS, cacheKey);
+        if (cached) return cached;
+
+        try {
+            const response = await axios.get(
+                `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(normalized)}`,
+                getRequestConfig({ timeout: 5000 })
+            );
+
+            const translated = response?.data?.[0]?.map((item: any) => item?.[0] || '').join('')?.trim();
+            if (translated) {
+                await cacheService.set(this.TRANSLATE_CACHE_NS, cacheKey, translated, 3600);
+                return translated;
+            }
+            return null;
+        } catch {
+            return null;
+        }
     }
 
     /**

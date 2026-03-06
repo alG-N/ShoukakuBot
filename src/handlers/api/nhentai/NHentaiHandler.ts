@@ -3,6 +3,8 @@ import {
     ActionRowBuilder,
     ButtonBuilder,
     ButtonInteraction,
+    StringSelectMenuBuilder,
+    StringSelectMenuInteraction,
     ModalSubmitInteraction,
     AttachmentBuilder
 } from 'discord.js';
@@ -15,7 +17,8 @@ import type {
     PageSession,
     SearchSession,
     FavouritesData,
-    Favourite
+    Favourite,
+    UserPreferences
 } from '../../../types/api/handlers/nhentai-handler.js';
 import { NhentaiCdnClient } from './cdn.js';
 import { getExt } from './utils.js';
@@ -23,8 +26,10 @@ import {
     clearPageSession,
     getPageSession,
     getSearchSession,
+    getUserPreferences,
     setPageSession,
     setSearchSession,
+    setUserPreferences,
     updatePageSession
 } from './sessionStore.js';
 import {
@@ -36,7 +41,8 @@ import {
     createErrorEmbed,
     createGalleryEmbed,
     createPageEmbed,
-    createSearchResultsEmbed
+    createSearchResultsEmbed,
+    createSettingsEmbed
 } from './embeds.js';
 import {
     createFavouritesButtons,
@@ -90,13 +96,13 @@ export class NHentaiHandler {
 
     async createGalleryResponse(
         gallery: Gallery,
-        options: { isRandom?: boolean; isPopular?: boolean; popularPeriod?: string } = {}
+        options: { isRandom?: boolean; isPopular?: boolean; popularPeriod?: string; spoilerCover?: boolean } = {}
     ): Promise<{ embed: EmbedBuilder; files: AttachmentBuilder[] }> {
         const embed = this.createGalleryEmbed(gallery, options);
         const { media_id, images } = gallery;
         const coverType = images?.cover?.t || 'j';
         const ext = getExt(coverType);
-        const filename = `cover.${ext}`;
+        const filename = options.spoilerCover ? `SPOILER_cover.${ext}` : `cover.${ext}`;
 
         const coverUrls = this.cdn.getAllThumbnailUrls(media_id, coverType);
         const imageBuffer = await this.cdn.fetchImageWithRetry(coverUrls);
@@ -123,9 +129,49 @@ export class NHentaiHandler {
         galleryId: number,
         userId: string,
         numPages: number,
-        _gallery: Gallery | null = null
+        gallery: Gallery | null = null
     ): Promise<ActionRowBuilder<ButtonBuilder>[]> {
-        return createMainButtons(galleryId, userId, numPages);
+        return createMainButtons(galleryId, userId, numPages, gallery);
+    }
+
+    async getUserPreferences(userId: string): Promise<UserPreferences> {
+        return getUserPreferences(userId);
+    }
+
+    async setUserPreferences(userId: string, prefs: Partial<UserPreferences>): Promise<UserPreferences> {
+        return setUserPreferences(userId, prefs);
+    }
+
+    createSettingsEmbed(userId: string, prefs: UserPreferences): EmbedBuilder {
+        return createSettingsEmbed(userId, prefs);
+    }
+
+    createSettingsComponents(userId: string, prefs: UserPreferences): ActionRowBuilder<StringSelectMenuBuilder>[] {
+        const popularRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId(`nhentai_setting_popular_${userId}`)
+                .setPlaceholder('Select popular timeframe')
+                .addOptions(
+                    { label: 'Popular Today', value: 'today', emoji: '🔥', default: prefs.popularPeriod === 'today' },
+                    { label: 'Popular This Week', value: 'week', emoji: '📊', default: prefs.popularPeriod === 'week' },
+                    { label: 'Popular This Month', value: 'month', emoji: '📅', default: prefs.popularPeriod === 'month' },
+                    { label: 'All Time Popular', value: 'all', emoji: '🏆', default: prefs.popularPeriod === 'all' }
+                )
+        );
+
+        const randomRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId(`nhentai_setting_random_${userId}`)
+                .setPlaceholder('Select random pool')
+                .addOptions(
+                    { label: 'Random from popular today', value: 'today', emoji: '🔥', default: prefs.randomPeriod === 'today' },
+                    { label: 'Random from popular this week', value: 'week', emoji: '📊', default: prefs.randomPeriod === 'week' },
+                    { label: 'Random from popular this month', value: 'month', emoji: '📅', default: prefs.randomPeriod === 'month' },
+                    { label: 'Random from all-time popular', value: 'all', emoji: '🏆', default: prefs.randomPeriod === 'all' }
+                )
+        );
+
+        return [popularRow, randomRow];
     }
 
     async handleFavouriteToggle(
@@ -209,6 +255,10 @@ export class NHentaiHandler {
             createPageButtons: (galleryId, userId, currentPage, totalPages) => this.createPageButtons(galleryId, userId, currentPage, totalPages),
             createGalleryResponse: (gallery, options) => this.createGalleryResponse(gallery, options),
             createMainButtons: (galleryId, userId, numPages, gallery) => this.createMainButtons(galleryId, userId, numPages, gallery),
+            getUserPreferences: (targetUserId) => this.getUserPreferences(targetUserId),
+            setUserPreferences: (targetUserId, prefs) => this.setUserPreferences(targetUserId, prefs),
+            createSettingsEmbed: (targetUserId, prefs) => this.createSettingsEmbed(targetUserId, prefs),
+            createSettingsComponents: (targetUserId, prefs) => this.createSettingsComponents(targetUserId, prefs),
             getSearchSession: (userId) => this.getSearchSession(userId),
             setSearchSession: (userId, data) => this.setSearchSession(userId, data),
             createSearchResultsEmbed: (searchQuery, searchData, searchPage, sortBy) => this.createSearchResultsEmbed(searchQuery, searchData, searchPage, sortBy),
@@ -216,6 +266,38 @@ export class NHentaiHandler {
             createFavouritesEmbed: (targetUserId, favPage) => this.createFavouritesEmbed(targetUserId, favPage),
             createFavouritesButtons: (targetUserId, currentPage, totalPages, favourites) => this.createFavouritesButtons(targetUserId, currentPage, totalPages, favourites)
         });
+    }
+
+    async handleSelectMenu(interaction: StringSelectMenuInteraction): Promise<void> {
+        const parts = interaction.customId.split('_');
+        const userId = parts[parts.length - 1];
+
+        if (interaction.user.id !== userId) {
+            await interaction.reply({ content: '❌ This menu is not for you!', ephemeral: true });
+            return;
+        }
+
+        if (parts[1] !== 'setting') return;
+
+        const setting = parts[2];
+        const selected = interaction.values[0];
+        if (!selected) {
+            await interaction.deferUpdate();
+            return;
+        }
+
+        if (setting === 'popular' && ['today', 'week', 'month', 'all'].includes(selected)) {
+            await this.setUserPreferences(userId, { popularPeriod: selected as UserPreferences['popularPeriod'] });
+        }
+
+        if (setting === 'random' && ['today', 'week', 'month', 'all'].includes(selected)) {
+            await this.setUserPreferences(userId, { randomPeriod: selected as UserPreferences['randomPeriod'] });
+        }
+
+        const prefs = await this.getUserPreferences(userId);
+        const embed = this.createSettingsEmbed(userId, prefs);
+        const components = this.createSettingsComponents(userId, prefs);
+        await interaction.update({ embeds: [embed], components });
     }
 
     async handleModal(interaction: ModalSubmitInteraction): Promise<void> {
@@ -233,4 +315,4 @@ export class NHentaiHandler {
 const nhentaiHandler = new NHentaiHandler();
 
 export default nhentaiHandler;
-export type { Gallery, GalleryTitle, GalleryTag, GalleryImages, ParsedTags, PageSession, SearchSession, SearchData, Favourite };
+export type { Gallery, GalleryTitle, GalleryTag, GalleryImages, ParsedTags, PageSession, SearchSession, SearchData, Favourite, UserPreferences };

@@ -254,7 +254,7 @@ class Rule34Cache {
         return {
             aiFilter: true,
             defaultRating: null,
-            minScore: 0,
+            minScore: 1,
             excludeLowQuality: true,
             highQualityOnly: false,
             showAnimatedOnly: false,

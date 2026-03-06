@@ -1,11 +1,21 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import nhentaiRepository, { NHentaiFavourite } from '../../../repositories/api/nhentaiRepository.js';
 import type { SearchData } from '../../../types/api/nhentai.js';
+import type { Gallery } from '../../../types/api/handlers/nhentai-handler.js';
+
+function isEnglishGallery(gallery: Gallery | null): boolean {
+    if (!gallery?.tags) return false;
+    const languageTags = gallery.tags
+        .filter(tag => tag.type === 'language')
+        .map(tag => tag.name.toLowerCase());
+    return languageTags.includes('english');
+}
 
 export async function createMainButtons(
     galleryId: number,
     userId: string,
-    numPages: number
+    numPages: number,
+    gallery: Gallery | null = null
 ): Promise<ActionRowBuilder<ButtonBuilder>[]> {
     let isFavourited = false;
     try {
@@ -13,6 +23,8 @@ export async function createMainButtons(
     } catch {
         // ignore
     }
+
+    const translationDisabled = isEnglishGallery(gallery);
 
     const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
@@ -44,10 +56,21 @@ export async function createMainButtons(
             .setStyle(ButtonStyle.Primary)
             .setEmoji('🔥'),
         new ButtonBuilder()
+            .setCustomId(`nhentai_translate_${galleryId}_${userId}`)
+            .setLabel('Translation')
+            .setStyle(ButtonStyle.Secondary)
+            .setEmoji('🌐')
+            .setDisabled(translationDisabled),
+        new ButtonBuilder()
             .setCustomId(`nhentai_myfavs_${userId}`)
             .setLabel('My Favourites')
             .setStyle(ButtonStyle.Secondary)
-            .setEmoji('📚')
+            .setEmoji('📚'),
+        new ButtonBuilder()
+            .setCustomId(`nhentai_settings_${userId}`)
+            .setLabel('Settings')
+            .setStyle(ButtonStyle.Secondary)
+            .setEmoji('⚙️')
     );
 
     return [row1, row2];

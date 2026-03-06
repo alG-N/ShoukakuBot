@@ -1,7 +1,14 @@
 import cacheService from '../../../cache/CacheService.js';
-import type { Gallery, PageSession, SearchSession } from '../../../types/api/handlers/nhentai-handler.js';
+import type { Gallery, PageSession, SearchSession, UserPreferences } from '../../../types/api/handlers/nhentai-handler.js';
+import nhentaiRepository from '../../../repositories/api/nhentaiRepository.js';
 
 export const NHENTAI_CACHE_NS = 'api:nhentai';
+const PREFS_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
+
+const DEFAULT_PREFERENCES: UserPreferences = {
+    popularPeriod: 'all',
+    randomPeriod: 'all'
+};
 
 export async function setPageSession(userId: string, gallery: Gallery, currentPage: number, sessionTtl: number): Promise<void> {
     await cacheService.set<PageSession>(NHENTAI_CACHE_NS, `nhentai:page:${userId}`, {
@@ -38,4 +45,40 @@ export async function setSearchSession(userId: string, data: Partial<SearchSessi
 
 export function getSearchSession(userId: string): Promise<SearchSession | null> {
     return cacheService.peek<SearchSession>(NHENTAI_CACHE_NS, `nhentai:search:${userId}`);
+}
+
+export async function getUserPreferences(userId: string): Promise<UserPreferences> {
+    const prefs = await cacheService.peek<UserPreferences>(NHENTAI_CACHE_NS, `nhentai:prefs:${userId}`);
+    if (prefs) {
+        return {
+            popularPeriod: prefs.popularPeriod || DEFAULT_PREFERENCES.popularPeriod,
+            randomPeriod: prefs.randomPeriod || DEFAULT_PREFERENCES.randomPeriod
+        };
+    }
+
+    const dbPrefs = await nhentaiRepository.getUserSettings(userId);
+    if (!dbPrefs) return { ...DEFAULT_PREFERENCES };
+
+    const normalized: UserPreferences = {
+        popularPeriod: dbPrefs.popular_period || DEFAULT_PREFERENCES.popularPeriod,
+        randomPeriod: dbPrefs.random_period || DEFAULT_PREFERENCES.randomPeriod
+    };
+
+    await cacheService.set<UserPreferences>(NHENTAI_CACHE_NS, `nhentai:prefs:${userId}`, normalized, PREFS_TTL_SECONDS);
+    return normalized;
+}
+
+export async function setUserPreferences(userId: string, prefs: Partial<UserPreferences>): Promise<UserPreferences> {
+    const current = await getUserPreferences(userId);
+    const merged: UserPreferences = {
+        ...current,
+        ...prefs
+    };
+
+    await cacheService.set<UserPreferences>(NHENTAI_CACHE_NS, `nhentai:prefs:${userId}`, merged, PREFS_TTL_SECONDS);
+    await nhentaiRepository.setUserSettings(userId, {
+        popular_period: merged.popularPeriod,
+        random_period: merged.randomPeriod
+    });
+    return merged;
 }

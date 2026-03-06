@@ -84,6 +84,11 @@ export interface NHentaiSearchSession {
     expiresAt: number;
 }
 
+export interface NHentaiUserPreferences {
+    popularPeriod: 'today' | 'week' | 'month' | 'all';
+    randomPeriod: 'today' | 'week' | 'month' | 'all';
+}
+
 export interface NHentaiFavouriteEntry {
     gallery_id: number;
     gallery_title: string;
