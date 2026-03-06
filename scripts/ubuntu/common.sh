@@ -160,6 +160,7 @@ get_env_var_from_dotenv() {
   local value="${raw#*=}"
   value="${value%\"}"
   value="${value#\"}"
+  value="${value%$'\r'}"
   printf '%s' "$value"
 }
 
@@ -177,9 +178,26 @@ wait_lavalink_version_ready() {
   local waited=0
   while [[ "$waited" -lt "$timeout_seconds" ]]; do
     # Lavalink /version often requires Authorization header depending on config.
-    if curl -fsS --max-time 3 -H "Authorization: ${password}" "http://localhost:2333/version" >/dev/null 2>&1; then
+    if curl -fsS --max-time 3 -H "Authorization: ${password}" "http://127.0.0.1:2333/version" >/dev/null 2>&1; then
       log_ok "Lavalink /version is reachable (authorized)"
       return 0
+    fi
+
+    # Fallback probe inside container: useful when host networking differs.
+    local lavalink_cid
+    lavalink_cid="$($COMPOSE -f docker-compose.lavalink.yml ps -q lavalink-1 | head -n 1)"
+    if [[ -n "$lavalink_cid" ]]; then
+      if docker exec "$lavalink_cid" sh -lc "wget -q -O /dev/null --header='Authorization: ${password}' http://127.0.0.1:2333/version" >/dev/null 2>&1; then
+        log_warn "Host probe failed but lavalink-1 is responding internally; continuing"
+        return 0
+      fi
+
+      local health
+      health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$lavalink_cid" 2>/dev/null || true)"
+      if [[ "$health" == "healthy" ]]; then
+        log_warn "Host probe failed but lavalink-1 healthcheck is healthy; continuing"
+        return 0
+      fi
     fi
 
     sleep 3
@@ -189,6 +207,30 @@ wait_lavalink_version_ready() {
 
   echo
   log_warn "Lavalink /version did not become reachable after ${timeout_seconds}s"
+
+  echo
+  echo "Lavalink diagnostics:"
+  docker ps --filter "name=lavalink" --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' || true
+
+  local sid
+  for sid in 1 2 3; do
+    local cid
+    cid="$($COMPOSE -f docker-compose.lavalink.yml ps -q "lavalink-${sid}" | head -n 1)"
+    if [[ -n "$cid" ]]; then
+      local state
+      local health
+      state="$(docker inspect -f '{{.State.Status}}' "$cid" 2>/dev/null || true)"
+      health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$cid" 2>/dev/null || true)"
+      echo "  lavalink-${sid}: state=${state:-unknown}, health=${health:-unknown}"
+    else
+      echo "  lavalink-${sid}: not created"
+    fi
+  done
+
+  echo
+  echo "Recent lavalink-1 logs:"
+  $COMPOSE -f docker-compose.lavalink.yml logs --tail 80 lavalink-1 || true
+
   return 1
 }
 
