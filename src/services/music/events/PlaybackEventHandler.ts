@@ -232,8 +232,18 @@ class PlaybackEventHandler {
      * Handle voice closed event
      */
     private async _handleVoiceClosed(data: EventData): Promise<void> {
-        const { guildId } = data;
-        logger.info('PlaybackEventHandler', `Voice closed in guild ${guildId}`);
+        const { guildId, code, reason } = data as EventData & { code?: number; reason?: string };
+        logger.info('PlaybackEventHandler', `Voice closed in guild ${guildId}: code=${code}, reason=${reason || 'unknown'}`);
+        
+        // Only cleanup on fatal Discord voice close codes:
+        // 4014 = Disconnected (bot kicked, channel deleted)
+        // 1000 = Normal close (intentional)
+        // Other codes (4006, 4009, 4015, etc.) are recoverable - Shoukaku handles reconnection
+        const fatalCodes = [1000, 4014];
+        if (code !== undefined && !fatalCodes.includes(code)) {
+            logger.info('PlaybackEventHandler', `Non-fatal voice close code ${code} in guild ${guildId}, skipping cleanup`);
+            return;
+        }
         
         musicEventBus.emitCleanup(guildId, 'voice_closed');
     }

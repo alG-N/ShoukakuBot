@@ -5,7 +5,7 @@
  * @module services/music/voice/VoiceConnectionService
  */
 
-import type { ChatInputCommandInteraction, Guild, GuildMember, VoiceBasedChannel } from 'discord.js';
+import { ChannelType, type ChatInputCommandInteraction, type Guild, type GuildMember, type VoiceBasedChannel } from 'discord.js';
 import lavalinkService from '../core/LavalinkService.js';
 import { queueService } from '../queue/index.js';
 import logger from '../../../core/Logger.js';
@@ -121,6 +121,8 @@ class VoiceConnectionService {
                 }
             }
 
+            await this.ensureAudibleVoiceState(interaction.guild!, voiceChannel.id);
+
             // Update queue with channel info
             const queue = queueService.getOrCreate(guildId);
             queue.voiceChannelId = voiceChannel.id;
@@ -144,6 +146,66 @@ class VoiceConnectionService {
             const err = error as Error;
             logger.error('VoiceConnectionService', `Connect error: ${err.message}`);
             return Result.fromError(error as Error, ErrorCodes.LAVALINK_ERROR);
+        }
+    }
+
+    private async ensureAudibleVoiceState(guild: Guild, voiceChannelId: string): Promise<void> {
+        const maxAttempts = 5;
+        let me: GuildMember | null = null;
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            me = await guild.members.fetchMe().catch(() => null);
+
+            if (me?.voice.channelId === voiceChannelId) {
+                break;
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 250));
+        }
+
+        if (!me?.voice.channel) {
+            logger.warn('VoiceConnectionService', `Bot voice state not visible yet in guild ${guild.id} after join`);
+            return;
+        }
+
+        logger.info(
+            'VoiceConnectionService',
+            `Bot voice state in guild ${guild.id}: channel=${me.voice.channelId}, type=${me.voice.channel.type}, selfMute=${me.voice.selfMute}, selfDeaf=${me.voice.selfDeaf}, serverMute=${me.voice.serverMute}, serverDeaf=${me.voice.serverDeaf}, suppress=${String((me.voice as GuildMember['voice'] & { suppress?: boolean }).suppress)}`
+        );
+
+        if (me.voice.serverMute) {
+            logger.warn('VoiceConnectionService', `Bot is server-muted in guild ${guild.id}; Discord will not transmit audio until unmuted.`);
+        }
+
+        if (me.voice.channel.type !== ChannelType.GuildStageVoice) {
+            return;
+        }
+
+        const voiceState = me.voice as GuildMember['voice'] & {
+            suppress?: boolean;
+            setSuppressed?: (suppressed: boolean) => Promise<unknown>;
+            setRequestToSpeak?: (request: boolean) => Promise<unknown>;
+        };
+
+        if (voiceState.suppress) {
+            try {
+                if (typeof voiceState.setSuppressed === 'function') {
+                    await voiceState.setSuppressed(false);
+                    logger.info('VoiceConnectionService', `Unsuppressed bot in stage channel for guild ${guild.id}`);
+                    return;
+                }
+            } catch (error) {
+                logger.warn('VoiceConnectionService', `Failed to unsuppress stage bot in guild ${guild.id}: ${(error as Error).message}`);
+            }
+
+            try {
+                if (typeof voiceState.setRequestToSpeak === 'function') {
+                    await voiceState.setRequestToSpeak(true);
+                    logger.info('VoiceConnectionService', `Requested to speak in stage channel for guild ${guild.id}`);
+                }
+            } catch (error) {
+                logger.warn('VoiceConnectionService', `Failed to request speaking in stage channel for guild ${guild.id}: ${(error as Error).message}`);
+            }
         }
     }
 

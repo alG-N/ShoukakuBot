@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 # Install build tools for native modules (@discordjs/opus requires C++ toolchain)
 RUN apk add --no-cache python3 make gcc g++ libc-dev
@@ -23,7 +23,7 @@ RUN npx tsc
 RUN npm prune --omit=dev
 
 # Production stage
-FROM node:20-alpine
+FROM node:22-alpine
 
 # Install runtime dependencies only (ffmpeg for video, no build tools needed)
 RUN apk add --no-cache ffmpeg

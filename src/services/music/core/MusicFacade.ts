@@ -18,7 +18,6 @@ import spotifyService from '../spotify/SpotifyService.js';
 import { musicEventBus, MusicEvents, playbackEventHandler } from '../events/index.js';
 import musicCache from '../../../cache/music/MusicCacheFacade.js';
 import trackHandler from '../../../handlers/music/trackHandler.js';
-import { TRACK_TRANSITION_DELAY } from '../../../config/features/music.js';
 import { updateMusicMetrics, musicTracksPlayedTotal } from '../../../core/metrics.js';
 import logger from '../../../core/Logger.js';
 import { MusicNowPlayingManager } from './MusicNowPlayingManager.js';
@@ -377,84 +376,37 @@ export class MusicFacade {
             queue.textChannel = interaction.channel;
         }
 
+        // NOTE: onEnd, onException, onStuck are intentionally NOT handled here.
+        // PlaybackEventHandler handles all track lifecycle events via the event bus
+        // to avoid dual-handler race conditions (both competing for the transition lock,
+        // causing double autoplay and premature stopTrack calls).
         const handlers: PlayerEventHandlers = {
             onStart: (_data: unknown) => {
                 try {
                     voiceConnectionService.clearInactivityTimer(guildId);
-                    // Update metrics when track starts
                     this.updateMetrics();
                 } catch (error: any) {
                     logger.error('MusicFacade', `Error in start handler: ${error.message}`, error);
                 }
             },
 
-            onEnd: async (data: unknown) => {
-                const endData = data as { reason?: string } | undefined;
-                if (endData?.reason === 'replaced' || endData?.reason === 'stopped') return;
-
-                const lockAcquired = await playbackService.acquireTransitionLock(guildId, 3000);
-                if (!lockAcquired) return;
-
-                try {
-                    await new Promise(resolve => setTimeout(resolve, TRACK_TRANSITION_DELAY));
-
-                    const result = await this.playNext(guildId);
-                    if (result) {
-                        if (result.isLooped) {
-                            const loopCount = this.incrementLoopCount(guildId);
-                            await this.updateNowPlayingForLoop(guildId, loopCount);
-                        } else {
-                            await this.disableNowPlayingControls(guildId);
-                            await this.sendNowPlayingEmbed(guildId);
-                        }
-                    }
-                } catch (error: any) {
-                    logger.error('MusicFacade', `Error in end handler: ${error.message}`, error);
-                } finally {
-                    playbackService.releaseTransitionLock(guildId);
-                }
-            },
-
-            onException: async (data: unknown) => {
-                const excData = data as { message?: string } | undefined;
+            onClosed: async (_data: unknown) => {
+                const closeData = _data as { code?: number; reason?: string; byRemote?: boolean } | undefined;
+                const code = closeData?.code;
+                const reason = closeData?.reason || 'unknown';
                 
-                // Check if we're in the process of replacing a track
-                // If so, ignore the exception as it's expected
-                const queue = musicCache.getQueue(guildId);
-                if (queue?.isReplacing) {
-                    logger.info('MusicFacade', `Ignoring exception during track replacement in guild ${guildId}`);
+                logger.info('MusicFacade', `Voice WebSocket closed in guild ${guildId}: code=${code}, reason=${reason}`);
+                
+                // Only cleanup on fatal Discord voice close codes:
+                // 4014 = Disconnected (bot kicked, channel deleted, permissions revoked)
+                // 1000 = Normal close (intentional)
+                // Other codes (4006, 4009, 4015, etc.) are recoverable - Shoukaku handles reconnection
+                const fatalCodes = [1000, 4014];
+                if (code !== undefined && !fatalCodes.includes(code)) {
+                    logger.info('MusicFacade', `Non-fatal voice close code ${code} in guild ${guildId}, allowing Shoukaku to reconnect`);
                     return;
                 }
                 
-                logger.error('MusicFacade', `Track exception: ${excData?.message || 'Unknown error'}`);
-
-                const lockAcquired = await playbackService.acquireTransitionLock(guildId, 3000);
-                if (!lockAcquired) return;
-
-                try {
-                    await this.playNext(guildId);
-                } catch (error: any) {
-                    logger.error('MusicFacade', `Error handling exception: ${error.message}`, error);
-                } finally {
-                    playbackService.releaseTransitionLock(guildId);
-                }
-            },
-
-            onStuck: async (_data: unknown) => {
-                const lockAcquired = await playbackService.acquireTransitionLock(guildId, 3000);
-                if (!lockAcquired) return;
-
-                try {
-                    logger.warn('MusicFacade', `Track stuck in guild ${guildId}, skipping...`);
-                    await this.playNext(guildId);
-                } catch (error: any) {
-                    logger.error('MusicFacade', `Error in stuck handler: ${error.message}`, error);
-                } finally {
-                    playbackService.releaseTransitionLock(guildId);
-                }
-            },
-
-            onClosed: async (_data: unknown) => {
                 try {
                     await this.cleanup(guildId);
                 } catch (error: any) {
@@ -541,12 +493,6 @@ export class MusicFacade {
         // Original queue end logic
         musicCache.setCurrentTrack(guildId, null);
         await this.disableNowPlayingControls(guildId);
-
-        // Stop the player to ensure music actually stops
-        const player = playbackService.getPlayer(guildId);
-        if (player) {
-            try { await player.stopTrack(); } catch (e) { /* already stopped */ }
-        }
 
         if (queue?.textChannel && 'send' in queue.textChannel && typeof queue.textChannel.send === 'function') {
             const finishedEmbed = trackHandler.createQueueFinishedEmbed(lastTrack as any);

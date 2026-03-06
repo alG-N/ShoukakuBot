@@ -5,6 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 COMPOSE="docker compose"
+NPM_UPDATE_IMAGE="${NPM_UPDATE_IMAGE:-node:22-alpine}"
 
 on_error() {
   local exit_code="$?"
@@ -92,6 +93,56 @@ check_docker_ready() {
   check_compose_file_valid "docker-compose.monitoring.yml"
 
   log_ok "Docker daemon, Compose plugin, and compose files are valid"
+}
+
+refresh_direct_npm_dependencies() {
+  if [[ "${SKIP_NODE_DEP_UPDATES:-0}" == "1" ]]; then
+    log_warn "Skipping npm dependency refresh because SKIP_NODE_DEP_UPDATES=1"
+    return 0
+  fi
+
+  require_files package.json package-lock.json
+
+  local docker_user_args=()
+  if command -v id >/dev/null 2>&1; then
+    docker_user_args=("-u" "$(id -u):$(id -g)")
+  fi
+
+  local prod_raw=""
+  local dev_raw=""
+
+  prod_raw="$(docker run --rm -v "$ROOT_DIR:/workspace" -w /workspace "$NPM_UPDATE_IMAGE" node -e "const pkg=require('./package.json'); const deps=Object.keys(pkg.dependencies||{}); process.stdout.write(deps.map((name)=>name + '@latest').join(' '));")"
+  dev_raw="$(docker run --rm -v "$ROOT_DIR:/workspace" -w /workspace "$NPM_UPDATE_IMAGE" node -e "const pkg=require('./package.json'); const deps=Object.keys(pkg.devDependencies||{}); process.stdout.write(deps.map((name)=>name + '@latest').join(' '));")"
+
+  local prod_deps=()
+  local dev_deps=()
+
+  if [[ -n "$prod_raw" ]]; then
+    # shellcheck disable=SC2206
+    prod_deps=($prod_raw)
+  fi
+
+  if [[ -n "$dev_raw" ]]; then
+    # shellcheck disable=SC2206
+    dev_deps=($dev_raw)
+  fi
+
+  if [[ "${#prod_deps[@]}" -eq 0 && "${#dev_deps[@]}" -eq 0 ]]; then
+    log_warn "No direct npm dependencies found to refresh"
+    return 0
+  fi
+
+  log_info "Refreshing direct npm dependencies using $NPM_UPDATE_IMAGE"
+
+  if [[ "${#prod_deps[@]}" -gt 0 ]]; then
+    docker run --rm "${docker_user_args[@]}" -v "$ROOT_DIR:/workspace" -w /workspace "$NPM_UPDATE_IMAGE" npm install --package-lock-only "${prod_deps[@]}"
+  fi
+
+  if [[ "${#dev_deps[@]}" -gt 0 ]]; then
+    docker run --rm "${docker_user_args[@]}" -v "$ROOT_DIR:/workspace" -w /workspace "$NPM_UPDATE_IMAGE" npm install --package-lock-only -D "${dev_deps[@]}"
+  fi
+
+  log_ok "package.json and package-lock.json refreshed to the latest direct dependency versions"
 }
 
 validate_env_soft() {
