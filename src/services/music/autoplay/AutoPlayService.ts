@@ -810,7 +810,7 @@ class AutoPlayService {
 
     private async _searchWithLimit(query: string, limit: number = 8): Promise<MusicTrack[]> {
         try {
-            const results = await (lavalinkService as { searchMultiple?: (q: string, l: number) => Promise<MusicTrack[]> }).searchMultiple?.(query, limit);
+            const results = await (lavalinkService as { searchMultiple?: (q: string, l: number, preferredPlatform?: string) => Promise<MusicTrack[]> }).searchMultiple?.(query, limit, 'ytmsearch');
             if (results && results.length > 0) {
                 return results;
             }

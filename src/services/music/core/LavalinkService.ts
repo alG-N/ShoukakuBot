@@ -639,14 +639,14 @@ class LavalinkService {
     /**
      * Search for multiple tracks (for autoplay)
      */
-    async searchMultiple(query: string, limit: number = 5): Promise<MusicTrack[]> {
+    async searchMultiple(query: string, limit: number = 5, preferredPlatform?: string): Promise<MusicTrack[]> {
         if (!this.shoukaku || !this.isReady) {
             logger.info('Lavalink', `SearchMultiple: Not ready - shoukaku: ${!!this.shoukaku}, isReady: ${this.isReady}`);
             return [];
         }
 
         try {
-            const searchQuery = `${(lavalinkConfig as { defaultSearchPlatform?: string }).defaultSearchPlatform}:${query}`;
+            const defaultPlatform = (lavalinkConfig as { defaultSearchPlatform?: string }).defaultSearchPlatform || 'ytsearch';
             const node = [...(this.shoukaku.nodes as Map<string, ShoukakuNode>).values()].find(n => n.state === 1);
 
             if (!node) {
@@ -655,39 +655,59 @@ class LavalinkService {
                 return [];
             }
 
-            logger.info('Lavalink', `SearchMultiple: Searching "${searchQuery}" on node ${node.name}`);
-            const result = await node.rest.resolve(searchQuery);
+            const queryIsUrl = /^https?:\/\//.test(query);
+            const queryHasPrefix = /^\w+search:/.test(query);
+            const searchCandidates: string[] = [];
 
-            if (!result || result.loadType === 'error' || result.loadType === 'empty') {
-                logger.info('Lavalink', `SearchMultiple: No results, loadType: ${result?.loadType}`);
-                return [];
+            if (queryIsUrl || queryHasPrefix) {
+                searchCandidates.push(query);
+            } else {
+                if (preferredPlatform) searchCandidates.push(`${preferredPlatform}:${query}`);
+                searchCandidates.push(`${defaultPlatform}:${query}`);
             }
 
-            logger.info('Lavalink', `SearchMultiple: loadType=${result.loadType}, tracks found`);
-            let tracks: Array<{ encoded?: string; info?: { uri?: string; title?: string; length?: number; artworkUrl?: string; author?: string; sourceName?: string; identifier?: string } }> = [];
-            if (result.loadType === 'search' && Array.isArray(result.data)) {
-                tracks = (result.data as typeof tracks).slice(0, limit);
-            } else if (result.loadType === 'track' && result.data) {
-                tracks = [result.data as typeof tracks[0]];
-            } else if (result.loadType === 'playlist' && (result.data as { tracks?: typeof tracks })?.tracks) {
-                tracks = ((result.data as { tracks: typeof tracks }).tracks).slice(0, limit);
+            const uniqueCandidates = [...new Set(searchCandidates)];
+
+            for (const searchQuery of uniqueCandidates) {
+                logger.info('Lavalink', `SearchMultiple: Searching "${searchQuery}" on node ${node.name}`);
+                const result = await node.rest.resolve(searchQuery);
+
+                if (!result || result.loadType === 'error' || result.loadType === 'empty') {
+                    logger.info('Lavalink', `SearchMultiple: No results for "${searchQuery}", loadType: ${result?.loadType}`);
+                    continue;
+                }
+
+                logger.info('Lavalink', `SearchMultiple: loadType=${result.loadType}, tracks found`);
+                let tracks: Array<{ encoded?: string; info?: { uri?: string; title?: string; length?: number; artworkUrl?: string; author?: string; sourceName?: string; identifier?: string } }> = [];
+                if (result.loadType === 'search' && Array.isArray(result.data)) {
+                    tracks = (result.data as typeof tracks).slice(0, limit);
+                } else if (result.loadType === 'track' && result.data) {
+                    tracks = [result.data as typeof tracks[0]];
+                } else if (result.loadType === 'playlist' && (result.data as { tracks?: typeof tracks })?.tracks) {
+                    tracks = ((result.data as { tracks: typeof tracks }).tracks).slice(0, limit);
+                }
+
+                if (tracks.length > 0) {
+                    return tracks.map(track => {
+                        const youtubeId = this.extractYouTubeId(track.info?.uri);
+                        return {
+                            track: track,
+                            encoded: track.encoded,
+                            info: track.info,
+                            url: track.info?.uri,
+                            title: track.info?.title,
+                            lengthSeconds: Math.floor((track.info?.length || 0) / 1000),
+                            thumbnail: track.info?.artworkUrl || (youtubeId ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg` : null),
+                            author: track.info?.author,
+                            source: track.info?.sourceName || 'Unknown',
+                            identifier: youtubeId || track.info?.identifier
+                        };
+                    });
+                }
             }
 
-            return tracks.map(track => {
-                const youtubeId = this.extractYouTubeId(track.info?.uri);
-                return {
-                    track: track,
-                    encoded: track.encoded,
-                    info: track.info,
-                    url: track.info?.uri,
-                    title: track.info?.title,
-                    lengthSeconds: Math.floor((track.info?.length || 0) / 1000),
-                    thumbnail: track.info?.artworkUrl || (youtubeId ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg` : null),
-                    author: track.info?.author,
-                    source: track.info?.sourceName || 'Unknown',
-                    identifier: youtubeId || track.info?.identifier
-                };
-            });
+            logger.info('Lavalink', `SearchMultiple: Exhausted all candidates, no tracks found for "${query}"`);
+            return [];
         } catch (error) {
             const err = error as Error;
             logger.error('Lavalink', `SearchMultiple error: ${err.message}`);
