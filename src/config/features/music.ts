@@ -11,7 +11,7 @@ export const timeouts = {
     skipVote: 15 * 1000,               // 15 seconds
     collector: 7 * 24 * 60 * 60 * 1000, // 7 days
     confirmation: 20 * 1000,           // 20 seconds
-    trackTransition: 2500              // 2.5 seconds
+    trackTransition: 500               // 0.5 seconds
 };
 
 export const limits = {
@@ -73,7 +73,7 @@ export const cache = {
 // Legacy constants
 export const INACTIVITY_TIMEOUT = 3 * 60 * 1000;
 export const VC_CHECK_INTERVAL = 60 * 1000;
-export const TRACK_TRANSITION_DELAY = 2500;
+export const TRACK_TRANSITION_DELAY = 500;
 
 export default {
     enabled,

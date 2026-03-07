@@ -74,12 +74,12 @@ scrape_configs:
   #       regex: '.*:(\d+)'
   #       replacement: '${1}'
 
-  # Node Exporter (Host metrics - optional)
-  - job_name: 'node-exporter'
-    static_configs:
-      - targets: ['node-exporter:9100']
-    metrics_path: /metrics
-    scheme: http
+  # Node Exporter (Host metrics - optional, enable only when container exists)
+  # - job_name: 'node-exporter'
+  #   static_configs:
+  #     - targets: ['node-exporter:9100']
+  #   metrics_path: /metrics
+  #   scheme: http
 
   # Redis Exporter (optional - requires separate redis_exporter)
   # - job_name: 'redis'

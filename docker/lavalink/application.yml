@@ -16,8 +16,8 @@ lavalink:
       http: true
       local: false
 
-    bufferDurationMs: 2000
-    frameBufferDurationMs: 8000
+    bufferDurationMs: 4000
+    frameBufferDurationMs: 12000
     opusEncodingQuality: 10
     resamplingQuality: HIGH
     trackStuckThresholdMs: 10000
@@ -43,8 +43,8 @@ logging:
   level:
     root: INFO
     lavalink: INFO
-    dev.lavalink.youtube: DEBUG
-    com.sedmelluq.discord.lavaplayer: DEBUG
+    dev.lavalink.youtube: INFO
+    com.sedmelluq.discord.lavaplayer: INFO
 
   logback:
     rollingpolicy:

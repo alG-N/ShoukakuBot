@@ -24,15 +24,6 @@ datasources:
       incrementalQueryOverlapWindow: 10m
     editable: true
 
-  # ═══════════════════════════════════════════════════════════════
-  # ALERTMANAGER - For alert annotations
-  # ═══════════════════════════════════════════════════════════════
-  - name: Alertmanager
-    type: alertmanager
-    access: proxy
-    orgId: 1
-    uid: alertmanager
-    url: http://alertmanager:9093
-    jsonData:
-      implementation: prometheus
-    editable: true
+  # Alertmanager datasource is intentionally disabled by default because
+  # docker-compose.monitoring.yml does not start an alertmanager service.
+  # Re-enable when running alertmanager in the same Docker network.

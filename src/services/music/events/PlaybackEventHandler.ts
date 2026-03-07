@@ -63,9 +63,11 @@ class PlaybackEventHandler {
      * Bind global event handlers
      */
     private _bindGlobalHandlers(): void {
-        void this._handleTrackEnd;
-        // NOTE: TRACK_END is handled by MusicFacade.bindPlayerEvents() to avoid double handling
-        // Do NOT subscribe to TRACK_END here as it causes race conditions and double-skipping
+        // TRACK_END drives normal queue progression and autoplay fallback.
+        // The handler itself already guards replaced/stopped reasons and uses transition locking.
+        musicEventBus.subscribe(MusicEvents.TRACK_END, async (data) => {
+            await this._handleTrackEnd(data as EventData);
+        });
         
         // Track error - skip to next
         musicEventBus.subscribe(MusicEvents.TRACK_ERROR, async (data) => {
@@ -299,8 +301,8 @@ class PlaybackEventHandler {
                 const error = err as Error;
                 logger.error('PlaybackEventHandler', `Auto-play error: ${error.message}`);
                 musicEventBus.emitEvent(MusicEvents.AUTOPLAY_FAILED, { guildId, error: error.message });
-                // Auto-play failed, but don't show queue finished - will retry or user can add songs
-                return;
+                // Continue to standard queue-end fallback when autoplay errors,
+                // otherwise guild can get stuck with no further action.
             }
         }
 
