@@ -194,9 +194,6 @@ export class MusicFacade {
         const player = playbackService.getPlayer(guildId);
         if (!player) throw new Error('NO_PLAYER');
 
-        // Immediately pause to cut audio output before the stop request reaches Lavalink
-        await player.setPaused(true);
-
         const currentTrack = queueService.getCurrentTrack(guildId) as Track | null;
         queueService.endSkipVote(guildId);
 
@@ -206,16 +203,37 @@ export class MusicFacade {
             }
         }
 
-        await player.stopTrack();
+        // Check if a next track exists (without consuming it from the queue).
+        // This determines the optimal skip strategy:
+        // - Has next: playNext() calls playTrack() which atomically replaces
+        //   the current track on Lavalink in a SINGLE REST call.
+        // - No next: stopTrack() first to cut audio immediately, then handle
+        //   queue-end (Discord embeds, autoplay, etc.) without blocking audio.
+        const loopMode = queueService.getLoopMode(guildId);
+        const willLoop = loopMode === 'track' && !!currentTrack;
+        const queueHasTracks = (musicCache.getQueue(guildId)?.tracks?.length ?? 0) > 0;
 
-        const result = await this.playNext(guildId);
+        let autoplayTriggered = false;
 
-        // Always unpause after skip — we only paused to cut audio instantly.
-        // Shoukaku's playTrack() does NOT reset Lavalink's paused state,
-        // so without this the next track (or a future /play) would stay muted.
-        await player.setPaused(false);
+        if (willLoop || queueHasTracks) {
+            // DIRECT REPLACEMENT: playTrack() sends a single PATCH to Lavalink
+            // which atomically stops the old track and starts the new one.
+            // No intermediate pause/stop needed — eliminates 3 extra REST round-trips.
+            const result = await this.playNext(guildId);
+            autoplayTriggered = result === null && this.getCurrentTrack(guildId) !== null;
+        } else {
+            // NO NEXT TRACK: stop Lavalink FIRST so audio cuts immediately,
+            // then handle queue-end logic (autoplay search, Discord embeds)
+            // which involves slow Discord/external API calls.
+            await player.stopTrack();
 
-        const autoplayTriggered = result === null && this.getCurrentTrack(guildId) !== null;
+            musicCache.resetLoopCount(guildId);
+            if (loopMode === 'queue' && currentTrack) {
+                musicCache.addTrack(guildId, currentTrack);
+            }
+            await this.handleQueueEnd(guildId);
+            autoplayTriggered = this.getCurrentTrack(guildId) !== null;
+        }
 
         musicEventBus.emitEvent(MusicEvents.TRACK_SKIP, { guildId, count, previousTrack: currentTrack });
         return { skipped: count, previousTrack: currentTrack, autoplayTriggered };
@@ -241,10 +259,7 @@ export class MusicFacade {
 
     async stop(guildId: string): Promise<void> {
         const player = playbackService.getPlayer(guildId);
-        if (player) {
-            await player.setPaused(true);
-            await player.stopTrack();
-        }
+        if (player) await player.stopTrack();
         
         queueService.clear(guildId);
         queueService.setCurrentTrack(guildId, null);
