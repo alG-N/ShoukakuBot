@@ -144,7 +144,7 @@ export async function handleRule34RandomCommand(
     });
 
     if (filteredPosts.length === 0) {
-        const noResultsEmbed = deps.postHandler?.createNoResultsEmbed?.(tags || 'random') || deps.errorEmbed('No results found');
+        const noResultsEmbed = deps.postHandler?.createNoResultsEmbed?.(tags) || deps.errorEmbed('No results found');
         await interaction.editReply({ embeds: [noResultsEmbed] });
         return;
     }

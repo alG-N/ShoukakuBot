@@ -1,10 +1,3 @@
-/**
- * Playback Service
- * Handles play, pause, skip, stop operations
- * Extracted from MusicService for single responsibility
- * @module services/music/playback/PlaybackService
- */
-
 import lavalinkService from '../core/LavalinkService.js';
 import { queueService } from '../queue/index.js';
 import musicCache from '../../../cache/music/MusicCacheFacade.js';
@@ -15,11 +8,6 @@ import type { MusicTrack } from '../../../types/music/events.js';
 import type { PlayNextResult } from '../../../types/music/playback.js';
 import type { PlayerLike } from '../../../types/music/infrastructure.js';
 import type { PlaybackState } from '../../../types/music/playback-state.js';
-// GUILD MUTEX CLASS
-/**
- * Simple mutex implementation for guild-level locking
- * Prevents race conditions in track transitions
- */
 class GuildMutex {
     private locks: Map<string, boolean> = new Map();
 
@@ -46,7 +34,6 @@ class GuildMutex {
         return this.locks.get(guildId) === true;
     }
 }
-// PLAYBACK SERVICE CLASS
 class PlaybackService {
     private transitionMutex: GuildMutex;
 
@@ -54,23 +41,14 @@ class PlaybackService {
         this.transitionMutex = new GuildMutex();
     }
 
-    /**
-     * Get player for guild
-     */
     getPlayer(guildId: string): PlayerLike | null {
         return lavalinkService.getPlayer(guildId) as PlayerLike | null;
     }
 
-    /**
-     * Check if Lavalink is ready
-     */
     isLavalinkReady(): boolean {
         return lavalinkService.isReady;
     }
 
-    /**
-     * Play a track
-     */
     async playTrack(guildId: string, track: MusicTrack): Promise<Result<{ track: MusicTrack }>> {
         try {
             const player = this.getPlayer(guildId);
@@ -82,7 +60,6 @@ class PlaybackService {
                 return Result.err(ErrorCodes.TRACK_NOT_FOUND, 'Invalid track data.');
             }
 
-            // Set replacing flag if there's a current track to prevent exception handler
             const queue = musicCache.getQueue(guildId) as any;
             const hadCurrentTrack = !!queueService.getCurrentTrack(guildId);
             if (hadCurrentTrack && queue) {
@@ -92,10 +69,8 @@ class PlaybackService {
             queueService.setCurrentTrack(guildId, track);
             
             try {
-                // Shoukaku expects { track: { encoded: "..." } }
                 await player.playTrack({ track: { encoded: track.track.encoded } });
             } finally {
-                // Clear replacing flag after a delay
                 if (queue) {
                     setTimeout(() => { queue.isReplacing = false; }, 1000);
                 }
@@ -108,34 +83,26 @@ class PlaybackService {
         }
     }
 
-    /**
-     * Play next track from queue
-     */
     async playNext(guildId: string): Promise<Result<PlayNextResult>> {
         try {
             const loopMode = queueService.getLoopMode(guildId);
             const currentTrack = queueService.getCurrentTrack(guildId);
 
-            // Handle track loop mode - replay same track
             if (loopMode === 'track' && currentTrack) {
                 const result = await this.playTrack(guildId, currentTrack);
                 if (result.isErr()) return result as unknown as Result<PlayNextResult>;
                 return Result.ok({ track: currentTrack, isLooped: true });
             }
 
-            // Reset loop count when moving to next track
             queueService.resetLoopCount(guildId);
 
-            // Get next track
             const nextTrack = queueService.getNextTrack(guildId);
 
-            // If queue loop, add current track back to end
             if (loopMode === 'queue' && currentTrack) {
                 queueService.addTrack(guildId, currentTrack);
             }
 
             if (!nextTrack) {
-                // Queue empty
                 return Result.ok({ track: null, isLooped: false, queueEnded: true });
             }
 
@@ -149,9 +116,6 @@ class PlaybackService {
         }
     }
 
-    /**
-     * Skip current track
-     */
     async skip(guildId: string, count: number = 1): Promise<Result<{ skipped: number; previousTrack: MusicTrack | null }>> {
         try {
             const player = this.getPlayer(guildId);
@@ -164,17 +128,14 @@ class PlaybackService {
                 return Result.err(ErrorCodes.NO_TRACK, 'No track is playing.');
             }
 
-            // End any active skip vote
             queueService.endSkipVote(guildId);
 
-            // Skip multiple tracks if requested
             if (count > 1) {
                 for (let i = 0; i < count - 1; i++) {
-                    queueService.getNextTrack(guildId); // Discard tracks
+                    queueService.getNextTrack(guildId);
                 }
             }
 
-            // Stop current track (will trigger 'end' event)
             await player.stopTrack();
             
             return Result.ok({ skipped: count, previousTrack: currentTrack });
@@ -184,9 +145,6 @@ class PlaybackService {
         }
     }
 
-    /**
-     * Toggle pause/resume
-     */
     async togglePause(guildId: string): Promise<Result<{ paused: boolean }>> {
         try {
             const player = this.getPlayer(guildId);
@@ -204,9 +162,6 @@ class PlaybackService {
         }
     }
 
-    /**
-     * Set paused state
-     */
     async setPaused(guildId: string, paused: boolean): Promise<Result<{ paused: boolean }>> {
         try {
             const player = this.getPlayer(guildId);
@@ -222,17 +177,11 @@ class PlaybackService {
         }
     }
 
-    /**
-     * Check if paused
-     */
     isPaused(guildId: string): boolean {
         const player = this.getPlayer(guildId);
         return player?.paused || false;
     }
 
-    /**
-     * Stop playback and clear queue
-     */
     async stop(guildId: string): Promise<Result<{ stopped: boolean }>> {
         try {
             const player = this.getPlayer(guildId);
@@ -251,9 +200,6 @@ class PlaybackService {
         }
     }
 
-    /**
-     * Seek to position
-     */
     async seek(guildId: string, position: number): Promise<Result<{ position: number }>> {
         try {
             const player = this.getPlayer(guildId);

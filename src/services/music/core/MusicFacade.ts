@@ -1,14 +1,3 @@
-/**
- * Music Facade
- * Orchestrates all music sub-services.
- * Split into focused modules (Phase P):
- *   - MusicTypes.ts: Type definitions
- *   - MusicUserDataService.ts: Favorites, history, preferences
- *   - MusicNowPlayingManager.ts: Now-playing message lifecycle
- *   - MusicSkipVoteManager.ts: Skip vote lifecycle
- * @module services/music/MusicFacade
- */
-
 import { ChatInputCommandInteraction, Message, Guild, GuildMember } from 'discord.js';
 import { queueService, QueueService } from '../queue/index.js';
 import { playbackService, PlaybackService } from '../playback/index.js';
@@ -24,14 +13,12 @@ import { MusicNowPlayingManager } from './MusicNowPlayingManager.js';
 import { MusicUserDataService } from './MusicUserDataService.js';
 import { MusicSkipVoteManager } from './MusicSkipVoteManager.js';
 
-// Re-export all types from MusicTypes for backward compatibility
 export { type Track, type TrackInfo, type PlayNextResult, type SkipResult, type VoteSkipResult, type NowPlayingOptions, type ControlButtonOptions, type QueueState, type MusicStats, type LoopMode, type PlayerEventHandlers } from './MusicTypes.js';
 import type {
     Track, PlayNextResult, SkipResult, VoteSkipResult,
     QueueState, MusicStats, LoopMode, PlayerEventHandlers
 } from './MusicTypes.js';
 
-// MusicFacade Class
 export class MusicFacade {
     public readonly queueService: QueueService;
     public readonly playbackService: PlaybackService;
@@ -55,12 +42,8 @@ export class MusicFacade {
         this.skipVoteManager = new MusicSkipVoteManager();
     }
 
-    /**
-     * Update music metrics (active players, queue size, voice connections)
-     */
     updateMetrics(): void {
         try {
-            // Get queue stats which includes active queues and total tracks
             const queueStats = musicCache.queueCache?.getStats?.() || { activeQueues: 0, totalTracks: 0 };
             
             updateMusicMetrics({
@@ -69,14 +52,9 @@ export class MusicFacade {
                 voiceConnections: queueStats.activeQueues
             });
         } catch (error) {
-            // Silently ignore metric update errors
         }
     }
 
-    /**
-     * Initialize the event handler with service references
-     * Call this once after all services are ready
-     */
     initializeEventHandler(): void {
         if (this.eventHandlerInitialized) return;
 
@@ -90,7 +68,6 @@ export class MusicFacade {
         this.eventHandlerInitialized = true;
         logger.info('MusicFacade', 'Event handler initialized');
     }
-    // QUEUE OPERATIONS (delegated to QueueService)
     getQueue(guildId: string): QueueState | null {
         return queueService.getOrCreate(guildId) as QueueState | null;
     }
@@ -150,13 +127,10 @@ export class MusicFacade {
         }
         return result.isOk();
     }
-    // PLAYBACK OPERATIONS (delegated to PlaybackService)
     async playTrack(guildId: string, track: Track): Promise<Track> {
-        // Validate player BEFORE modifying any state
         const player = playbackService.getPlayer(guildId);
         if (!player) throw new Error('NO_PLAYER');
         
-        // Handle both track.track.encoded (nested) and track.encoded (flat) structures
         const encoded = track?.track?.encoded || (track as unknown as { encoded?: string })?.encoded;
         if (!encoded) {
             const trackTitle = track?.info?.title || 'Unknown';
@@ -166,27 +140,21 @@ export class MusicFacade {
 
         const queue = musicCache.getQueue(guildId);
         
-        // Set replacing flag if a track is already playing
-        // This prevents the exception handler from skipping when we're just replacing
         if (queue && queue.currentTrack) {
             queue.isReplacing = true;
         }
         
-        // Only set currentTrack after all validation passes
         queueService.setCurrentTrack(guildId, track);
         
         try {
             await player.playTrack({ track: { encoded } });
-            // Track metrics - track played
             const source = track?.info?.sourceName || 'unknown';
             musicTracksPlayedTotal.inc({ source });
             this.updateMetrics();
         } catch (error) {
-            // Rollback currentTrack on Lavalink playback failure
             queueService.setCurrentTrack(guildId, null);
             throw error;
         } finally {
-            // Clear replacing flag after a short delay
             if (queue) {
                 setTimeout(() => { queue.isReplacing = false; }, 1000);
             }
@@ -200,19 +168,15 @@ export class MusicFacade {
         const loopMode = queueService.getLoopMode(guildId);
         const currentTrack = queueService.getCurrentTrack(guildId) as Track | null;
 
-        // Handle track loop mode
         if (loopMode === 'track' && currentTrack) {
             await this.playTrack(guildId, currentTrack);
             return { track: currentTrack, isLooped: true };
         }
 
-        // Reset loop count
         musicCache.resetLoopCount(guildId);
 
-        // Get next track
         const nextTrack = musicCache.getNextTrack(guildId) as Track | null;
 
-        // Queue loop - add current back
         if (loopMode === 'queue' && currentTrack) {
             musicCache.addTrack(guildId, currentTrack);
         }
@@ -233,21 +197,16 @@ export class MusicFacade {
         const currentTrack = queueService.getCurrentTrack(guildId) as Track | null;
         queueService.endSkipVote(guildId);
 
-        // Skip multiple tracks by consuming them from the queue
         if (count > 1) {
             for (let i = 0; i < count - 1; i++) {
                 musicCache.getNextTrack(guildId);
             }
         }
 
-        // Stop the current track first to ensure it actually stops
         await player.stopTrack();
 
-        // Play the next track
         const result = await this.playNext(guildId);
 
-        // If no next track (queue ended), playNext already handled cleanup
-        // Check if autoplay was triggered (queue was empty but autoplay found a track)
         const autoplayTriggered = result === null && this.getCurrentTrack(guildId) !== null;
 
         musicEventBus.emitEvent(MusicEvents.TRACK_SKIP, { guildId, count, previousTrack: currentTrack });

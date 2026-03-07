@@ -89,6 +89,18 @@ describe('Rule34Service', () => {
             expect(result.posts[0].pageUrl).toContain('id=1000');
         });
 
+        it('should randomize client-side without adding sort:random tag to API query', async () => {
+            mockFetch.mockResolvedValue({
+                ok: true,
+                json: async () => [makeRawPost({ id: 1 }), makeRawPost({ id: 2 })],
+            });
+
+            await rule34Service.search('test', { sort: 'random' });
+
+            const url = String(mockFetch.mock.calls[0][0]);
+            expect(url).not.toContain('sort%3Arandom');
+        });
+
         it('should return empty result when API returns null', async () => {
             mockFetch.mockResolvedValue({
                 ok: true,
@@ -257,6 +269,18 @@ describe('Rule34Service', () => {
 
             const result = await rule34Service.getRandom({ tags: 'nonexistent' });
             expect(result).toEqual([]);
+        });
+
+        it('should retry multiple pages when first random attempt has no results', async () => {
+            mockFetch
+                .mockResolvedValueOnce({ ok: true, json: async () => [] })
+                .mockResolvedValueOnce({ ok: true, json: async () => [makeRawPost({ id: 77 })] });
+
+            const result = await rule34Service.getRandom({ count: 1 });
+
+            expect(result).toHaveLength(1);
+            expect(result[0].id).toBe(77);
+            expect(mockFetch).toHaveBeenCalledTimes(2);
         });
     });
 

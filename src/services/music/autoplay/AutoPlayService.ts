@@ -1,18 +1,9 @@
-/**
- * Auto-Play Service — Smart YouTube Recommendations
- * Intelligent track recommendations using YouTube search with multi-strategy
- * approach: artist graph, genre patterns, mood profiling, and language detection.
- * Spotify is only used for link resolution and embed scraping (not recommendations).
- * @module services/music/autoplay/AutoPlayService
- */
-
 import lavalinkService from '../core/LavalinkService.js';
 import { queueService } from '../queue/index.js';
 import logger from '../../../core/Logger.js';
 import type { MusicTrack, TrackInfo } from '../events/MusicEvents.js';
 import type { SearchStrategy, GenrePattern, ListeningProfile } from '../../../types/music/autoplay.js';
 
-// Expanded genre patterns with related genres for cross-recommendations
 const GENRE_PATTERNS: GenrePattern[] = [
     { pattern: /\b(lofi|lo-fi|lo fi)\b/i, genre: 'lofi', related: ['chill', 'jazz', 'instrumental', 'ambient'] },
     { pattern: /\b(edm|electronic|electro)\b/i, genre: 'edm', related: ['house', 'bass music', 'trance', 'techno'] },
@@ -52,7 +43,6 @@ const GENRE_PATTERNS: GenrePattern[] = [
     { pattern: /\b(city\s?pop|シティ[\s-]?ポップ)\b/i, genre: 'city pop', related: ['jpop', 'disco', 'r&b', 'pop'] },
 ];
 
-// Language detection patterns
 const LANGUAGE_PATTERNS: { pattern: RegExp; lang: string }[] = [
     { pattern: /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/, lang: 'japanese' },
     { pattern: /[\uAC00-\uD7AF]/, lang: 'korean' },
@@ -63,9 +53,7 @@ const LANGUAGE_PATTERNS: { pattern: RegExp; lang: string }[] = [
     { pattern: /[àâçéèêëïîôùûü]/i, lang: 'french' },
 ];
 
-// Known artist associations for better recommendations
 const ARTIST_GRAPH: Record<string, string[]> = {
-    // These are search-friendly terms, not exact artist names
     'yorushika': ['yoasobi', 'ado', 'kenshi yonezu', 'aimer', 'eve'],
     'yoasobi': ['yorushika', 'ado', 'kenshi yonezu', 'minami', 'eve'],
     'ado': ['yoasobi', 'yorushika', 'eve', 'kenshi yonezu', 'tuyu'],
@@ -82,49 +70,25 @@ const ARTIST_GRAPH: Record<string, string[]> = {
     'twice': ['blackpink', 'itzy', 'red velvet', 'aespa', 'ive'],
 };
 
-// AUTO-PLAY SERVICE CLASS
-
 class AutoPlayService {
     private readonly MIN_SEARCH_INTERVAL = 3000;
-    private readonly MAX_STRATEGIES = 6;
+    private readonly MAX_STRATEGIES = 8;
 
-    /** Last mood profile (derived from listening history) */
     private lastMoodProfile: string | null = null;
 
-    /**
-     * Recently auto-played artists per guild.
-     * Used to enforce artist diversity — avoids playing the same artist back-to-back.
-     * Map<guildId, artistName[]> (most recent last)
-     */
     private recentAutoplayArtists = new Map<string, string[]>();
-    private readonly MAX_RECENT_ARTISTS = 8; // Remember last N artists to avoid repeats
+    private readonly MAX_RECENT_ARTISTS = 12;
 
-    /**
-     * Find a similar track based on play history analysis.
-     * Strategy: Spotify recommendations (genre/mood-aware) → YouTube search fallback.
-     * 
-     * Spotify flow:
-     * 1. Find the current track on Spotify
-     * 2. Get audio features (energy, valence, tempo)
-     * 3. Use Spotify /recommendations with mood-matched tuning parameters
-     * 4. Ensure genre consistency: chill → chill, energetic → energetic
-     * 5. Search the recommended track on Lavalink for playback
-     * 
-     * If Spotify is unavailable or fails, falls back to the existing
-     * YouTube-based strategy system (artist graph, genre patterns, etc.)
-     */
     async findSimilarTrack(guildId: string, lastTrack: MusicTrack): Promise<MusicTrack | null> {
         const queue = queueService.get(guildId);
         const now = Date.now();
 
-        // Rate limiting
         if (queue?.lastAutoplaySearch && (now - queue.lastAutoplaySearch) < this.MIN_SEARCH_INTERVAL) {
             logger.info('AutoPlay', 'Rate limited, skipping search');
             return null;
         }
         if (queue) queue.lastAutoplaySearch = now;
 
-        // Store guildId for use in sub-methods
         this._currentGuildId = guildId;
 
         const trackInfo = lastTrack?.info || lastTrack;
@@ -141,36 +105,23 @@ class AutoPlayService {
 
         logger.info('AutoPlay', `Finding similar to: "${title}" by "${author}"`);
 
-        // Track the current artist in recent artists list (for diversity)
         if (author) {
             this._trackRecentArtist(guildId, this._cleanAuthor(author));
         }
 
-        // Build a listening profile from history
         const profile = this._buildListeningProfile(recentTitles, title, author || '');
 
-        // Clean up title and author
         const cleanTitle = this._cleanTitle(title);
         const cleanAuthor = this._cleanAuthor(author || '');
         const genreKeywords = this._extractGenreKeywords(title + ' ' + (author || ''));
 
-        // ── YOUTUBE STRATEGY ─────────────────────────────────────────
-        // YouTube-based multi-strategy approach with artist graph,
-        // genre patterns, mood profiling, and language detection.
-        // (Spotify recommendations API returns 404 — deprecated.
-        //  Spotify is only used for link resolution & embed scraping.)
-        // Build weighted strategies based on profile
         const strategies = this._buildSmartStrategies(cleanTitle, cleanAuthor, genreKeywords, uri, profile);
 
-        // Sort by weight (highest first) then take top N
         const sortedStrategies = strategies.sort((a, b) => b.weight - a.weight);
-        
-        // Ensure category diversity: pick top strategies but ensure variety
         const selectedStrategies = this._diversifyStrategies(sortedStrategies, this.MAX_STRATEGIES);
 
         logger.info('AutoPlay', `Using ${selectedStrategies.length} strategies: ${selectedStrategies.map(s => s.name).join(', ')}`);
 
-        // Try strategies in order
         for (const strategy of selectedStrategies) {
             try {
                 logger.info('AutoPlay', `Trying: ${strategy.name} (w=${strategy.weight}) — "${strategy.query}"`);
@@ -181,7 +132,6 @@ class AutoPlayService {
                     const validTracks = this._filterRecentTracks(results, recentTitles, title);
 
                     if (validTracks.length > 0) {
-                        // Smart selection: score results by relevance instead of pure random
                         const selected = this._scoredSelect(validTracks, cleanAuthor, genreKeywords, profile);
                         logger.info('AutoPlay', `Selected: ${selected.info?.title ?? 'Unknown'} (strategy: ${strategy.name})`);
                         return selected;
@@ -192,31 +142,22 @@ class AutoPlayService {
             }
         }
 
-        // Fallback with profile awareness
         return this._smartFallback(cleanAuthor, genreKeywords, recentTitles, title, profile);
     }
 
-    // ── LISTENING PROFILE ────────────────────────────────────────────
-
-    /**
-     * Analyze play history to build a listening profile
-     */
     private _buildListeningProfile(recentTitles: string[], currentTitle: string, currentAuthor: string): ListeningProfile {
         const genres = new Map<string, number>();
         const artists = new Map<string, number>();
         let language = 'unknown';
 
-        // Analyze current + recent tracks
         const allTitles = [...recentTitles, currentTitle];
         
         for (const title of allTitles) {
-            // Extract genres with recency weighting (more recent = higher weight)
             const detected = this._extractGenreKeywords(title);
             for (const genre of detected) {
                 genres.set(genre, (genres.get(genre) || 0) + 1);
             }
 
-            // Detect language
             for (const { pattern, lang } of LANGUAGE_PATTERNS) {
                 if (pattern.test(title)) {
                     language = lang;
@@ -224,21 +165,16 @@ class AutoPlayService {
             }
         }
 
-        // Current artist gets higher weight
         if (currentAuthor) {
             const clean = this._cleanAuthor(currentAuthor).toLowerCase();
             artists.set(clean, (artists.get(clean) || 0) + 3);
         }
 
-        // Detect mood from genre distribution
         const mood = this._detectMood(genres);
 
         return { genres, artists, mood, avgDuration: 0, language };
     }
 
-    /**
-     * Detect overall mood from genre profile
-     */
     private _detectMood(genres: Map<string, number>): string {
         const chillGenres = ['lofi', 'chill', 'ambient', 'jazz', 'acoustic', 'classical', 'instrumental'];
         const energeticGenres = ['edm', 'rock', 'metal', 'bass music', 'house', 'techno', 'trance', 'phonk', 'punk'];
@@ -260,75 +196,61 @@ class AutoPlayService {
         return 'mixed';
     }
 
-    /**
-     * Get the current mood profile (for display/debugging)
-     */
     getLastMoodProfile(): string | null {
         return this.lastMoodProfile;
     }
 
-    // ── SMART STRATEGY BUILDING ──────────────────────────────────────
-
-    /**
-     * Build weighted and categorized search strategies
-     */
     private _buildSmartStrategies(
         cleanTitle: string, cleanAuthor: string, genres: string[], uri?: string, profile?: ListeningProfile
     ): SearchStrategy[] {
         const strategies: SearchStrategy[] = [];
 
-        // ── ARTIST-BASED (with diversity awareness) ──────────────────
         if (cleanAuthor && cleanAuthor.length > 2) {
             const guildId = this._currentGuildId;
             const isRecentAuthor = guildId && this._isRecentArtist(guildId, cleanAuthor);
 
-            // Check artist graph for known similar artists
             const authorKey = cleanAuthor.toLowerCase();
             const similarArtists = this._findSimilarArtists(authorKey);
 
             if (isRecentAuthor && similarArtists.length > 0) {
-                // We've been playing this artist recently — prioritize switching!
-                // Related artists get TOP priority instead of current artist
-                const shuffled = similarArtists.sort(() => Math.random() - 0.5).slice(0, 3);
+                const shuffled = similarArtists.sort(() => Math.random() - 0.5).slice(0, 4);
                 for (let i = 0; i < shuffled.length; i++) {
                     strategies.push(
-                        { name: `switch_artist_${shuffled[i]}`, query: `${shuffled[i]} popular`, weight: 100 - i * 5, category: 'related' }
+                        { name: `switch_artist_${shuffled[i]}`, query: `${shuffled[i]} popular songs`, weight: 100 - i * 3, category: 'related' }
                     );
                 }
-                // Current artist gets lower priority
                 strategies.push(
-                    { name: 'artist_similar_songs', query: `${cleanAuthor}`, weight: 60, category: 'artist' },
+                    { name: 'artist_similar_songs', query: `${cleanAuthor}`, weight: 30, category: 'artist' },
                 );
             } else if (isRecentAuthor && similarArtists.length === 0) {
-                // Recent artist but NOT in the artist graph — deprioritize direct artist search
-                // to avoid looping the same artist. Boost "songs like" and genre strategies instead.
                 strategies.push(
-                    { name: 'artist_similar_songs', query: `${cleanAuthor}`, weight: 50, category: 'artist' },
+                    { name: 'artist_similar_songs', query: `${cleanAuthor}`, weight: 30, category: 'artist' },
                 );
-                // Boost broader discovery: "artists similar to X" via YouTube
                 strategies.push(
-                    { name: 'similar_to_artist', query: `artists similar to ${cleanAuthor}`, weight: 92, category: 'related' },
-                    { name: 'fans_also_like', query: `${cleanAuthor} fans also like`, weight: 88, category: 'related' },
+                    { name: 'similar_to_artist', query: `artists similar to ${cleanAuthor}`, weight: 95, category: 'related' },
+                    { name: 'fans_also_like', query: `if you like ${cleanAuthor}`, weight: 90, category: 'related' },
+                    { name: 'discover_related', query: `${cleanAuthor} type music`, weight: 85, category: 'related' },
                 );
             } else {
-                // Fresh artist or no graph data — normal behavior
                 strategies.push(
-                    { name: 'artist_similar_songs', query: `${cleanAuthor}`, weight: 95, category: 'artist' },
-                    { name: 'artist_popular', query: `${cleanAuthor} popular`, weight: 85, category: 'artist' },
+                    { name: 'artist_similar_songs', query: `${cleanAuthor}`, weight: 80, category: 'artist' },
+                    { name: 'artist_popular', query: `${cleanAuthor} popular`, weight: 70, category: 'artist' },
                 );
 
                 if (similarArtists.length > 0) {
-                    // Pick 2-3 random similar artists for diversity
                     const shuffled = similarArtists.sort(() => Math.random() - 0.5).slice(0, 3);
                     for (const artist of shuffled) {
                         strategies.push(
-                            { name: `related_artist_${artist}`, query: `${artist} popular`, weight: 90, category: 'related' }
+                            { name: `related_artist_${artist}`, query: `${artist} popular songs`, weight: 92, category: 'related' }
                         );
                     }
+                } else {
+                    strategies.push(
+                        { name: 'discover_via_current', query: `if you like ${cleanAuthor}`, weight: 88, category: 'related' },
+                    );
                 }
             }
 
-            // Artist + genre crossover
             if (genres.length > 0) {
                 const primaryGenre = genres[0];
                 strategies.push(
@@ -337,16 +259,13 @@ class AutoPlayService {
             }
         }
 
-        // RELATED CONTENT (YouTube-style)
         if (cleanTitle && cleanTitle.length > 3) {
             const titleWords = cleanTitle.split(' ').filter(w => w.length > 2);
-            
-            // "Songs like X" — YouTube's own recommendation signal
+
             strategies.push(
                 { name: 'songs_like', query: `songs like ${cleanTitle} ${cleanAuthor}`.trim(), weight: 88, category: 'related' }
             );
 
-            // Partial title match — catches cover versions, remixes, similar vibes
             if (titleWords.length >= 2) {
                 strategies.push(
                     { name: 'title_context', query: `${titleWords.slice(0, 2).join(' ')} ${cleanAuthor}`.trim(), weight: 75, category: 'related' }
@@ -354,11 +273,9 @@ class AutoPlayService {
             }
         }
 
-        // ── GENRE-BASED ──────────────────────────────────────────────
         if (genres.length > 0) {
             const primaryGenre = genres[0];
-            
-            // Best of genre with artist context
+
             if (cleanAuthor) {
                 strategies.push(
                     { name: 'genre_artist_mix', query: `best ${primaryGenre} like ${cleanAuthor}`, weight: 78, category: 'genre' }
@@ -369,7 +286,6 @@ class AutoPlayService {
                 { name: 'genre_top', query: `best ${primaryGenre} songs`, weight: 72, category: 'genre' },
             );
 
-            // Cross-genre: use related genres for discovery
             const relatedGenres = this._getRelatedGenres(primaryGenre);
             if (relatedGenres.length > 0) {
                 const relatedGenre = relatedGenres[Math.floor(Math.random() * relatedGenres.length)];
@@ -379,9 +295,7 @@ class AutoPlayService {
             }
         }
 
-        // ── PROFILE-BASED (history-aware) ────────────────────────────
         if (profile) {
-            // If strong genre preference detected, lean into it
             const topGenre = this._getTopFromMap(profile.genres);
             if (topGenre && !genres.includes(topGenre)) {
                 strategies.push(
@@ -389,7 +303,6 @@ class AutoPlayService {
                 );
             }
 
-            // Language-aware search
             if (profile.language !== 'unknown') {
                 const langLabels: Record<string, string> = {
                     japanese: 'japanese', korean: 'korean', thai: 'thai',
@@ -404,7 +317,6 @@ class AutoPlayService {
                 }
             }
 
-            // Mood-based with genre context
             const moodQueries: Record<string, string[]> = {
                 chill: ['chill vibes playlist', 'relaxing music', 'late night chill'],
                 energetic: ['hype music playlist', 'workout music', 'energetic hits'],
@@ -418,8 +330,6 @@ class AutoPlayService {
             );
         }
 
-        // ── DISCOVERY (low weight, adds variety) ─────────────────────
-        // YouTube Radio/Mix — leverages YouTube's own recommendation
         if (uri && uri.includes('youtube')) {
             const videoId = this._extractYouTubeId(uri);
             if (videoId) {
@@ -429,8 +339,7 @@ class AutoPlayService {
             }
         }
 
-        // Serendipity: very occasionally suggest something completely different
-        if (Math.random() < 0.15) { // 15% chance
+        if (Math.random() < 0.15) {
             const serendipityQueries = [
                 'underrated gems music', 'hidden gems playlist', 'deep cuts music',
                 `${genres[0] || 'indie'} underground`, 'music discovery playlist'
@@ -444,13 +353,10 @@ class AutoPlayService {
         return strategies;
     }
 
-    /**
-     * Ensure strategy diversity — pick from different categories
-     */
     private _diversifyStrategies(sorted: SearchStrategy[], max: number): SearchStrategy[] {
         const result: SearchStrategy[] = [];
         const categoryCount = new Map<string, number>();
-        const maxPerCategory = 2;
+        const maxPerCategory = 3;
 
         for (const strategy of sorted) {
             if (result.length >= max) break;
@@ -461,7 +367,6 @@ class AutoPlayService {
             }
         }
 
-        // Fill remaining with any leftover high-weight strategies
         if (result.length < max) {
             for (const strategy of sorted) {
                 if (result.length >= max) break;
@@ -474,13 +379,7 @@ class AutoPlayService {
         return result;
     }
 
-    // ── SMART SELECTION ──────────────────────────────────────────────
 
-    /**
-     * Score and select from results based on relevance signals.
-     * Prioritizes artist diversity: different artists get a big boost,
-     * same/recent artists get penalized.
-     */
     private _scoredSelect(tracks: MusicTrack[], author: string, genres: string[], profile: ListeningProfile): MusicTrack {
         if (tracks.length === 1) return tracks[0]!;
 
@@ -492,43 +391,35 @@ class AutoPlayService {
             const trackAuthor = (track.info?.author || '').toLowerCase();
             const cleanTrackAuthor = this._cleanAuthor(trackAuthor);
 
-            // ── ARTIST DIVERSITY (most important signal) ─────────
             const isSameArtist = author && cleanTrackAuthor.includes(author.toLowerCase().substring(0, 10));
             const isRecentArtist = guildId && this._isRecentArtist(guildId, cleanTrackAuthor);
 
             if (isSameArtist) {
-                // Same artist as current track — heavy penalty to encourage switching
-                score -= 15;
+                score -= 25;
             } else if (isRecentArtist) {
-                // Recently played artist — moderate penalty
-                score -= 6;
+                score -= 12;
             } else {
-                // Fresh artist — big bonus!
-                score += 12;
+                score += 18;
             }
 
-            // Similar artists from graph — bonus (they're different but related)
             const authorKey = author.toLowerCase();
             const similarArtists = this._findSimilarArtists(authorKey);
             if (similarArtists.some(a => cleanTrackAuthor.includes(a.substring(0, 8)))) {
-                score += 8; // Known similar artist — high bonus (different artist, same vibe)
+                score += 8;
             }
 
-            // Genre match bonus
             for (const genre of genres) {
                 if (trackTitle.includes(genre.toLowerCase())) {
                     score += 3;
                 }
             }
 
-            // Profile genre match
             for (const [genre, count] of profile.genres) {
                 if (trackTitle.includes(genre.toLowerCase()) || trackAuthor.includes(genre.toLowerCase())) {
                     score += Math.min(count, 3);
                 }
             }
 
-            // Language match bonus
             if (profile.language !== 'unknown') {
                 for (const { pattern, lang } of LANGUAGE_PATTERNS) {
                     if (lang === profile.language && pattern.test(track.info?.title || '')) {
@@ -537,37 +428,32 @@ class AutoPlayService {
                 }
             }
 
-            // Penalize generic/compilation tracks
             if (/top\s?\d+|best\s?of|compilation|greatest\s?hits/i.test(trackTitle)) {
                 score -= 3;
             }
 
-            // Penalize non-music content keywords
             if (/\b(mix|playlist|compilation|medley|mashup|megamix|nonstop)\b/i.test(trackTitle)) {
                 score -= 4;
             }
 
-            // Duration preference: favor typical song length (2-6 min)
             const lengthSec = (track as any).lengthSeconds;
             const lengthMs = (track.info as any)?.length;
             const durSec = lengthSec || (lengthMs ? Math.floor(lengthMs / 1000) : 0);
             if (durSec > 0) {
-                if (durSec >= 120 && durSec <= 360) score += 4;       // 2-6 min: ideal
-                else if (durSec > 360 && durSec <= 480) score += 1;   // 6-8 min: ok
-                else if (durSec > 480) score -= 6;                     // >8 min: penalize
-                else if (durSec < 60) score -= 3;                      // <1 min: too short
+                if (durSec >= 120 && durSec <= 360) score += 4;
+                else if (durSec > 360 && durSec <= 480) score += 1;
+                else if (durSec > 480) score -= 6;
+                else if (durSec < 60) score -= 3;
             }
 
-            // Add random factor to prevent deterministic loops
             score += Math.random() * 5;
 
             return { track, score, isSameArtist: !!isSameArtist };
         });
 
-        // Sort by score descending
         scored.sort((a, b) => b.score - a.score);
 
-        // Hard diversity guard: if the top pick is same-artist, prefer any different-artist result
+        // Prefer a different artist when top score still repeats the same artist.
         const topPick = scored[0]!;
         if (topPick.isSameArtist) {
             const differentArtist = scored.find(s => !s.isSameArtist);
@@ -581,7 +467,6 @@ class AutoPlayService {
             }
         }
 
-        // Pick from top 4 with weighted probability
         const top = scored.slice(0, Math.min(4, scored.length));
         const totalScore = top.reduce((sum, t) => sum + Math.max(t.score, 1), 0);
         
@@ -589,7 +474,6 @@ class AutoPlayService {
         for (const entry of top) {
             random -= Math.max(entry.score, 1);
             if (random <= 0) {
-                // Track picked artist for diversity
                 if (guildId) {
                     const pickedAuthor = this._cleanAuthor(entry.track.info?.author || '');
                     if (pickedAuthor) this._trackRecentArtist(guildId, pickedAuthor);
@@ -601,17 +485,8 @@ class AutoPlayService {
         return top[0]!.track;
     }
 
-    // ── ARTIST GRAPH ─────────────────────────────────────────────────
-
-    /** Store the current guildId during findSimilarTrack execution */
     private _currentGuildId: string | undefined;
 
-    // ── ARTIST DIVERSITY TRACKING ────────────────────────────────────
-
-    /**
-     * Track a recently auto-played artist for a guild.
-     * Maintains a sliding window of recent artists to avoid repetition.
-     */
     private _trackRecentArtist(guildId: string, artist: string): void {
         if (!artist || artist.length < 2) return;
 
@@ -621,22 +496,17 @@ class AutoPlayService {
             this.recentAutoplayArtists.set(guildId, recent);
         }
 
-        // Don't add duplicates at the end
         const cleanArtist = artist.toLowerCase().trim();
         const last = recent[recent.length - 1];
         if (last && last.toLowerCase() === cleanArtist) return;
 
         recent.push(artist);
 
-        // Trim to max size
         while (recent.length > this.MAX_RECENT_ARTISTS) {
             recent.shift();
         }
     }
 
-    /**
-     * Check if an artist was recently auto-played in a guild
-     */
     private _isRecentArtist(guildId: string, artist: string): boolean {
         const recent = this.recentAutoplayArtists.get(guildId);
         if (!recent || !artist) return false;
@@ -648,17 +518,10 @@ class AutoPlayService {
         );
     }
 
-    // ── ARTIST GRAPH ─────────────────────────────────────────────────
-
-    /**
-     * Find similar artists from the knowledge graph
-     */
     private _findSimilarArtists(authorKey: string): string[] {
-        // Direct lookup
         const direct = ARTIST_GRAPH[authorKey];
         if (direct) return direct;
 
-        // Fuzzy lookup: check if authorKey is contained in or contains a known key
         for (const [knownArtist, related] of Object.entries(ARTIST_GRAPH)) {
             if (authorKey.includes(knownArtist) || knownArtist.includes(authorKey)) {
                 return related;
@@ -668,17 +531,11 @@ class AutoPlayService {
         return [];
     }
 
-    /**
-     * Get related genres from the genre pattern definitions
-     */
     private _getRelatedGenres(genre: string): string[] {
         const found = GENRE_PATTERNS.find(g => g.genre === genre);
         return found?.related || [];
     }
 
-    /**
-     * Get the highest-count item from a Map
-     */
     private _getTopFromMap(map: Map<string, number>): string | null {
         let top: string | null = null;
         let max = 0;
@@ -688,25 +545,17 @@ class AutoPlayService {
         return top;
     }
 
-    /**
-     * Extract YouTube video ID from URI
-     */
     private _extractYouTubeId(uri: string): string | null {
         const match = uri.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
         return match?.[1] || null;
     }
 
-    // ── SMART FALLBACK ───────────────────────────────────────────────
 
-    /**
-     * Profile-aware fallback when all strategies fail
-     */
     private async _smartFallback(
         cleanAuthor: string, genres: string[], recentTitles: string[], currentTitle: string, profile: ListeningProfile
     ): Promise<MusicTrack | null> {
         const fallbackQueries: string[] = [];
 
-        // Genre-aware fallback
         if (genres.length > 0) {
             fallbackQueries.push(`${genres[0]} playlist`);
             const related = this._getRelatedGenres(genres[0]);
@@ -715,7 +564,6 @@ class AutoPlayService {
             }
         }
 
-        // Artist-aware fallback
         if (cleanAuthor) {
             const similar = this._findSimilarArtists(cleanAuthor.toLowerCase());
             if (similar.length > 0) {
@@ -725,7 +573,6 @@ class AutoPlayService {
             }
         }
 
-        // Language-aware fallback
         if (profile.language !== 'unknown') {
             const langMap: Record<string, string> = {
                 japanese: 'japanese music mix', korean: 'kpop playlist',
@@ -737,10 +584,8 @@ class AutoPlayService {
             }
         }
 
-        // General fallbacks
         fallbackQueries.push('trending music', 'popular songs');
 
-        // Try each fallback
         for (const query of fallbackQueries) {
             try {
                 logger.info('AutoPlay', `Smart fallback: "${query}"`);
@@ -761,8 +606,6 @@ class AutoPlayService {
         logger.warn('AutoPlay', 'All strategies exhausted, no track found');
         return null;
     }
-
-    // ── TITLE/AUTHOR CLEANING ────────────────────────────────────────
 
     private _cleanTitle(title: string): string {
         return title
@@ -792,8 +635,6 @@ class AutoPlayService {
             .trim();
     }
 
-    // ── GENRE EXTRACTION ─────────────────────────────────────────────
-
     private _extractGenreKeywords(text: string): string[] {
         const keywords: string[] = [];
 
@@ -803,12 +644,10 @@ class AutoPlayService {
             }
         }
 
-        return [...new Set(keywords)]; // deduplicate
+        return [...new Set(keywords)];
     }
 
-    // ── SEARCH & FILTER ──────────────────────────────────────────────
-
-    private async _searchWithLimit(query: string, limit: number = 8): Promise<MusicTrack[]> {
+    private async _searchWithLimit(query: string, limit: number = 12): Promise<MusicTrack[]> {
         try {
             const results = await (lavalinkService as { searchMultiple?: (q: string, l: number, preferredPlatform?: string) => Promise<MusicTrack[]> }).searchMultiple?.(query, limit, 'ytmsearch');
             if (results && results.length > 0) {
@@ -828,9 +667,6 @@ class AutoPlayService {
         }
     }
 
-    /**
-     * Filter out recently played tracks, long tracks, and non-music content
-     */
     private _filterRecentTracks(results: MusicTrack[], recentTitles: string[], currentTitle: string): MusicTrack[] {
         const lowerCurrentTitle = currentTitle.toLowerCase();
 
@@ -838,10 +674,8 @@ class AutoPlayService {
             const trackTitle = result.info?.title || '';
             const lowerTitle = trackTitle.toLowerCase();
 
-            // Exact title match against current track
             if (lowerTitle === lowerCurrentTitle) return false;
 
-            // Fuzzy match against current title (catches re-uploads, slightly different formatting)
             const currentWords = lowerCurrentTitle.split(/\s+/).filter(w => w.length > 2);
             const titleWords = lowerTitle.split(/\s+/).filter(w => w.length > 2);
             if (currentWords.length >= 3 && titleWords.length >= 3) {
@@ -849,7 +683,6 @@ class AutoPlayService {
                 if (overlap / Math.min(currentWords.length, titleWords.length) >= 0.7) return false;
             }
 
-            // Fuzzy match against recent history (check both directions, longer substring)
             const isDuplicate = recentTitles.some(t => {
                 const lt = t.toLowerCase();
                 const minLen = Math.min(lt.length, lowerTitle.length, 25);
@@ -859,27 +692,22 @@ class AutoPlayService {
             });
             if (isDuplicate) return false;
 
-            // Filter out live streams
             if (result.info && 'isStream' in result.info && result.info.isStream) return false;
 
-            // Filter out non-music content (podcasts, interviews, reactions, etc.)
             if (/\b(podcast|interview|reaction|commentary|talk\s?show|discussion|review|unboxing|q\s?&\s?a|episode\s?\d|ep\s?\d|vlog|explained|tutorial|lecture|audiobook)\b/i.test(trackTitle)) {
                 return false;
             }
 
-            // Duration filter: max 10 minutes (600s) for autoplay
-            // Use lengthSeconds (seconds) first, fall back to info.length (milliseconds)
             const lengthSec = (result as any).lengthSeconds;
             const lengthMs = (result.info as any)?.length;
             const durationSeconds = lengthSec || (lengthMs ? Math.floor(lengthMs / 1000) : 0);
-            if (durationSeconds > 600) return false;
+            if (durationSeconds > 720) return false;
 
             return true;
         });
     }
 }
 
-// Export singleton instance and class
 const autoPlayService = new AutoPlayService();
 
 export { AutoPlayService };

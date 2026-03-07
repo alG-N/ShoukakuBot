@@ -139,12 +139,18 @@ class Rule34Service {
                     return { posts: [], totalCount: 0, hasMore: false };
                 }
 
-                const posts = this._processResults(data, {
+                const processedPosts = this._processResults(data, {
                     excludeAi,
                     minScore,
                     highQualityOnly,
                     excludeLowQuality
                 });
+
+                // Rule34 doesn't expose a reliable random sort token in tags;
+                // randomize client-side when random sorting is requested.
+                const posts = sort === 'random'
+                    ? this._shuffleArray([...processedPosts])
+                    : processedPosts;
 
                 if (!_silent) logger.info('Rule34', `Found ${posts.length} posts (pre-filter: ${data.length})`);
 
@@ -216,21 +222,37 @@ class Rule34Service {
             minScore = 0
         } = options;
 
-        const result = await this.search(tags, {
-            limit: Math.min(100, count * 10),
-            page: Math.floor(Math.random() * 10),
-            rating,
-            excludeAi,
-            minScore,
-            sort: 'random'
-        });
+        const desiredCount = Math.max(1, Math.min(10, count));
+        const limit = Math.min(100, desiredCount * 15);
+        const pageRange = tags.trim() ? 50 : 200;
+        const maxAttempts = 4;
+        const uniquePosts: Rule34Post[] = [];
+        const seenIds = new Set<number>();
 
-        if (result.posts.length === 0) {
+        for (let attempt = 0; attempt < maxAttempts && uniquePosts.length < desiredCount; attempt++) {
+            const result = await this.search(tags, {
+                limit,
+                page: Math.floor(Math.random() * pageRange),
+                rating,
+                excludeAi,
+                minScore,
+                sort: 'random',
+                _silent: attempt > 0
+            });
+
+            for (const post of result.posts) {
+                if (seenIds.has(post.id)) continue;
+                seenIds.add(post.id);
+                uniquePosts.push(post);
+            }
+        }
+
+        if (uniquePosts.length === 0) {
             return [];
         }
 
-        const shuffled = this._shuffleArray([...result.posts]);
-        return shuffled.slice(0, count);
+        const shuffled = this._shuffleArray([...uniquePosts]);
+        return shuffled.slice(0, desiredCount);
     }
 
     /**
@@ -538,7 +560,7 @@ class Rule34Service {
             }
         }
 
-        if (sort && sort !== 'default') {
+        if (sort && sort !== 'default' && sort !== 'random') {
             tags.push(`sort:${sort}`);
         }
 

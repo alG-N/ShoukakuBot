@@ -36,10 +36,7 @@ module.exports = {
             },
         }],
     },
-    // Increase timeout for integration tests
     testTimeout: 10000,
-    // Clear mocks between tests
     clearMocks: true,
-    // Verbose output
     verbose: true,
 };

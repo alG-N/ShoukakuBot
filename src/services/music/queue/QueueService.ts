@@ -1,10 +1,3 @@
-/**
- * Queue Service
- * Handles queue CRUD operations
- * Extracted from MusicService for single responsibility
- * @module services/music/queue/QueueService
- */
-
 import { Result } from '../../../core/Result.js';
 import { ErrorCodes } from '../../../core/ErrorCodes.js';
 import type { MusicTrack } from '../../../types/music/events.js';
@@ -12,63 +5,38 @@ import type { MusicQueue, QueueState } from '../../../types/music/queue.js';
 import musicCacheImport from '../../../cache/music/MusicCacheFacade.js';
 import type { MusicCacheFacade } from '../../../types/music/queue-service.js';
 
-// Type assertion for the imported cache
 const musicCache = musicCacheImport as unknown as MusicCacheFacade;
-// QUEUE SERVICE CLASS
+
 class QueueService {
-    /**
-     * Get or create queue for a guild
-     */
     getOrCreate(guildId: string): MusicQueue {
         return musicCache.getOrCreateQueue(guildId);
     }
 
-    /**
-     * Get queue for a guild
-     */
     get(guildId: string): MusicQueue | null {
         return musicCache.getQueue(guildId);
     }
 
-    /**
-     * Get tracks in queue
-     */
     getTracks(guildId: string): MusicTrack[] {
         const queue = musicCache.getQueue(guildId);
         return queue?.tracks || [];
     }
 
-    /**
-     * Get queue length
-     */
     getLength(guildId: string): number {
         return this.getTracks(guildId).length;
     }
 
-    /**
-     * Check if queue is empty
-     */
     isEmpty(guildId: string): boolean {
         return this.getLength(guildId) === 0;
     }
 
-    /**
-     * Get current track
-     */
     getCurrentTrack(guildId: string): MusicTrack | null {
         return musicCache.getCurrentTrack(guildId);
     }
 
-    /**
-     * Set current track
-     */
     setCurrentTrack(guildId: string, track: MusicTrack | null): void {
         musicCache.setCurrentTrack(guildId, track);
     }
 
-    /**
-     * Add track to end of queue
-     */
     addTrack(guildId: string, track: MusicTrack): Result<{ position: number }> {
         try {
             const result = musicCache.addTrack(guildId, track);
@@ -81,9 +49,6 @@ class QueueService {
         }
     }
 
-    /**
-     * Add track to front of queue (priority)
-     */
     addTrackToFront(guildId: string, track: MusicTrack): Result<{ position: number }> {
         try {
             const result = musicCache.addTrackToFront(guildId, track);
@@ -96,9 +61,6 @@ class QueueService {
         }
     }
 
-    /**
-     * Add multiple tracks
-     */
     addTracks(guildId: string, tracks: MusicTrack[]): Result<{ added: number }> {
         try {
             const added = musicCache.addTracks(guildId, tracks);
@@ -108,9 +70,6 @@ class QueueService {
         }
     }
 
-    /**
-     * Remove track at index
-     */
     removeTrack(guildId: string, index: number): Result<{ removed: MusicTrack | null }> {
         try {
             const tracks = this.getTracks(guildId);
@@ -124,16 +83,10 @@ class QueueService {
         }
     }
 
-    /**
-     * Clear all tracks from queue
-     */
     clear(guildId: string): void {
         musicCache.clearTracks(guildId);
     }
 
-    /**
-     * Move track from one position to another
-     */
     moveTrack(guildId: string, fromIndex: number, toIndex: number): Result<{ track: MusicTrack; from: number; to: number }> {
         const queue = musicCache.getQueue(guildId);
         if (!queue) {
@@ -153,66 +106,39 @@ class QueueService {
         return Result.ok({ track, from: fromIndex, to: toIndex });
     }
 
-    /**
-     * Get next track from queue
-     */
     getNextTrack(guildId: string): MusicTrack | null {
         return musicCache.getNextTrack(guildId);
     }
-    // LOOP MODE
-    /**
-     * Get loop mode
-     */
+
     getLoopMode(guildId: string): 'off' | 'track' | 'queue' {
         const queue = musicCache.getQueue(guildId);
         return queue?.loopMode || 'off';
     }
 
-    /**
-     * Set loop mode
-     */
     setLoopMode(guildId: string, mode: 'off' | 'track' | 'queue'): void {
         musicCache.setLoopMode(guildId, mode);
     }
 
-    /**
-     * Cycle through loop modes
-     */
     cycleLoopMode(guildId: string): string {
         return musicCache.cycleLoopMode(guildId);
     }
 
-    /**
-     * Get loop count for current track
-     */
     getLoopCount(guildId: string): number {
         return musicCache.getLoopCount(guildId) || 0;
     }
 
-    /**
-     * Increment loop count
-     */
     incrementLoopCount(guildId: string): number {
         return musicCache.incrementLoopCount(guildId);
     }
 
-    /**
-     * Reset loop count
-     */
     resetLoopCount(guildId: string): void {
         musicCache.resetLoopCount(guildId);
     }
-    // SHUFFLE
-    /**
-     * Check if queue is shuffled
-     */
+
     isShuffled(guildId: string): boolean {
         return musicCache.getQueue(guildId)?.isShuffled || false;
     }
 
-    /**
-     * Toggle shuffle
-     */
     toggleShuffle(guildId: string): boolean {
         const queue = musicCache.getQueue(guildId);
         if (!queue) return false;
@@ -225,17 +151,10 @@ class QueueService {
 
         return queue.isShuffled;
     }
-    // VOLUME
-    /**
-     * Get volume
-     */
     getVolume(guildId: string): number {
         return musicCache.getQueue(guildId)?.volume || 100;
     }
 
-    /**
-     * Set volume in cache
-     */
     setVolume(guildId: string, volume: number): number {
         const clampedVolume = Math.max(0, Math.min(200, volume));
         musicCache.setVolume(guildId, clampedVolume);
