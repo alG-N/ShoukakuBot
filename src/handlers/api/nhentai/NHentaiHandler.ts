@@ -169,10 +169,10 @@ export class NHentaiHandler {
                 .setCustomId(`nhentai_setting_random_${userId}`)
                 .setPlaceholder('Select random pool')
                 .addOptions(
-                    { label: 'Random from popular today', value: 'today', emoji: '🔥', default: prefs.randomPeriod === 'today' },
-                    { label: 'Random from popular this week', value: 'week', emoji: '📊', default: prefs.randomPeriod === 'week' },
-                    { label: 'Random from popular this month', value: 'month', emoji: '📅', default: prefs.randomPeriod === 'month' },
-                    { label: 'Random from all-time popular', value: 'all', emoji: '🏆', default: prefs.randomPeriod === 'all' }
+                    { label: 'Random from uploads today', value: 'today', emoji: '🔥', default: prefs.randomPeriod === 'today' },
+                    { label: 'Random from uploads this week', value: 'week', emoji: '📊', default: prefs.randomPeriod === 'week' },
+                    { label: 'Random from uploads this month', value: 'month', emoji: '📅', default: prefs.randomPeriod === 'month' },
+                    { label: 'Random from all uploads', value: 'all', emoji: '🏆', default: prefs.randomPeriod === 'all' }
                 )
         );
 

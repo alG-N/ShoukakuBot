@@ -138,16 +138,31 @@ class NHentaiService {
             await new Promise(r => setTimeout(r, 500 * (i + 1)));
         }
 
-        // Fallback to known popular galleries
-        return this.fetchPopularGallery();
+        // Fallback to recent feed random if ID-based random misses repeatedly.
+        const recentFallback = await this._fetchRandomFromRecentPages('all');
+        if (recentFallback.success) {
+            return recentFallback;
+        }
+
+        // Last resort: curated IDs to avoid complete failure.
+        return this._fetchFromCuratedFallbackIds();
     }
 
     /**
      * Fetch random gallery from a specific period bucket.
      */
     async fetchRandomGalleryByPeriod(period: 'today' | 'week' | 'month' | 'all' = 'all'): Promise<GalleryResult> {
-        // Random picks from the selected popular pool for deterministic behavior.
-        return this.fetchPopularGallery(period);
+        if (period === 'all') {
+            return this.fetchRandomGallery();
+        }
+
+        const periodResult = await this._fetchRandomFromRecentPages(period);
+        if (periodResult.success) {
+            return periodResult;
+        }
+
+        // Graceful fallback for strict buckets: broaden to fully-random.
+        return this.fetchRandomGallery();
     }
 
     /**
@@ -201,26 +216,134 @@ class NHentaiService {
         }
 
         // Fallback: try curated popular galleries list
+        const curatedFallback = await this._fetchFromCuratedFallbackIds();
+        if (curatedFallback.success) {
+            return curatedFallback;
+        }
+
+        return { success: false, error: 'Could not fetch any popular gallery. The service may be temporarily unavailable.' };
+    }
+
+    private getPeriodWindowSeconds(period: 'today' | 'week' | 'month' | 'all'): number {
+        switch (period) {
+            case 'today':
+                return 24 * 60 * 60;
+            case 'week':
+                return 7 * 24 * 60 * 60;
+            case 'month':
+                return 30 * 24 * 60 * 60;
+            default:
+                return Number.POSITIVE_INFINITY;
+        }
+    }
+
+    private getMaxRecentPageWindow(period: 'today' | 'week' | 'month' | 'all'): number {
+        switch (period) {
+            case 'today':
+                return 12;
+            case 'week':
+                return 80;
+            case 'month':
+                return 300;
+            default:
+                return 800;
+        }
+    }
+
+    /**
+     * Fetch a random gallery by sampling recent feed pages and filtering by upload date.
+     * This keeps random independent from popular ranking endpoints.
+     */
+    private async _fetchRandomFromRecentPages(period: 'today' | 'week' | 'month' | 'all'): Promise<GalleryResult> {
+        const maxAttempts = 6;
+        const nowSec = Math.floor(Date.now() / 1000);
+        const maxAge = this.getPeriodWindowSeconds(period);
+
+        let totalPages = 1;
+        try {
+            const firstPage = await axios.get<NHentaiSearchResponse>(
+                `${API_BASE}/galleries/all?page=1`,
+                getRequestConfig({ timeout: 10000 })
+            );
+            totalPages = Math.max(1, firstPage.data?.num_pages || 1);
+
+            const firstPageMatches = (firstPage.data?.result || []).filter(gallery => {
+                if (!gallery?.id || !gallery?.upload_date) return false;
+                if (!Number.isFinite(maxAge)) return true;
+                return (nowSec - gallery.upload_date) <= maxAge;
+            });
+
+            if (firstPageMatches.length > 0) {
+                const pick = firstPageMatches[Math.floor(Math.random() * firstPageMatches.length)];
+                if (pick?.id) {
+                    await cacheService.set(this.CACHE_NS, `nhentai:gallery_${pick.id}`, pick, this.CACHE_TTL);
+                    return { success: true, data: pick };
+                }
+            }
+        } catch {
+            // Continue with best-effort sampling fallback.
+        }
+
+        const pageWindow = Math.min(this.getMaxRecentPageWindow(period), totalPages);
+        for (let i = 0; i < maxAttempts; i++) {
+            const randomPage = Math.floor(Math.random() * pageWindow) + 1;
+
+            try {
+                const response = await axios.get<NHentaiSearchResponse>(
+                    `${API_BASE}/galleries/all?page=${randomPage}`,
+                    getRequestConfig({ timeout: 10000 })
+                );
+
+                const galleries = response.data?.result || [];
+                const matches = galleries.filter(gallery => {
+                    if (!gallery?.id || !gallery?.upload_date) return false;
+                    if (!Number.isFinite(maxAge)) return true;
+                    return (nowSec - gallery.upload_date) <= maxAge;
+                });
+
+                if (matches.length === 0) {
+                    continue;
+                }
+
+                const pick = matches[Math.floor(Math.random() * matches.length)];
+                if (pick?.id) {
+                    await cacheService.set(this.CACHE_NS, `nhentai:gallery_${pick.id}`, pick, this.CACHE_TTL);
+                    return { success: true, data: pick };
+                }
+            } catch {
+                // Try another random page.
+            }
+
+            // Back off slightly between attempts.
+            await new Promise(r => setTimeout(r, 250 + (i * 100)));
+        }
+
+        return {
+            success: false,
+            error: `Could not find a random gallery in the selected timeframe (${period}).`
+        };
+    }
+
+    private async _fetchFromCuratedFallbackIds(): Promise<GalleryResult> {
         const shuffled = [...POPULAR_GALLERIES].sort(() => Math.random() - 0.5);
-        
+
         for (let i = 0; i < Math.min(5, shuffled.length); i++) {
             const galleryId = shuffled[i];
             if (galleryId === undefined) continue;
-            
+
             try {
                 const result = await this.fetchGallery(galleryId);
                 if (result.success && result.data) {
                     return result;
                 }
             } catch {
-                // Try next gallery
+                // Try next gallery.
             }
-            
-            // Small delay between attempts
+
             if (i < 4) await new Promise(r => setTimeout(r, 300));
         }
-        
-        return { success: false, error: 'Could not fetch any popular gallery. The service may be temporarily unavailable.' };
+
+        return { success: false, error: 'Could not fetch any fallback gallery.' };
     }
 
     /**

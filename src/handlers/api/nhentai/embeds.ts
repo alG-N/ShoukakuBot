@@ -25,12 +25,12 @@ function periodLabel(period: UserPreferences['popularPeriod']): string {
 
 function randomPeriodLabel(period: UserPreferences['randomPeriod']): string {
     const labels: Record<UserPreferences['randomPeriod'], string> = {
-        today: 'From popular today',
-        week: 'From popular this week',
-        month: 'From popular this month',
-        all: 'From all-time popular'
+        today: 'From uploads today',
+        week: 'From uploads this week',
+        month: 'From uploads this month',
+        all: 'From all uploads'
     };
-    return labels[period] || 'From all-time popular';
+    return labels[period] || 'From all uploads';
 }
 
 export function createGalleryEmbed(
