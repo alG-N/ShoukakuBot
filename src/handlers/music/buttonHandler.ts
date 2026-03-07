@@ -173,7 +173,8 @@ export const buttonHandler = {
 
             await interaction.deferUpdate();
             
-            await musicService.disableNowPlayingControls(guildId);
+            // Fire-and-forget: don't block skip on Discord API edit
+            musicService.disableNowPlayingControls(guildId).catch(() => {});
             
             const currentTrack = musicService.getCurrentTrack(guildId) as Track | null;
             const skipResult = await musicService.skip(guildId);
@@ -189,7 +190,6 @@ export const buttonHandler = {
             }
             
             if (nextTrack && !skipResult.autoplayTriggered) {
-                await new Promise(resolve => setTimeout(resolve, 200));
                 await musicService.sendNowPlayingEmbed(guildId);
             } else if (!nextTrack) {
                 if (queue?.textChannel) {
@@ -542,7 +542,7 @@ export const buttonHandler = {
             await interaction.deferUpdate();
             
             const skippedTrack = musicService.getCurrentTrack(guildId) as Track | null;
-            await musicService.disableNowPlayingControls(guildId);
+            musicService.disableNowPlayingControls(guildId).catch(() => {});
             const skipResult = await musicService.skip(guildId);
             
             const channel = interaction.channel as TextChannel;
@@ -553,7 +553,6 @@ export const buttonHandler = {
             // Send new now playing embed for the next track
             const nextTrack = musicService.getCurrentTrack(guildId) as Track | null;
             if (nextTrack && !skipResult.autoplayTriggered) {
-                await new Promise(resolve => setTimeout(resolve, 200));
                 await musicService.sendNowPlayingEmbed(guildId);
             }
             
@@ -571,7 +570,7 @@ export const buttonHandler = {
             if (musicService.hasEnoughSkipVotes(guildId)) {
                 musicService.endSkipVote(guildId);
                 const skippedTrack = musicService.getCurrentTrack(guildId) as Track | null;
-                await musicService.disableNowPlayingControls(guildId);
+                musicService.disableNowPlayingControls(guildId).catch(() => {});
                 const skipResult = await musicService.skip(guildId);
                 
                 await interaction.update({
@@ -582,7 +581,6 @@ export const buttonHandler = {
                 // Send new now playing embed for the next track
                 const nextTrack = musicService.getCurrentTrack(guildId) as Track | null;
                 if (nextTrack && !skipResult.autoplayTriggered) {
-                    await new Promise(resolve => setTimeout(resolve, 200));
                     await musicService.sendNowPlayingEmbed(guildId);
                 }
                 return;

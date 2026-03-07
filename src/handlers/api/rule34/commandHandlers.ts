@@ -136,15 +136,11 @@ export async function handleRule34RandomCommand(
         const postTags = (post.tags || '').split(' ');
         const isBlacklisted = postTags.some(t => blacklist.includes(t));
         if (isBlacklisted) return false;
-        if (effectiveExcludeAi && post.isAiGenerated) return false;
-        if (post.score < effectiveMinScore) return false;
-        if (prefs.highQualityOnly && !post.isHighQuality) return false;
-        if (prefs.excludeLowQuality && !post.isHighQuality) return false;
         return true;
     });
 
     if (filteredPosts.length === 0) {
-        const noResultsEmbed = deps.postHandler?.createNoResultsEmbed?.(tags) || deps.errorEmbed('No results found');
+        const noResultsEmbed = deps.postHandler?.createNoResultsEmbed?.(tags || 'random posts') || deps.errorEmbed('No random posts found');
         await interaction.editReply({ embeds: [noResultsEmbed] });
         return;
     }

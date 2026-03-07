@@ -57,8 +57,8 @@ export const controlHandler = {
             return await this.handleVoteSkip(interaction, guildId);
         }
 
-        // Disable old now playing buttons first
-        await musicService.disableNowPlayingControls(guildId);
+        // Fire-and-forget: don't block skip on Discord API edit
+        musicService.disableNowPlayingControls(guildId).catch(() => {});
         
         // Skip advances to the next track automatically
         const skipResult = await musicService.skip(guildId);
@@ -72,7 +72,6 @@ export const controlHandler = {
         // Skip if autoplay already sent the embed to avoid duplicates
         const newCurrentTrack = musicService.getCurrentTrack(guildId);
         if (newCurrentTrack && !skipResult.autoplayTriggered) {
-            await new Promise(resolve => setTimeout(resolve, 200));
             await musicService.sendNowPlayingEmbed(guildId);
         }
     },
@@ -90,7 +89,7 @@ export const controlHandler = {
             if (musicService.hasEnoughSkipVotes(guildId)) {
                 musicService.endSkipVote(guildId);
                 const skippedTrack = musicService.getCurrentTrack(guildId) as Track | null;
-                await musicService.disableNowPlayingControls(guildId);
+                musicService.disableNowPlayingControls(guildId).catch(() => {});
                 const skipResult = await musicService.skip(guildId);
                 
                 await interaction.reply({
@@ -100,7 +99,6 @@ export const controlHandler = {
                 // Send new now playing embed for the next track
                 const newCurrentTrack = musicService.getCurrentTrack(guildId);
                 if (newCurrentTrack && !skipResult.autoplayTriggered) {
-                    await new Promise(resolve => setTimeout(resolve, 200));
                     await musicService.sendNowPlayingEmbed(guildId);
                 }
                 return;
