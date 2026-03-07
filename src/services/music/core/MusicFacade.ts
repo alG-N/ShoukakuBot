@@ -194,6 +194,9 @@ export class MusicFacade {
         const player = playbackService.getPlayer(guildId);
         if (!player) throw new Error('NO_PLAYER');
 
+        // Immediately pause to cut audio output before the stop request reaches Lavalink
+        await player.setPaused(true);
+
         const currentTrack = queueService.getCurrentTrack(guildId) as Track | null;
         queueService.endSkipVote(guildId);
 
@@ -233,7 +236,10 @@ export class MusicFacade {
 
     async stop(guildId: string): Promise<void> {
         const player = playbackService.getPlayer(guildId);
-        if (player) await player.stopTrack();
+        if (player) {
+            await player.setPaused(true);
+            await player.stopTrack();
+        }
         
         queueService.clear(guildId);
         queueService.setCurrentTrack(guildId, null);
