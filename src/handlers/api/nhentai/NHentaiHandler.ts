@@ -2,6 +2,7 @@ import {
     EmbedBuilder,
     ActionRowBuilder,
     ButtonBuilder,
+    ButtonStyle,
     ButtonInteraction,
     StringSelectMenuBuilder,
     StringSelectMenuInteraction,
@@ -146,7 +147,11 @@ export class NHentaiHandler {
         return createSettingsEmbed(userId, prefs);
     }
 
-    createSettingsComponents(userId: string, prefs: UserPreferences): ActionRowBuilder<StringSelectMenuBuilder>[] {
+    createSettingsComponents(
+        userId: string,
+        prefs: UserPreferences,
+        galleryId: number | null = null
+    ): ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] {
         const popularRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId(`nhentai_setting_popular_${userId}`)
@@ -171,7 +176,31 @@ export class NHentaiHandler {
                 )
         );
 
-        return [popularRow, randomRow];
+        const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+                .setCustomId(`nhentai_settingsback_${galleryId ?? 0}_${userId}`)
+                .setLabel('Back')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('↩️')
+                .setDisabled(!galleryId)
+        );
+
+        return [popularRow, randomRow, backRow];
+    }
+
+    private extractSettingsGalleryId(interaction: StringSelectMenuInteraction): number | null {
+        for (const row of interaction.message.components) {
+            const rowComponents = (row as unknown as { components?: Array<{ customId?: string }> }).components || [];
+            for (const component of rowComponents) {
+                const customId = component?.customId;
+                if (!customId || !customId.startsWith('nhentai_settingsback_')) continue;
+                const match = customId.match(/^nhentai_settingsback_(\d+)_/);
+                if (!match || !match[1]) continue;
+                const galleryId = Number.parseInt(match[1], 10);
+                return Number.isInteger(galleryId) && galleryId > 0 ? galleryId : null;
+            }
+        }
+        return null;
     }
 
     async handleFavouriteToggle(
@@ -258,7 +287,7 @@ export class NHentaiHandler {
             getUserPreferences: (targetUserId) => this.getUserPreferences(targetUserId),
             setUserPreferences: (targetUserId, prefs) => this.setUserPreferences(targetUserId, prefs),
             createSettingsEmbed: (targetUserId, prefs) => this.createSettingsEmbed(targetUserId, prefs),
-            createSettingsComponents: (targetUserId, prefs) => this.createSettingsComponents(targetUserId, prefs),
+            createSettingsComponents: (targetUserId, prefs, galleryId) => this.createSettingsComponents(targetUserId, prefs, galleryId),
             getSearchSession: (userId) => this.getSearchSession(userId),
             setSearchSession: (userId, data) => this.setSearchSession(userId, data),
             createSearchResultsEmbed: (searchQuery, searchData, searchPage, sortBy) => this.createSearchResultsEmbed(searchQuery, searchData, searchPage, sortBy),
@@ -296,7 +325,8 @@ export class NHentaiHandler {
 
         const prefs = await this.getUserPreferences(userId);
         const embed = this.createSettingsEmbed(userId, prefs);
-        const components = this.createSettingsComponents(userId, prefs);
+        const galleryId = this.extractSettingsGalleryId(interaction);
+        const components = this.createSettingsComponents(userId, prefs, galleryId);
         await interaction.update({ embeds: [embed], components });
     }
 

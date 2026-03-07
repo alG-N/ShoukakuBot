@@ -44,7 +44,7 @@ export interface NhentaiButtonInteractionDeps {
     getUserPreferences: (userId: string) => Promise<UserPreferences>;
     setUserPreferences: (userId: string, prefs: Partial<UserPreferences>) => Promise<UserPreferences>;
     createSettingsEmbed: (userId: string, prefs: UserPreferences) => EmbedBuilder;
-    createSettingsComponents: (userId: string, prefs: UserPreferences) => ActionRowBuilder<StringSelectMenuBuilder>[];
+    createSettingsComponents: (userId: string, prefs: UserPreferences, galleryId?: number | null) => ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[];
     getSearchSession: (userId: string) => Promise<SearchSession | null>;
     setSearchSession: (userId: string, data: Partial<SearchSession>) => Promise<void>;
     createSearchResultsEmbed: (query: string, data: SearchData, page: number, sort: string) => EmbedBuilder;
@@ -271,7 +271,7 @@ export async function handleNhentaiButtonInteraction(
                 const prefs = await deps.getUserPreferences(userId);
                 const result = await withNhentaiFetchingState(interaction, 'other doujin', async () =>
                     nhentaiService.fetchRandomGalleryByPeriod(prefs.randomPeriod)
-                );
+                , { hideMedia: true });
                 if (!result.success || !result.data) {
                     await interaction.editReply({
                         embeds: [deps.createErrorEmbed(result.error || 'Could not fetch random gallery')],
@@ -290,7 +290,7 @@ export async function handleNhentaiButtonInteraction(
                 const prefs = await deps.getUserPreferences(userId);
                 const result = await withNhentaiFetchingState(interaction, 'other doujin', async () =>
                     nhentaiService.fetchPopularGallery(prefs.popularPeriod)
-                );
+                , { hideMedia: true });
                 if (!result.success || !result.data) {
                     await interaction.editReply({
                         embeds: [deps.createErrorEmbed(result.error || 'Could not fetch popular gallery')],
@@ -317,8 +317,37 @@ export async function handleNhentaiButtonInteraction(
             case 'settings': {
                 const prefs = await deps.getUserPreferences(userId);
                 const embed = deps.createSettingsEmbed(userId, prefs);
-                const rows = deps.createSettingsComponents(userId, prefs);
+                const settingsGalleryId = extractGalleryIdFromMessage(interaction);
+                const rows = deps.createSettingsComponents(userId, prefs, settingsGalleryId);
                 await interaction.editReply({ embeds: [embed], components: rows, files: [] });
+                break;
+            }
+
+            case 'settingsback': {
+                const galleryId = Number.parseInt(parts[2] || '', 10);
+                if (!Number.isInteger(galleryId) || galleryId <= 0) {
+                    await interaction.followUp({
+                        content: '❌ Back target not found. Please open a gallery again.',
+                        ephemeral: true
+                    });
+                    break;
+                }
+
+                const result = await withNhentaiFetchingState(interaction, 'other doujin', async () =>
+                    nhentaiService.fetchGallery(galleryId)
+                );
+                if (!result.success || !result.data) {
+                    await interaction.editReply({
+                        embeds: [deps.createErrorEmbed(result.error || 'Gallery not found')],
+                        components: []
+                    });
+                    break;
+                }
+
+                const gallery = result.data;
+                const { embed, files } = await deps.createGalleryResponse(gallery);
+                const rows = await deps.createMainButtons(gallery.id, userId, gallery.num_pages, gallery);
+                await interaction.editReply({ embeds: [embed], components: rows, files });
                 break;
             }
 
@@ -415,19 +444,52 @@ function buildDisabledButtonRows(interaction: ButtonInteraction): ActionRowBuild
     return rows;
 }
 
-function buildFetchingEmbed(currentEmbed: EmbedBuilder, context: string, elapsedSec: number, totalSec: number = 60): EmbedBuilder {
+function buildFetchingEmbed(
+    currentEmbed: EmbedBuilder,
+    context: string,
+    elapsedSec: number,
+    totalSec: number = 60,
+    hideMedia: boolean = false
+): EmbedBuilder {
     const embed = EmbedBuilder.from(currentEmbed);
     const statusLine = `⏳ Shoukaku is fetching ${context}... (${Math.min(elapsedSec, totalSec)}s / ${totalSec}s)`;
     const currentDescription = embed.data.description || '';
     const cleaned = currentDescription.replace(/^⏳ Shoukaku is fetching[^\n]*\n\n?/i, '');
     embed.setDescription(cleaned ? `${statusLine}\n\n${cleaned}` : statusLine);
+    if (hideMedia) {
+        embed.setImage(null);
+        embed.setThumbnail(null);
+    }
     return embed;
 }
+
+function extractGalleryIdFromMessage(interaction: ButtonInteraction): number | null {
+    for (const row of interaction.message.components) {
+        if (row.type !== ComponentType.ActionRow) continue;
+        const rowComponents = (row as unknown as { components?: Array<{ customId?: string }> }).components || [];
+        for (const component of rowComponents) {
+            const customId = component?.customId;
+            if (!customId) continue;
+            const match = customId.match(/^nhentai_(?:read|info|fav|translate|first|prev|next|last|jump|view)_(\d+)_/);
+            if (!match || !match[1]) continue;
+            const galleryId = Number.parseInt(match[1], 10);
+            if (Number.isInteger(galleryId) && galleryId > 0) {
+                return galleryId;
+            }
+        }
+    }
+    return null;
+}
+
+type FetchingStateOptions = {
+    hideMedia?: boolean;
+};
 
 async function withNhentaiFetchingState<T>(
     interaction: ButtonInteraction,
     context: string,
-    task: () => Promise<T>
+    task: () => Promise<T>,
+    options: FetchingStateOptions = {}
 ): Promise<T> {
     if (!interaction.message.embeds.length) {
         return task();
@@ -440,8 +502,8 @@ async function withNhentaiFetchingState<T>(
 
     const pushStatus = async (): Promise<void> => {
         if (stopped) return;
-        const loadingEmbed = buildFetchingEmbed(baseEmbed, context, elapsed, 60);
-        await interaction.editReply({ embeds: [loadingEmbed], components: disabledRows }).catch(() => {});
+        const loadingEmbed = buildFetchingEmbed(baseEmbed, context, elapsed, 60, options.hideMedia === true);
+        await interaction.editReply({ embeds: [loadingEmbed], components: disabledRows, files: [] }).catch(() => {});
     };
 
     await pushStatus();
