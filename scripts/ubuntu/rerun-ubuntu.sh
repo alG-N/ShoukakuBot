@@ -29,20 +29,20 @@ $COMPOSE -f docker-compose.yml build ytdlp-api --no-cache
 log_ok "yt-dlp API image rebuilt"
 
 log_section "[5/8] Restarting Lavalink..."
-$COMPOSE -f docker-compose.lavalink.yml up -d --force-recreate
+compose_up_retry "docker-compose.lavalink.yml" --force-recreate
 wait_stack_running "docker-compose.lavalink.yml" "Lavalink" 90
 wait_lavalink_version_ready 180
 
 log_section "[6/8] Restarting Cobalt..."
-$COMPOSE -f docker-compose.cobalt.yml up -d --force-recreate
+compose_up_retry "docker-compose.cobalt.yml" --force-recreate
 wait_stack_running "docker-compose.cobalt.yml" "Cobalt" 90
 
 log_section "[7/8] Restarting Monitoring..."
-$COMPOSE -f docker-compose.monitoring.yml up -d --force-recreate
+compose_up_retry "docker-compose.monitoring.yml" --force-recreate
 wait_stack_running "docker-compose.monitoring.yml" "Monitoring" 120
 
 log_section "[8/8] Restarting Bot + Database + Cache..."
-$COMPOSE -f docker-compose.yml up -d --force-recreate
+compose_up_retry "docker-compose.yml" --force-recreate
 wait_stack_running "docker-compose.yml" "Bot stack" 120
 
 echo

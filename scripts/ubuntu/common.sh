@@ -375,3 +375,27 @@ print_container_summary() {
   echo "Container status:"
   docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
 }
+
+compose_up_retry() {
+  local compose_file="$1"
+  shift || true
+
+  local max_attempts="${COMPOSE_RETRY_ATTEMPTS:-3}"
+  local retry_delay="${COMPOSE_RETRY_DELAY_SECONDS:-8}"
+  local attempt=1
+
+  while true; do
+    if $COMPOSE -f "$compose_file" up -d "$@"; then
+      return 0
+    fi
+
+    if [[ "$attempt" -ge "$max_attempts" ]]; then
+      echo "ERROR: docker compose up failed for $compose_file after ${max_attempts} attempts" >&2
+      return 1
+    fi
+
+    log_warn "Compose up failed for $compose_file (attempt ${attempt}/${max_attempts}), retrying in ${retry_delay}s..."
+    sleep "$retry_delay"
+    attempt=$((attempt + 1))
+  done
+}

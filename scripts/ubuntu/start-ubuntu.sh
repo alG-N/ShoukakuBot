@@ -21,20 +21,20 @@ log_section "[2/7] Ensuring shared network..."
 ensure_network "shoukaku-net"
 
 log_section "[3/7] Starting Lavalink stack..."
-$COMPOSE -f docker-compose.lavalink.yml up -d
+compose_up_retry "docker-compose.lavalink.yml"
 wait_stack_running "docker-compose.lavalink.yml" "Lavalink" 90
 wait_lavalink_version_ready 180
 
 log_section "[4/7] Starting Cobalt stack..."
-$COMPOSE -f docker-compose.cobalt.yml up -d
+compose_up_retry "docker-compose.cobalt.yml"
 wait_stack_running "docker-compose.cobalt.yml" "Cobalt" 90
 
 log_section "[5/7] Starting Monitoring stack..."
-$COMPOSE -f docker-compose.monitoring.yml up -d
+compose_up_retry "docker-compose.monitoring.yml"
 wait_stack_running "docker-compose.monitoring.yml" "Monitoring" 120
 
 log_section "[6/7] Starting Bot + Database + Cache stack..."
-$COMPOSE -f docker-compose.yml up -d
+compose_up_retry "docker-compose.yml"
 wait_stack_running "docker-compose.yml" "Bot stack" 120
 
 log_section "[7/7] Final verification..."
