@@ -72,7 +72,7 @@ export interface Rule34PostHandlerContract {
         userId: string;
         searchPage?: number;
         showTags?: boolean;
-    }) => { embed: EmbedBuilder; rows: ActionRowBuilder<ButtonBuilder>[] };
+    }) => { embed: EmbedBuilder; rows: ActionRowBuilder<ButtonBuilder>[]; content?: string };
     createNoResultsEmbed?: (tags: string) => EmbedBuilder;
     createRelatedTagsEmbed?: (tag: string, relatedTags: Array<{ name?: string }>) => EmbedBuilder;
     createSettingsEmbed?: (userId: string) => EmbedBuilder;

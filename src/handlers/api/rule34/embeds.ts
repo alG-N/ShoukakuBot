@@ -99,10 +99,15 @@ export async function createPostEmbed(post: Rule34Post, options: PostEmbedOption
 }
 
 export function createVideoEmbed(post: Rule34Post, options: PostEmbedOptions = {}): EmbedResult {
-    const { resultIndex = 0, totalResults = 1 } = options;
+    const { resultIndex = 0, totalResults = 1, searchPage = 1 } = options;
 
     const postRating = post.rating as PostRating;
     const ratingEmoji = RATING_EMOJIS[postRating] || '❓';
+
+    // Build compact text content so Discord auto-embeds the video URL as a player
+    const infoLine = `🎬 **Video Post #${post.id}** | ${ratingEmoji} ${post.rating?.toUpperCase()} | ⭐ ${formatNumber(post.score)} | 📐 ${post.width}×${post.height}${post.hasSound ? ' | 🔊 Has Sound' : ''}`;
+    const footerLine = `Result ${resultIndex + 1}/${totalResults}${searchPage > 1 ? ` • Page ${searchPage}` : ''} • File: .${post.fileExtension}`;
+    const content = `${infoLine}\n${footerLine}\n${post.fileUrl}`;
 
     const embed = new EmbedBuilder()
         .setColor(RATING_COLORS[postRating] || RATING_COLORS.default)
@@ -112,9 +117,7 @@ export function createVideoEmbed(post: Rule34Post, options: PostEmbedOptions = {
             `${ratingEmoji} **Rating:** ${post.rating?.toUpperCase()}\n` +
             `⭐ **Score:** ${formatNumber(post.score)}\n` +
             `📐 **Dimensions:** ${post.width} × ${post.height}\n` +
-            `${post.hasSound ? '🔊 Has Sound' : '🔇 No Sound'}\n\n` +
-            `📹 **Videos cannot be embedded directly.**\n` +
-            `Click the button below to watch.`
+            `${post.hasSound ? '🔊 Has Sound' : '🔇 No Sound'}`
         );
 
     if (post.previewUrl) {
@@ -136,7 +139,7 @@ export function createVideoEmbed(post: Rule34Post, options: PostEmbedOptions = {
         }
     }
 
-    return { embed, rows };
+    return { embed, rows, content };
 }
 
 export function createSearchSummaryEmbed(

@@ -46,4 +46,5 @@ export interface FavoriteEntry {
 export interface EmbedResult {
     embed: EmbedBuilder;
     rows: ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[];
+    content?: string;
 }

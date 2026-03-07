@@ -183,13 +183,13 @@ class Rule34InteractionController {
                     this.deps.rule34Cache?.addToHistory?.(userId, post.id, { score: post.score });
 
                     if (post.hasVideo && this.deps.postHandler?.createVideoEmbed) {
-                        const { embed, rows } = this.deps.postHandler.createVideoEmbed(post, {
+                        const { rows, content } = this.deps.postHandler.createVideoEmbed(post, {
                             resultIndex: randomIndex,
                             totalResults: randomPosts.length,
                             userId,
                             searchPage: 1
                         });
-                        await interaction.editReply({ content: post.fileUrl, embeds: [embed], components: rows });
+                        await interaction.editReply({ content: content || post.fileUrl, embeds: [], components: rows });
                         return;
                     }
 
@@ -219,13 +219,13 @@ class Rule34InteractionController {
         this.deps.rule34Cache?.addToHistory?.(userId, post.id, { score: post.score });
 
         if (post.hasVideo && this.deps.postHandler?.createVideoEmbed) {
-            const { embed, rows } = this.deps.postHandler.createVideoEmbed(post, {
+            const { rows, content } = this.deps.postHandler.createVideoEmbed(post, {
                 resultIndex: newIndex,
                 totalResults: session.posts.length,
                 userId,
                 searchPage: session.currentPage || 1
             });
-            await interaction.editReply({ content: post.fileUrl, embeds: [embed], components: rows });
+            await interaction.editReply({ content: content || post.fileUrl, embeds: [], components: rows });
             return;
         }
 
@@ -279,15 +279,21 @@ class Rule34InteractionController {
                 posts = result?.posts || [];
                 hasMore = result?.hasMore || false;
             } else if (session.type === 'random') {
-                const result = await this.deps.rule34Service.search(session.query || '', {
-                    limit: 50,
-                    page: Math.floor(Math.random() * 200),
-                    rating: (followSettings ? randomRating : null) as any,
-                    excludeAi: (followSettings || hasAiOverride) ? effectiveExcludeAi : false,
-                    minScore: followSettings ? effectiveMinScore : 0,
-                    sort: 'random'
-                });
-                posts = result?.posts || [];
+                const hasTags = (session.query || '').trim().length > 0;
+                const pageRange = hasTags ? 10 : 30;
+                const maxAttempts = 3;
+                for (let attempt = 0; attempt < maxAttempts && posts.length === 0; attempt++) {
+                    const page = attempt === 0 ? 0 : Math.floor(Math.random() * pageRange);
+                    const result = await this.deps.rule34Service.search(session.query || '', {
+                        limit: 50,
+                        page,
+                        rating: (followSettings ? randomRating : null) as any,
+                        excludeAi: (followSettings || hasAiOverride) ? effectiveExcludeAi : false,
+                        minScore: followSettings ? effectiveMinScore : 0,
+                        sort: 'random'
+                    });
+                    posts = result?.posts || [];
+                }
                 hasMore = true;
             } else if (session.type === 'trending') {
                 const result = await this.deps.rule34Service.getTrending?.({
@@ -334,13 +340,13 @@ class Rule34InteractionController {
         this.deps.rule34Cache?.addToHistory?.(userId, post.id, { score: post.score });
 
         if (post.hasVideo && this.deps.postHandler?.createVideoEmbed) {
-            const { embed, rows } = this.deps.postHandler.createVideoEmbed(post, {
+            const { rows, content } = this.deps.postHandler.createVideoEmbed(post, {
                 resultIndex: 0,
                 totalResults: posts.length,
                 userId,
                 searchPage: newPage
             });
-            await interaction.editReply({ content: post.fileUrl, embeds: [embed], components: rows });
+            await interaction.editReply({ content: content || post.fileUrl, embeds: [], components: rows });
             return;
         }
 
@@ -502,14 +508,14 @@ class Rule34InteractionController {
         this.deps.rule34Cache?.updateSession?.(userId, { showTags });
 
         if (post.hasVideo && this.deps.postHandler?.createVideoEmbed) {
-            const { embed, rows } = this.deps.postHandler.createVideoEmbed(post, {
+            const { rows, content } = this.deps.postHandler.createVideoEmbed(post, {
                 resultIndex: session.currentIndex,
                 totalResults: session.posts.length,
                 userId,
                 searchPage: session.currentPage || 1,
                 showTags
             });
-            await interaction.editReply({ embeds: [embed], components: rows });
+            await interaction.editReply({ content: content || post.fileUrl, embeds: [], components: rows });
             return;
         }
 
