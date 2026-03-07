@@ -210,6 +210,11 @@ export class MusicFacade {
 
         const result = await this.playNext(guildId);
 
+        // Always unpause after skip — we only paused to cut audio instantly.
+        // Shoukaku's playTrack() does NOT reset Lavalink's paused state,
+        // so without this the next track (or a future /play) would stay muted.
+        await player.setPaused(false);
+
         const autoplayTriggered = result === null && this.getCurrentTrack(guildId) !== null;
 
         musicEventBus.emitEvent(MusicEvents.TRACK_SKIP, { guildId, count, previousTrack: currentTrack });

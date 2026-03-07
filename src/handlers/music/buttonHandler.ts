@@ -171,13 +171,18 @@ export const buttonHandler = {
                 return await this.handleButtonVoteSkip(interaction, guildId);
             }
 
-            await interaction.deferUpdate();
+            const currentTrack = musicService.getCurrentTrack(guildId) as Track | null;
             
             // Fire-and-forget: don't block skip on Discord API edit
             musicService.disableNowPlayingControls(guildId).catch(() => {});
             
-            const currentTrack = musicService.getCurrentTrack(guildId) as Track | null;
-            const skipResult = await musicService.skip(guildId);
+            // Run skip and deferUpdate in parallel — skip sends pause to Lavalink
+            // immediately instead of waiting for the Discord API round-trip first
+            const [skipResult] = await Promise.all([
+                musicService.skip(guildId),
+                interaction.deferUpdate()
+            ]);
+
             const nextTrack = musicService.getCurrentTrack(guildId);
 
             // Send skip notification in channel
@@ -189,15 +194,9 @@ export const buttonHandler = {
                 }).catch(() => {});
             }
             
+            // Queue Complete is already sent by MusicFacade.handleQueueEnd()
             if (nextTrack && !skipResult.autoplayTriggered) {
                 await musicService.sendNowPlayingEmbed(guildId);
-            } else if (!nextTrack) {
-                if (queue?.textChannel) {
-                    const channel = queue.textChannel as TextChannel;
-                    await channel.send({
-                        embeds: [trackHandler.createQueueFinishedEmbed(currentTrack)]
-                    }).catch(() => {});
-                }
             }
         } catch (error: unknown) {
             const err = error as { message?: string };
@@ -539,11 +538,14 @@ export const buttonHandler = {
         const listenerCount = musicService.getListenerCount(guildId, interaction.guild);
 
         if (listenerCount < MIN_VOTES_REQUIRED) {
-            await interaction.deferUpdate();
-            
             const skippedTrack = musicService.getCurrentTrack(guildId) as Track | null;
             musicService.disableNowPlayingControls(guildId).catch(() => {});
-            const skipResult = await musicService.skip(guildId);
+            
+            // Run skip and deferUpdate in parallel for instant audio cutoff
+            const [skipResult] = await Promise.all([
+                musicService.skip(guildId),
+                interaction.deferUpdate()
+            ]);
             
             const channel = interaction.channel as TextChannel;
             await channel.send({
