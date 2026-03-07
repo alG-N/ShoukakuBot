@@ -542,6 +542,22 @@ class AutoPlayService {
                 score -= 3;
             }
 
+            // Penalize non-music content keywords
+            if (/\b(mix|playlist|compilation|medley|mashup|megamix|nonstop)\b/i.test(trackTitle)) {
+                score -= 4;
+            }
+
+            // Duration preference: favor typical song length (2-6 min)
+            const lengthSec = (track as any).lengthSeconds;
+            const lengthMs = (track.info as any)?.length;
+            const durSec = lengthSec || (lengthMs ? Math.floor(lengthMs / 1000) : 0);
+            if (durSec > 0) {
+                if (durSec >= 120 && durSec <= 360) score += 4;       // 2-6 min: ideal
+                else if (durSec > 360 && durSec <= 480) score += 1;   // 6-8 min: ok
+                else if (durSec > 480) score -= 6;                     // >8 min: penalize
+                else if (durSec < 60) score -= 3;                      // <1 min: too short
+            }
+
             // Add random factor to prevent deterministic loops
             score += Math.random() * 5;
 
@@ -813,15 +829,25 @@ class AutoPlayService {
     }
 
     /**
-     * Filter out recently played tracks (expanded history: 30 tracks)
+     * Filter out recently played tracks, long tracks, and non-music content
      */
     private _filterRecentTracks(results: MusicTrack[], recentTitles: string[], currentTitle: string): MusicTrack[] {
+        const lowerCurrentTitle = currentTitle.toLowerCase();
+
         return results.filter(result => {
             const trackTitle = result.info?.title || '';
             const lowerTitle = trackTitle.toLowerCase();
 
-            // Exact title match
-            if (lowerTitle === currentTitle.toLowerCase()) return false;
+            // Exact title match against current track
+            if (lowerTitle === lowerCurrentTitle) return false;
+
+            // Fuzzy match against current title (catches re-uploads, slightly different formatting)
+            const currentWords = lowerCurrentTitle.split(/\s+/).filter(w => w.length > 2);
+            const titleWords = lowerTitle.split(/\s+/).filter(w => w.length > 2);
+            if (currentWords.length >= 3 && titleWords.length >= 3) {
+                const overlap = currentWords.filter(w => titleWords.includes(w)).length;
+                if (overlap / Math.min(currentWords.length, titleWords.length) >= 0.7) return false;
+            }
 
             // Fuzzy match against recent history (check both directions, longer substring)
             const isDuplicate = recentTitles.some(t => {
@@ -833,10 +859,20 @@ class AutoPlayService {
             });
             if (isDuplicate) return false;
 
-            // Filter out live streams and very long tracks (>30min)
+            // Filter out live streams
             if (result.info && 'isStream' in result.info && result.info.isStream) return false;
-            const length = (result as any).lengthSeconds || (result.info as any)?.length;
-            if (length && length > 1800) return false;
+
+            // Filter out non-music content (podcasts, interviews, reactions, etc.)
+            if (/\b(podcast|interview|reaction|commentary|talk\s?show|discussion|review|unboxing|q\s?&\s?a|episode\s?\d|ep\s?\d|vlog|explained|tutorial|lecture|audiobook)\b/i.test(trackTitle)) {
+                return false;
+            }
+
+            // Duration filter: max 10 minutes (600s) for autoplay
+            // Use lengthSeconds (seconds) first, fall back to info.length (milliseconds)
+            const lengthSec = (result as any).lengthSeconds;
+            const lengthMs = (result.info as any)?.length;
+            const durationSeconds = lengthSec || (lengthMs ? Math.floor(lengthMs / 1000) : 0);
+            if (durationSeconds > 600) return false;
 
             return true;
         });

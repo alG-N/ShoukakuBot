@@ -454,17 +454,27 @@ export class MusicFacade {
         if (queue?.autoPlay && lastTrack) {
             logger.info('AutoPlay', 'Queue ended, searching for similar tracks...');
 
+            // Add the current/skipped track to history BEFORE searching
+            // so autoplay won't pick the same track again
+            const seedTitle = lastTrack.info?.title || 'Unknown';
+            if (!queue.lastPlayedTracks) queue.lastPlayedTracks = [];
+            if (!queue.lastPlayedTracks.includes(seedTitle)) {
+                queue.lastPlayedTracks.push(seedTitle);
+                if (queue.lastPlayedTracks.length > 15) queue.lastPlayedTracks.shift();
+            }
+
             try {
                 const similarTrack = await autoPlayService.findSimilarTrack(guildId, lastTrack);
 
                 if (similarTrack) {
                     logger.info('AutoPlay', `Found similar track: ${similarTrack.info?.title}`);
 
-                    // Store in history
-                    const trackTitle = lastTrack.info?.title || 'Unknown';
-                    if (!queue.lastPlayedTracks) queue.lastPlayedTracks = [];
-                    queue.lastPlayedTracks.push(trackTitle);
-                    if (queue.lastPlayedTracks.length > 10) queue.lastPlayedTracks.shift();
+                    // Also store the autoplay track in history
+                    const autoplayTitle = similarTrack.info?.title || 'Unknown';
+                    if (!queue.lastPlayedTracks.includes(autoplayTitle)) {
+                        queue.lastPlayedTracks.push(autoplayTitle);
+                        if (queue.lastPlayedTracks.length > 15) queue.lastPlayedTracks.shift();
+                    }
 
                     // Play
                     musicCache.setCurrentTrack(guildId, similarTrack);

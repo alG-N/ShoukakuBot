@@ -261,6 +261,14 @@ class PlaybackEventHandler {
         if (queue?.autoPlay && lastTrack) {
             logger.info('PlaybackEventHandler', 'Queue ended, trying auto-play...');
 
+            // Add seed track to history BEFORE searching to prevent re-picking
+            const seedTitle = (lastTrack.info || lastTrack).title || '';
+            if (!queue.lastPlayedTracks) queue.lastPlayedTracks = [];
+            if (seedTitle && !queue.lastPlayedTracks.includes(seedTitle)) {
+                queue.lastPlayedTracks.push(seedTitle);
+                if (queue.lastPlayedTracks.length > 15) queue.lastPlayedTracks.shift();
+            }
+
             try {
                 const { autoPlayService } = this.services;
                 if (!autoPlayService) throw new Error('AutoPlayService not available');
@@ -270,11 +278,12 @@ class PlaybackEventHandler {
                 if (similarTrack) {
                     logger.info('PlaybackEventHandler', `Auto-play found: ${similarTrack.info?.title}`);
 
-                    // Track history
-                    const trackInfo = lastTrack.info || lastTrack;
-                    if (!queue.lastPlayedTracks) queue.lastPlayedTracks = [];
-                    queue.lastPlayedTracks.push(trackInfo.title || '');
-                    if (queue.lastPlayedTracks.length > 10) queue.lastPlayedTracks.shift();
+                    // Also store autoplay track in history
+                    const autoplayTitle = similarTrack.info?.title || '';
+                    if (autoplayTitle && !queue.lastPlayedTracks.includes(autoplayTitle)) {
+                        queue.lastPlayedTracks.push(autoplayTitle);
+                        if (queue.lastPlayedTracks.length > 15) queue.lastPlayedTracks.shift();
+                    }
 
                     // Play the track
                     musicCache.setCurrentTrack(guildId, similarTrack);
