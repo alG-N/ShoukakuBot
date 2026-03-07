@@ -165,7 +165,6 @@ export const buttonHandler = {
 
     async handleButtonSkip(interaction: ButtonInteraction, guildId: string): Promise<void> {
         try {
-            const btnStart = performance.now();
             const listenerCount = musicService.getListenerCount(guildId, interaction.guild);
             
             if (listenerCount >= MIN_VOTES_REQUIRED) {
@@ -177,17 +176,11 @@ export const buttonHandler = {
             // Fire-and-forget: don't block skip on Discord API edit
             musicService.disableNowPlayingControls(guildId).catch(() => {});
             
-            const preSkipTime = performance.now();
-            logger.debug('Button', `[SKIP-TIMING] button pre-skip setup: ${(preSkipTime - btnStart).toFixed(1)}ms`);
-            
             // Run skip and deferUpdate in parallel
             const [skipResult] = await Promise.all([
                 musicService.skip(guildId),
                 interaction.deferUpdate()
             ]);
-
-            const postSkipTime = performance.now();
-            logger.debug('Button', `[SKIP-TIMING] skip+deferUpdate parallel: ${(postSkipTime - preSkipTime).toFixed(1)}ms`);
 
             const nextTrack = musicService.getCurrentTrack(guildId);
 
@@ -204,8 +197,6 @@ export const buttonHandler = {
             if (nextTrack && !skipResult.autoplayTriggered) {
                 await musicService.sendNowPlayingEmbed(guildId);
             }
-            
-            logger.debug('Button', `[SKIP-TIMING] total handleButtonSkip: ${(performance.now() - btnStart).toFixed(1)}ms`);
         } catch (error: unknown) {
             const err = error as { message?: string };
             logger.error('Button', `Skip button error: ${err.message}`);

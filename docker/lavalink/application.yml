@@ -16,8 +16,8 @@ lavalink:
       http: true
       local: false
 
-    bufferDurationMs: 4000
-    frameBufferDurationMs: 8000
+    bufferDurationMs: 400
+    frameBufferDurationMs: 1000
     opusEncodingQuality: 10
     resamplingQuality: HIGH
     trackStuckThresholdMs: 10000

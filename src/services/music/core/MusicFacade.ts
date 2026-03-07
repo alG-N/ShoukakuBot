@@ -148,9 +148,7 @@ export class MusicFacade {
         queueService.setCurrentTrack(guildId, track);
         
         try {
-            const preRest = performance.now();
             await player.playTrack({ track: { encoded } });
-            logger.debug('MusicFacade', `[SKIP-TIMING] player.playTrack() REST call: ${(performance.now() - preRest).toFixed(1)}ms`);
             const source = track?.info?.sourceName || 'unknown';
             musicTracksPlayedTotal.inc({ source });
             this.updateMetrics();
@@ -194,7 +192,6 @@ export class MusicFacade {
     }
 
     async skip(guildId: string, count: number = 1): Promise<SkipResult> {
-        const skipStart = performance.now();
         const player = playbackService.getPlayer(guildId);
         if (!player) throw new Error('NO_PLAYER');
 
@@ -213,31 +210,21 @@ export class MusicFacade {
 
         let autoplayTriggered = false;
 
-        const prePlayTime = performance.now();
-        logger.debug('MusicFacade', `[SKIP-TIMING] pre-play setup: ${(prePlayTime - skipStart).toFixed(1)}ms | willLoop=${willLoop} queueHasTracks=${queueHasTracks}`);
-
         if (willLoop || queueHasTracks) {
             const result = await this.playNext(guildId);
-            const postPlayTime = performance.now();
-            logger.debug('MusicFacade', `[SKIP-TIMING] playNext() took: ${(postPlayTime - prePlayTime).toFixed(1)}ms`);
             autoplayTriggered = result === null && this.getCurrentTrack(guildId) !== null;
         } else {
             await player.stopTrack();
-            const postStopTime = performance.now();
-            logger.debug('MusicFacade', `[SKIP-TIMING] stopTrack() took: ${(postStopTime - prePlayTime).toFixed(1)}ms`);
 
             musicCache.resetLoopCount(guildId);
             if (loopMode === 'queue' && currentTrack) {
                 musicCache.addTrack(guildId, currentTrack);
             }
             await this.handleQueueEnd(guildId);
-            const postQueueEnd = performance.now();
-            logger.debug('MusicFacade', `[SKIP-TIMING] handleQueueEnd() took: ${(postQueueEnd - postStopTime).toFixed(1)}ms`);
             autoplayTriggered = this.getCurrentTrack(guildId) !== null;
         }
 
         musicEventBus.emitEvent(MusicEvents.TRACK_SKIP, { guildId, count, previousTrack: currentTrack });
-        logger.debug('MusicFacade', `[SKIP-TIMING] total skip(): ${(performance.now() - skipStart).toFixed(1)}ms`);
         return { skipped: count, previousTrack: currentTrack, autoplayTriggered };
     }
 
