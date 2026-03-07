@@ -89,7 +89,7 @@ export async function handleRule34SearchCommand(
             userId,
             searchPage: page
         });
-        await interaction.editReply({ embeds: [embed], components: rows });
+        await interaction.editReply({ content: post.fileUrl, embeds: [embed], components: rows });
         return;
     }
 
@@ -125,11 +125,11 @@ export async function handleRule34RandomCommand(
 
     const rawPosts = await deps.rule34Service?.getRandom?.({
         tags,
-        count,
+        count: Math.max(count, 10),
         rating: effectiveRating as any,
         excludeAi: effectiveExcludeAi,
         minScore: effectiveMinScore
-    }) || (await deps.rule34Service.search(tags, { limit: count, sort: 'random' })).posts || [];
+    }) || (await deps.rule34Service.search(tags, { limit: Math.max(count, 10), sort: 'random' })).posts || [];
 
     const filteredPosts = rawPosts.filter(post => {
         if (!followSettings) return true;
@@ -140,17 +140,20 @@ export async function handleRule34RandomCommand(
     });
 
     if (filteredPosts.length === 0) {
-        const noResultsEmbed = deps.postHandler?.createNoResultsEmbed?.(tags || 'random posts') || deps.errorEmbed('No random posts found');
+        const noResultsEmbed = deps.postHandler?.createNoResultsEmbed?.(tags || '*') || deps.errorEmbed('No random posts found. Try again or adjust your filters/blacklist.');
         await interaction.editReply({ embeds: [noResultsEmbed] });
         return;
     }
 
+    // Page 1 shows `count` results; navigating to page 2+ will fetch 50 posts per page.
+    const page1Posts = filteredPosts.slice(0, count);
+
     deps.rule34Cache?.setSession?.(userId, {
         type: 'random',
         query: tags || '',
-        posts: filteredPosts,
+        posts: page1Posts,
         options: {
-            limit: Math.max(10, Math.min(50, count * 10)),
+            limit: 50,
             followSettings,
             hasAiOverride,
             excludeAi: effectiveExcludeAi,
@@ -163,22 +166,22 @@ export async function handleRule34RandomCommand(
         currentPage: 1
     });
 
-    const post = filteredPosts[0];
+    const post = page1Posts[0];
     deps.rule34Cache?.addToHistory?.(userId, post.id, { score: post.score });
 
     if (post.hasVideo && deps.postHandler?.createVideoEmbed) {
         const { embed, rows } = deps.postHandler.createVideoEmbed(post, {
             resultIndex: 0,
-            totalResults: filteredPosts.length,
+            totalResults: page1Posts.length,
             userId
         });
-        await interaction.editReply({ embeds: [embed], components: rows });
+        await interaction.editReply({ content: post.fileUrl, embeds: [embed], components: rows });
         return;
     }
 
     const { embed, rows } = await deps.postHandler.createPostEmbed(post, {
         resultIndex: 0,
-        totalResults: filteredPosts.length,
+        totalResults: page1Posts.length,
         userId
     });
 
@@ -216,7 +219,7 @@ export async function handleRule34GetByIdCommand(
             totalResults: 1,
             userId
         });
-        await interaction.editReply({ embeds: [embed], components: rows });
+        await interaction.editReply({ content: post.fileUrl, embeds: [embed], components: rows });
         return;
     }
 
@@ -291,7 +294,7 @@ export async function handleRule34TrendingCommand(
             totalResults: filteredPosts.length,
             userId
         });
-        await interaction.editReply({ embeds: [embed], components: rows });
+        await interaction.editReply({ content: post.fileUrl, embeds: [embed], components: rows });
         return;
     }
 

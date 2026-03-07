@@ -222,17 +222,20 @@ class Rule34Service {
             minScore = 0
         } = options;
 
-        const desiredCount = Math.max(1, Math.min(10, count));
-        const limit = Math.min(100, desiredCount * 15);
-        const pageRange = tags.trim() ? 50 : 200;
-        const maxAttempts = 4;
+        const desiredCount = Math.max(1, Math.min(50, count));
+        const limit = Math.min(100, Math.max(desiredCount * 5, 50));
+        const maxAttempts = 5;
         const uniquePosts: Rule34Post[] = [];
         const seenIds = new Set<number>();
 
         for (let attempt = 0; attempt < maxAttempts && uniquePosts.length < desiredCount; attempt++) {
+            // First attempt always uses page 0 (most reliable), then random pages
+            const pageRange = tags.trim() ? 50 : 200;
+            const page = attempt === 0 ? 0 : Math.floor(Math.random() * pageRange);
+
             const result = await this.search(tags, {
                 limit,
-                page: Math.floor(Math.random() * pageRange),
+                page,
                 rating,
                 excludeAi,
                 minScore,
@@ -245,6 +248,9 @@ class Rule34Service {
                 seenIds.add(post.id);
                 uniquePosts.push(post);
             }
+
+            // If first page returned results, we have enough to shuffle from
+            if (uniquePosts.length >= desiredCount) break;
         }
 
         if (uniquePosts.length === 0) {

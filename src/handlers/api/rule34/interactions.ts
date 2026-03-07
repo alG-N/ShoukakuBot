@@ -189,7 +189,7 @@ class Rule34InteractionController {
                             userId,
                             searchPage: 1
                         });
-                        await interaction.editReply({ embeds: [embed], components: rows });
+                        await interaction.editReply({ content: post.fileUrl, embeds: [embed], components: rows });
                         return;
                     }
 
@@ -201,7 +201,7 @@ class Rule34InteractionController {
                         searchPage: 1
                     });
 
-                    await interaction.editReply({ embeds: [embed], components: rows });
+                    await interaction.editReply({ content: '', embeds: [embed], components: rows });
                     return;
                 }
 
@@ -225,7 +225,7 @@ class Rule34InteractionController {
                 userId,
                 searchPage: session.currentPage || 1
             });
-            await interaction.editReply({ embeds: [embed], components: rows });
+            await interaction.editReply({ content: post.fileUrl, embeds: [embed], components: rows });
             return;
         }
 
@@ -237,7 +237,7 @@ class Rule34InteractionController {
             searchPage: session.currentPage || 1
         });
 
-        await interaction.editReply({ embeds: [embed], components: rows });
+        await interaction.editReply({ content: '', embeds: [embed], components: rows });
     }
 
     private async _handlePageNavigation(interaction: ButtonInteraction, action: string, userId: string): Promise<void> {
@@ -279,14 +279,15 @@ class Rule34InteractionController {
                 posts = result?.posts || [];
                 hasMore = result?.hasMore || false;
             } else if (session.type === 'random') {
-                const result = await this.deps.rule34Service.getRandom?.({
-                    tags: session.query || '',
-                    count: session.options?.limit || 50,
-                    rating: followSettings ? randomRating : null,
+                const result = await this.deps.rule34Service.search(session.query || '', {
+                    limit: 50,
+                    page: Math.floor(Math.random() * 200),
+                    rating: (followSettings ? randomRating : null) as any,
                     excludeAi: (followSettings || hasAiOverride) ? effectiveExcludeAi : false,
-                    minScore: followSettings ? effectiveMinScore : 0
+                    minScore: followSettings ? effectiveMinScore : 0,
+                    sort: 'random'
                 });
-                posts = result || [];
+                posts = result?.posts || [];
                 hasMore = true;
             } else if (session.type === 'trending') {
                 const result = await this.deps.rule34Service.getTrending?.({
@@ -339,7 +340,7 @@ class Rule34InteractionController {
                 userId,
                 searchPage: newPage
             });
-            await interaction.editReply({ embeds: [embed], components: rows });
+            await interaction.editReply({ content: post.fileUrl, embeds: [embed], components: rows });
             return;
         }
 
@@ -351,7 +352,7 @@ class Rule34InteractionController {
             searchPage: newPage
         });
 
-        await interaction.editReply({ embeds: [embed], components: rows });
+        await interaction.editReply({ content: '', embeds: [embed], components: rows });
     }
 
     private async _handleRelatedFromSession(interaction: ButtonInteraction, userId: string): Promise<void> {
