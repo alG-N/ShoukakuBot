@@ -291,20 +291,30 @@ class Rule34InteractionController {
                 const hasTags = (session.query || '').trim().length > 0;
                 const pageRange = hasTags ? 10 : 30;
                 const maxAttempts = 3;
+                const configuredRandomCount = Number((session.options as any)?.randomCount ?? session.posts?.length ?? 1);
+                const randomCount = Math.max(1, Math.min(50, configuredRandomCount));
                 const seenIds = new Set(session.posts?.map(p => p.id) || []);
                 for (let attempt = 0; attempt < maxAttempts && posts.length === 0; attempt++) {
-                    const page = Math.floor(Math.random() * pageRange);
+                    // First attempt always uses page 0 (most reliable, especially
+                    // for restrictive filters), then random pages for diversity.
+                    const page = attempt === 0 ? 0 : Math.floor(Math.random() * pageRange);
                     const result = await this.deps.rule34Service.search(session.query || '', {
-                        limit: 50,
+                        limit: Math.min(100, Math.max(randomCount * 2, 50)),
                         page,
                         rating: (followSettings ? randomRating : null) as any,
                         excludeAi: (followSettings || hasAiOverride) ? effectiveExcludeAi : false,
                         minScore: followSettings ? effectiveMinScore : 0,
                         sort: 'random'
                     });
-                    // Filter out posts the user has already seen in the current session
+                    // Prefer unseen posts, but fall back to fetched posts so we don't
+                    // return an empty page when overlap is high.
                     const fetched = result?.posts || [];
-                    posts = fetched.filter(p => !seenIds.has(p.id));
+                    const unseen = fetched.filter(p => !seenIds.has(p.id));
+                    posts = unseen.length > 0 ? unseen : fetched;
+                }
+                // Respect the user's original count so every page is consistent
+                if (randomCount && randomCount > 0 && posts.length > randomCount) {
+                    posts = posts.slice(0, randomCount);
                 }
                 hasMore = posts.length > 0;
             } else if (session.type === 'trending') {
@@ -346,7 +356,7 @@ class Rule34InteractionController {
         const currentPostIds = new Set(session.posts?.map(p => p.id) || []);
         const newPostIds = posts.map(p => p.id);
         const allDuplicates = newPostIds.length > 0 && newPostIds.every(id => currentPostIds.has(id));
-        if (allDuplicates && action === 'nextpage') {
+        if (session.type !== 'random' && allDuplicates && action === 'nextpage') {
             hasMore = false;
             await interaction.followUp({
                 content: '❌ No more results found.',
@@ -460,7 +470,7 @@ class Rule34InteractionController {
                 .setLabel('◀ Back to Browse')
                 .setStyle(ButtonStyle.Secondary)
         );
-        await interaction.editReply({ content: post.fileUrl, embeds: [], components: [backRow] });
+        await interaction.editReply({ content: `[Video](${post.fileUrl})`, embeds: [], components: [backRow] });
     }
 
     private async _handleWatchBack(interaction: ButtonInteraction, userId: string): Promise<void> {

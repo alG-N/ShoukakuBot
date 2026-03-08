@@ -115,6 +115,7 @@ export async function handleRule34RandomCommand(
 
     const tags = interaction.options.getString('tags') || '';
     const count = interaction.options.getInteger('count') || 1;
+    const requestedCount = Math.max(1, Math.min(50, count));
     const aiFilter = interaction.options.getBoolean('ai_filter');
     const followSettings = interaction.options.getBoolean('follow_settings') ?? true;
     const hasAiOverride = aiFilter !== null;
@@ -127,11 +128,11 @@ export async function handleRule34RandomCommand(
 
     const rawPosts = await deps.rule34Service?.getRandom?.({
         tags,
-        count: Math.max(count, 10),
+        count: Math.max(requestedCount, 10),
         rating: effectiveRating as any,
         excludeAi: effectiveExcludeAi,
         minScore: effectiveMinScore
-    }) || (await deps.rule34Service.search(tags, { limit: Math.max(count, 10), sort: 'random' })).posts || [];
+    }) || (await deps.rule34Service.search(tags, { limit: Math.max(requestedCount, 10), sort: 'random' })).posts || [];
 
     const filteredPosts = rawPosts.filter(post => {
         if (!followSettings) return true;
@@ -147,8 +148,8 @@ export async function handleRule34RandomCommand(
         return;
     }
 
-    // Page 1 shows `count` results; navigating to page 2+ will fetch 50 posts per page.
-    const page1Posts = filteredPosts.slice(0, count);
+    // Keep exactly the requested amount per page (1..50) for random pagination.
+    const page1Posts = filteredPosts.slice(0, requestedCount);
 
     deps.rule34Cache?.setSession?.(userId, {
         type: 'random',
@@ -156,6 +157,7 @@ export async function handleRule34RandomCommand(
         posts: page1Posts,
         options: {
             limit: 50,
+            randomCount: requestedCount,
             followSettings,
             hasAiOverride,
             excludeAi: effectiveExcludeAi,
