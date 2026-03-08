@@ -152,7 +152,12 @@ class Rule34Service {
                     ? this._shuffleArray([...processedPosts])
                     : processedPosts;
 
-                if (!_silent) logger.info('Rule34', `Found ${posts.length} posts (pre-filter: ${data.length})`);
+                if (!_silent) {
+                    const filterNote = processedPosts.length < data.length
+                        ? ` (removed ${data.length - processedPosts.length} by AI/score/quality filter)`
+                        : '';
+                    logger.info('Rule34', `Found ${posts.length} posts (raw API: ${data.length})${filterNote}`);
+                }
 
                 return {
                     posts,
@@ -219,7 +224,10 @@ class Rule34Service {
             count = 1,
             rating = null,
             excludeAi = false,
-            minScore = 0
+            minScore = 0,
+            excludeTags = [],
+            highQualityOnly = false,
+            excludeLowQuality = false
         } = options;
 
         const desiredCount = Math.max(1, Math.min(50, count));
@@ -227,6 +235,8 @@ class Rule34Service {
         const maxAttempts = 5;
         const uniquePosts: Rule34Post[] = [];
         const seenIds = new Set<number>();
+
+        logger.info('Rule34', `getRandom: tags="${tags}" desiredCount=${desiredCount} limit=${limit} excludeAi=${excludeAi} minScore=${minScore} blacklist=${excludeTags.length} hq=${highQualityOnly} noLow=${excludeLowQuality}`);
 
         for (let attempt = 0; attempt < maxAttempts && uniquePosts.length < desiredCount; attempt++) {
             // First attempt always uses page 0 (most reliable), then random pages
@@ -239,6 +249,9 @@ class Rule34Service {
                 rating,
                 excludeAi,
                 minScore,
+                excludeTags,
+                highQualityOnly,
+                excludeLowQuality,
                 sort: 'random',
                 _silent: attempt > 0
             });
@@ -252,6 +265,8 @@ class Rule34Service {
             // If first page returned results, we have enough to shuffle from
             if (uniquePosts.length >= desiredCount) break;
         }
+
+        logger.info('Rule34', `getRandom result: unique=${uniquePosts.length} returning=${Math.min(uniquePosts.length, desiredCount)}`);
 
         if (uniquePosts.length === 0) {
             return [];
@@ -624,6 +639,7 @@ class Rule34Service {
             isAiGenerated: this._isAiGenerated(post),
 
             isHighQuality: this._isHighQuality(post),
+            isLowQuality: this._isLowQuality(post),
             isHighRes: post.width >= 1920 || post.height >= 1080,
 
             source: post.source || '',

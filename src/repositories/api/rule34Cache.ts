@@ -97,6 +97,7 @@ class Rule34Cache {
     private autocompleteCache = new Map<string, AutocompleteEntry>();
     private userFavorites = new Map<string, Rule34Favorite[]>();
     private viewHistory = new Map<string, Rule34HistoryEntry[]>();
+    private pendingHydrations = new Map<string, Promise<void>>();
 
     // Cache durations (ms) — used for local TTL checks
     private readonly SEARCH_CACHE_DURATION = 10 * 60 * 1000;      // 10 minutes
@@ -112,8 +113,20 @@ class Rule34Cache {
     private readonly MAX_USER_PREFERENCES  = 5000;
     private readonly MAX_USER_FAVORITES    = 5000;
     private readonly MAX_USER_HISTORY      = 5000;
+    private readonly HYDRATE_WAIT_MS       = 300;
 
     private cleanupInterval: NodeJS.Timeout | null;
+
+    private _withTimeout(promise: Promise<void>, timeoutMs: number): Promise<void> {
+        let timer: NodeJS.Timeout | null = null;
+        const timeoutPromise = new Promise<void>(resolve => {
+            timer = setTimeout(resolve, timeoutMs);
+        });
+
+        return Promise.race([promise, timeoutPromise]).finally(() => {
+            if (timer) clearTimeout(timer);
+        }) as Promise<void>;
+    }
 
     constructor() {
         registerNamespaces();
@@ -273,6 +286,53 @@ class Rule34Cache {
         }
         hydrateInBackground(this.userPreferences, NS.PREFERENCES, userId);
         return this.getDefaultPreferences();
+    }
+
+    /**
+     * Await hydration of user preferences and blacklist from Redis.
+     * Call once at the start of command handlers to ensure first-call accuracy.
+     */
+    async ensureHydrated(userId: string): Promise<void> {
+        const existing = this.pendingHydrations.get(userId);
+        if (existing) {
+            await this._withTimeout(existing, this.HYDRATE_WAIT_MS);
+            return;
+        }
+
+        const tasks: Promise<void>[] = [];
+        if (!this.userPreferences.has(userId)) {
+            tasks.push(
+                cacheService.peek<Partial<Rule34UserPreferences>>(NS.PREFERENCES, userId).then(value => {
+                    if (value !== null && !this.userPreferences.has(userId)) {
+                        this.userPreferences.set(userId, value);
+                    }
+                }).catch(() => {})
+            );
+        }
+        if (!this.userBlacklists.has(userId)) {
+            tasks.push(
+                cacheService.peek<string[]>(NS.BLACKLIST, userId).then(value => {
+                    if (value !== null && !this.userBlacklists.has(userId)) {
+                        this.userBlacklists.set(userId, value);
+                    }
+                }).catch(() => {})
+            );
+        }
+
+        if (tasks.length === 0) {
+            return;
+        }
+
+        const hydration = Promise.all(tasks).then(() => {});
+        this.pendingHydrations.set(userId, hydration);
+
+        try {
+            await this._withTimeout(hydration, this.HYDRATE_WAIT_MS);
+        } finally {
+            if (this.pendingHydrations.get(userId) === hydration) {
+                this.pendingHydrations.delete(userId);
+            }
+        }
     }
 
     setPreferences(userId: string, preferences: Partial<Rule34UserPreferences>): Rule34UserPreferences {

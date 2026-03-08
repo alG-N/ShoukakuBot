@@ -39,6 +39,7 @@ export type Rule34ServiceContract = {
 };
 
 export interface Rule34CacheContract {
+    ensureHydrated?: (userId: string) => Promise<void>;
     getPreferences?: (userId: string) => Preferences | null;
     setPreferences?: (userId: string, prefs: Partial<Preferences>) => void;
     resetPreferences?: (userId: string) => void;

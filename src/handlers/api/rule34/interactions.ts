@@ -264,6 +264,7 @@ class Rule34InteractionController {
 
         const currentPage = session.currentPage || 1;
         const newPage = action === 'nextpage' ? currentPage + 1 : Math.max(1, currentPage - 1);
+        logger.info('Rule34', `Page navigation: type=${session.type} action=${action} currentPage=${currentPage} newPage=${newPage}`);
         const prefs = this.deps.rule34Cache?.getPreferences?.(userId) || {};
         const blacklist = this.deps.rule34Cache?.getBlacklist?.(userId) || [];
         const effectiveExcludeAi = session.options?.excludeAi ?? prefs.aiFilter;
@@ -287,36 +288,72 @@ class Rule34InteractionController {
                 });
                 posts = result?.posts || [];
                 hasMore = result?.hasMore || false;
+                logger.info('Rule34', `Search page ${newPage}: fetched=${posts.length} hasMore=${hasMore}`);
             } else if (session.type === 'random') {
                 const hasTags = (session.query || '').trim().length > 0;
                 const pageRange = hasTags ? 10 : 30;
-                const maxAttempts = 3;
+                const maxAttempts = 5;
                 const configuredRandomCount = Number((session.options as any)?.randomCount ?? session.posts?.length ?? 1);
                 const randomCount = Math.max(1, Math.min(50, configuredRandomCount));
-                const seenIds = new Set(session.posts?.map(p => p.id) || []);
-                for (let attempt = 0; attempt < maxAttempts && posts.length === 0; attempt++) {
-                    // First attempt always uses page 0 (most reliable, especially
-                    // for restrictive filters), then random pages for diversity.
+                const overflowLimit = Math.max(50, randomCount * 2);
+                // Accumulate ALL previously seen post IDs across pages
+                const seenIds = new Set<number>(session.seenPostIds || session.posts?.map(p => p.id) || []);
+                logger.info('Rule34', `Random pagination: randomCount=${randomCount} seenIds=${seenIds.size} hasTags=${hasTags}`);
+
+                // Use cached overflow posts first before hitting the API
+                const overflow: Post[] = (session.overflowPosts || [])
+                    .filter((p: Post) => !seenIds.has(p.id))
+                    .slice(0, overflowLimit);
+                const collected: Post[] = [];
+                const excludedIds = new Set<number>(seenIds);
+                for (const p of overflow) {
+                    excludedIds.add(p.id);
+                }
+                for (const p of overflow) {
+                    if (collected.length >= randomCount) break;
+                    collected.push(p);
+                    seenIds.add(p.id);
+                }
+                logger.info('Rule34', `Random pagination: used ${collected.length} overflow posts`);
+                const remainingOverflow = overflow.slice(collected.length);
+
+                // Fetch from API only if overflow wasn't enough
+                const newOverflow: Post[] = [];
+                for (let attempt = 0; attempt < maxAttempts && collected.length < randomCount; attempt++) {
                     const page = attempt === 0 ? 0 : Math.floor(Math.random() * pageRange);
                     const result = await this.deps.rule34Service.search(session.query || '', {
-                        limit: Math.min(100, Math.max(randomCount * 2, 50)),
+                        limit: 100,
                         page,
                         rating: (followSettings ? randomRating : null) as any,
                         excludeAi: (followSettings || hasAiOverride) ? effectiveExcludeAi : false,
                         minScore: followSettings ? effectiveMinScore : 0,
+                        excludeTags: followSettings ? blacklist : [],
+                        highQualityOnly: followSettings ? effectiveHighQualityOnly : false,
+                        excludeLowQuality: followSettings ? effectiveExcludeLowQuality : false,
                         sort: 'random'
                     });
-                    // Prefer unseen posts, but fall back to fetched posts so we don't
-                    // return an empty page when overlap is high.
                     const fetched = result?.posts || [];
-                    const unseen = fetched.filter(p => !seenIds.has(p.id));
-                    posts = unseen.length > 0 ? unseen : fetched;
+                    const unseen = fetched.filter(p => !excludedIds.has(p.id));
+                    logger.info('Rule34', `Random attempt ${attempt + 1}/${maxAttempts}: page=${page} fetched=${fetched.length} unseen=${unseen.length} collected=${collected.length}`);
+                    for (const p of unseen) {
+                        excludedIds.add(p.id);
+                        if (collected.length < randomCount) {
+                            collected.push(p);
+                            seenIds.add(p.id);
+                        } else {
+                            if (remainingOverflow.length + newOverflow.length < overflowLimit) {
+                                newOverflow.push(p);
+                            }
+                        }
+                    }
+                    // If unseen dried up even on attempt 0, likely exhausted
+                    if (fetched.length === 0) break;
                 }
-                // Respect the user's original count so every page is consistent
-                if (randomCount && randomCount > 0 && posts.length > randomCount) {
-                    posts = posts.slice(0, randomCount);
-                }
+                posts = collected;
                 hasMore = posts.length > 0;
+                // Store new overflow for next page
+                session.overflowPosts = [...remainingOverflow, ...newOverflow].slice(0, overflowLimit);
+                logger.info('Rule34', `Random page collected: ${posts.length}/${randomCount} posts (total seen: ${seenIds.size}, overflow: ${session.overflowPosts.length})`);
             } else if (session.type === 'trending') {
                 const result = await this.deps.rule34Service.getTrending?.({
                     ...session.options,
@@ -328,20 +365,26 @@ class Rule34InteractionController {
             }
         });
 
-        posts = posts.filter(post => {
-            if (session.type === 'random' && !followSettings) {
-                if (hasAiOverride && effectiveExcludeAi && post.isAiGenerated) return false;
+        const preFilterCount = posts.length;
+        // For random, all filters are already applied at the API/service level
+        // during collection. Only apply local filter for search/trending.
+        if (session.type !== 'random') {
+            posts = posts.filter(post => {
+                const postTags = (post.tags || '').split(' ');
+                const isBlacklisted = postTags.some(t => blacklist.includes(t));
+                if (isBlacklisted) return false;
+                if (effectiveExcludeAi && post.isAiGenerated) return false;
+                if (post.score < effectiveMinScore) return false;
+                if (effectiveHighQualityOnly && !post.isHighQuality) return false;
+                if (effectiveExcludeLowQuality && post.isLowQuality) return false;
                 return true;
+            });
+
+            const removedCount = preFilterCount - posts.length;
+            if (removedCount > 0) {
+                logger.info('Rule34', `Page filter: ${preFilterCount} → ${posts.length} (removed ${removedCount} by local blacklist/AI/score/quality)`);
             }
-            const postTags = (post.tags || '').split(' ');
-            const isBlacklisted = postTags.some(t => blacklist.includes(t));
-            if (isBlacklisted) return false;
-            if (effectiveExcludeAi && post.isAiGenerated) return false;
-            if (post.score < effectiveMinScore) return false;
-            if (effectiveHighQualityOnly && !post.isHighQuality) return false;
-            if (effectiveExcludeLowQuality && !post.isHighQuality) return false;
-            return true;
-        });
+        }
 
         if (posts.length === 0) {
             await interaction.followUp({
@@ -367,12 +410,21 @@ class Rule34InteractionController {
             return;
         }
 
-        this.deps.rule34Cache?.updateSession?.(userId, {
+        // For random sessions, accumulate seen IDs to avoid duplicates across pages
+        const updateData: Record<string, any> = {
             posts: posts,
             currentIndex: 0,
             currentPage: newPage,
             hasMore: hasMore
-        });
+        };
+        if (session.type === 'random') {
+            const prevSeen: number[] = session.seenPostIds || session.posts?.map(p => p.id) || [];
+            const newSeen = new Set(prevSeen);
+            for (const p of posts) newSeen.add(p.id);
+            updateData.seenPostIds = [...newSeen];
+            updateData.overflowPosts = session.overflowPosts || [];
+        }
+        this.deps.rule34Cache?.updateSession?.(userId, updateData);
 
         const post = posts[0];
         this.deps.rule34Cache?.addToHistory?.(userId, post.id, { score: post.score });

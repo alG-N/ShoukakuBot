@@ -28,6 +28,9 @@ export interface Rule34RandomOptions {
     rating?: PostRating | null;
     excludeAi?: boolean;
     minScore?: number;
+    excludeTags?: string[];
+    highQualityOnly?: boolean;
+    excludeLowQuality?: boolean;
 }
 
 export interface Rule34TrendingOptions {
@@ -75,6 +78,7 @@ export interface Rule34Post {
     isAnimated: boolean;
     isAiGenerated: boolean;
     isHighQuality: boolean;
+    isLowQuality: boolean;
     isHighRes: boolean;
     source: string;
     parentId: number | undefined;

@@ -105,4 +105,6 @@ export interface Rule34CommandSession<TPost, TOptions> {
     hasMore?: boolean;
     timeframe?: string;
     showTags?: boolean;
+    seenPostIds?: number[];
+    overflowPosts?: TPost[];
 }

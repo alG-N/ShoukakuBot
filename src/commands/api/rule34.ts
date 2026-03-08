@@ -166,10 +166,10 @@ class Rule34Command extends BaseCommand {
                     )
                     .addIntegerOption(option =>
                         option.setName('count')
-                            .setDescription('Number of random posts (1-10)')
+                            .setDescription('Number of random posts per page (1-50)')
                             .setRequired(false)
                             .setMinValue(1)
-                            .setMaxValue(10)
+                            .setMaxValue(50)
                     )
                     .addBooleanOption(option =>
                         option.setName('ai_filter')
