@@ -11,8 +11,17 @@ export function createPostButtons(
     post: Rule34Post,
     options: PostEmbedOptions = {}
 ): ActionRowBuilder<ButtonBuilder>[] {
-    const { resultIndex = 0, totalResults = 1, userId = '', searchPage = 1, hasMore = true } = options;
+    const {
+        resultIndex = 0,
+        totalResults = 1,
+        userId = '',
+        searchPage = 1,
+        hasMore = true,
+        sessionType = 'search',
+        maxPage = 200
+    } = options;
     const rows: ActionRowBuilder<ButtonBuilder>[] = [];
+    const showPageControls = sessionType !== 'single' && sessionType !== 'trending';
 
     const navRow = new ActionRowBuilder<ButtonBuilder>();
     navRow.addComponents(
@@ -32,9 +41,10 @@ export function createPostButtons(
             .setStyle(ButtonStyle.Primary)
             .setDisabled(resultIndex >= totalResults - 1),
         new ButtonBuilder()
-            .setCustomId(`rule34_random_${userId}`)
-            .setLabel('🎲 Random')
+            .setCustomId(`rule34_selectpost_${userId}`)
+            .setLabel('🔢 Select Post')
             .setStyle(ButtonStyle.Secondary)
+            .setDisabled(totalResults <= 1)
     );
     rows.push(navRow);
 
@@ -59,41 +69,34 @@ export function createPostButtons(
         new ButtonBuilder()
             .setCustomId(`rule34_fav_${post.id}_${userId}`)
             .setLabel(isFavorited ? '💔' : '❤️')
-            .setStyle(isFavorited ? ButtonStyle.Danger : ButtonStyle.Secondary),
-        new ButtonBuilder()
-            .setCustomId(`rule34_tags_${userId}`)
-            .setLabel('🏷️')
-            .setStyle(ButtonStyle.Secondary)
+            .setStyle(isFavorited ? ButtonStyle.Danger : ButtonStyle.Secondary)
     );
     rows.push(actionRow);
 
-    // Disable next page if no more results OR if we're at the last post and there are fewer
-    // than 50 (full page), indicating no more pages exist
-    const disableNextPage = !hasMore && resultIndex >= totalResults - 1;
+    if (showPageControls) {
+        // Disable next page if we already know this is the last page.
+        const disableNextPage = !hasMore && resultIndex >= totalResults - 1;
 
-    const pageRow = new ActionRowBuilder<ButtonBuilder>();
-    pageRow.addComponents(
-        new ButtonBuilder()
-            .setCustomId(`rule34_prevpage_${userId}`)
-            .setLabel('⏮ Prev Page')
-            .setStyle(ButtonStyle.Primary)
-            .setDisabled(searchPage <= 1),
-        new ButtonBuilder()
-            .setCustomId(`rule34_pageinfo_${userId}`)
-            .setLabel(`Page ${searchPage}`)
-            .setStyle(ButtonStyle.Secondary)
-            .setDisabled(true),
-        new ButtonBuilder()
-            .setCustomId(`rule34_nextpage_${userId}`)
-            .setLabel('Next Page ⏭')
-            .setStyle(ButtonStyle.Primary)
-            .setDisabled(disableNextPage),
-        new ButtonBuilder()
-            .setCustomId(`rule34_related_${userId}`)
-            .setLabel('🔗 Related')
-            .setStyle(ButtonStyle.Secondary)
-    );
-    rows.push(pageRow);
+        const pageRow = new ActionRowBuilder<ButtonBuilder>();
+        pageRow.addComponents(
+            new ButtonBuilder()
+                .setCustomId(`rule34_prevpage_${userId}`)
+                .setLabel('⏮ Prev Page')
+                .setStyle(ButtonStyle.Primary)
+                .setDisabled(searchPage <= 1),
+            new ButtonBuilder()
+                .setCustomId(`rule34_pageinfo_${userId}`)
+                .setLabel(`Page ${searchPage}`)
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(true),
+            new ButtonBuilder()
+                .setCustomId(`rule34_nextpage_${userId}`)
+                .setLabel('Next Page ⏭')
+                .setStyle(ButtonStyle.Primary)
+                .setDisabled(disableNextPage)
+        );
+        rows.push(pageRow);
+    }
 
     return rows;
 }

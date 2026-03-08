@@ -90,7 +90,9 @@ export async function handleRule34SearchCommand(
             totalResults: result.posts.length,
             userId,
             searchPage: page,
-            hasMore: result.hasMore
+            hasMore: result.hasMore,
+            sessionType: 'search',
+            maxPage: 200
         });
         await interaction.editReply({ content: '', embeds: [videoEmbed], components: rows });
         return;
@@ -102,7 +104,9 @@ export async function handleRule34SearchCommand(
         query: tags,
         userId,
         searchPage: page,
-        hasMore: result.hasMore
+        hasMore: result.hasMore,
+        sessionType: 'search',
+        maxPage: 200
     });
 
     await interaction.editReply({ embeds: [embed], components: rows });
@@ -133,16 +137,18 @@ export async function handleRule34RandomCommand(
     const effectiveHighQualityOnly = followSettings ? (prefs.highQualityOnly ?? false) : false;
     const effectiveExcludeLowQuality = followSettings ? (prefs.excludeLowQuality ?? false) : false;
 
+    const prefetchCount = Math.min(50, Math.max(requestedCount, requestedCount * 2));
+
     const rawPosts = await deps.rule34Service?.getRandom?.({
         tags,
-        count: Math.max(requestedCount, 10),
+        count: prefetchCount,
         rating: effectiveRating as any,
         excludeAi: effectiveExcludeAi,
         minScore: effectiveMinScore,
         excludeTags: followSettings ? blacklist : [],
         highQualityOnly: effectiveHighQualityOnly,
         excludeLowQuality: effectiveExcludeLowQuality
-    }) || (await deps.rule34Service.search(tags, { limit: Math.max(requestedCount, 10), sort: 'random' })).posts || [];
+    }) || (await deps.rule34Service.search(tags, { limit: requestedCount, sort: 'random' })).posts || [];
 
     // All filters are now applied at the API/service level, so only a light
     // sanity-check for blacklist is needed here (covers the fallback path).
@@ -194,7 +200,9 @@ export async function handleRule34RandomCommand(
         const { rows, embed: videoEmbed } = deps.postHandler.createVideoEmbed(post, {
             resultIndex: 0,
             totalResults: page1Posts.length,
-            userId
+            userId,
+            sessionType: 'random',
+            maxPage: 200
         });
         await interaction.editReply({ content: '', embeds: [videoEmbed], components: rows });
         return;
@@ -203,7 +211,9 @@ export async function handleRule34RandomCommand(
     const { embed, rows } = await deps.postHandler.createPostEmbed(post, {
         resultIndex: 0,
         totalResults: page1Posts.length,
-        userId
+        userId,
+        sessionType: 'random',
+        maxPage: 200
     });
 
     await interaction.editReply({ embeds: [embed], components: rows });
@@ -238,7 +248,9 @@ export async function handleRule34GetByIdCommand(
         const { rows, embed: videoEmbed } = deps.postHandler.createVideoEmbed(post, {
             resultIndex: 0,
             totalResults: 1,
-            userId
+            userId,
+            sessionType: 'single',
+            maxPage: 1
         });
         await interaction.editReply({ content: '', embeds: [videoEmbed], components: rows });
         return;
@@ -247,7 +259,9 @@ export async function handleRule34GetByIdCommand(
     const { embed, rows } = await deps.postHandler.createPostEmbed(post, {
         resultIndex: 0,
         totalResults: 1,
-        userId
+        userId,
+        sessionType: 'single',
+        maxPage: 1
     });
 
     await interaction.editReply({ embeds: [embed], components: rows });
@@ -269,8 +283,9 @@ export async function handleRule34TrendingCommand(
 
     const result = await deps.rule34Service?.getTrending?.({
         timeframe,
+        limit: 100,
         excludeAi: aiFilter ?? prefs.aiFilter
-    }) || await deps.rule34Service.search('', { sort: 'score:desc', limit: 50 });
+    }) || await deps.rule34Service.search('', { sort: 'score:desc', limit: 100 });
 
     const rawPosts = result?.posts || [];
 
@@ -279,9 +294,6 @@ export async function handleRule34TrendingCommand(
         const isBlacklisted = postTags.some(t => blacklist.includes(t));
         if (isBlacklisted) return false;
         if ((aiFilter ?? prefs.aiFilter) && post.isAiGenerated) return false;
-        if (post.score < deps.normalizeMinScore(prefs.minScore, 1)) return false;
-        if (prefs.highQualityOnly && !post.isHighQuality) return false;
-        if (prefs.excludeLowQuality && post.isLowQuality) return false;
         return true;
     });
 
@@ -297,13 +309,14 @@ export async function handleRule34TrendingCommand(
         posts: filteredPosts,
         currentIndex: 0,
         currentPage: 1,
+        hasMore: false,
         timeframe,
         options: {
             timeframe,
             excludeAi: aiFilter ?? prefs.aiFilter,
-            minScore: deps.normalizeMinScore(prefs.minScore, 1),
-            highQualityOnly: prefs.highQualityOnly ?? false,
-            excludeLowQuality: prefs.excludeLowQuality ?? false
+            minScore: 0,
+            highQualityOnly: false,
+            excludeLowQuality: false
         } as any
     });
 
@@ -314,7 +327,9 @@ export async function handleRule34TrendingCommand(
         const { rows, embed: videoEmbed } = deps.postHandler.createVideoEmbed(post, {
             resultIndex: 0,
             totalResults: filteredPosts.length,
-            userId
+            userId,
+            sessionType: 'trending',
+            maxPage: 1
         });
         await interaction.editReply({ content: '', embeds: [videoEmbed], components: rows });
         return;
@@ -324,24 +339,12 @@ export async function handleRule34TrendingCommand(
         resultIndex: 0,
         totalResults: filteredPosts.length,
         query: `🔥 Trending (${timeframe})`,
-        userId
+        userId,
+        sessionType: 'trending',
+        maxPage: 1
     });
 
     await interaction.editReply({ embeds: [embed], components: rows });
-}
-
-export async function handleRule34RelatedCommand(
-    interaction: ChatInputCommandInteraction,
-    deps: Rule34CommandHandlerDeps
-): Promise<void> {
-    await interaction.deferReply();
-
-    const tag = interaction.options.getString('tag', true);
-    const relatedTags = await deps.rule34Service?.getRelatedTags?.(tag, 20) || [];
-
-    const embed = deps.postHandler?.createRelatedTagsEmbed?.(tag, relatedTags)
-        || deps.infoEmbed('Related Tags', relatedTags.map(t => `• ${t.name || t}`).join('\n') || 'No related tags found');
-    await interaction.editReply({ embeds: [embed] });
 }
 
 export async function handleRule34SettingsCommand(

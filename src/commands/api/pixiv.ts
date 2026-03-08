@@ -24,6 +24,7 @@ import type {
     PixivCommandSearchOptions,
     PixivCachedSearch as CachedSearch
 } from '../../types/api/content-session.js';
+import type { PixivSearchOptions } from '../../types/api/pixiv.js';
 import type {
     PixivService,
     PixivCache,
@@ -78,10 +79,10 @@ class PixivCommand extends BaseCommand {
             )
             .addStringOption(option =>
                 option.setName('nsfw')
-                    .setDescription('NSFW content filter')
+                    .setDescription('NSFW content filter (auto: all in NSFW channels)')
                     .setRequired(false)
                     .addChoices(
-                        { name: '✅ SFW Only (Default)', value: 'sfw' },
+                        { name: '✅ SFW Only', value: 'sfw' },
                         { name: '🔞 R18 + SFW (Show All)', value: 'all' },
                         { name: '🔥 R18 Only', value: 'r18only' }
                     )
@@ -126,7 +127,9 @@ class PixivCommand extends BaseCommand {
         const query = interaction.options.getString('query', true);
         const type = interaction.options.getString('type') || 'illust';
         const sort = interaction.options.getString('sort') || 'popular_desc';
-        const nsfw = interaction.options.getString('nsfw') || 'sfw';
+        const channel = interaction.channel;
+        const isNsfwChannel = channel && 'nsfw' in channel ? channel.nsfw : false;
+        const nsfw = interaction.options.getString('nsfw') || (isNsfwChannel ? 'all' : 'sfw');
         const aiFilter = interaction.options.getBoolean('ai_filter') || false;
         const qualityFilter = interaction.options.getBoolean('quality_filter') || false;
         const translate = interaction.options.getBoolean('translate') || false;
@@ -134,8 +137,6 @@ class PixivCommand extends BaseCommand {
         const minBookmarks = interaction.options.getInteger('min_bookmarks') || 0;
 
         // Check NSFW permissions
-        const channel = interaction.channel;
-        const isNsfwChannel = channel && 'nsfw' in channel ? channel.nsfw : false;
         if ((nsfw === 'all' || nsfw === 'r18only') && !isNsfwChannel) {
             await this.safeReply(interaction, { embeds: [this.errorEmbed('🔞 NSFW content can only be viewed in NSFW channels.')], ephemeral: true });
             return;
@@ -167,8 +168,23 @@ class PixivCommand extends BaseCommand {
         }
     }
 
+    private _mapCommandOptionsToServiceOptions(options: PixivCommandSearchOptions): PixivSearchOptions {
+        const nsfwMode = options.nsfw || 'sfw';
+
+        return {
+            contentType: (options.type as PixivSearchOptions['contentType']) || 'illust',
+            sort: options.sort || 'popular_desc',
+            showNsfw: nsfwMode === 'all' || nsfwMode === 'r18only',
+            r18Only: nsfwMode === 'r18only',
+            aiFilter: options.aiFilter || false,
+            qualityFilter: options.qualityFilter || false,
+            minBookmarks: options.minBookmarks || 0,
+            offset: options.offset || 0
+        };
+    }
+
     private async _handleArtworkById(interaction: ChatInputCommandInteraction, artworkId: string): Promise<void> {
-        const artwork = await pixivService!.getArtwork(artworkId);
+        const artwork = await pixivService!.getArtworkById(artworkId);
         
         if (!artwork) {
             await this.safeReply(interaction, { embeds: [this.errorEmbed(`Artwork **${artworkId}** not found.`)], ephemeral: true });
@@ -187,17 +203,14 @@ class PixivCommand extends BaseCommand {
 
     private async _handleSearch(interaction: ChatInputCommandInteraction, options: PixivCommandSearchOptions & { query: string }): Promise<void> {
         const offset = ((options.page || 1) - 1) * 30;
+        const serviceOptions = this._mapCommandOptionsToServiceOptions({ ...options, offset });
+
+        logger.debug(
+            'Pixiv Debug',
+            `Search map | Query: "${options.query}" | Mode: ${options.nsfw || 'sfw'} | showNsfw: ${Boolean(serviceOptions.showNsfw)} | r18Only: ${Boolean(serviceOptions.r18Only)} | Type: ${serviceOptions.contentType || 'illust'} | Offset: ${serviceOptions.offset || 0}`
+        );
         
-        const searchResult = await pixivService!.search(options.query, {
-            type: options.type,
-            sort: options.sort,
-            nsfw: options.nsfw,
-            aiFilter: options.aiFilter,
-            qualityFilter: options.qualityFilter,
-            translate: options.translate,
-            offset: offset,
-            minBookmarks: options.minBookmarks
-        });
+        const searchResult = await pixivService!.search(options.query, serviceOptions);
 
         const results = searchResult?.items || [];
         
@@ -358,12 +371,18 @@ class PixivCommand extends BaseCommand {
     private async _loadSearchPage(interaction: ButtonInteraction, cached: CachedSearch, cacheKey: string, newPage: number): Promise<void> {
         try {
             const offset = (newPage - 1) * 30;
-            
-            const searchResult = await pixivService!.search(cached.query, {
+            const serviceOptions = this._mapCommandOptionsToServiceOptions({
                 ...cached.options,
                 page: newPage,
-                offset: offset
+                offset
             });
+
+            logger.debug(
+                'Pixiv Debug',
+                `Page map | Query: "${cached.query}" | Page: ${newPage} | Mode: ${cached.options?.nsfw || 'sfw'} | showNsfw: ${Boolean(serviceOptions.showNsfw)} | r18Only: ${Boolean(serviceOptions.r18Only)} | Type: ${serviceOptions.contentType || 'illust'} | Offset: ${serviceOptions.offset || 0}`
+            );
+            
+            const searchResult = await pixivService!.search(cached.query, serviceOptions);
 
             const results = searchResult?.items || [];
 

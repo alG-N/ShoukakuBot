@@ -1,10 +1,10 @@
 import type { ActionRowBuilder, ButtonBuilder, EmbedBuilder } from 'discord.js';
 import type {
     PixivArtworkSummary as Artwork,
-    PixivCommandSearchOptions,
     PixivCommandSearchResult,
     PixivCachedSearch as CachedSearch
 } from '../content-session.js';
+import type { PixivSearchOptions } from '../pixiv.js';
 
 export interface PixivContentEmbedResult {
     embed: EmbedBuilder;
@@ -12,8 +12,8 @@ export interface PixivContentEmbedResult {
 }
 
 export type PixivService = {
-    getArtwork: (id: string) => Promise<Artwork | null>;
-    search: (query: string, options: PixivCommandSearchOptions) => Promise<PixivCommandSearchResult>;
+    getArtworkById: (id: number | string) => Promise<Artwork | null>;
+    search: (query: string, options: PixivSearchOptions) => Promise<PixivCommandSearchResult>;
     getAutocompleteSuggestions: (query: string) => Promise<Array<{ name?: string; tag_translation?: string; tag?: string; value?: string }>>;
 };
 

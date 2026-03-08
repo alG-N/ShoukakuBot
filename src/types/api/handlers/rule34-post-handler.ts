@@ -26,6 +26,8 @@ export interface PostEmbedOptions {
     showTags?: boolean;
     compactMode?: boolean;
     hasMore?: boolean;
+    sessionType?: 'search' | 'random' | 'trending' | 'single';
+    maxPage?: number;
 }
 
 export interface SearchFilters {

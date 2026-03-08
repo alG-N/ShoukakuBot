@@ -28,7 +28,6 @@ import {
 import {
     handleRule34GetByIdCommand,
     handleRule34RandomCommand,
-    handleRule34RelatedCommand,
     handleRule34SearchCommand,
     handleRule34SettingsCommand,
     handleRule34TrendingCommand
@@ -214,17 +213,6 @@ class Rule34Command extends BaseCommand {
             )
             .addSubcommand(subcommand =>
                 subcommand
-                    .setName('related')
-                    .setDescription('Find tags related to a tag')
-                    .addStringOption(option =>
-                        option.setName('tag')
-                            .setDescription('Tag to find related tags for')
-                            .setRequired(true)
-                            .setAutocomplete(true)
-                    )
-            )
-            .addSubcommand(subcommand =>
-                subcommand
                     .setName('settings')
                     .setDescription('Configure your Rule34 preferences and blacklist')
             );
@@ -234,7 +222,7 @@ class Rule34Command extends BaseCommand {
         try {
             const focused = interaction.options.getFocused(true);
             
-            if (focused.name !== 'tags' && focused.name !== 'tag') {
+            if (focused.name !== 'tags') {
                 await interaction.respond([]).catch(() => {});
                 return;
             }
@@ -318,9 +306,6 @@ class Rule34Command extends BaseCommand {
                     break;
                 case 'trending':
                     await handleRule34TrendingCommand(interaction, userId, this._buildHandlerDeps());
-                    break;
-                case 'related':
-                    await handleRule34RelatedCommand(interaction, this._buildHandlerDeps());
                     break;
                 case 'settings':
                     await handleRule34SettingsCommand(interaction, userId, this._buildHandlerDeps());

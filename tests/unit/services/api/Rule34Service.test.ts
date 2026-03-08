@@ -188,7 +188,7 @@ describe('Rule34Service', () => {
             await rule34Service.search('test', { rating: 'safe' });
 
             const calledUrl = mockFetch.mock.calls[0][0];
-            expect(calledUrl).toContain('rating%3Asafe');
+            expect(calledUrl).toContain('rating%3As');
         });
 
         it('should include auth params when configured', async () => {
@@ -287,7 +287,8 @@ describe('Rule34Service', () => {
     // --- getTrending ---
     describe('getTrending', () => {
         it('should fetch trending posts', async () => {
-            const posts = Array.from({ length: 5 }, (_, i) => makeRawPost({ id: i, score: 200 }));
+            const nowIso = new Date().toISOString();
+            const posts = Array.from({ length: 5 }, (_, i) => makeRawPost({ id: i, score: 200, created_at: nowIso }));
             mockFetch.mockResolvedValue({
                 ok: true,
                 json: async () => posts,
@@ -296,9 +297,10 @@ describe('Rule34Service', () => {
             const result = await rule34Service.getTrending();
 
             expect(result.posts.length).toBeGreaterThan(0);
+            expect(result.hasMore).toBe(false);
         });
 
-        it('should use higher minScore for longer timeframes', async () => {
+        it('should request recent-first sorting for timeframe queries', async () => {
             mockFetch.mockResolvedValue({
                 ok: true,
                 json: async () => [],
@@ -306,9 +308,8 @@ describe('Rule34Service', () => {
 
             await rule34Service.getTrending({ timeframe: 'month' });
 
-            // month should have minScore >= 200
             const url = mockFetch.mock.calls[0][0];
-            expect(url).toContain('score');
+            expect(url).toContain('sort%3Adate%3Adesc');
         });
     });
 

@@ -3,7 +3,6 @@ export { RATING_COLORS, RATING_EMOJIS, CONTENT_EMOJIS, SORT_DISPLAY } from './co
 export {
     handleRule34GetByIdCommand,
     handleRule34RandomCommand,
-    handleRule34RelatedCommand,
     handleRule34SearchCommand,
     handleRule34SettingsCommand,
     handleRule34TrendingCommand

@@ -49,8 +49,10 @@ class Rule34InteractionController {
             switch (action) {
                 case 'prev':
                 case 'next':
-                case 'random':
                     await this._handleNavigation(interaction, action, userId);
+                    break;
+                case 'selectpost':
+                    await this._handleSelectPost(interaction, userId);
                     break;
                 case 'watch':
                     await this._handleWatchVideo(interaction, parts[2], userId);
@@ -58,18 +60,12 @@ class Rule34InteractionController {
                 case 'watchback':
                     await this._handleWatchBack(interaction, userId);
                     break;
-                case 'related':
-                    await this._handleRelatedFromSession(interaction, userId);
-                    break;
                 case 'prevpage':
                 case 'nextpage':
                     await this._handlePageNavigation(interaction, action, userId);
                     break;
                 case 'fav':
                     await this._handleFavoriteToggle(interaction, parts[2], userId);
-                    break;
-                case 'tags':
-                    await this._handleTagsToggle(interaction, userId);
                     break;
                 case 'settings':
                     if (parts[2] === 'reset') {
@@ -161,62 +157,6 @@ class Rule34InteractionController {
             newIndex = Math.max(0, newIndex - 1);
         } else if (action === 'next') {
             newIndex = Math.min(session.posts.length - 1, newIndex + 1);
-        } else if (action === 'random') {
-            await this._withFetchingState(interaction, 'other posts', async () => {
-                const randomResult = await this.deps.rule34Service?.getRandom?.({
-                    tags: session.query || '',
-                    count: Math.max(10, Math.min(50, session.posts.length || 25)),
-                    excludeAi: session.options?.excludeAi,
-                    minScore: session.options?.minScore
-                }) || [];
-
-                const blacklist = this.deps.rule34Cache?.getBlacklist?.(userId) || [];
-                const randomPosts = randomResult.filter(post => {
-                    const postTags = (post.tags || '').split(' ');
-                    return !postTags.some(t => blacklist.includes(t));
-                });
-
-                if (randomPosts.length > 0) {
-                    const randomIndex = Math.floor(Math.random() * randomPosts.length);
-                    this.deps.rule34Cache?.updateSession?.(userId, {
-                        posts: randomPosts,
-                        currentIndex: randomIndex,
-                        currentPage: 1,
-                        hasMore: true
-                    });
-
-                    const post = randomPosts[randomIndex];
-                    this.deps.rule34Cache?.addToHistory?.(userId, post.id, { score: post.score });
-
-                    if (post.hasVideo && this.deps.postHandler?.createVideoEmbed) {
-                        const { rows, embed: videoEmbed } = this.deps.postHandler.createVideoEmbed(post, {
-                            resultIndex: randomIndex,
-                            totalResults: randomPosts.length,
-                            userId,
-                            searchPage: 1
-                        });
-                        await interaction.editReply({ content: '', embeds: [videoEmbed], components: rows });
-                        return;
-                    }
-
-                    const { embed, rows } = await this.deps.postHandler.createPostEmbed(post, {
-                        resultIndex: randomIndex,
-                        totalResults: randomPosts.length,
-                        query: session.query,
-                        userId,
-                        searchPage: 1
-                    });
-
-                    await interaction.editReply({ content: '', embeds: [embed], components: rows });
-                    return;
-                }
-
-                newIndex = Math.floor(Math.random() * session.posts.length);
-            });
-
-            if (newIndex === session.currentIndex) {
-                return;
-            }
         }
 
         this.deps.rule34Cache?.updateSession?.(userId, { currentIndex: newIndex });
@@ -231,7 +171,9 @@ class Rule34InteractionController {
                 totalResults: session.posts.length,
                 userId,
                 searchPage: session.currentPage || 1,
-                hasMore: sessionHasMore
+                hasMore: sessionHasMore,
+                sessionType: (session.type as any) || 'search',
+                maxPage: session.type === 'trending' ? 1 : 200
             });
             await interaction.editReply({ content: '', embeds: [videoEmbed], components: rows });
             return;
@@ -243,10 +185,115 @@ class Rule34InteractionController {
             query: session.query,
             userId,
             searchPage: session.currentPage || 1,
-            hasMore: sessionHasMore
+            hasMore: sessionHasMore,
+            sessionType: (session.type as any) || 'search',
+            maxPage: session.type === 'trending' ? 1 : 200
         });
 
         await interaction.editReply({ content: '', embeds: [embed], components: rows });
+    }
+
+    private async _handleSelectPost(interaction: ButtonInteraction, userId: string): Promise<void> {
+        const session = this.deps.rule34Cache?.getSession?.(userId);
+        if (!session || !Array.isArray(session.posts) || session.posts.length === 0) {
+            await interaction.reply({
+                content: '⏱️ Session expired. Please run the command again.',
+                ephemeral: true
+            });
+            return;
+        }
+
+        const maxPost = session.posts.length;
+        if (maxPost <= 1) {
+            await interaction.reply({
+                content: 'ℹ️ This result set only has one post.',
+                ephemeral: true
+            });
+            return;
+        }
+
+        const modal = new ModalBuilder()
+            .setCustomId(`rule34_selectpost_modal_${userId}`)
+            .setTitle('Select Post');
+
+        const input = new TextInputBuilder()
+            .setCustomId('post_value')
+            .setLabel(`Post number (1-${maxPost})`)
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder(`${session.currentIndex + 1}`)
+            .setRequired(true)
+            .setMinLength(1)
+            .setMaxLength(3);
+
+        modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
+        await interaction.showModal(modal);
+
+        try {
+            const modalResponse = await interaction.awaitModalSubmit({
+                filter: i => i.customId === `rule34_selectpost_modal_${userId}` && i.user.id === userId,
+                time: 60000
+            });
+
+            const raw = modalResponse.fields.getTextInputValue('post_value').trim();
+            const postNumber = Number.parseInt(raw, 10);
+            if (Number.isNaN(postNumber) || postNumber < 1 || postNumber > maxPost) {
+                await modalResponse.reply({
+                    content: `❌ Invalid post number. Please enter a number from 1 to ${maxPost}.`,
+                    ephemeral: true
+                });
+                return;
+            }
+
+            await modalResponse.deferReply({ ephemeral: true });
+
+            const targetIndex = postNumber - 1;
+            if (targetIndex === session.currentIndex) {
+                await modalResponse.editReply({ content: `ℹ️ You are already on post ${postNumber}.` });
+                return;
+            }
+
+            this.deps.rule34Cache?.updateSession?.(userId, { currentIndex: targetIndex });
+            const activeSession = this.deps.rule34Cache?.getSession?.(userId);
+            if (!activeSession || !activeSession.posts[targetIndex]) {
+                await modalResponse.editReply({ content: '❌ Session expired. Please run the command again.' });
+                return;
+            }
+
+            const post = activeSession.posts[targetIndex];
+            const sessionHasMore = activeSession.hasMore ?? true;
+            this.deps.rule34Cache?.addToHistory?.(userId, post.id, { score: post.score });
+
+            if (post.hasVideo && this.deps.postHandler?.createVideoEmbed) {
+                const { rows, embed: videoEmbed } = this.deps.postHandler.createVideoEmbed(post, {
+                    resultIndex: targetIndex,
+                    totalResults: activeSession.posts.length,
+                    userId,
+                    searchPage: activeSession.currentPage || 1,
+                    hasMore: sessionHasMore,
+                    sessionType: (activeSession.type as any) || 'search',
+                    maxPage: activeSession.type === 'trending' ? 1 : 200
+                });
+                await interaction.message.edit({ content: '', embeds: [videoEmbed], components: rows });
+                await modalResponse.editReply({ content: `✅ Jumped to post ${postNumber}.` });
+                return;
+            }
+
+            const { embed, rows } = await this.deps.postHandler.createPostEmbed(post, {
+                resultIndex: targetIndex,
+                totalResults: activeSession.posts.length,
+                query: activeSession.query,
+                userId,
+                searchPage: activeSession.currentPage || 1,
+                hasMore: sessionHasMore,
+                sessionType: (activeSession.type as any) || 'search',
+                maxPage: activeSession.type === 'trending' ? 1 : 200
+            });
+
+            await interaction.message.edit({ content: '', embeds: [embed], components: rows });
+            await modalResponse.editReply({ content: `✅ Jumped to post ${postNumber}.` });
+        } catch {
+            // Modal timed out
+        }
     }
 
     private async _handlePageNavigation(interaction: ButtonInteraction, action: string, userId: string): Promise<void> {
@@ -264,7 +311,20 @@ class Rule34InteractionController {
 
         const currentPage = session.currentPage || 1;
         const newPage = action === 'nextpage' ? currentPage + 1 : Math.max(1, currentPage - 1);
-        logger.info('Rule34', `Page navigation: type=${session.type} action=${action} currentPage=${currentPage} newPage=${newPage}`);
+        await this._navigateToPage(interaction, userId, newPage, action === 'nextpage');
+    }
+
+    private async _navigateToPage(interaction: ButtonInteraction, userId: string, newPage: number, isForward: boolean = true): Promise<void> {
+        const session = this.deps.rule34Cache?.getSession?.(userId);
+        if (!session || !['search', 'random', 'trending'].includes(session.type)) {
+            await interaction.followUp({
+                content: '⏱️ Session expired. Please run the command again.',
+                ephemeral: true
+            }).catch(() => {});
+            return;
+        }
+
+        logger.info('Rule34', `Page navigation: type=${session.type} currentPage=${session.currentPage || 1} newPage=${newPage}`);
         const prefs = this.deps.rule34Cache?.getPreferences?.(userId) || {};
         const blacklist = this.deps.rule34Cache?.getBlacklist?.(userId) || [];
         const effectiveExcludeAi = session.options?.excludeAi ?? prefs.aiFilter;
@@ -277,8 +337,9 @@ class Rule34InteractionController {
         let posts: Post[] = [];
         let hasMore = false;
         const randomRating = session.options?.rating === 'all' ? null : session.options?.rating;
+        const canEditReply = interaction.deferred || interaction.replied;
 
-        await this._withFetchingState(interaction, 'other posts', async () => {
+        const fetchTask = async () => {
             if (session.type === 'search' && session.options) {
                 const result = await this.deps.rule34Service.search(session.query || '', {
                     ...session.options,
@@ -291,11 +352,12 @@ class Rule34InteractionController {
                 logger.info('Rule34', `Search page ${newPage}: fetched=${posts.length} hasMore=${hasMore}`);
             } else if (session.type === 'random') {
                 const hasTags = (session.query || '').trim().length > 0;
-                const pageRange = hasTags ? 10 : 30;
+                const pageRange = hasTags ? 25 : 100;
                 const maxAttempts = 5;
                 const configuredRandomCount = Number((session.options as any)?.randomCount ?? session.posts?.length ?? 1);
                 const randomCount = Math.max(1, Math.min(50, configuredRandomCount));
                 const overflowLimit = Math.max(50, randomCount * 2);
+                const fetchLimit = randomCount;
                 // Accumulate ALL previously seen post IDs across pages
                 const seenIds = new Set<number>(session.seenPostIds || session.posts?.map(p => p.id) || []);
                 logger.info('Rule34', `Random pagination: randomCount=${randomCount} seenIds=${seenIds.size} hasTags=${hasTags}`);
@@ -322,7 +384,7 @@ class Rule34InteractionController {
                 for (let attempt = 0; attempt < maxAttempts && collected.length < randomCount; attempt++) {
                     const page = attempt === 0 ? 0 : Math.floor(Math.random() * pageRange);
                     const result = await this.deps.rule34Service.search(session.query || '', {
-                        limit: 100,
+                        limit: fetchLimit,
                         page,
                         rating: (followSettings ? randomRating : null) as any,
                         excludeAi: (followSettings || hasAiOverride) ? effectiveExcludeAi : false,
@@ -346,8 +408,8 @@ class Rule34InteractionController {
                             }
                         }
                     }
-                    // If unseen dried up even on attempt 0, likely exhausted
-                    if (fetched.length === 0) break;
+                    // Empty pages can happen on sparse queries; keep trying other pages.
+                    if (fetched.length === 0) continue;
                 }
                 posts = collected;
                 hasMore = posts.length > 0;
@@ -363,7 +425,13 @@ class Rule34InteractionController {
                 posts = result?.posts || [];
                 hasMore = result?.hasMore || false;
             }
-        });
+        };
+
+        if (canEditReply) {
+            await this._withFetchingState(interaction, 'other posts', fetchTask);
+        } else {
+            await fetchTask();
+        }
 
         const preFilterCount = posts.length;
         // For random, all filters are already applied at the API/service level
@@ -387,10 +455,12 @@ class Rule34InteractionController {
         }
 
         if (posts.length === 0) {
-            await interaction.followUp({
-                content: '❌ No more results found.',
-                ephemeral: true
-            });
+            if (canEditReply) {
+                await interaction.followUp({
+                    content: '❌ No more results found.',
+                    ephemeral: true
+                });
+            }
             return;
         }
 
@@ -399,12 +469,14 @@ class Rule34InteractionController {
         const currentPostIds = new Set(session.posts?.map(p => p.id) || []);
         const newPostIds = posts.map(p => p.id);
         const allDuplicates = newPostIds.length > 0 && newPostIds.every(id => currentPostIds.has(id));
-        if (session.type !== 'random' && allDuplicates && action === 'nextpage') {
+        if (session.type !== 'random' && allDuplicates && isForward) {
             hasMore = false;
-            await interaction.followUp({
-                content: '❌ No more results found.',
-                ephemeral: true
-            });
+            if (canEditReply) {
+                await interaction.followUp({
+                    content: '❌ No more results found.',
+                    ephemeral: true
+                });
+            }
             // Update session to disable the next page button
             this.deps.rule34Cache?.updateSession?.(userId, { hasMore: false });
             return;
@@ -435,9 +507,15 @@ class Rule34InteractionController {
                 totalResults: posts.length,
                 userId,
                 searchPage: newPage,
-                hasMore
+                hasMore,
+                sessionType: (session.type as any) || 'search',
+                maxPage: session.type === 'trending' ? 1 : 200
             });
-            await interaction.editReply({ content: '', embeds: [videoEmbed], components: rows });
+            if (canEditReply) {
+                await interaction.editReply({ content: '', embeds: [videoEmbed], components: rows });
+            } else {
+                await interaction.message.edit({ content: '', embeds: [videoEmbed], components: rows });
+            }
             return;
         }
 
@@ -447,10 +525,16 @@ class Rule34InteractionController {
             query: session.query,
             userId,
             searchPage: newPage,
-            hasMore
+            hasMore,
+            sessionType: (session.type as any) || 'search',
+            maxPage: session.type === 'trending' ? 1 : 200
         });
 
-        await interaction.editReply({ content: '', embeds: [embed], components: rows });
+        if (canEditReply) {
+            await interaction.editReply({ content: '', embeds: [embed], components: rows });
+        } else {
+            await interaction.message.edit({ content: '', embeds: [embed], components: rows });
+        }
     }
 
     private async _handleRelatedFromSession(interaction: ButtonInteraction, userId: string): Promise<void> {
@@ -544,7 +628,9 @@ class Rule34InteractionController {
                 userId,
                 searchPage: session.currentPage || 1,
                 showTags: session.showTags,
-                hasMore: sessionHasMore
+                hasMore: sessionHasMore,
+                sessionType: (session.type as any) || 'search',
+                maxPage: session.type === 'trending' ? 1 : 200
             });
             await interaction.editReply({ content: '', embeds: [videoEmbed], components: rows });
             return;
@@ -557,7 +643,9 @@ class Rule34InteractionController {
             userId,
             searchPage: session.currentPage || 1,
             showTags: session.showTags,
-            hasMore: sessionHasMore
+            hasMore: sessionHasMore,
+            sessionType: (session.type as any) || 'search',
+            maxPage: session.type === 'trending' ? 1 : 200
         });
         await interaction.editReply({ content: '', embeds: [embed], components: rows });
     }
@@ -652,51 +740,6 @@ class Rule34InteractionController {
                 ephemeral: true
             });
         }
-    }
-
-    private async _handleTagsToggle(interaction: ButtonInteraction, userId: string): Promise<void> {
-        const session = this.deps.rule34Cache?.getSession?.(userId);
-
-        if (!session) {
-            await interaction.reply({
-                content: '⏱️ Session expired.',
-                ephemeral: true
-            });
-            return;
-        }
-
-        await interaction.deferUpdate();
-
-        const post = session.posts[session.currentIndex];
-        const showTags = !session.showTags;
-        const tagsHasMore = session.hasMore ?? true;
-
-        this.deps.rule34Cache?.updateSession?.(userId, { showTags });
-
-        if (post.hasVideo && this.deps.postHandler?.createVideoEmbed) {
-            const { rows, embed: videoEmbed } = this.deps.postHandler.createVideoEmbed(post, {
-                resultIndex: session.currentIndex,
-                totalResults: session.posts.length,
-                userId,
-                searchPage: session.currentPage || 1,
-                showTags,
-                hasMore: tagsHasMore
-            });
-            await interaction.editReply({ content: '', embeds: [videoEmbed], components: rows });
-            return;
-        }
-
-        const { embed, rows } = await this.deps.postHandler.createPostEmbed(post, {
-            resultIndex: session.currentIndex,
-            totalResults: session.posts.length,
-            query: session.query,
-            userId,
-            searchPage: session.currentPage || 1,
-            showTags,
-            hasMore: tagsHasMore
-        });
-
-        await interaction.editReply({ embeds: [embed], components: rows });
     }
 
     private async _handleBlacklistAction(interaction: ButtonInteraction, action: string, userId: string): Promise<void> {

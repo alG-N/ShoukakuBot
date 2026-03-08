@@ -231,8 +231,8 @@ class Rule34Service {
         } = options;
 
         const desiredCount = Math.max(1, Math.min(50, count));
-        const limit = Math.min(100, Math.max(desiredCount * 5, 50));
-        const maxAttempts = 5;
+        const limit = desiredCount;
+        const maxAttempts = 3;
         const uniquePosts: Rule34Post[] = [];
         const seenIds = new Set<number>();
 
@@ -240,7 +240,7 @@ class Rule34Service {
 
         for (let attempt = 0; attempt < maxAttempts && uniquePosts.length < desiredCount; attempt++) {
             // First attempt always uses page 0 (most reliable), then random pages
-            const pageRange = tags.trim() ? 50 : 200;
+            const pageRange = tags.trim() ? 25 : 100;
             const page = attempt === 0 ? 0 : Math.floor(Math.random() * pageRange);
 
             const result = await this.search(tags, {
@@ -280,7 +280,7 @@ class Rule34Service {
      * Get trending/popular posts filtered by actual timeframe
      */
     async getTrending(options: TrendingOptions & { page?: number } = {}): Promise<Rule34SearchResult> {
-        const { timeframe = 'day', limit = 50, excludeAi = false, page: pageOffset = 0 } = options;
+        const { timeframe = 'day', limit = 100, excludeAi = false, page: pageOffset = 0 } = options;
 
         // Calculate the cutoff date for the timeframe
         const now = Date.now();
@@ -344,7 +344,7 @@ class Rule34Service {
         return {
             posts: trendingPosts,
             totalCount: trendingPosts.length,
-            hasMore: trendingPosts.length >= limit
+            hasMore: false
         };
     }
 

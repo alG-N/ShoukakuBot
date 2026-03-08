@@ -25,7 +25,9 @@ export async function createPostEmbed(post: Rule34Post, options: PostEmbedOption
         totalResults = 1,
         searchPage = 1,
         userId = '',
-        showTags = false
+        hasMore = true,
+        sessionType = 'search',
+        maxPage = 200
     } = options;
 
     const postRating = post.rating as PostRating;
@@ -74,7 +76,7 @@ export async function createPostEmbed(post: Rule34Post, options: PostEmbedOption
 
     embed.setDescription(description);
 
-    if (showTags && post.tagList?.length) {
+    if (post.tagList?.length) {
         const formattedTags = rule34Service.formatTagsForDisplay?.(post.tagList, 1000) || post.tagList.slice(0, 20).join(', ');
         embed.addFields({ name: '🏷️ Tags', value: formattedTags || 'No tags', inline: false });
     }
@@ -94,12 +96,12 @@ export async function createPostEmbed(post: Rule34Post, options: PostEmbedOption
     embed.setFooter({ text: footerParts.join(' • ') });
     embed.setTimestamp(post.createdAt ? new Date(post.createdAt) : new Date());
 
-    const rows = createPostButtons(post, { resultIndex, totalResults, userId, searchPage });
+    const rows = createPostButtons(post, { resultIndex, totalResults, userId, searchPage, hasMore, sessionType, maxPage });
     return { embed, rows };
 }
 
 export function createVideoEmbed(post: Rule34Post, options: PostEmbedOptions = {}): EmbedResult {
-    const { resultIndex = 0, totalResults = 1, searchPage = 1, userId = '', showTags = false } = options;
+    const { resultIndex = 0, totalResults = 1, searchPage = 1, userId = '', hasMore = true, sessionType = 'search', maxPage = 200 } = options;
 
     const postRating = post.rating as PostRating;
     const ratingEmoji = RATING_EMOJIS[postRating] || '❓';
@@ -134,7 +136,7 @@ export function createVideoEmbed(post: Rule34Post, options: PostEmbedOptions = {
         embed.setImage(post.previewUrl);
     }
 
-    if (showTags && post.tagList?.length) {
+    if (post.tagList?.length) {
         const formattedTags = rule34Service.formatTagsForDisplay?.(post.tagList, 1000) || post.tagList.slice(0, 20).join(', ');
         embed.addFields({ name: '🏷️ Tags', value: formattedTags || 'No tags', inline: false });
     }
@@ -146,7 +148,12 @@ export function createVideoEmbed(post: Rule34Post, options: PostEmbedOptions = {
     embed.setFooter({ text: footerParts.join(' • ') });
     embed.setTimestamp(post.createdAt ? new Date(post.createdAt) : new Date());
 
-    const rows = createPostButtons(post, options);
+    const rows = createPostButtons(post, {
+        ...options,
+        hasMore,
+        sessionType,
+        maxPage
+    });
     return { embed, rows };
 }
 

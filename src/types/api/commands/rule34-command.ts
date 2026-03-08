@@ -67,6 +67,8 @@ export interface Rule34PostHandlerContract {
         searchPage?: number;
         showTags?: boolean;
         hasMore?: boolean;
+        sessionType?: 'search' | 'random' | 'trending' | 'single';
+        maxPage?: number;
     }) => Promise<{ embed: EmbedBuilder; rows: ActionRowBuilder<ButtonBuilder>[] }>;
     createVideoEmbed?: (post: Post, options: {
         resultIndex: number;
@@ -75,6 +77,8 @@ export interface Rule34PostHandlerContract {
         searchPage?: number;
         showTags?: boolean;
         hasMore?: boolean;
+        sessionType?: 'search' | 'random' | 'trending' | 'single';
+        maxPage?: number;
     }) => { embed: EmbedBuilder; rows: ActionRowBuilder<ButtonBuilder>[]; content?: string };
     createNoResultsEmbed?: (tags: string) => EmbedBuilder;
     createRelatedTagsEmbed?: (tag: string, relatedTags: Array<{ name?: string }>) => EmbedBuilder;
