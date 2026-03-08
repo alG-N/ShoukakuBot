@@ -22,7 +22,7 @@ import type {
     SearchSession,
     UserPreferences
 } from '../../../types/api/handlers/nhentai-handler.js';
-import { applyTranslatedTitle } from './embeds.js';
+// applyTranslatedTitle no longer needed — translate now finds the English version
 
 type GalleryResponseOptions = {
     isRandom?: boolean;
@@ -53,6 +53,9 @@ export interface NhentaiButtonInteractionDeps {
     createFavouritesButtons: (userId: string, currentPage: number, totalPages: number, favourites: NHentaiFavourite[]) => ActionRowBuilder<ButtonBuilder>[];
 }
 
+// Per-user lock to prevent race conditions when spamming page navigation
+const navigatingUsers = new Set<string>();
+
 export async function handleNhentaiButtonInteraction(
     interaction: ButtonInteraction,
     deps: NhentaiButtonInteractionDeps
@@ -67,6 +70,16 @@ export async function handleNhentaiButtonInteraction(
             ephemeral: true
         });
         return;
+    }
+
+    // Guard page navigation actions against concurrent clicks
+    const pageActions = ['prev', 'next', 'first', 'last', 'read'];
+    if (pageActions.includes(action)) {
+        if (navigatingUsers.has(userId)) {
+            await interaction.deferUpdate().catch(() => {});
+            return;
+        }
+        navigatingUsers.add(userId);
     }
 
     try {
@@ -353,7 +366,7 @@ export async function handleNhentaiButtonInteraction(
 
             case 'translate': {
                 const galleryId = parts[2];
-                const result = await withNhentaiFetchingState(interaction, 'translation', async () =>
+                const result = await withNhentaiFetchingState(interaction, 'translated version', async () =>
                     nhentaiService.fetchGallery(galleryId)
                 );
                 if (!result.success || !result.data) {
@@ -365,16 +378,71 @@ export async function handleNhentaiButtonInteraction(
                 }
 
                 const gallery = result.data;
-                const { embed, files } = await deps.createGalleryResponse(gallery);
-                const originalTitle = gallery.title.japanese || gallery.title.pretty || gallery.title.english || 'Unknown Title';
-                const translatedTitle = await nhentaiService.translateToEnglish(originalTitle);
 
-                const finalEmbed = translatedTitle && translatedTitle.toLowerCase() !== originalTitle.toLowerCase()
-                    ? applyTranslatedTitle(embed, originalTitle, translatedTitle)
-                    : embed;
+                // Build search query from identifying tags to find the English-translated version
+                const searchParts: string[] = [];
+                const tags = gallery.tags || [];
+                for (const tag of tags) {
+                    if (tag.type === 'artist' || tag.type === 'group' || tag.type === 'parody') {
+                        searchParts.push(`${tag.type}:"${tag.name}"`);
+                    }
+                }
+                searchParts.push('language:english');
 
-                const rows = await deps.createMainButtons(gallery.id, userId, gallery.num_pages, gallery);
-                await interaction.editReply({ embeds: [finalEmbed], components: rows, files });
+                if (searchParts.length <= 1) {
+                    // No identifying tags found, fall back to title search
+                    const titleQuery = gallery.title.english || gallery.title.pretty || '';
+                    if (titleQuery) searchParts.unshift(`"${titleQuery}"`);
+                }
+
+                const searchQuery = searchParts.join(' ');
+                const searchResult = await withNhentaiFetchingState(interaction, 'translated version', async () =>
+                    nhentaiService.searchGalleries(searchQuery, 1, 'popular')
+                );
+
+                if (!searchResult.success || !searchResult.data || searchResult.data.results.length === 0) {
+                    // No translated version found, show original with message
+                    const { embed, files } = await deps.createGalleryResponse(gallery);
+                    const rows = await deps.createMainButtons(gallery.id, userId, gallery.num_pages, gallery);
+                    await interaction.editReply({ embeds: [embed], components: rows, files });
+                    await interaction.followUp({
+                        content: '❌ No English-translated version found for this gallery.',
+                        ephemeral: true
+                    });
+                    break;
+                }
+
+                // Find the best match (different gallery, English language)
+                const englishGallery = searchResult.data.results.find(g =>
+                    g.id !== gallery.id &&
+                    g.tags?.some((t: { type: string; name: string }) => t.type === 'language' && t.name.toLowerCase() === 'english')
+                ) || searchResult.data.results.find(g => g.id !== gallery.id);
+
+                if (!englishGallery) {
+                    const { embed, files } = await deps.createGalleryResponse(gallery);
+                    const rows = await deps.createMainButtons(gallery.id, userId, gallery.num_pages, gallery);
+                    await interaction.editReply({ embeds: [embed], components: rows, files });
+                    await interaction.followUp({
+                        content: '❌ No English-translated version found for this gallery.',
+                        ephemeral: true
+                    });
+                    break;
+                }
+
+                // Fetch the full English gallery and display it
+                const englishResult = await nhentaiService.fetchGallery(englishGallery.id);
+                if (!englishResult.success || !englishResult.data) {
+                    await interaction.editReply({
+                        embeds: [deps.createErrorEmbed('Could not load the translated version.')],
+                        components: []
+                    });
+                    break;
+                }
+
+                const translatedGallery = englishResult.data;
+                const { embed: translatedEmbed, files: translatedFiles } = await deps.createGalleryResponse(translatedGallery);
+                const translatedRows = await deps.createMainButtons(translatedGallery.id, userId, translatedGallery.num_pages, translatedGallery);
+                await interaction.editReply({ embeds: [translatedEmbed], components: translatedRows, files: translatedFiles });
                 break;
             }
 
@@ -424,6 +492,8 @@ export async function handleNhentaiButtonInteraction(
             content: '❌ An error occurred. Please try again.',
             ephemeral: true
         }).catch(() => {});
+    } finally {
+        navigatingUsers.delete(userId);
     }
 }
 

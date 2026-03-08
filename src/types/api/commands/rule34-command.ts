@@ -65,6 +65,7 @@ export interface Rule34PostHandlerContract {
         userId: string;
         searchPage?: number;
         showTags?: boolean;
+        hasMore?: boolean;
     }) => Promise<{ embed: EmbedBuilder; rows: ActionRowBuilder<ButtonBuilder>[] }>;
     createVideoEmbed?: (post: Post, options: {
         resultIndex: number;
@@ -72,6 +73,7 @@ export interface Rule34PostHandlerContract {
         userId: string;
         searchPage?: number;
         showTags?: boolean;
+        hasMore?: boolean;
     }) => { embed: EmbedBuilder; rows: ActionRowBuilder<ButtonBuilder>[]; content?: string };
     createNoResultsEmbed?: (tags: string) => EmbedBuilder;
     createRelatedTagsEmbed?: (tag: string, relatedTags: Array<{ name?: string }>) => EmbedBuilder;

@@ -25,6 +25,7 @@ export interface PostEmbedOptions {
     userId?: string;
     showTags?: boolean;
     compactMode?: boolean;
+    hasMore?: boolean;
 }
 
 export interface SearchFilters {

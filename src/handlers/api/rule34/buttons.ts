@@ -11,7 +11,7 @@ export function createPostButtons(
     post: Rule34Post,
     options: PostEmbedOptions = {}
 ): ActionRowBuilder<ButtonBuilder>[] {
-    const { resultIndex = 0, totalResults = 1, userId = '', searchPage = 1 } = options;
+    const { resultIndex = 0, totalResults = 1, userId = '', searchPage = 1, hasMore = true } = options;
     const rows: ActionRowBuilder<ButtonBuilder>[] = [];
 
     const navRow = new ActionRowBuilder<ButtonBuilder>();
@@ -39,10 +39,20 @@ export function createPostButtons(
     rows.push(navRow);
 
     const actionRow = new ActionRowBuilder<ButtonBuilder>();
-    actionRow.addComponents(
-        new ButtonBuilder().setLabel('Full Image').setStyle(ButtonStyle.Link).setURL(post.fileUrl),
-        new ButtonBuilder().setLabel('View on Site').setStyle(ButtonStyle.Link).setURL(post.pageUrl)
-    );
+    if (post.hasVideo) {
+        actionRow.addComponents(
+            new ButtonBuilder()
+                .setCustomId(`rule34_watch_${post.id}_${userId}`)
+                .setLabel('▶️ Watch Video')
+                .setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setLabel('View on Site').setStyle(ButtonStyle.Link).setURL(post.pageUrl)
+        );
+    } else {
+        actionRow.addComponents(
+            new ButtonBuilder().setLabel('Full Image').setStyle(ButtonStyle.Link).setURL(post.fileUrl),
+            new ButtonBuilder().setLabel('View on Site').setStyle(ButtonStyle.Link).setURL(post.pageUrl)
+        );
+    }
 
     const isFavorited = rule34Cache.isFavorited(userId, post.id);
     actionRow.addComponents(
@@ -56,6 +66,10 @@ export function createPostButtons(
             .setStyle(ButtonStyle.Secondary)
     );
     rows.push(actionRow);
+
+    // Disable next page if no more results OR if we're at the last post and there are fewer
+    // than 50 (full page), indicating no more pages exist
+    const disableNextPage = !hasMore && resultIndex >= totalResults - 1;
 
     const pageRow = new ActionRowBuilder<ButtonBuilder>();
     pageRow.addComponents(
@@ -72,7 +86,8 @@ export function createPostButtons(
         new ButtonBuilder()
             .setCustomId(`rule34_nextpage_${userId}`)
             .setLabel('Next Page ⏭')
-            .setStyle(ButtonStyle.Primary),
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(disableNextPage),
         new ButtonBuilder()
             .setCustomId(`rule34_related_${userId}`)
             .setLabel('🔗 Related')

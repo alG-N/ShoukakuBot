@@ -1,4 +1,4 @@
-import { EmbedBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { EmbedBuilder } from 'discord.js';
 import rule34Service from '../../../services/api/rule34Service.js';
 import { rule34Cache } from '../../../repositories/api/rule34Cache.js';
 import { formatNumber } from '../../../utils/common/embed.js';
@@ -99,47 +99,55 @@ export async function createPostEmbed(post: Rule34Post, options: PostEmbedOption
 }
 
 export function createVideoEmbed(post: Rule34Post, options: PostEmbedOptions = {}): EmbedResult {
-    const { resultIndex = 0, totalResults = 1, searchPage = 1 } = options;
+    const { resultIndex = 0, totalResults = 1, searchPage = 1, userId = '', showTags = false } = options;
 
     const postRating = post.rating as PostRating;
     const ratingEmoji = RATING_EMOJIS[postRating] || '❓';
 
-    // Build compact text content so Discord auto-embeds the video URL as a player
-    const infoLine = `🎬 **Video Post #${post.id}** | ${ratingEmoji} ${post.rating?.toUpperCase()} | ⭐ ${formatNumber(post.score)} | 📐 ${post.width}×${post.height}${post.hasSound ? ' | 🔊 Has Sound' : ''}`;
-    const footerLine = `Result ${resultIndex + 1}/${totalResults}${searchPage > 1 ? ` • Page ${searchPage}` : ''} • File: .${post.fileExtension}`;
-    const content = `${infoLine}\n${footerLine}\n${post.fileUrl}`;
+    let description = '';
+    description += `${ratingEmoji} **Rating:** ${post.rating?.toUpperCase() || 'Unknown'}\n`;
+    description += `⭐ **Score:** ${formatNumber(post.score)}\n`;
+    description += `📐 **Dimensions:** ${post.width} × ${post.height}\n`;
+    description += `${post.hasSound ? '🔊 Has Sound' : '🔇 No Sound'}\n`;
+
+    const indicators: string[] = [];
+    if (post.isAiGenerated) indicators.push('🤖 AI');
+    if (post.isHighQuality) indicators.push('💎 HQ');
+    if (indicators.length > 0) description += indicators.join(' • ') + '\n';
+
+    if (post.owner) description += `👤 **Uploader:** ${post.owner}\n`;
+
+    if (post.createdAt) {
+        const uploadTimestamp = Math.floor(new Date(post.createdAt).getTime() / 1000);
+        description += `📅 **Uploaded:** <t:${uploadTimestamp}:R>\n`;
+    }
+
+    description += `\n[▶️ Watch Video](${post.fileUrl})`;
 
     const embed = new EmbedBuilder()
         .setColor(RATING_COLORS[postRating] || RATING_COLORS.default)
         .setTitle(`🎬 Video Post #${post.id}`)
         .setURL(post.pageUrl)
-        .setDescription(
-            `${ratingEmoji} **Rating:** ${post.rating?.toUpperCase()}\n` +
-            `⭐ **Score:** ${formatNumber(post.score)}\n` +
-            `📐 **Dimensions:** ${post.width} × ${post.height}\n` +
-            `${post.hasSound ? '🔊 Has Sound' : '🔇 No Sound'}`
-        );
+        .setDescription(description);
 
     if (post.previewUrl) {
         embed.setImage(post.previewUrl);
     }
 
-    embed.setFooter({ text: `Result ${resultIndex + 1}/${totalResults} • File: .${post.fileExtension}` });
-
-    const rows = createPostButtons(post, options);
-    const videoButton = new ButtonBuilder()
-        .setLabel('▶️ Watch Video')
-        .setStyle(ButtonStyle.Link)
-        .setURL(post.fileUrl);
-
-    if (rows[1]) {
-        rows[1].components.unshift(videoButton);
-        if (rows[1].components.length > 5) {
-            rows[1].components.pop();
-        }
+    if (showTags && post.tagList?.length) {
+        const formattedTags = rule34Service.formatTagsForDisplay?.(post.tagList, 1000) || post.tagList.slice(0, 20).join(', ');
+        embed.addFields({ name: '🏷️ Tags', value: formattedTags || 'No tags', inline: false });
     }
 
-    return { embed, rows, content };
+    const footerParts: string[] = [];
+    footerParts.push(`Result ${resultIndex + 1}/${totalResults}`);
+    if (searchPage > 1) footerParts.push(`Page ${searchPage}`);
+    footerParts.push(`File: .${post.fileExtension}`);
+    embed.setFooter({ text: footerParts.join(' • ') });
+    embed.setTimestamp(post.createdAt ? new Date(post.createdAt) : new Date());
+
+    const rows = createPostButtons(post, options);
+    return { embed, rows };
 }
 
 export function createSearchSummaryEmbed(

@@ -83,13 +83,14 @@ export async function handleRule34SearchCommand(
     deps.rule34Cache?.addToHistory?.(userId, post.id, { score: post.score });
 
     if (post.hasVideo && deps.postHandler?.createVideoEmbed) {
-        const { rows, content } = deps.postHandler.createVideoEmbed(post, {
+        const { rows, embed: videoEmbed } = deps.postHandler.createVideoEmbed(post, {
             resultIndex: 0,
             totalResults: result.posts.length,
             userId,
-            searchPage: page
+            searchPage: page,
+            hasMore: result.hasMore
         });
-        await interaction.editReply({ content: content || post.fileUrl, embeds: [], components: rows });
+        await interaction.editReply({ content: '', embeds: [videoEmbed], components: rows });
         return;
     }
 
@@ -98,7 +99,8 @@ export async function handleRule34SearchCommand(
         totalResults: result.posts.length,
         query: tags,
         userId,
-        searchPage: page
+        searchPage: page,
+        hasMore: result.hasMore
     });
 
     await interaction.editReply({ embeds: [embed], components: rows });
@@ -170,12 +172,12 @@ export async function handleRule34RandomCommand(
     deps.rule34Cache?.addToHistory?.(userId, post.id, { score: post.score });
 
     if (post.hasVideo && deps.postHandler?.createVideoEmbed) {
-        const { rows, content } = deps.postHandler.createVideoEmbed(post, {
+        const { rows, embed: videoEmbed } = deps.postHandler.createVideoEmbed(post, {
             resultIndex: 0,
             totalResults: page1Posts.length,
             userId
         });
-        await interaction.editReply({ content: content || post.fileUrl, embeds: [], components: rows });
+        await interaction.editReply({ content: '', embeds: [videoEmbed], components: rows });
         return;
     }
 
@@ -214,12 +216,12 @@ export async function handleRule34GetByIdCommand(
     deps.rule34Cache?.addToHistory?.(userId, post.id, { score: post.score });
 
     if (post.hasVideo && deps.postHandler?.createVideoEmbed) {
-        const { rows, content } = deps.postHandler.createVideoEmbed(post, {
+        const { rows, embed: videoEmbed } = deps.postHandler.createVideoEmbed(post, {
             resultIndex: 0,
             totalResults: 1,
             userId
         });
-        await interaction.editReply({ content: content || post.fileUrl, embeds: [], components: rows });
+        await interaction.editReply({ content: '', embeds: [videoEmbed], components: rows });
         return;
     }
 
@@ -289,12 +291,12 @@ export async function handleRule34TrendingCommand(
     deps.rule34Cache?.addToHistory?.(userId, post.id, { score: post.score });
 
     if (post.hasVideo && deps.postHandler?.createVideoEmbed) {
-        const { rows, content } = deps.postHandler.createVideoEmbed(post, {
+        const { rows, embed: videoEmbed } = deps.postHandler.createVideoEmbed(post, {
             resultIndex: 0,
             totalResults: filteredPosts.length,
             userId
         });
-        await interaction.editReply({ content: content || post.fileUrl, embeds: [], components: rows });
+        await interaction.editReply({ content: '', embeds: [videoEmbed], components: rows });
         return;
     }
 

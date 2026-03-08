@@ -52,6 +52,9 @@ class Rule34InteractionController {
                 case 'random':
                     await this._handleNavigation(interaction, action, userId);
                     break;
+                case 'watch':
+                    await this._handleWatchVideo(interaction, parts[2], userId);
+                    break;
                 case 'related':
                     await this._handleRelatedFromSession(interaction, userId);
                     break;
@@ -183,13 +186,13 @@ class Rule34InteractionController {
                     this.deps.rule34Cache?.addToHistory?.(userId, post.id, { score: post.score });
 
                     if (post.hasVideo && this.deps.postHandler?.createVideoEmbed) {
-                        const { rows, content } = this.deps.postHandler.createVideoEmbed(post, {
+                        const { rows, embed: videoEmbed } = this.deps.postHandler.createVideoEmbed(post, {
                             resultIndex: randomIndex,
                             totalResults: randomPosts.length,
                             userId,
                             searchPage: 1
                         });
-                        await interaction.editReply({ content: content || post.fileUrl, embeds: [], components: rows });
+                        await interaction.editReply({ content: '', embeds: [videoEmbed], components: rows });
                         return;
                     }
 
@@ -216,16 +219,18 @@ class Rule34InteractionController {
         this.deps.rule34Cache?.updateSession?.(userId, { currentIndex: newIndex });
 
         const post = session.posts[newIndex];
+        const sessionHasMore = session.hasMore ?? true;
         this.deps.rule34Cache?.addToHistory?.(userId, post.id, { score: post.score });
 
         if (post.hasVideo && this.deps.postHandler?.createVideoEmbed) {
-            const { rows, content } = this.deps.postHandler.createVideoEmbed(post, {
+            const { rows, embed: videoEmbed } = this.deps.postHandler.createVideoEmbed(post, {
                 resultIndex: newIndex,
                 totalResults: session.posts.length,
                 userId,
-                searchPage: session.currentPage || 1
+                searchPage: session.currentPage || 1,
+                hasMore: sessionHasMore
             });
-            await interaction.editReply({ content: content || post.fileUrl, embeds: [], components: rows });
+            await interaction.editReply({ content: '', embeds: [videoEmbed], components: rows });
             return;
         }
 
@@ -234,7 +239,8 @@ class Rule34InteractionController {
             totalResults: session.posts.length,
             query: session.query,
             userId,
-            searchPage: session.currentPage || 1
+            searchPage: session.currentPage || 1,
+            hasMore: sessionHasMore
         });
 
         await interaction.editReply({ content: '', embeds: [embed], components: rows });
@@ -329,6 +335,22 @@ class Rule34InteractionController {
             return;
         }
 
+        // Detect duplicate page: if the API wraps around and returns the same posts,
+        // treat it as "no more results"
+        const currentPostIds = new Set(session.posts?.map(p => p.id) || []);
+        const newPostIds = posts.map(p => p.id);
+        const allDuplicates = newPostIds.length > 0 && newPostIds.every(id => currentPostIds.has(id));
+        if (allDuplicates && action === 'nextpage') {
+            hasMore = false;
+            await interaction.followUp({
+                content: '❌ No more results found.',
+                ephemeral: true
+            });
+            // Update session to disable the next page button
+            this.deps.rule34Cache?.updateSession?.(userId, { hasMore: false });
+            return;
+        }
+
         this.deps.rule34Cache?.updateSession?.(userId, {
             posts: posts,
             currentIndex: 0,
@@ -340,13 +362,14 @@ class Rule34InteractionController {
         this.deps.rule34Cache?.addToHistory?.(userId, post.id, { score: post.score });
 
         if (post.hasVideo && this.deps.postHandler?.createVideoEmbed) {
-            const { rows, content } = this.deps.postHandler.createVideoEmbed(post, {
+            const { rows, embed: videoEmbed } = this.deps.postHandler.createVideoEmbed(post, {
                 resultIndex: 0,
                 totalResults: posts.length,
                 userId,
-                searchPage: newPage
+                searchPage: newPage,
+                hasMore
             });
-            await interaction.editReply({ content: content || post.fileUrl, embeds: [], components: rows });
+            await interaction.editReply({ content: '', embeds: [videoEmbed], components: rows });
             return;
         }
 
@@ -355,7 +378,8 @@ class Rule34InteractionController {
             totalResults: posts.length,
             query: session.query,
             userId,
-            searchPage: newPage
+            searchPage: newPage,
+            hasMore
         });
 
         await interaction.editReply({ content: '', embeds: [embed], components: rows });
@@ -395,6 +419,46 @@ class Rule34InteractionController {
             || this.deps.infoEmbed('Related Tags', relatedTags.map(t => `• ${t.name || t.tag || 'unknown'}`).join('\n') || 'No related tags found');
 
         await interaction.followUp({ embeds: [embed], ephemeral: true });
+    }
+
+    private async _handleWatchVideo(interaction: ButtonInteraction, postIdStr: string, userId: string): Promise<void> {
+        const session = this.deps.rule34Cache?.getSession?.(userId);
+        if (!session || !Array.isArray(session.posts) || session.posts.length === 0) {
+            await interaction.reply({
+                content: '⏱️ Session expired. Please run the command again.',
+                ephemeral: true
+            });
+            return;
+        }
+
+        const postId = Number.parseInt(postIdStr, 10);
+        const postIndex = session.posts.findIndex(p => p.id === postId);
+        const safeIndex = postIndex >= 0 ? postIndex : session.currentIndex;
+        const post = session.posts[safeIndex];
+
+        if (!post || !post.hasVideo || !this.deps.postHandler?.createVideoEmbed) {
+            await interaction.reply({
+                content: '❌ Video post not found in the current session.',
+                ephemeral: true
+            });
+            return;
+        }
+
+        await interaction.deferUpdate();
+        this.deps.rule34Cache?.updateSession?.(userId, { currentIndex: safeIndex });
+
+        const { rows, embed: videoEmbed } = this.deps.postHandler.createVideoEmbed(post, {
+            resultIndex: safeIndex,
+            totalResults: session.posts.length,
+            userId,
+            searchPage: session.currentPage || 1,
+            showTags: session.showTags,
+            hasMore: session.hasMore ?? true
+        });
+
+        // Raw URL is included so Discord renders the native inline video player.
+        const watchContent = `[Watch Video](${post.fileUrl})\n${post.fileUrl}`;
+        await interaction.editReply({ content: watchContent, embeds: [videoEmbed], components: rows });
     }
 
     private _buildDisabledButtonRows(interaction: ButtonInteraction): ActionRowBuilder<ButtonBuilder>[] {
@@ -504,18 +568,20 @@ class Rule34InteractionController {
 
         const post = session.posts[session.currentIndex];
         const showTags = !session.showTags;
+        const tagsHasMore = session.hasMore ?? true;
 
         this.deps.rule34Cache?.updateSession?.(userId, { showTags });
 
         if (post.hasVideo && this.deps.postHandler?.createVideoEmbed) {
-            const { rows, content } = this.deps.postHandler.createVideoEmbed(post, {
+            const { rows, embed: videoEmbed } = this.deps.postHandler.createVideoEmbed(post, {
                 resultIndex: session.currentIndex,
                 totalResults: session.posts.length,
                 userId,
                 searchPage: session.currentPage || 1,
-                showTags
+                showTags,
+                hasMore: tagsHasMore
             });
-            await interaction.editReply({ content: content || post.fileUrl, embeds: [], components: rows });
+            await interaction.editReply({ content: '', embeds: [videoEmbed], components: rows });
             return;
         }
 
@@ -525,7 +591,8 @@ class Rule34InteractionController {
             query: session.query,
             userId,
             searchPage: session.currentPage || 1,
-            showTags
+            showTags,
+            hasMore: tagsHasMore
         });
 
         await interaction.editReply({ embeds: [embed], components: rows });
