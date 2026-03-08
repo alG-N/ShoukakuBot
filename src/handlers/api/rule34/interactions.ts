@@ -55,6 +55,9 @@ class Rule34InteractionController {
                 case 'watch':
                     await this._handleWatchVideo(interaction, parts[2], userId);
                     break;
+                case 'watchback':
+                    await this._handleWatchBack(interaction, userId);
+                    break;
                 case 'related':
                     await this._handleRelatedFromSession(interaction, userId);
                     break;
@@ -288,8 +291,9 @@ class Rule34InteractionController {
                 const hasTags = (session.query || '').trim().length > 0;
                 const pageRange = hasTags ? 10 : 30;
                 const maxAttempts = 3;
+                const seenIds = new Set(session.posts?.map(p => p.id) || []);
                 for (let attempt = 0; attempt < maxAttempts && posts.length === 0; attempt++) {
-                    const page = attempt === 0 ? 0 : Math.floor(Math.random() * pageRange);
+                    const page = Math.floor(Math.random() * pageRange);
                     const result = await this.deps.rule34Service.search(session.query || '', {
                         limit: 50,
                         page,
@@ -298,9 +302,11 @@ class Rule34InteractionController {
                         minScore: followSettings ? effectiveMinScore : 0,
                         sort: 'random'
                     });
-                    posts = result?.posts || [];
+                    // Filter out posts the user has already seen in the current session
+                    const fetched = result?.posts || [];
+                    posts = fetched.filter(p => !seenIds.has(p.id));
                 }
-                hasMore = true;
+                hasMore = posts.length > 0;
             } else if (session.type === 'trending') {
                 const result = await this.deps.rule34Service.getTrending?.({
                     ...session.options,
@@ -447,18 +453,51 @@ class Rule34InteractionController {
         await interaction.deferUpdate();
         this.deps.rule34Cache?.updateSession?.(userId, { currentIndex: safeIndex });
 
-        const { rows, embed: videoEmbed } = this.deps.postHandler.createVideoEmbed(post, {
-            resultIndex: safeIndex,
+        // Hide the embed entirely so Discord's native video player can render
+        const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+                .setCustomId(`rule34_watchback_${userId}`)
+                .setLabel('◀ Back to Browse')
+                .setStyle(ButtonStyle.Secondary)
+        );
+        await interaction.editReply({ content: post.fileUrl, embeds: [], components: [backRow] });
+    }
+
+    private async _handleWatchBack(interaction: ButtonInteraction, userId: string): Promise<void> {
+        const session = this.deps.rule34Cache?.getSession?.(userId);
+        if (!session || !session.posts?.length) {
+            await interaction.reply({ content: '⏱️ Session expired. Please run the command again.', ephemeral: true });
+            return;
+        }
+
+        await interaction.deferUpdate();
+
+        const post = session.posts[session.currentIndex];
+        const sessionHasMore = session.hasMore ?? true;
+
+        if (post.hasVideo && this.deps.postHandler?.createVideoEmbed) {
+            const { rows, embed: videoEmbed } = this.deps.postHandler.createVideoEmbed(post, {
+                resultIndex: session.currentIndex,
+                totalResults: session.posts.length,
+                userId,
+                searchPage: session.currentPage || 1,
+                showTags: session.showTags,
+                hasMore: sessionHasMore
+            });
+            await interaction.editReply({ content: '', embeds: [videoEmbed], components: rows });
+            return;
+        }
+
+        const { embed, rows } = await this.deps.postHandler.createPostEmbed(post, {
+            resultIndex: session.currentIndex,
             totalResults: session.posts.length,
+            query: session.query,
             userId,
             searchPage: session.currentPage || 1,
             showTags: session.showTags,
-            hasMore: session.hasMore ?? true
+            hasMore: sessionHasMore
         });
-
-        // Raw URL is included so Discord renders the native inline video player.
-        const watchContent = `[Watch Video](${post.fileUrl})\n${post.fileUrl}`;
-        await interaction.editReply({ content: watchContent, embeds: [videoEmbed], components: rows });
+        await interaction.editReply({ content: '', embeds: [embed], components: rows });
     }
 
     private _buildDisabledButtonRows(interaction: ButtonInteraction): ActionRowBuilder<ButtonBuilder>[] {
