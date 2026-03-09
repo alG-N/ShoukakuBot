@@ -276,6 +276,7 @@ class Rule34Cache {
             compactMode: false,
             sortMode: 'score:desc',
             safeMode: false,
+            settingSearch: true,
         };
     }
 

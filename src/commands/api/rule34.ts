@@ -69,47 +69,12 @@ class Rule34Command extends BaseCommand {
             .addSubcommand(subcommand =>
                 subcommand
                     .setName('search')
-                    .setDescription('Search for posts by tags')
+                    .setDescription('Search for posts by tags (uses your settings)')
                     .addStringOption(option =>
                         option.setName('tags')
                             .setDescription('Tags to search for (space-separated)')
                             .setRequired(true)
                             .setAutocomplete(true)
-                    )
-                    .addStringOption(option =>
-                        option.setName('rating')
-                            .setDescription('Filter by rating')
-                            .setRequired(false)
-                            .addChoices(
-                                { name: '🟢 Safe', value: 'safe' },
-                                { name: '🟡 Questionable', value: 'questionable' },
-                                { name: '🔴 Explicit', value: 'explicit' },
-                                { name: '⚪ All Ratings', value: 'all' }
-                            )
-                    )
-                    .addStringOption(option =>
-                        option.setName('sort')
-                            .setDescription('Sort results by')
-                            .setRequired(false)
-                            .addChoices(
-                                { name: '⭐ Score (Highest)', value: 'score:desc' },
-                                { name: '⭐ Score (Lowest)', value: 'score:asc' },
-                                { name: '🆕 Newest First', value: 'id:desc' },
-                                { name: '📅 Oldest First', value: 'id:asc' },
-                                { name: '🔄 Recently Updated', value: 'updated:desc' }
-                            )
-                    )
-                    .addBooleanOption(option =>
-                        option.setName('ai_filter')
-                            .setDescription('Hide AI-generated content (Default: uses your settings)')
-                            .setRequired(false)
-                    )
-                    .addIntegerOption(option =>
-                        option.setName('min_score')
-                            .setDescription('Minimum score filter (1-100000)')
-                            .setRequired(false)
-                            .setMinValue(1)
-                            .setMaxValue(100000)
                     )
                     .addStringOption(option =>
                         option.setName('content_type')
@@ -121,65 +86,11 @@ class Rule34Command extends BaseCommand {
                                 { name: '📷 Images Only', value: 'image' }
                             )
                     )
-                    .addBooleanOption(option =>
-                        option.setName('high_quality')
-                            .setDescription('Only show high quality posts')
-                            .setRequired(false)
-                    )
-                    .addIntegerOption(option =>
-                        option.setName('min_width')
-                            .setDescription('Minimum image width')
-                            .setRequired(false)
-                            .setMinValue(100)
-                            .setMaxValue(10000)
-                    )
-                    .addIntegerOption(option =>
-                        option.setName('min_height')
-                            .setDescription('Minimum image height')
-                            .setRequired(false)
-                            .setMinValue(100)
-                            .setMaxValue(10000)
-                    )
-                    .addStringOption(option =>
-                        option.setName('exclude')
-                            .setDescription('Tags to exclude (space-separated)')
-                            .setRequired(false)
-                    )
-                    .addIntegerOption(option =>
-                        option.setName('page')
-                            .setDescription('Page number (default: 1)')
-                            .setRequired(false)
-                            .setMinValue(1)
-                            .setMaxValue(200)
-                    )
             )
             .addSubcommand(subcommand =>
                 subcommand
                     .setName('random')
-                    .setDescription('Get random posts')
-                    .addStringOption(option =>
-                        option.setName('tags')
-                            .setDescription('Optional tags to filter by')
-                            .setRequired(false)
-                            .setAutocomplete(true)
-                    )
-                    .addIntegerOption(option =>
-                        option.setName('count')
-                            .setDescription('Number of random posts per page (1-50)')
-                            .setRequired(false)
-                            .setMinValue(1)
-                            .setMaxValue(50)
-                    )
-                    .addBooleanOption(option =>
-                        option.setName('ai_filter')
-                            .setDescription('Hide AI-generated content')
-                            .setRequired(false)
-                    )
-                    .addBooleanOption(option =>
-                        option.setName('follow_settings')
-                            .setDescription('Follow your Rule34 settings (true) or use complete random (false)')
-                            .setRequired(false)
-                    )
+                    .setDescription('Get random posts (uses your settings)')
             )
             .addSubcommand(subcommand =>
                 subcommand
@@ -204,11 +115,6 @@ class Rule34Command extends BaseCommand {
                                 { name: '📊 This Week', value: 'week' },
                                 { name: '📈 This Month', value: 'month' }
                             )
-                    )
-                    .addBooleanOption(option =>
-                        option.setName('ai_filter')
-                            .setDescription('Hide AI-generated content')
-                            .setRequired(false)
                     )
             )
             .addSubcommand(subcommand =>

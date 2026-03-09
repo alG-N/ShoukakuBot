@@ -88,6 +88,11 @@ class PixivCommand extends BaseCommand {
                     )
             )
             .addBooleanOption(option =>
+                option.setName('r18')
+                    .setDescription('Enable R18 content (true = R18 Only, overrides NSFW filter)')
+                    .setRequired(false)
+            )
+            .addBooleanOption(option =>
                 option.setName('ai_filter')
                     .setDescription('Hide AI-generated content (Default: OFF - shows AI art)')
                     .setRequired(false)
@@ -129,7 +134,9 @@ class PixivCommand extends BaseCommand {
         const sort = interaction.options.getString('sort') || 'popular_desc';
         const channel = interaction.channel;
         const isNsfwChannel = channel && 'nsfw' in channel ? channel.nsfw : false;
-        const nsfw = interaction.options.getString('nsfw') || (isNsfwChannel ? 'all' : 'sfw');
+        const r18Toggle = interaction.options.getBoolean('r18');
+        let nsfw = interaction.options.getString('nsfw') || (isNsfwChannel ? 'all' : 'sfw');
+        if (r18Toggle === true) nsfw = 'r18only';
         const aiFilter = interaction.options.getBoolean('ai_filter') || false;
         const qualityFilter = interaction.options.getBoolean('quality_filter') || false;
         const translate = interaction.options.getBoolean('translate') || false;

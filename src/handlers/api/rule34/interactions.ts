@@ -885,6 +885,7 @@ class Rule34InteractionController {
 
         const aiStatus = prefs.aiFilter ? '✅ Hidden' : '❌ Shown';
         const qualityStatus = prefs.highQualityOnly ? '🔷 High Only' : (prefs.excludeLowQuality ? '🔶 No Low' : '⚪ All');
+        const settingSearchStatus = prefs.settingSearch !== false ? '✅ Enabled' : '❌ Disabled';
         const sortDisplay: Record<string, string> = {
             'score:desc': '⬆️ Score (High)',
             'score:asc': '⬇️ Score (Low)',
@@ -894,6 +895,7 @@ class Rule34InteractionController {
         };
 
         const settingsText = [
+            `🔍 **Setting Search:** ${settingSearchStatus}`,
             `🤖 **AI Content:** ${aiStatus}`,
             `⭐ **Min Score:** ${this.deps.normalizeMinScore(prefs.minScore, 1)}`,
             `📊 **Quality:** ${qualityStatus}`,
@@ -915,6 +917,7 @@ class Rule34InteractionController {
             .setCustomId(`rule34_settingmenu_${userId}`)
             .setPlaceholder('⚙️ Select a setting to change...')
             .addOptions([
+                { label: 'Setting Search', value: 'setting_search', emoji: '🔍', description: 'Apply settings to /random and /search commands' },
                 { label: 'AI Content Filter', value: 'ai', emoji: '🤖', description: 'Hide or show AI-generated content' },
                 { label: 'Minimum Score', value: 'score', emoji: '⭐', description: 'Set minimum post score' },
                 { label: 'Quality Filter', value: 'quality', emoji: '📊', description: 'Filter by image quality' },
@@ -952,6 +955,13 @@ class Rule34InteractionController {
     private async _handleSettingMenuSelect(interaction: StringSelectMenuInteraction, setting: string, userId: string): Promise<void> {
         try {
             switch (setting) {
+                case 'setting_search': {
+                    const prefs = this.deps.rule34Cache?.getPreferences?.(userId) || {};
+                    const newValue = prefs.settingSearch === false ? true : false;
+                    this.deps.rule34Cache?.setPreferences?.(userId, { settingSearch: newValue });
+                    await this._refreshSettingsEmbed(interaction, userId);
+                    break;
+                }
                 case 'ai': {
                     const prefs = this.deps.rule34Cache?.getPreferences?.(userId) || {};
                     const newValue = !prefs.aiFilter;

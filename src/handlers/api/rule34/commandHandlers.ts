@@ -31,36 +31,27 @@ export async function handleRule34SearchCommand(
     await interaction.deferReply();
 
     const tags = interaction.options.getString('tags', true);
-    const rating = interaction.options.getString('rating');
-    const sort = interaction.options.getString('sort');
-    const aiFilter = interaction.options.getBoolean('ai_filter');
-    const minScore = interaction.options.getInteger('min_score');
     const contentType = interaction.options.getString('content_type');
-    const highQuality = interaction.options.getBoolean('high_quality');
-    const minWidth = interaction.options.getInteger('min_width');
-    const minHeight = interaction.options.getInteger('min_height');
-    const exclude = interaction.options.getString('exclude');
-    const page = interaction.options.getInteger('page') || 1;
 
     await deps.rule34Cache?.ensureHydrated?.(userId);
     const prefs = deps.rule34Cache?.getPreferences?.(userId) || {};
     const blacklist = deps.rule34Cache?.getBlacklist?.(userId) || [];
-    const normalizedRating = (rating === 'all' ? null : (rating || prefs.defaultRating)) as Rule34CommandSearchOptions['rating'];
+    const useSettings = prefs.settingSearch !== false;
     const normalizedContentType = (contentType || undefined) as Rule34CommandSearchOptions['contentType'];
 
     const searchOptions: Rule34CommandSearchOptions = {
         limit: 50,
-        page: page - 1,
-        sort: sort || prefs.sortMode || 'score:desc',
-        rating: normalizedRating,
-        excludeAi: aiFilter ?? prefs.aiFilter,
-        minScore: deps.normalizeMinScore(minScore ?? prefs.minScore, 1),
+        page: 0,
+        sort: useSettings ? (prefs.sortMode || 'score:desc') : 'score:desc',
+        rating: useSettings ? (prefs.defaultRating as Rule34CommandSearchOptions['rating'] ?? null) : null,
+        excludeAi: useSettings ? prefs.aiFilter : false,
+        minScore: useSettings ? deps.normalizeMinScore(prefs.minScore, 1) : 1,
         contentType: normalizedContentType,
-        excludeTags: [...blacklist, ...(exclude ? exclude.split(/\s+/) : [])],
-        minWidth: minWidth || 0,
-        minHeight: minHeight || 0,
-        highQualityOnly: highQuality ?? prefs.highQualityOnly,
-        excludeLowQuality: prefs.excludeLowQuality
+        excludeTags: useSettings ? blacklist : [],
+        minWidth: 0,
+        minHeight: 0,
+        highQualityOnly: useSettings ? (prefs.highQualityOnly ?? false) : false,
+        excludeLowQuality: useSettings ? (prefs.excludeLowQuality ?? false) : false
     };
 
     const result = await deps.rule34Service.search(tags, searchOptions);
@@ -77,7 +68,7 @@ export async function handleRule34SearchCommand(
         posts: result.posts,
         options: searchOptions,
         currentIndex: 0,
-        currentPage: page,
+        currentPage: 1,
         hasMore: result.hasMore
     });
 
@@ -89,7 +80,7 @@ export async function handleRule34SearchCommand(
             resultIndex: 0,
             totalResults: result.posts.length,
             userId,
-            searchPage: page,
+            searchPage: 1,
             hasMore: result.hasMore,
             sessionType: 'search',
             maxPage: 200
@@ -103,7 +94,7 @@ export async function handleRule34SearchCommand(
         totalResults: result.posts.length,
         query: tags,
         userId,
-        searchPage: page,
+        searchPage: 1,
         hasMore: result.hasMore,
         sessionType: 'search',
         maxPage: 200
@@ -119,87 +110,73 @@ export async function handleRule34RandomCommand(
 ): Promise<void> {
     await interaction.deferReply();
 
-    const tags = interaction.options.getString('tags') || '';
-    const count = interaction.options.getInteger('count') || 1;
-    const requestedCount = Math.max(1, Math.min(50, count));
-    logger.info('Rule34', `Random command: tags="${tags}" requestedCount=${requestedCount}`);
-    const aiFilter = interaction.options.getBoolean('ai_filter');
-    const followSettings = interaction.options.getBoolean('follow_settings') ?? true;
-    const hasAiOverride = aiFilter !== null;
-
     await deps.rule34Cache?.ensureHydrated?.(userId);
     const prefs = deps.rule34Cache?.getPreferences?.(userId) || {};
     const blacklist = deps.rule34Cache?.getBlacklist?.(userId) || [];
-    const effectiveExcludeAi = aiFilter ?? (followSettings ? prefs.aiFilter : false);
-    const effectiveMinScore = followSettings ? deps.normalizeMinScore(prefs.minScore, 1) : 0;
-    const effectiveRating = followSettings ? (prefs.defaultRating ?? null) : null;
+    const useSettings = prefs.settingSearch !== false;
 
-    const effectiveHighQualityOnly = followSettings ? (prefs.highQualityOnly ?? false) : false;
-    const effectiveExcludeLowQuality = followSettings ? (prefs.excludeLowQuality ?? false) : false;
+    const effectiveExcludeAi = useSettings ? (prefs.aiFilter ?? false) : false;
+    const effectiveMinScore = useSettings ? deps.normalizeMinScore(prefs.minScore, 1) : 0;
+    const effectiveRating = useSettings ? (prefs.defaultRating ?? null) : null;
+    const effectiveHighQualityOnly = useSettings ? (prefs.highQualityOnly ?? false) : false;
+    const effectiveExcludeLowQuality = useSettings ? (prefs.excludeLowQuality ?? false) : false;
 
-    const prefetchCount = Math.min(50, Math.max(requestedCount, requestedCount * 2));
+    logger.info('Rule34', `Random command: useSettings=${useSettings}`);
 
     const rawPosts = await deps.rule34Service?.getRandom?.({
-        tags,
-        count: prefetchCount,
+        tags: '',
+        count: 50,
         rating: effectiveRating as any,
         excludeAi: effectiveExcludeAi,
         minScore: effectiveMinScore,
-        excludeTags: followSettings ? blacklist : [],
+        excludeTags: useSettings ? blacklist : [],
         highQualityOnly: effectiveHighQualityOnly,
         excludeLowQuality: effectiveExcludeLowQuality
-    }) || (await deps.rule34Service.search(tags, { limit: requestedCount, sort: 'random' })).posts || [];
+    }) || (await deps.rule34Service.search('', { limit: 50, sort: 'random' })).posts || [];
 
-    // All filters are now applied at the API/service level, so only a light
-    // sanity-check for blacklist is needed here (covers the fallback path).
+    // Light sanity-check for blacklist (covers the fallback path).
     const filteredPosts = rawPosts.filter(post => {
-        if (!followSettings) return true;
+        if (!useSettings) return true;
         const postTags = (post.tags || '').split(' ');
         return !postTags.some(t => blacklist.includes(t));
     });
 
-    logger.info('Rule34', `Random: fetched=${rawPosts.length} afterFilter=${filteredPosts.length} requestedCount=${requestedCount}`);
+    logger.info('Rule34', `Random: fetched=${rawPosts.length} afterFilter=${filteredPosts.length}`);
 
     if (filteredPosts.length === 0) {
-        const noResultsEmbed = deps.postHandler?.createNoResultsEmbed?.(tags || '*') || deps.errorEmbed('No random posts found. Try again or adjust your filters/blacklist.');
+        const noResultsEmbed = deps.postHandler?.createNoResultsEmbed?.('*') || deps.errorEmbed('No random posts found. Try again or adjust your filters/blacklist.');
         await interaction.editReply({ embeds: [noResultsEmbed] });
         return;
     }
 
-    // Keep exactly the requested amount per page (1..50) for random pagination.
-    // Cache overflow posts for efficient next-page navigation.
-    const page1Posts = filteredPosts.slice(0, requestedCount);
-    const overflowLimit = Math.max(50, requestedCount * 2);
-    const overflowPosts = filteredPosts.slice(requestedCount, requestedCount + overflowLimit);
-
     deps.rule34Cache?.setSession?.(userId, {
         type: 'random',
-        query: tags || '',
-        posts: page1Posts,
-        overflowPosts,
-        seenPostIds: page1Posts.map(p => p.id),
+        query: '',
+        posts: filteredPosts,
+        overflowPosts: [],
+        seenPostIds: filteredPosts.map(p => p.id),
         options: {
             limit: 50,
-            randomCount: requestedCount,
-            followSettings,
-            hasAiOverride,
+            randomCount: 50,
+            followSettings: useSettings,
+            hasAiOverride: false,
             excludeAi: effectiveExcludeAi,
-            minScore: followSettings ? effectiveMinScore : 0,
+            minScore: useSettings ? effectiveMinScore : 0,
             highQualityOnly: effectiveHighQualityOnly,
             excludeLowQuality: effectiveExcludeLowQuality,
-            rating: followSettings ? prefs.defaultRating : null
+            rating: useSettings ? prefs.defaultRating : null
         } as any,
         currentIndex: 0,
         currentPage: 1
     });
 
-    const post = page1Posts[0];
+    const post = filteredPosts[0];
     deps.rule34Cache?.addToHistory?.(userId, post.id, { score: post.score });
 
     if (post.hasVideo && deps.postHandler?.createVideoEmbed) {
         const { rows, embed: videoEmbed } = deps.postHandler.createVideoEmbed(post, {
             resultIndex: 0,
-            totalResults: page1Posts.length,
+            totalResults: filteredPosts.length,
             userId,
             sessionType: 'random',
             maxPage: 200
@@ -210,7 +187,7 @@ export async function handleRule34RandomCommand(
 
     const { embed, rows } = await deps.postHandler.createPostEmbed(post, {
         resultIndex: 0,
-        totalResults: page1Posts.length,
+        totalResults: filteredPosts.length,
         userId,
         sessionType: 'random',
         maxPage: 200
@@ -275,25 +252,26 @@ export async function handleRule34TrendingCommand(
     await interaction.deferReply();
 
     const timeframe = (interaction.options.getString('timeframe') || 'day') as 'day' | 'week' | 'month';
-    const aiFilter = interaction.options.getBoolean('ai_filter');
 
     await deps.rule34Cache?.ensureHydrated?.(userId);
     const prefs = deps.rule34Cache?.getPreferences?.(userId) || {};
     const blacklist = deps.rule34Cache?.getBlacklist?.(userId) || [];
+    const useSettings = prefs.settingSearch !== false;
 
     const result = await deps.rule34Service?.getTrending?.({
         timeframe,
-        limit: 100,
-        excludeAi: aiFilter ?? prefs.aiFilter
-    }) || await deps.rule34Service.search('', { sort: 'score:desc', limit: 100 });
+        limit: 50,
+        excludeAi: useSettings ? (prefs.aiFilter ?? false) : false
+    }) || await deps.rule34Service.search('', { sort: 'score:desc', limit: 50 });
 
     const rawPosts = result?.posts || [];
 
     const filteredPosts = rawPosts.filter(post => {
         const postTags = (post.tags || '').split(' ');
-        const isBlacklisted = postTags.some(t => blacklist.includes(t));
+        const isBlacklisted = useSettings && postTags.some(t => blacklist.includes(t));
         if (isBlacklisted) return false;
-        if ((aiFilter ?? prefs.aiFilter) && post.isAiGenerated) return false;
+        if (useSettings && prefs.aiFilter && post.isAiGenerated) return false;
+        if (useSettings && prefs.minScore && post.score < (prefs.minScore ?? 0)) return false;
         return true;
     });
 
@@ -313,10 +291,10 @@ export async function handleRule34TrendingCommand(
         timeframe,
         options: {
             timeframe,
-            excludeAi: aiFilter ?? prefs.aiFilter,
-            minScore: 0,
-            highQualityOnly: false,
-            excludeLowQuality: false
+            excludeAi: useSettings ? (prefs.aiFilter ?? false) : false,
+            minScore: useSettings ? deps.normalizeMinScore(prefs.minScore, 1) : 0,
+            highQualityOnly: useSettings ? (prefs.highQualityOnly ?? false) : false,
+            excludeLowQuality: useSettings ? (prefs.excludeLowQuality ?? false) : false
         } as any
     });
 
@@ -363,6 +341,7 @@ export async function handleRule34SettingsCommand(
 
     const aiStatus = prefs.aiFilter ? '✅ Hidden' : '❌ Shown';
     const qualityStatus = prefs.highQualityOnly ? '🔷 High Only' : (prefs.excludeLowQuality ? '🔶 No Low' : '⚪ All');
+    const settingSearchStatus = prefs.settingSearch !== false ? '✅ Enabled' : '❌ Disabled';
     const sortDisplay: Record<string, string> = {
         'score:desc': '⬆️ Score (High)',
         'score:asc': '⬇️ Score (Low)',
@@ -372,6 +351,7 @@ export async function handleRule34SettingsCommand(
     };
 
     const settingsText = [
+        `🔍 **Setting Search:** ${settingSearchStatus}`,
         `🤖 **AI Content:** ${aiStatus}`,
         `⭐ **Min Score:** ${deps.normalizeMinScore(prefs.minScore, 1)}`,
         `📊 **Quality:** ${qualityStatus}`,
@@ -393,6 +373,7 @@ export async function handleRule34SettingsCommand(
         .setCustomId(`rule34_settingmenu_${userId}`)
         .setPlaceholder('⚙️ Select a setting to change...')
         .addOptions([
+            { label: 'Setting Search', value: 'setting_search', emoji: '🔍', description: 'Apply settings to /random and /search commands' },
             { label: 'AI Content Filter', value: 'ai', emoji: '🤖', description: 'Hide or show AI-generated content' },
             { label: 'Minimum Score', value: 'score', emoji: '⭐', description: 'Set minimum post score' },
             { label: 'Quality Filter', value: 'quality', emoji: '📊', description: 'Filter by image quality' },

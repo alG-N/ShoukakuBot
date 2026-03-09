@@ -261,7 +261,7 @@ class PixivService {
             url.searchParams.append('offset', currentOffset.toString());
 
             if (page === 0) {
-                logger.info('Pixiv Unfiltered', `Query: "${query}" | BaseOffset: ${offset} | Sort: ${sort} | Pages: ${pagesToFetch}`);
+                logger.debug('Pixiv Unfiltered', `Query: "${query}" | BaseOffset: ${offset} | Sort: ${sort} | Pages: ${pagesToFetch}`);
             }
 
             try {
@@ -278,11 +278,11 @@ class PixivService {
                 const items = isNovel ? data.novels : data.illusts;
 
                 if (!items || items.length === 0) {
-                    logger.info('Pixiv Unfiltered', `Page ${page} returned no items, stopping`);
+                    logger.debug('Pixiv Unfiltered', `Page ${page} returned no items, stopping`);
                     break;
                 }
 
-                logger.info('Pixiv Unfiltered', `Page ${page} (offset ${currentOffset}): Got ${items.length} items`);
+                logger.debug('Pixiv Unfiltered', `Page ${page} (offset ${currentOffset}): Got ${items.length} items`);
                 allItems.push(...(items as PixivIllust[]));
                 lastNextUrl = data.next_url || null;
 
@@ -297,7 +297,7 @@ class PixivService {
 
         const r18Count = allItems.filter(i => i.x_restrict > 0).length;
         const sfwCount = allItems.filter(i => i.x_restrict === 0).length;
-        logger.info('Pixiv Unfiltered', `Total: ${allItems.length} items (${r18Count} R18, ${sfwCount} SFW)`);
+        logger.debug('Pixiv Unfiltered', `Total: ${allItems.length} items (${r18Count} R18, ${sfwCount} SFW)`);
         return { items: allItems, nextUrl: lastNextUrl };
     }
 
@@ -327,7 +327,7 @@ class PixivService {
             url.searchParams.append('filter', 'for_android');
 
             if (page === 0) {
-                logger.info('Pixiv SFW', `Query: "${query}" | BaseOffset: ${offset} | Sort: ${sort} | Pages: ${pagesToFetch}`);
+                logger.debug('Pixiv SFW', `Query: "${query}" | BaseOffset: ${offset} | Sort: ${sort} | Pages: ${pagesToFetch}`);
             }
 
             try {
@@ -345,7 +345,7 @@ class PixivService {
 
                 if (!items || items.length === 0) break;
 
-                logger.info('Pixiv SFW', `Page ${page} (offset ${currentOffset}): Got ${items.length} items`);
+                logger.debug('Pixiv SFW', `Page ${page} (offset ${currentOffset}): Got ${items.length} items`);
                 allItems.push(...(items as PixivIllust[]));
                 lastNextUrl = data.next_url || null;
 
@@ -358,7 +358,7 @@ class PixivService {
             }
         }
 
-        logger.info('Pixiv SFW', `Total: ${allItems.length} items`);
+        logger.debug('Pixiv SFW', `Total: ${allItems.length} items`);
         return { items: allItems, nextUrl: lastNextUrl };
     }
 

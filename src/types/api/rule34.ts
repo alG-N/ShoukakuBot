@@ -129,4 +129,5 @@ export interface Rule34UserPreferences {
     compactMode: boolean;
     sortMode: string;
     safeMode: boolean;
+    settingSearch: boolean;
 }
