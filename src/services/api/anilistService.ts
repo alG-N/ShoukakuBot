@@ -18,7 +18,7 @@ import type {
     CharacterEdge,
     RelationEdge,
     Trailer
-} from '../../types/api/anime.js';
+} from '../../types/api/models/anime.js';
 import type {
     AutocompleteMedia,
     PageResponse,

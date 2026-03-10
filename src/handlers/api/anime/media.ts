@@ -1,5 +1,5 @@
-import type { AnimeMedia } from '../../../types/api/anime.js';
-import type { AnimeContentSource as MediaSource, MALMediaType as AnimeMediaType } from '../../../types/api/mal.js';
+import type { AnimeMedia } from '../../../types/api/models/anime.js';
+import type { AnimeContentSource as MediaSource, MALMediaType as AnimeMediaType } from '../../../types/api/models/mal.js';
 import { createAniListEmbed } from './anilist.js';
 import { createMALAnimeEmbed, createMALMangaEmbed } from './mal.js';
 

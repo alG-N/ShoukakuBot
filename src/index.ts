@@ -24,7 +24,7 @@ import shardBridge from './services/guild/ShardBridge.js';
 
 import type { CommandRegistry } from './services/registry/CommandRegistry.js';
 import type { EventRegistry } from './services/registry/EventRegistry.js';
-import type { RedisCache } from './services/guild/RedisCache.js';
+import type { RedisCache } from './cache/RedisCache.js';
 import type { CacheService } from './cache/CacheService.js';
 
 import { bot, music } from './config/index.js';
@@ -333,4 +333,5 @@ if (isEntryPoint || process.env.BOT_START === 'true') {
 
 export { bot_instance as bot, ShoukakuBot };
 export default { bot: bot_instance };
+
 

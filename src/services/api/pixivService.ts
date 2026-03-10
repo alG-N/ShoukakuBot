@@ -15,7 +15,7 @@ import type {
     PixivSearchOptions,
     RankingOptions,
     PixivSearchResult
-} from '../../types/api/pixiv.js';
+} from '../../types/api/models/pixiv.js';
 import type {
     PixivAuth,
     PixivTokenResponse,
@@ -25,7 +25,7 @@ import type {
     AutocompleteSuggestion,
     PixivAutocompleteResponse
 } from '../../types/api/services/pixiv-service.js';
-export { type PixivImageUrls, type PixivMetaPage, type PixivTag, type PixivUser, type PixivIllust, type PixivNovel, type PixivSearchOptions, type RankingOptions, type PixivSearchResult } from '../../types/api/pixiv.js';
+export { type PixivImageUrls, type PixivMetaPage, type PixivTag, type PixivUser, type PixivIllust, type PixivNovel, type PixivSearchOptions, type RankingOptions, type PixivSearchResult } from '../../types/api/models/pixiv.js';
 export { type PixivAuth, type PixivTokenResponse, type InternalSearchResult, type PixivSearchResponse, type PixivIllustDetailResponse, type AutocompleteSuggestion, type PixivAutocompleteCandidate, type PixivAutocompleteResponse } from '../../types/api/services/pixiv-service.js';
 
 dotenv.config({ path: path.join(__dirname, '../.env') });

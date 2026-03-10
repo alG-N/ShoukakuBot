@@ -15,7 +15,9 @@ import {
     RoleSelectMenuBuilder,
     ChatInputCommandInteraction
 } from 'discord.js';
-import type { AutoModSettings, AutoModService, ModerationConfig } from './AutoModTypes.js';
+import type { AutoModSettings } from '../../../types/moderation/automod.js';
+import type { AutoModService } from '../../../types/moderation/handlers.js';
+import type { ModerationConfig } from '../../../config/features/moderation/index.js';
 
 /**
  * Build and display the main automod panel

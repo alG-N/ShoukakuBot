@@ -1,4 +1,4 @@
-import type { NHentaiGallery } from '../nhentai.js';
+import type { NHentaiGallery } from '../models/nhentai.js';
 
 export interface NHentaiSearchResponse {
     result: NHentaiGallery[];

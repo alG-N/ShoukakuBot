@@ -1,6 +1,6 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import nhentaiRepository, { NHentaiFavourite } from '../../../repositories/api/nhentaiRepository.js';
-import type { SearchData } from '../../../types/api/nhentai.js';
+import type { SearchData } from '../../../types/api/models/nhentai.js';
 import type { Gallery } from '../../../types/api/handlers/nhentai-handler.js';
 
 function isEnglishGallery(gallery: Gallery | null): boolean {

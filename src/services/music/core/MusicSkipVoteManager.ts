@@ -7,7 +7,7 @@
 
 import musicCache from '../../../cache/music/MusicCacheFacade.js';
 import { musicEventBus, MusicEvents } from '../events/index.js';
-import type { VoteSkipResult } from './MusicTypes.js';
+import type { VoteSkipResult } from '../../../types/music/facade.js';
 
 export class MusicSkipVoteManager {
     startSkipVote(guildId: string, userId: string, listenerCount: number): VoteSkipResult {

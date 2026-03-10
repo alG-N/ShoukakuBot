@@ -1,5 +1,5 @@
 import type { EmbedBuilder, ActionRowBuilder, ButtonBuilder } from 'discord.js';
-import type { PixivTag, PixivImageUrls } from '../pixiv.js';
+import type { PixivTag, PixivImageUrls } from '../models/pixiv.js';
 
 export interface PixivContentUser {
     id: number;

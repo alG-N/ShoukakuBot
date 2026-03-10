@@ -10,9 +10,9 @@ import type {
     Rule34SearchResult,
     Rule34RandomOptions,
     Rule34TrendingOptions
-} from '../rule34.js';
-import type { Rule34UserPreferences as CacheUserPreferences } from '../../../repositories/api/rule34Cache.js';
-import type { Rule34CommandSession } from '../content-session.js';
+} from '../../api/models/rule34.js';
+import type { Rule34UserPreferences as CacheUserPreferences } from '../../../cache/api/rule34Cache.js';
+import type { Rule34CommandSession } from '../../api/models/content-session.js';
 
 export type Post = Rule34Post;
 
@@ -86,3 +86,4 @@ export interface Rule34PostHandlerContract {
     createSettingsComponents?: (userId: string) => ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[];
     createErrorEmbed?: (error: Error) => EmbedBuilder;
 }
+

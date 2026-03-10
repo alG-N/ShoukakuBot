@@ -5,7 +5,7 @@ import { withRetry } from '../../utils/common/apiUtils.js';
 import logger from '../../core/Logger.js';
 import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
 import cacheService from '../../cache/CacheService.js';
-import type { SubredditInfo, RedditPost, RedditPostsResult } from '../../types/api/reddit.js';
+import type { SubredditInfo, RedditPost, RedditPostsResult } from '../../types/api/models/reddit.js';
 import type {
     RedditTokenResponse,
     RawRedditPostData,
@@ -15,7 +15,7 @@ import type {
     RedditSortBy,
     RedditRegion
 } from '../../types/api/services/reddit-service.js';
-export { type SubredditInfo, type RedditPost, type RedditPostsResult } from '../../types/api/reddit.js';
+export { type SubredditInfo, type RedditPost, type RedditPostsResult } from '../../types/api/models/reddit.js';
 export { type RedditSortBy, type RedditTimeFilter, type RedditRegion } from '../../types/api/services/reddit-service.js';
 // TYPES & INTERFACES
 // REDDIT SERVICE CLASS

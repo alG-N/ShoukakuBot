@@ -2,8 +2,8 @@ import { EmbedBuilder } from 'discord.js';
 import anilistService from '../../../services/api/anilistService.js';
 import { MEDIA_CONFIG } from './constants.js';
 import { formatNumber } from './helpers.js';
-import type { AnimeMedia } from '../../../types/api/anime.js';
-import type { MALMediaType as AnimeMediaType } from '../../../types/api/mal.js';
+import type { AnimeMedia } from '../../../types/api/models/anime.js';
+import type { MALMediaType as AnimeMediaType } from '../../../types/api/models/mal.js';
 
 export async function createMALAnimeEmbed(anime: AnimeMedia): Promise<EmbedBuilder> {
     const title = anime.title.romaji || anime.title.english || anime.title.native || 'Unknown';

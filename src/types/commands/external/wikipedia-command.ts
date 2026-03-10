@@ -1,5 +1,5 @@
 import type { ActionRowBuilder, ButtonBuilder, EmbedBuilder } from 'discord.js';
-import type { OnThisDayDate, OnThisDayEvent, WikiArticle, WikiSearchResponse, WikiSearchResult } from '../api/wikipedia.js';
+import type { OnThisDayDate, OnThisDayEvent, WikiArticle, WikiSearchResponse, WikiSearchResult } from '../../api/models/wikipedia.js';
 
 export interface WikipediaService {
     search: (query: string) => Promise<WikiSearchResponse>;

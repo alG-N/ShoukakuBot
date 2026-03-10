@@ -224,6 +224,7 @@ function makeTrack(title: string) {
     return {
         title,
         url: `https://yt.com/${title}`,
+        lengthSeconds: 180,
         track: { encoded: `enc_${title}` },
         info: { title, author: 'Artist', sourceName: 'youtube' },
         requestedBy: { id: 'user1', username: 'TestUser' },
@@ -370,7 +371,7 @@ describe('MusicFacade', () => {
 
         it('should throw for invalid track', async () => {
             const badTrack = { title: 'Bad' } as any;
-            await expect(musicFacade.playTrack('guild1', badTrack)).rejects.toThrow('INVALID_TRACK');
+            await expect(musicFacade.playTrack('guild1', badTrack)).rejects.toThrow('Cannot play this track');
         });
 
         it('should set isReplacing flag when replacing', async () => {
@@ -456,7 +457,7 @@ describe('MusicFacade', () => {
 
             const result = await musicFacade.skip('guild1', 3);
             expect(result.skipped).toBe(3);
-            expect(mockMusicCache.getNextTrack).toHaveBeenCalledTimes(3); // count-1 discarded + 1 for playNext
+            expect(mockMusicCache.getNextTrack).toHaveBeenCalledTimes(2); // count-1 discarded; no extra dequeue when queue is empty
         });
 
         it('should throw when no player', async () => {

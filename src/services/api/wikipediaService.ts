@@ -16,9 +16,9 @@ import type {
     OnThisDayEvent,
     OnThisDayResponse,
     WikipediaSearchOptions
-} from '../../types/api/wikipedia.js';
+} from '../../types/api/models/wikipedia.js';
 import type { SupportedLanguage } from '../../types/api/services/wikipedia-service.js';
-export { type WikiSearchResult, type WikiSearchResponse, type WikiArticle, type WikiArticleResponse, type OnThisDayPage, type OnThisDayEvent, type OnThisDayResponse, type WikipediaSearchOptions } from '../../types/api/wikipedia.js';
+export { type WikiSearchResult, type WikiSearchResponse, type WikiArticle, type WikiArticleResponse, type OnThisDayPage, type OnThisDayEvent, type OnThisDayResponse, type WikipediaSearchOptions } from '../../types/api/models/wikipedia.js';
 // CONFIGURATION
 const LANGUAGE_ENDPOINTS: Record<SupportedLanguage, { api: string; rest: string }> = {
     en: { api: 'https://en.wikipedia.org/w/api.php', rest: 'https://en.wikipedia.org/api/rest_v1' },

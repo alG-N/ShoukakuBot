@@ -89,6 +89,17 @@ export interface NHentaiUserPreferences {
     randomPeriod: 'today' | 'week' | 'month' | 'all';
 }
 
+export interface PixivUserPreferences {
+    contentTypes: string[];         // ['illust', 'manga', 'novel'] subset
+    r18Enabled: boolean;
+    nsfwMode: 'sfw' | 'all';       // only active when r18Enabled = false
+    sortMode: string;
+    aiFilter: boolean;
+    qualityFilter: boolean;
+    minBookmarks: number;
+    translate: boolean;
+}
+
 export interface NHentaiFavouriteEntry {
     gallery_id: number;
     gallery_title: string;

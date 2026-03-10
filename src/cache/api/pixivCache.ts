@@ -6,10 +6,10 @@
  *   - CacheService (Redis-backed) write-through for cross-shard sharing + persistence
  *   - Lazy hydration on miss from CacheService
  *
- * @module repositories/api/pixivCache
+ * @module cache/api/pixivCache
  */
 
-import cacheService from '../../cache/CacheService.js';
+import cacheService from '../CacheService.js';
 import type { PixivCacheSearchResult, PixivResultData } from '../../types/api/repositories/pixiv-cache.js';
 
 // ── CacheService namespace constants ─────────────────────────────────
@@ -157,6 +157,7 @@ const pixivCache = new PixivCache();
 export { pixivCache, PixivCache };
 export { type PixivCacheSearchResult, type PixivResultData };
 export default pixivCache;
+
 
 
 

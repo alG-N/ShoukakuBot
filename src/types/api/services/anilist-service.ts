@@ -7,7 +7,7 @@ import type {
     FuzzyDate,
     RelationEdge,
     Trailer
-} from '../../api/anime.js';
+} from '../models/anime.js';
 
 export interface AutocompleteMedia {
     id: number;

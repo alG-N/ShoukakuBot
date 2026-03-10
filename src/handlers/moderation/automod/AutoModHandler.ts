@@ -5,13 +5,13 @@
  */
 
 import { EmbedBuilder, Message, Guild, GuildTextBasedChannel } from 'discord.js';
-import { logger } from '../../core/Logger.js';
-import AutoModService from '../../services/moderation/AutoModService.js';
-import moderationConfig from '../../config/features/moderation/index.js';
-import type { AutoModSettings } from '../../types/moderation/automod.js';
-import type { ActionType } from '../../config/features/moderation/index.js';
-import type { Violation } from '../../services/moderation/AutoModService.js';
-import type { ActionResult, FeatureConfig } from '../../types/moderation/handlers.js';
+import { logger } from '../../../core/Logger.js';
+import AutoModService from '../../../services/moderation/AutoModService.js';
+import moderationConfig from '../../../config/features/moderation/index.js';
+import type { AutoModSettings } from '../../../types/moderation/automod.js';
+import type { ActionType } from '../../../config/features/moderation/index.js';
+import type { Violation } from '../../../services/moderation/AutoModService.js';
+import type { ActionResult, FeatureConfig } from '../../../types/moderation/handlers.js';
 /**
  * Action type display mapping
  */

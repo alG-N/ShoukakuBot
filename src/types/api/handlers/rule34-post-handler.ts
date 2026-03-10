@@ -8,8 +8,8 @@ import type {
     Rule34Post,
     PostRating,
     Rule34ContentType as ContentType
-} from '../rule34.js';
-import type { Rule34UserPreferences as CacheRule34UserPreferences } from '../../../repositories/api/rule34Cache.js';
+} from '../models/rule34.js';
+import type { Rule34UserPreferences as CacheRule34UserPreferences } from '../../../cache/api/rule34Cache.js';
 
 export interface SearchResults {
     posts: Rule34Post[];
@@ -51,3 +51,4 @@ export interface EmbedResult {
     rows: ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[];
     content?: string;
 }
+

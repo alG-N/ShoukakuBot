@@ -9,7 +9,7 @@ import {
     ModalSubmitInteraction,
     AttachmentBuilder
 } from 'discord.js';
-import type { ParsedTags, SearchData } from '../../../types/api/nhentai.js';
+import type { ParsedTags, SearchData } from '../../../types/api/models/nhentai.js';
 import type {
     Gallery,
     GalleryTitle,

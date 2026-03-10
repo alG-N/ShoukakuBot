@@ -1,7 +1,7 @@
 /**
  * NHentai Command - Presentation Layer
  * Search and browse doujinshi from nhentai
- * @module presentation/commands/api/nhentai
+ * @module presentation/commands/nhentai
  */
 
 import { 
@@ -12,12 +12,12 @@ import {
     StringSelectMenuInteraction,
     ModalSubmitInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
-import { checkAccess, AccessType } from '../../services/index.js';
-import logger from '../../core/Logger.js';
-import _nhentaiServiceModule from '../../services/api/nhentaiService.js';
-import _nhentaiHandlerModule from '../../handlers/api/nhentai/index.js';
-import type { NHentaiService, NHentaiHandler } from '../../types/commands/api-nhentai.js';
+import { BaseCommand, CommandCategory, CommandData } from './BaseCommand.js';
+import { checkAccess, AccessType } from '../services/index.js';
+import logger from '../core/Logger.js';
+import _nhentaiServiceModule from '../services/api/nhentaiService.js';
+import _nhentaiHandlerModule from '../handlers/api/nhentai/index.js';
+import type { NHentaiService, NHentaiHandler } from '../types/commands/external/nhentai-command.js';
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const nhentaiService: NHentaiService = _nhentaiServiceModule as any;
 const nhentaiHandler: NHentaiHandler = _nhentaiHandlerModule as any;
@@ -98,6 +98,10 @@ class NHentaiCommand extends BaseCommand {
             .addSubcommand(sub => sub
                 .setName('favourites')
                 .setDescription('View your saved favourites')
+            )
+            .addSubcommand(sub => sub
+                .setName('settings')
+                .setDescription('Manage your nhentai preferences')
             );
     }
 
@@ -138,6 +142,9 @@ class NHentaiCommand extends BaseCommand {
                     break;
                 case 'favourites':
                     await this._handleFavourites(interaction);
+                    break;
+                case 'settings':
+                    await this._handleSettings(interaction);
                     break;
             }
         } catch (error) {
@@ -281,6 +288,31 @@ class NHentaiCommand extends BaseCommand {
         });
     }
 
+    private async _handleSettings(interaction: ChatInputCommandInteraction): Promise<void> {
+        const handler = nhentaiHandler as NHentaiHandler & {
+            getUserPreferences?: (userId: string) => Promise<{ popularPeriod: 'today' | 'week' | 'month' | 'all'; randomPeriod: 'today' | 'week' | 'month' | 'all' }>;
+            createSettingsEmbed?: (userId: string, prefs: { popularPeriod: 'today' | 'week' | 'month' | 'all'; randomPeriod: 'today' | 'week' | 'month' | 'all' }) => any;
+            createSettingsComponents?: (userId: string, prefs: { popularPeriod: 'today' | 'week' | 'month' | 'all'; randomPeriod: 'today' | 'week' | 'month' | 'all' }, galleryId?: number | null) => any[];
+        };
+
+        if (!handler.getUserPreferences || !handler.createSettingsEmbed || !handler.createSettingsComponents) {
+            await this.safeReply(interaction, {
+                embeds: [this.errorEmbed('Settings are temporarily unavailable.')],
+                ephemeral: true
+            });
+            return;
+        }
+
+        const prefs = await handler.getUserPreferences(interaction.user.id);
+        const embed = handler.createSettingsEmbed(interaction.user.id, prefs);
+        const components = handler.createSettingsComponents(interaction.user.id, prefs, null);
+
+        await this.safeReply(interaction, {
+            embeds: [embed],
+            components
+        });
+    }
+
     async handleButton(interaction: ButtonInteraction): Promise<void> {
         await nhentaiHandler?.handleButton?.(interaction);
     }
@@ -319,4 +351,8 @@ class NHentaiCommand extends BaseCommand {
 }
 
 export default new NHentaiCommand();
+
+
+
+
 

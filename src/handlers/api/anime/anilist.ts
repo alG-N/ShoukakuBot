@@ -1,6 +1,6 @@
 import { EmbedBuilder } from 'discord.js';
 import anilistService from '../../../services/api/anilistService.js';
-import type { AnimeMedia } from '../../../types/api/anime.js';
+import type { AnimeMedia } from '../../../types/api/models/anime.js';
 import type { MediaRanking } from '../../../types/api/handlers/anime-handler.js';
 
 export async function createAniListEmbed(anime: AnimeMedia): Promise<EmbedBuilder> {

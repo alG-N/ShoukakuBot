@@ -1,4 +1,4 @@
-import type { Rule34Post, PostRating, Rule34ContentType as ContentType, SortMode, Rule34RelatedTag as RelatedTag, Rule34HistoryEntry } from '../../../types/api/rule34.js';
+import type { Rule34Post, PostRating, Rule34ContentType as ContentType, SortMode, Rule34RelatedTag as RelatedTag, Rule34HistoryEntry } from '../../../types/api/models/rule34.js';
 import type {
     SearchResults,
     PostEmbedOptions,

@@ -7,11 +7,11 @@
  * under high churn.
  *
  * @internal Used by CacheService — prefer CacheService for new code
- * @module services/guild/RedisCache
+ * @module cache/RedisCache
  */
 
 import Redis from 'ioredis';
-import logger from '../../core/Logger.js';
+import logger from '../core/Logger.js';
 import type {
     CacheTTL,
     DuplicateResult,
@@ -20,7 +20,7 @@ import type {
     GuildCacheStats,
     RateLimitResult,
     SpamTracker
-} from '../../types/infrastructure/cache.js';
+} from '../types/infrastructure/cache.js';
 
 // TYPES
 // REDIS CACHE CLASS
@@ -498,3 +498,4 @@ export class RedisCache {
 const redisCache = new RedisCache();
 
 export default redisCache;
+

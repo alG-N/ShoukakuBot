@@ -19,7 +19,8 @@ import {
     ChannelSelectMenuInteraction,
     RoleSelectMenuInteraction
 } from 'discord.js';
-import type { AutoModService, ModerationConfig } from './AutoModTypes.js';
+import type { AutoModService } from '../../../types/moderation/handlers.js';
+import type { ModerationConfig } from '../../../config/features/moderation/index.js';
 import { showFilterSection, showConfigSection, showActionsSection, showExemptSection, showEscalationConfig } from './AutoModPanels.js';
 
 // ─── FILTER ACTIONS ────────────────────────────────────────────────────────────

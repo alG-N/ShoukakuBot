@@ -1,4 +1,4 @@
-import type { Rule34HistoryEntry, Rule34UserPreferences } from '../rule34.js';
+import type { Rule34HistoryEntry, Rule34UserPreferences } from '../models/rule34.js';
 
 export interface Rule34Session {
     userId: string;

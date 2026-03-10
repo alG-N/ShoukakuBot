@@ -2,7 +2,7 @@ import container from '../container.js';
 import { logger } from '../core/Logger.js';
 
 import postgres from '../database/postgres.js';
-import redisCache from '../services/guild/RedisCache.js';
+import redisCache from '../cache/RedisCache.js';
 import cacheService from '../cache/CacheService.js';
 import commandRegistry from '../services/registry/CommandRegistry.js';
 import eventRegistry from '../services/registry/EventRegistry.js';
@@ -53,8 +53,8 @@ import sayService from '../services/fun/say/SayService.js';
 
 import nhentaiHandler from '../handlers/api/nhentai/index.js';
 
-import rule34Cache from '../repositories/api/rule34Cache.js';
-import redditCache from '../repositories/api/redditCache.js';
+import rule34Cache from '../cache/api/rule34Cache.js';
+import redditCache from '../cache/api/redditCache.js';
 
 import voiceStateUpdate from '../events/voiceStateUpdate.js';
 import readyEvent from '../events/ready.js';
@@ -122,4 +122,6 @@ export function registerServices(): void {
 
     logger.info('Container', `All services registered (${container.getDebugInfo().instantiated.length} instances)`);
 }
+
+
 

@@ -1,4 +1,4 @@
-import type { SteamGame } from '../steam.js';
+import type { SteamGame } from '../models/steam.js';
 
 export interface SaleState {
     games: SteamGame[];

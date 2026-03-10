@@ -4,7 +4,7 @@ import {
     ButtonStyle,
     StringSelectMenuBuilder
 } from 'discord.js';
-import { rule34Cache } from '../../../repositories/api/rule34Cache.js';
+import { rule34Cache } from '../../../cache/api/rule34Cache.js';
 import type { PostEmbedOptions, Rule34HandlerPreferences, Rule34Post } from './types.js';
 
 export function createPostButtons(
@@ -187,3 +187,4 @@ export function createSettingsComponents(
 
     return rows;
 }
+

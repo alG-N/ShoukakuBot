@@ -6,11 +6,11 @@ import {
     EmbedBuilder
 } from 'discord.js';
 import { formatNumber, truncateText } from '../../../utils/common/embed.js';
-import redditCache from '../../../repositories/api/redditCache.js';
+import redditCache from '../../../cache/api/redditCache.js';
 import { createBackButton, createGalleryButtons, createPaginationButtons, createPostButtons } from './components.js';
 import { createPostListEmbed } from './embeds.js';
 import { POSTS_PER_PAGE } from './constants.js';
-import type { RedditPost } from '../../../types/api/reddit.js';
+import type { RedditPost } from '../../../types/api/models/reddit.js';
 import type { RedditSortType } from '../../../types/api/handlers/reddit-post-handler.js';
 
 export async function sendPostListEmbed(
@@ -139,3 +139,4 @@ export async function showPostDetails(
 
     await interaction.editReply({ embeds: [embed], components });
 }
+

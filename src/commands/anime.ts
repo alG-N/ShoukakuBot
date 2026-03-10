@@ -1,7 +1,7 @@
 /**
  * Anime Command - Presentation Layer
  * Search anime/manga on AniList and MyAnimeList
- * @module presentation/commands/api/anime
+ * @module presentation/commands/anime
  */
 
 import { 
@@ -14,27 +14,27 @@ import {
     AutocompleteInteraction,
     ButtonInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
-import { COLORS } from '../../constants.js';
-import { checkAccess, AccessType } from '../../services/index.js';
-import _anilistService from '../../services/api/anilistService.js';
-import _myAnimeListService from '../../services/api/myAnimeListService.js';
-import * as _animeHandler from '../../handlers/api/anime/index.js';
-import _animeRepository from '../../repositories/api/animeRepository.js';
-import logger from '../../core/Logger.js';
+import { BaseCommand, CommandCategory, CommandData } from './BaseCommand.js';
+import { COLORS } from '../constants.js';
+import { checkAccess, AccessType } from '../services/index.js';
+import _anilistService from '../services/api/anilistService.js';
+import _myAnimeListService from '../services/api/myAnimeListService.js';
+import * as _animeHandler from '../handlers/api/anime/index.js';
+import _animeRepository from '../repositories/api/animeRepository.js';
+import logger from '../core/Logger.js';
 import type {
     AnimeCommandTitle,
     AnimeLookupItem as Anime,
     AnimeCachedSearch as CachedAnime,
     TimedAutocompleteCache as AutocompleteCache
-} from '../../types/api/content-session.js';
-import type { AnimeContentSource, MALMediaType, MALTypeDisplay } from '../../types/api/mal.js';
+} from '../types/api/models/content-session.js';
+import type { AnimeContentSource, MALMediaType, MALTypeDisplay } from '../types/api/models/mal.js';
 import type {
     AnilistService,
     MyAnimeListService,
     AnimeHandler,
     AnimeRepository
-} from '../../types/api/commands/anime-command.js';
+} from '../types/commands/external/anime-command.js';
 
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const anilistService: AnilistService = _anilistService as any;
@@ -434,4 +434,9 @@ class AnimeCommand extends BaseCommand {
 }
 
 export default new AnimeCommand();
+
+
+
+
+
 

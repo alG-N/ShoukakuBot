@@ -14,7 +14,7 @@ import {
 import logger from '../../../core/Logger.js';
 import nhentaiService from '../../../services/api/nhentaiService.js';
 import nhentaiRepository, { NHentaiFavourite, NHentaiGallery } from '../../../repositories/api/nhentaiRepository.js';
-import type { SearchData } from '../../../types/api/nhentai.js';
+import type { SearchData } from '../../../types/api/models/nhentai.js';
 import type {
     FavouritesData,
     Gallery,

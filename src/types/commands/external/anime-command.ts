@@ -2,8 +2,8 @@ import type { EmbedBuilder } from 'discord.js';
 import type { AnimeFavourite as AnimeRepositoryFavourite } from '../../../repositories/api/animeRepository.js';
 import type {
     AnimeLookupItem as Anime
-} from '../content-session.js';
-import type { AnimeContentSource, MALMediaType } from '../mal.js';
+} from '../../api/models/content-session.js';
+import type { AnimeContentSource, MALMediaType } from '../../api/models/mal.js';
 
 export type AnilistService = {
     searchAnime: (name: string) => Promise<Anime | null>;

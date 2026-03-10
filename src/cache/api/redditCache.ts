@@ -7,13 +7,13 @@
  *   - Lazy hydration on miss from CacheService
  *   - Session data auto-expires via CacheService TTL (1 hour)
  *
- * @module repositories/api/redditCache
+ * @module cache/api/redditCache
  */
 
-import cacheService from '../../cache/CacheService.js';
-import type { RedditPost } from '../../types/api/reddit.js';
+import cacheService from '../CacheService.js';
+import type { RedditPost } from '../../types/api/models/reddit.js';
 import type { SortType, RedditSession } from '../../types/api/repositories/reddit-cache.js';
-export { type RedditPost } from '../../types/api/reddit.js';
+export { type RedditPost } from '../../types/api/models/reddit.js';
 export { type SortType, type RedditSession } from '../../types/api/repositories/reddit-cache.js';
 
 // ── CacheService namespace ───────────────────────────────────────────
@@ -187,6 +187,7 @@ const redditCache = new RedditCache();
 
 export { redditCache, RedditCache };
 export default redditCache;
+
 
 
 

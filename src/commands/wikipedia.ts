@@ -1,7 +1,7 @@
 /**
  * Wikipedia Command - Presentation Layer
  * Search and display Wikipedia articles
- * @module presentation/commands/api/wikipedia
+ * @module presentation/commands/wikipedia
  */
 
 import { 
@@ -9,15 +9,15 @@ import {
     ChatInputCommandInteraction,
     AutocompleteInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
-import { checkAccess, AccessType } from '../../services/index.js';
-import logger from '../../core/Logger.js';
-import _wikipediaServiceModule from '../../services/api/wikipediaService.js';
-import _wikipediaHandlerModule from '../../handlers/api/wikipedia/index.js';
+import { BaseCommand, CommandCategory, CommandData } from './BaseCommand.js';
+import { checkAccess, AccessType } from '../services/index.js';
+import logger from '../core/Logger.js';
+import _wikipediaServiceModule from '../services/api/wikipediaService.js';
+import _wikipediaHandlerModule from '../handlers/api/wikipedia/index.js';
 import type {
     OnThisDayDate
-} from '../../types/api/wikipedia.js';
-import type { WikipediaHandler, WikipediaService } from '../../types/commands/api-wikipedia.js';
+} from '../types/api/models/wikipedia.js';
+import type { WikipediaHandler, WikipediaService } from '../types/commands/external/wikipedia-command.js';
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const wikipediaService: WikipediaService = _wikipediaServiceModule as any;
 const wikipediaHandler: WikipediaHandler = _wikipediaHandlerModule as any;
@@ -201,5 +201,9 @@ class WikipediaCommand extends BaseCommand {
 }
 
 export default new WikipediaCommand();
+
+
+
+
 
 

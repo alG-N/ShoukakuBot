@@ -17,7 +17,7 @@ import type {
     Rule34SearchResult,
     Rule34AutocompleteSuggestion as AutocompleteSuggestion,
     Rule34RelatedTag as RelatedTag
-} from '../../types/api/rule34.js';
+} from '../../types/api/models/rule34.js';
 import type {
     Rule34Auth,
     AutocompleteItem,

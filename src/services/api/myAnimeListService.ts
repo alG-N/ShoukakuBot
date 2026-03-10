@@ -7,7 +7,7 @@
 import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
 import logger from '../../core/Logger.js';
 import cacheService from '../../cache/CacheService.js';
-import type { MALMediaType as MediaType, MALMediaTypeConfig as MediaTypeConfig } from '../../types/api/mal.js';
+import type { MALMediaType as MediaType, MALMediaTypeConfig as MediaTypeConfig } from '../../types/api/models/mal.js';
 import type {
     MALAnimeData,
     MALMangaData,

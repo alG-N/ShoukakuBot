@@ -7,11 +7,11 @@ import type {
     StringSelectMenuInteraction,
     ModalSubmitInteraction
 } from 'discord.js';
-import type { NHentaiGallery, SearchData } from '../api/nhentai.js';
+import type { NHentaiGallery, SearchData } from '../../api/models/nhentai.js';
 
 export type GalleryData = NHentaiGallery;
 
-export type NHentaiService = typeof import('../../services/api/nhentaiService.js').default;
+export type NHentaiService = typeof import('../../../services/api/nhentaiService.js').default;
 
 export interface NHentaiHandler {
     createGalleryEmbed: (data: GalleryData, options?: { isRandom?: boolean; isPopular?: boolean }) => EmbedBuilder;
@@ -21,6 +21,9 @@ export interface NHentaiHandler {
     createSearchButtons?: (query: string, data: SearchData, page: number, userId: string) => ActionRowBuilder<ButtonBuilder>[];
     setSearchSession?: (userId: string, data: any) => Promise<void>;
     createFavouritesEmbed: (userId: string) => Promise<{ embed?: EmbedBuilder; buttons?: ActionRowBuilder<ButtonBuilder>[] }>;
+    getUserPreferences?: (userId: string) => Promise<{ popularPeriod: 'today' | 'week' | 'month' | 'all'; randomPeriod: 'today' | 'week' | 'month' | 'all' }>;
+    createSettingsEmbed?: (userId: string, prefs: { popularPeriod: 'today' | 'week' | 'month' | 'all'; randomPeriod: 'today' | 'week' | 'month' | 'all' }) => EmbedBuilder;
+    createSettingsComponents?: (userId: string, prefs: { popularPeriod: 'today' | 'week' | 'month' | 'all'; randomPeriod: 'today' | 'week' | 'month' | 'all' }, galleryId?: number | null) => ActionRowBuilder<ButtonBuilder>[] | ActionRowBuilder<any>[];
     handleButton?: (interaction: ButtonInteraction) => Promise<void>;
     handleSelectMenu?: (interaction: StringSelectMenuInteraction) => Promise<void>;
     handleModal?: (interaction: ModalSubmitInteraction) => Promise<void>;

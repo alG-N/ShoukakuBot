@@ -1,4 +1,4 @@
-import type { Rule34QueryContentType, Rule34SearchOptions } from '../rule34.js';
+import type { Rule34QueryContentType, Rule34SearchOptions } from '../models/rule34.js';
 
 export interface Rule34Auth {
     userId: string;

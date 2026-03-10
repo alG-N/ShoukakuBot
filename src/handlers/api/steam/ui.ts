@@ -8,7 +8,7 @@ import {
 } from 'discord.js';
 import steamService from '../../../services/api/steamService.js';
 import type { SaleState } from '../../../types/api/handlers/steam-sale-handler.js';
-import type { SteamGame } from '../../../types/api/steam.js';
+import type { SteamGame } from '../../../types/api/models/steam.js';
 import { COLLECTOR_TIMEOUT, ITEMS_PER_PAGE } from './constants.js';
 
 export async function enrichWithSteamSpyData(games: SteamGame[]): Promise<void> {

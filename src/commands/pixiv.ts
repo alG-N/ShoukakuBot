@@ -1,7 +1,8 @@
 /**
  * Pixiv Command - Presentation Layer
- * Search for artwork, manga, or novels on Pixiv
- * @module presentation/commands/api/pixiv
+ * /pixiv search [character_name] + optional [follow_setting: true/false]
+ * /pixiv settings — per-user search preferences
+ * @module presentation/commands/pixiv
  */
 
 import { 
@@ -9,38 +10,48 @@ import {
     ChatInputCommandInteraction,
     AutocompleteInteraction,
     ButtonInteraction,
+    StringSelectMenuInteraction,
     ActionRowBuilder,
     ButtonBuilder,
     ComponentType,
     EmbedBuilder
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
-import { checkAccess, AccessType } from '../../services/index.js';
-import logger from '../../core/Logger.js';
-import _pixivServiceModule from '../../services/api/pixivService.js';
-import _pixivCacheModule from '../../repositories/api/pixivCache.js';
-import * as _contentHandlerModule from '../../handlers/api/pixiv/index.js';
+import { BaseCommand, CommandCategory, CommandData } from './BaseCommand.js';
+import { checkAccess, AccessType } from '../services/index.js';
+import logger from '../core/Logger.js';
+import _pixivServiceModule from '../services/api/pixivService.js';
+import _pixivCacheModule from '../cache/api/pixivCache.js';
+import * as _contentHandlerModule from '../handlers/api/pixiv/index.js';
 import type {
     PixivCommandSearchOptions,
-    PixivCachedSearch as CachedSearch
-} from '../../types/api/content-session.js';
-import type { PixivSearchOptions } from '../../types/api/pixiv.js';
+    PixivCachedSearch as CachedSearch,
+    PixivUserPreferences
+} from '../types/api/models/content-session.js';
+import type { PixivSearchOptions } from '../types/api/models/pixiv.js';
 import type {
     PixivService,
     PixivCache,
     ContentHandler
-} from '../../types/api/commands/pixiv-command.js';
+} from '../types/commands/external/pixiv-command.js';
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const pixivService: PixivService = _pixivServiceModule as any;
 const pixivCache: PixivCache = _pixivCacheModule as any;
 const contentHandler: ContentHandler = _contentHandlerModule as any;
+
+// Settings handler imports
+const settingsHandler = _contentHandlerModule as unknown as {
+    createSettingsEmbed: (prefs: PixivUserPreferences) => EmbedBuilder;
+    createSettingsComponents: (userId: string, prefs: PixivUserPreferences) => ActionRowBuilder<any>[];
+    getUserPreferences: (userId: string) => Promise<PixivUserPreferences>;
+    setUserPreferences: (userId: string, prefs: Partial<PixivUserPreferences>) => Promise<PixivUserPreferences>;
+};
 // COMMAND
 class PixivCommand extends BaseCommand {
     constructor() {
         super({
             category: CommandCategory.API,
             cooldown: 3,
-            deferReply: true
+            deferReply: false // Manual defer — settings is ephemeral, search is public
         });
     }
 
@@ -48,108 +59,146 @@ class PixivCommand extends BaseCommand {
         return new SlashCommandBuilder()
             .setName('pixiv')
             .setDescription('Search for artwork, manga, or novels on Pixiv')
-            .addStringOption(option =>
-                option.setName('query')
-                    .setDescription('Search by tag/keyword OR artwork ID (e.g., 139155931)')
-                    .setRequired(true)
-                    .setAutocomplete(true)
-            )
-            .addStringOption(option =>
-                option.setName('type')
-                    .setDescription('Type of content to search for')
-                    .setRequired(false)
-                    .addChoices(
-                        { name: '🎨 Illustration', value: 'illust' },
-                        { name: '📚 Manga', value: 'manga' },
-                        { name: '📖 Light Novel', value: 'novel' }
+            .addSubcommand(sub =>
+                sub.setName('search')
+                    .setDescription('Search Pixiv by character name, tag, or artwork ID')
+                    .addStringOption(option =>
+                        option.setName('query')
+                            .setDescription('Character name, tag, keyword, or artwork ID')
+                            .setRequired(true)
+                            .setAutocomplete(true)
+                    )
+                    .addBooleanOption(option =>
+                        option.setName('follow_setting')
+                            .setDescription('Use your saved settings (default: true)')
+                            .setRequired(false)
+                    )
+                    .addStringOption(option =>
+                        option.setName('type')
+                            .setDescription('Override content type')
+                            .setRequired(false)
+                            .addChoices(
+                                { name: '🎨 Illustration', value: 'illust' },
+                                { name: '📚 Manga', value: 'manga' },
+                                { name: '📖 Light Novel', value: 'novel' }
+                            )
+                    )
+                    .addStringOption(option =>
+                        option.setName('sort')
+                            .setDescription('Override sort mode')
+                            .setRequired(false)
+                            .addChoices(
+                                { name: '🔥 Popular', value: 'popular_desc' },
+                                { name: '🆕 Newest First', value: 'date_desc' },
+                                { name: '📅 Oldest First', value: 'date_asc' },
+                                { name: '📊 Daily Ranking', value: 'day' },
+                                { name: '📈 Weekly Ranking', value: 'week' },
+                                { name: '🏆 Monthly Ranking', value: 'month' }
+                            )
+                    )
+                    .addStringOption(option =>
+                        option.setName('nsfw')
+                            .setDescription('Override NSFW filter')
+                            .setRequired(false)
+                            .addChoices(
+                                { name: '✅ SFW Only', value: 'sfw' },
+                                { name: '🔞 R18 + SFW (Show All)', value: 'all' },
+                                { name: '🔥 R18 Only', value: 'r18only' }
+                            )
+                    )
+                    .addIntegerOption(option =>
+                        option.setName('page')
+                            .setDescription('Page number (default: 1)')
+                            .setMinValue(1)
+                            .setMaxValue(50)
                     )
             )
-            .addStringOption(option =>
-                option.setName('sort')
-                    .setDescription('Sort results')
-                    .setRequired(false)
-                    .addChoices(
-                        { name: '🔥 Popular (Default)', value: 'popular_desc' },
-                        { name: '🆕 Newest First', value: 'date_desc' },
-                        { name: '📅 Oldest First', value: 'date_asc' },
-                        { name: '📊 Daily Ranking', value: 'day' },
-                        { name: '📈 Weekly Ranking', value: 'week' },
-                        { name: '🏆 Monthly Ranking', value: 'month' }
-                    )
-            )
-            .addStringOption(option =>
-                option.setName('nsfw')
-                    .setDescription('NSFW content filter (auto: all in NSFW channels)')
-                    .setRequired(false)
-                    .addChoices(
-                        { name: '✅ SFW Only', value: 'sfw' },
-                        { name: '🔞 R18 + SFW (Show All)', value: 'all' },
-                        { name: '🔥 R18 Only', value: 'r18only' }
-                    )
-            )
-            .addBooleanOption(option =>
-                option.setName('r18')
-                    .setDescription('Enable R18 content (true = R18 Only, overrides NSFW filter)')
-                    .setRequired(false)
-            )
-            .addBooleanOption(option =>
-                option.setName('ai_filter')
-                    .setDescription('Hide AI-generated content (Default: OFF - shows AI art)')
-                    .setRequired(false)
-            )
-            .addBooleanOption(option =>
-                option.setName('quality_filter')
-                    .setDescription('Hide low quality art (under 1000 views)')
-                    .setRequired(false)
-            )
-            .addBooleanOption(option =>
-                option.setName('translate')
-                    .setDescription('Translate your search to Japanese')
-                    .setRequired(false)
-            )
-            .addIntegerOption(option =>
-                option.setName('page')
-                    .setDescription('Page number (default: 1)')
-                    .setMinValue(1)
-                    .setMaxValue(50)
-            )
-            .addIntegerOption(option =>
-                option.setName('min_bookmarks')
-                    .setDescription('Minimum bookmarks filter (e.g., 100, 500, 1000)')
-                    .setMinValue(0)
-                    .setMaxValue(100000)
+            .addSubcommand(sub =>
+                sub.setName('settings')
+                    .setDescription('Manage your Pixiv search preferences')
             );
     }
 
     async run(interaction: ChatInputCommandInteraction): Promise<void> {
+        const subcommand = interaction.options.getSubcommand();
+
+        if (subcommand === 'settings') {
+            await this._handleSettings(interaction);
+            return;
+        }
+
+        // subcommand === 'search'
+        await interaction.deferReply();
+        await this._handleSearchSubcommand(interaction);
+    }
+
+    private async _handleSettings(interaction: ChatInputCommandInteraction): Promise<void> {
+        await interaction.deferReply({ ephemeral: true });
+
+        try {
+            const prefs = await settingsHandler.getUserPreferences(interaction.user.id);
+            const embed = settingsHandler.createSettingsEmbed(prefs);
+            const components = settingsHandler.createSettingsComponents(interaction.user.id, prefs);
+            await interaction.editReply({ embeds: [embed], components });
+        } catch (error) {
+            logger.error('Pixiv', `Settings error: ${(error as Error).message}`);
+            await interaction.editReply({ embeds: [this.errorEmbed('Failed to load settings.')] });
+        }
+    }
+
+    private async _handleSearchSubcommand(interaction: ChatInputCommandInteraction): Promise<void> {
         // Access control
         const access = await checkAccess(interaction, AccessType.SUB);
         if (access.blocked) {
-            await interaction.reply({ embeds: [access.embed!], ephemeral: true });
+            await interaction.editReply({ embeds: [access.embed!] });
             return;
         }
 
         const query = interaction.options.getString('query', true);
-        const type = interaction.options.getString('type') || 'illust';
-        const sort = interaction.options.getString('sort') || 'popular_desc';
+        const followSetting = interaction.options.getBoolean('follow_setting') ?? true;
         const channel = interaction.channel;
         const isNsfwChannel = channel && 'nsfw' in channel ? channel.nsfw : false;
-        const r18Toggle = interaction.options.getBoolean('r18');
-        let nsfw = interaction.options.getString('nsfw') || (isNsfwChannel ? 'all' : 'sfw');
-        if (r18Toggle === true) nsfw = 'r18only';
-        const aiFilter = interaction.options.getBoolean('ai_filter') || false;
-        const qualityFilter = interaction.options.getBoolean('quality_filter') || false;
-        const translate = interaction.options.getBoolean('translate') || false;
-        const page = interaction.options.getInteger('page') || 1;
-        const minBookmarks = interaction.options.getInteger('min_bookmarks') || 0;
-
-        // Check NSFW permissions
-        if ((nsfw === 'all' || nsfw === 'r18only') && !isNsfwChannel) {
-            await this.safeReply(interaction, { embeds: [this.errorEmbed('🔞 NSFW content can only be viewed in NSFW channels.')], ephemeral: true });
-            return;
-        }
 
         try {
+            // Load user preferences if follow_setting is true
+            let prefs: PixivUserPreferences | null = null;
+            if (followSetting) {
+                prefs = await settingsHandler.getUserPreferences(interaction.user.id);
+            }
+
+            // Resolve options: command overrides > saved settings > defaults
+            const typeOverride = interaction.options.getString('type');
+            const sortOverride = interaction.options.getString('sort');
+            const nsfwOverride = interaction.options.getString('nsfw');
+            const page = interaction.options.getInteger('page') || 1;
+
+            let type = typeOverride || (prefs ? prefs.contentTypes[0] || 'illust' : 'illust');
+            let sort = sortOverride || (prefs ? prefs.sortMode : 'popular_desc');
+            let aiFilter = prefs ? prefs.aiFilter : false;
+            let qualityFilter = prefs ? prefs.qualityFilter : false;
+            let translate = prefs ? prefs.translate : false;
+            let minBookmarks = prefs ? prefs.minBookmarks : 0;
+
+            // Resolve NSFW mode: command override > saved settings > channel auto-detect
+            let nsfw: string;
+            if (nsfwOverride) {
+                nsfw = nsfwOverride;
+            } else if (prefs) {
+                if (prefs.r18Enabled) {
+                    nsfw = 'r18only';
+                } else {
+                    nsfw = prefs.nsfwMode === 'all' ? 'all' : (isNsfwChannel ? 'all' : 'sfw');
+                }
+            } else {
+                nsfw = isNsfwChannel ? 'all' : 'sfw';
+            }
+
+            // Check NSFW permissions
+            if ((nsfw === 'all' || nsfw === 'r18only') && !isNsfwChannel) {
+                await interaction.editReply({ embeds: [this.errorEmbed('🔞 NSFW content can only be viewed in NSFW channels.')] });
+                return;
+            }
+
             // Check if query is an artwork ID
             if (/^\d+$/.test(query)) {
                 await this._handleArtworkById(interaction, query);
@@ -171,7 +220,7 @@ class PixivCommand extends BaseCommand {
         } catch (error) {
             logger.error('Pixiv', `Search error: ${(error as Error).message}`);
             const embed = contentHandler?.createErrorEmbed?.(error as Error) || this.errorEmbed('An error occurred while searching Pixiv.');
-            await this.safeReply(interaction, { embeds: [embed], ephemeral: true });
+            await interaction.editReply({ embeds: [embed] });
         }
     }
 
@@ -194,7 +243,7 @@ class PixivCommand extends BaseCommand {
         const artwork = await pixivService!.getArtworkById(artworkId);
         
         if (!artwork) {
-            await this.safeReply(interaction, { embeds: [this.errorEmbed(`Artwork **${artworkId}** not found.`)], ephemeral: true });
+            await interaction.editReply({ embeds: [this.errorEmbed(`Artwork **${artworkId}** not found.`)] });
             return;
         }
 
@@ -205,7 +254,7 @@ class PixivCommand extends BaseCommand {
             cacheKey,
             contentType: artwork.type || 'illust'
         });
-        await this.safeReply(interaction, { embeds: [embed], components: rows || [] });
+        await interaction.editReply({ embeds: [embed], components: rows || [] });
     }
 
     private async _handleSearch(interaction: ChatInputCommandInteraction, options: PixivCommandSearchOptions & { query: string }): Promise<void> {
@@ -223,7 +272,7 @@ class PixivCommand extends BaseCommand {
         
         if (!results || results.length === 0) {
             const embed = contentHandler!.createNoResultsEmbed(options.query);
-            await this.safeReply(interaction, { embeds: [embed] });
+            await interaction.editReply({ embeds: [embed] });
             return;
         }
 
@@ -249,7 +298,7 @@ class PixivCommand extends BaseCommand {
             showNsfw: options.nsfw !== 'sfw',
             hasNextPage: !!searchResult?.nextUrl
         });
-        await this.safeReply(interaction, { embeds: [embed], components: rows || [] });
+        await interaction.editReply({ embeds: [embed], components: rows || [] });
     }
 
     async autocomplete(interaction: AutocompleteInteraction): Promise<void> {
@@ -293,6 +342,13 @@ class PixivCommand extends BaseCommand {
         const customId = interaction.customId;
         const parts = customId.split('_');
         const action = parts[1];
+
+        // Handle settings toggle buttons
+        if (action === 'setting') {
+            await this._handleSettingButton(interaction, parts);
+            return;
+        }
+
         const cacheKey = parts.slice(2).join('_');
 
         try {
@@ -372,6 +428,92 @@ class PixivCommand extends BaseCommand {
                 content: '❌ An error occurred. Please try again.',
                 ephemeral: true
             }).catch(() => {});
+        }
+    }
+
+    async handleSelectMenu(interaction: StringSelectMenuInteraction): Promise<void> {
+        const parts = interaction.customId.split('_');
+        // pixiv_setting_<type>_<userId>
+        if (parts[1] !== 'setting') return;
+
+        const settingType = parts[2];
+        const userId = parts.slice(3).join('_');
+
+        if (interaction.user.id !== userId) {
+            await interaction.reply({ content: '❌ This menu is not for you!', ephemeral: true });
+            return;
+        }
+
+        await interaction.deferUpdate();
+
+        try {
+            const selected = interaction.values;
+
+            switch (settingType) {
+                case 'contenttype':
+                    await settingsHandler.setUserPreferences(userId, { contentTypes: selected });
+                    break;
+
+                case 'nsfw': {
+                    const value = selected[0];
+                    if (value === 'r18') {
+                        await settingsHandler.setUserPreferences(userId, { r18Enabled: true, nsfwMode: 'sfw' });
+                    } else {
+                        await settingsHandler.setUserPreferences(userId, { r18Enabled: false, nsfwMode: value as 'sfw' | 'all' });
+                    }
+                    break;
+                }
+
+                case 'sort':
+                    await settingsHandler.setUserPreferences(userId, { sortMode: selected[0] });
+                    break;
+            }
+
+            // Refresh settings UI
+            const prefs = await settingsHandler.getUserPreferences(userId);
+            const embed = settingsHandler.createSettingsEmbed(prefs);
+            const components = settingsHandler.createSettingsComponents(userId, prefs);
+            await interaction.editReply({ embeds: [embed], components });
+        } catch (error) {
+            logger.error('Pixiv', `Settings select error: ${(error as Error).message}`);
+            await interaction.followUp({ content: '❌ Failed to update setting.', ephemeral: true }).catch(() => {});
+        }
+    }
+
+    private async _handleSettingButton(interaction: ButtonInteraction, parts: string[]): Promise<void> {
+        // pixiv_setting_<toggle>_<userId>
+        const toggle = parts[2];
+        const userId = parts.slice(3).join('_');
+
+        if (interaction.user.id !== userId) {
+            await interaction.reply({ content: '❌ This button is not for you!', ephemeral: true });
+            return;
+        }
+
+        await interaction.deferUpdate();
+
+        try {
+            const prefs = await settingsHandler.getUserPreferences(userId);
+
+            switch (toggle) {
+                case 'ai':
+                    await settingsHandler.setUserPreferences(userId, { aiFilter: !prefs.aiFilter });
+                    break;
+                case 'quality':
+                    await settingsHandler.setUserPreferences(userId, { qualityFilter: !prefs.qualityFilter });
+                    break;
+                case 'translate':
+                    await settingsHandler.setUserPreferences(userId, { translate: !prefs.translate });
+                    break;
+            }
+
+            const updated = await settingsHandler.getUserPreferences(userId);
+            const embed = settingsHandler.createSettingsEmbed(updated);
+            const components = settingsHandler.createSettingsComponents(userId, updated);
+            await interaction.editReply({ embeds: [embed], components });
+        } catch (error) {
+            logger.error('Pixiv', `Settings button error: ${(error as Error).message}`);
+            await interaction.followUp({ content: '❌ Failed to update setting.', ephemeral: true }).catch(() => {});
         }
     }
 
@@ -499,4 +641,9 @@ class PixivCommand extends BaseCommand {
 }
 
 export default new PixivCommand();
+
+
+
+
+
 

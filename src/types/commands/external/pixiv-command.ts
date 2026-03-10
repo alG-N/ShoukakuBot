@@ -3,8 +3,8 @@ import type {
     PixivArtworkSummary as Artwork,
     PixivCommandSearchResult,
     PixivCachedSearch as CachedSearch
-} from '../content-session.js';
-import type { PixivSearchOptions } from '../pixiv.js';
+} from '../../api/models/content-session.js';
+import type { PixivSearchOptions } from '../../api/models/pixiv.js';
 
 export interface PixivContentEmbedResult {
     embed: EmbedBuilder;

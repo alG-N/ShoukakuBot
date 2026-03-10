@@ -1,4 +1,4 @@
-import type { NHentaiGallery } from '../nhentai.js';
+import type { NHentaiGallery } from '../models/nhentai.js';
 
 export type NHentaiFavouriteGalleryInput = Pick<NHentaiGallery, 'id' | 'title' | 'num_pages' | 'tags'>;
 

@@ -20,8 +20,9 @@ import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import logger from '../../core/Logger.js';
 import { autoModService as _autoModService } from '../../services/moderation/index.js';
 import _moderationConfigModule from '../../config/features/moderation/index.js';
-import type { AutoModService, ModerationConfig } from '../../handlers/moderation/AutoModTypes.js';
-import { showMainPanel, showToggleSection, showFilterSection, showConfigSection, showActionsSection, showExemptSection, showEscalationConfig } from '../../handlers/moderation/AutoModPanels.js';
+import type { AutoModService } from '../../types/moderation/handlers.js';
+import type { ModerationConfig } from '../../config/features/moderation/index.js';
+import { showMainPanel, showToggleSection, showFilterSection, showConfigSection, showActionsSection, showExemptSection, showEscalationConfig } from '../../handlers/moderation/automod/AutoModPanels.js';
 import {
     handleFilterAction,
     handleFilterActionDeferred,
@@ -34,7 +35,7 @@ import {
     handleEscalationSelect,
     handleEscalationActionSelect,
     handleEscalationActionValue
-} from '../../handlers/moderation/AutoModSettingsHandlers.js';
+} from '../../handlers/moderation/automod/AutoModSettingsHandlers.js';
 
 // SERVICE IMPORTS
 const AutoModServiceInstance: AutoModService = _autoModService as any;

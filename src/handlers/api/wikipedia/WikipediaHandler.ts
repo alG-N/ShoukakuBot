@@ -11,7 +11,7 @@ import type {
     WikiSearchResult,
     OnThisDayEvent,
     OnThisDayDate
-} from '../../../types/api/wikipedia.js';
+} from '../../../types/api/models/wikipedia.js';
 
 export class WikipediaHandler {
     createArticleEmbed(article: WikipediaArticle | null | undefined): EmbedBuilder {

@@ -12,7 +12,7 @@ import type {
     Rule34CacheContract,
     Rule34PostHandlerContract,
     Rule34ServiceContract
-} from '../../../types/api/commands/rule34-command.js';
+} from '../../../types/commands/external/rule34-command.js';
 
 export interface Rule34CommandHandlerDeps {
     rule34Service: Rule34ServiceContract;
@@ -408,3 +408,5 @@ export async function handleRule34SettingsCommand(
         ephemeral: true
     });
 }
+
+

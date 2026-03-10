@@ -5,7 +5,7 @@
 
 // RedisCache is internal - exported only for bootstrap/container initialization
 // Application code should use CacheService instead
-export { RedisCache, default as redisCache } from './RedisCache.js';
+export { RedisCache, default as redisCache } from '../../cache/RedisCache.js';
 
 export { 
     DEFAULT_GUILD_SETTINGS,
@@ -37,6 +37,7 @@ export { type GuildSettings } from './GuildSettingsService.js';
 
 // Setup Wizard Service
 export { SetupWizardService, setupWizardService } from './SetupWizardService.js';
+
 
 
 

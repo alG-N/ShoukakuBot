@@ -4,7 +4,7 @@ import type {
     ChatInputCommandInteraction,
     EmbedBuilder
 } from 'discord.js';
-import type { RedditPost } from '../reddit.js';
+import type { RedditPost } from '../../api/models/reddit.js';
 
 export interface SubredditSuggestion {
     displayName: string;

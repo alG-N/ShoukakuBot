@@ -1,4 +1,4 @@
-import type { RedditPost } from '../reddit.js';
+import type { RedditPost } from '../models/reddit.js';
 
 export type SortType = 'top' | 'new' | 'hot' | 'rising' | 'controversial';
 

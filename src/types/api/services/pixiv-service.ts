@@ -1,4 +1,4 @@
-import type { PixivIllust, PixivNovel } from '../pixiv.js';
+import type { PixivIllust, PixivNovel } from '../models/pixiv.js';
 
 export interface PixivAuth {
     accessToken: string | null;

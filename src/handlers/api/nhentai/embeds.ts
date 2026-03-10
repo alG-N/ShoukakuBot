@@ -1,5 +1,5 @@
 import { EmbedBuilder } from 'discord.js';
-import type { SearchData } from '../../../types/api/nhentai.js';
+import type { SearchData } from '../../../types/api/models/nhentai.js';
 import type { Gallery, GalleryTag, GalleryTitle } from '../../../types/api/handlers/nhentai-handler.js';
 import { NhentaiCdnClient } from './cdn.js';
 import {

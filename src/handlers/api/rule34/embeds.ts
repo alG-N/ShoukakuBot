@@ -1,6 +1,6 @@
 import { EmbedBuilder } from 'discord.js';
 import rule34Service from '../../../services/api/rule34Service.js';
-import { rule34Cache } from '../../../repositories/api/rule34Cache.js';
+import { rule34Cache } from '../../../cache/api/rule34Cache.js';
 import { formatNumber } from '../../../utils/common/embed.js';
 import { CONTENT_EMOJIS, RATING_COLORS, RATING_EMOJIS, SORT_DISPLAY } from './constants.js';
 import { createPostButtons } from './buttons.js';
@@ -376,3 +376,4 @@ export function createAutoPlayEmbed(track: { info?: { title?: string }; title?: 
         .setDescription(`Now playing: **${track?.info?.title || track?.title || 'Unknown'}**`)
         .setFooter({ text: 'Auto-play found a similar track' });
 }
+

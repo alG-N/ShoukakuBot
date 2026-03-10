@@ -6,7 +6,7 @@
  */
 
 import musicCache from '../../../cache/music/MusicCacheFacade.js';
-import type { Track } from './MusicTypes.js';
+import type { Track } from '../../../types/music/track.js';
 
 export class MusicUserDataService {
     async addFavorite(userId: string, track: Track): Promise<any> {

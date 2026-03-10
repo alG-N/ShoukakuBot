@@ -1,7 +1,7 @@
 /**
  * Rule34 Command - Presentation Layer
  * Search Rule34 for images and videos
- * @module presentation/commands/api/rule34
+ * @module presentation/commands/rule34
  */
 
 import { 
@@ -16,28 +16,28 @@ import {
     ButtonInteraction,
     StringSelectMenuInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
-import { checkAccess, AccessType } from '../../services/index.js';
-import _rule34Service from '../../services/api/rule34Service.js';
-import _rule34Cache from '../../repositories/api/rule34Cache.js';
-import _postHandler from '../../handlers/api/rule34/index.js';
+import { BaseCommand, CommandCategory, CommandData } from './BaseCommand.js';
+import { checkAccess, AccessType } from '../services/index.js';
+import _rule34Service from '../services/api/rule34Service.js';
+import _rule34Cache from '../cache/api/rule34Cache.js';
+import _postHandler from '../handlers/api/rule34/index.js';
 import {
     handleRule34ButtonInteraction,
     handleRule34SelectMenuInteraction
-} from '../../handlers/api/rule34/interactions.js';
+} from '../handlers/api/rule34/interactions.js';
 import {
     handleRule34GetByIdCommand,
     handleRule34RandomCommand,
     handleRule34SearchCommand,
     handleRule34SettingsCommand,
     handleRule34TrendingCommand
-} from '../../handlers/api/rule34/commandHandlers.js';
-import logger from '../../core/Logger.js';
+} from '../handlers/api/rule34/commandHandlers.js';
+import logger from '../core/Logger.js';
 import type {
     Rule34ServiceContract,
     Rule34CacheContract,
     Rule34PostHandlerContract
-} from '../../types/api/commands/rule34-command.js';
+} from '../types/commands/external/rule34-command.js';
 // TYPES
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const rule34Service: Rule34ServiceContract = _rule34Service as any;
@@ -269,5 +269,11 @@ class Rule34Command extends BaseCommand {
 }
 
 export default new Rule34Command();
+
+
+
+
+
+
 
 

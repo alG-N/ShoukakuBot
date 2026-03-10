@@ -1,12 +1,12 @@
 import type { EmbedBuilder } from 'discord.js';
 import type { NHentaiGallery } from '../../../repositories/api/nhentaiRepository.js';
-import type { NHentaiTitle, NHentaiTag, NHentaiImages } from '../nhentai.js';
+import type { NHentaiTitle, NHentaiTag, NHentaiImages } from '../models/nhentai.js';
 import type {
     NHentaiPageSession,
     NHentaiSearchSession,
     NHentaiFavouriteEntry,
     NHentaiUserPreferences
-} from '../content-session.js';
+} from '../models/content-session.js';
 
 export type Gallery = NHentaiGallery;
 export type GalleryTitle = NHentaiTitle;

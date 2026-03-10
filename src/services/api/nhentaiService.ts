@@ -17,9 +17,9 @@ import type {
     NHentaiSearchResult,
     PageUrl,
     ParsedTags
-} from '../../types/api/nhentai.js';
+} from '../../types/api/models/nhentai.js';
 import type { NHentaiSearchResponse } from '../../types/api/services/nhentai-service.js';
-export { type NHentaiGallery, type NHentaiTag, type NHentaiPage, type NHentaiImages, type NHentaiTitle, type GalleryResult, type SearchData, type NHentaiSearchResult, type PageUrl, type ParsedTags } from '../../types/api/nhentai.js';
+export { type NHentaiGallery, type NHentaiTag, type NHentaiPage, type NHentaiImages, type NHentaiTitle, type GalleryResult, type SearchData, type NHentaiSearchResult, type PageUrl, type ParsedTags } from '../../types/api/models/nhentai.js';
 // API Configuration
 const API_BASE = nhentaiConfig.baseUrl;
 const GALLERY_ENDPOINT = '/gallery';

@@ -30,30 +30,52 @@ class CommandRegistry {
      * Load commands from commands directory
      */
     private async _loadPresentationCommands(): Promise<void> {
-        const categories = ['general', 'admin', 'owner', 'api', 'fun', 'music', 'video'];
+        const categories = ['general', 'admin', 'owner', 'fun', 'music', 'video'];
+        const rootApiCommands = ['anime', 'media', 'nhentai', 'pixiv', 'reddit', 'rule34', 'steam', 'wikipedia'];
 
         for (const category of categories) {
             try {
                 const commands = await import(`../../commands/${category}/index.js`);
-
-                // CJS dynamic import wraps module.exports as 'default'
-                const commandExports = (commands.default || commands) as Record<string, unknown>;
-
-                for (const [_name, command] of Object.entries(commandExports)) {
-                    const cmd = (command as { default?: RegistryCommand }).default || command as RegistryCommand;
-                    if (cmd?.data?.name) {
-                        this.commands.set(cmd.data.name, cmd);
-                        logger.info('CommandRegistry', `Loaded: ${cmd.data.name} (${category})`);
-
-                        // Register modal handlers if present
-                        if (cmd.modalHandler) {
-                            this.modalHandlers.set(cmd.data.name, cmd);
-                        }
-                    }
-                }
+                this._registerCommandExports((commands.default || commands) as Record<string, unknown>, category);
             } catch (error) {
                 logger.error('CommandRegistry', `Error loading ${category}: ${(error as Error).message}`);
             }
+        }
+
+        for (const commandName of rootApiCommands) {
+            try {
+                const commandModule = await import(`../../commands/${commandName}.js`);
+                this._registerCommandExports((commandModule.default || commandModule) as Record<string, unknown>, 'api');
+            } catch (error) {
+                logger.error('CommandRegistry', `Error loading root command ${commandName}: ${(error as Error).message}`);
+            }
+        }
+    }
+
+    /**
+     * Register command exports from a loaded module.
+     */
+    private _registerCommandExports(commandExports: Record<string, unknown>, category: string): void {
+        const maybeCommand = commandExports as unknown as RegistryCommand;
+        if (maybeCommand?.data?.name) {
+            this._registerCommand(maybeCommand, category);
+            return;
+        }
+
+        for (const [_name, command] of Object.entries(commandExports)) {
+            const cmd = (command as { default?: RegistryCommand }).default || command as RegistryCommand;
+            if (cmd?.data?.name) {
+                this._registerCommand(cmd, category);
+            }
+        }
+    }
+
+    private _registerCommand(cmd: RegistryCommand, category: string): void {
+        this.commands.set(cmd.data.name, cmd);
+        logger.info('CommandRegistry', `Loaded: ${cmd.data.name} (${category})`);
+
+        if (cmd.modalHandler) {
+            this.modalHandlers.set(cmd.data.name, cmd);
         }
     }
 

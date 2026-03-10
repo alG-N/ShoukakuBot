@@ -4,7 +4,7 @@ import steamService from '../../../services/api/steamService.js';
 import { createPaginationButtons, enrichWithSteamSpyData, generateSaleEmbed, setupCollector } from './ui.js';
 import { ITEMS_PER_PAGE } from './constants.js';
 import type { SaleState } from '../../../types/api/handlers/steam-sale-handler.js';
-import type { SteamGame } from '../../../types/api/steam.js';
+import type { SteamGame } from '../../../types/api/models/steam.js';
 
 export async function handleSaleCommand(interaction: ChatInputCommandInteraction): Promise<void> {
     const minDiscount = interaction.options.getInteger('discount') || 0;

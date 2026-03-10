@@ -1,4 +1,4 @@
-import type { MALMediaType as AnimeMediaType } from '../../../types/api/mal.js';
+import type { MALMediaType as AnimeMediaType } from '../../../types/api/models/mal.js';
 import type { MediaConfig } from '../../../types/api/handlers/anime-handler.js';
 
 export const MEDIA_CONFIG: Record<AnimeMediaType, MediaConfig> = {

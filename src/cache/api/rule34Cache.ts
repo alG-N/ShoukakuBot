@@ -10,10 +10,10 @@
  *   - Ephemeral data (sessions, searchCache, autocomplete) has short TTLs.
  *   - User data (blacklists, preferences, favorites, history) has long TTLs.
  *
- * @module repositories/api/rule34Cache
+ * @module cache/api/rule34Cache
  */
 
-import cacheService from '../../cache/CacheService.js';
+import cacheService from '../CacheService.js';
 import type {
     Rule34Session,
     PaginationState,
@@ -507,6 +507,7 @@ const rule34Cache = new Rule34Cache();
 export { rule34Cache, Rule34Cache };
 export { type Rule34Session, type PaginationState, type SearchCacheEntry, type AutocompleteEntry, type Rule34Favorite, type Rule34HistoryEntry, type Rule34UserPreferences, type Rule34CacheStats, type FavoriteResult };
 export default rule34Cache;
+
 
 
 

@@ -11,7 +11,8 @@ import type { MessageRef } from '../../../cache/music/QueueCache.js';
 import trackHandler from '../../../handlers/music/trackHandler.js';
 import { queueService } from '../queue/index.js';
 import { voiceConnectionService } from '../voice/index.js';
-import type { Track, LoopMode } from './MusicTypes.js';
+import type { Track } from '../../../types/music/track.js';
+import type { LoopMode } from '../../../types/music/playback.js';
 
 export class MusicNowPlayingManager {
     /**

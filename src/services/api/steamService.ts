@@ -14,11 +14,10 @@ import type {
     SteamAppDetailsResponse,
     SteamFeaturedCategoriesResponse,
     SteamSpyData
-} from '../../types/api/steam.js';
-export { type SteamGame, type SteamSaleResponse, type SteamPriceOverview, type SteamAppDetailsResponse, type SteamFeaturedGame, type SteamSpyData } from '../../types/api/steam.js';
+} from '../../types/api/models/steam.js';
+export { type SteamGame, type SteamSaleResponse, type SteamPriceOverview, type SteamAppDetailsResponse, type SteamFeaturedGame, type SteamSpyData } from '../../types/api/models/steam.js';
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
-// TYPES & INTERFACES
 // STEAM SERVICE CLASS
 /**
  * Steam Service

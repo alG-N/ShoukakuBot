@@ -13,11 +13,16 @@ import { MusicNowPlayingManager } from './MusicNowPlayingManager.js';
 import { MusicUserDataService } from './MusicUserDataService.js';
 import { MusicSkipVoteManager } from './MusicSkipVoteManager.js';
 
-export { type Track, type TrackInfo, type PlayNextResult, type SkipResult, type VoteSkipResult, type NowPlayingOptions, type ControlButtonOptions, type QueueState, type MusicStats, type LoopMode, type PlayerEventHandlers } from './MusicTypes.js';
-import type {
-    Track, PlayNextResult, SkipResult, VoteSkipResult,
-    QueueState, MusicStats, LoopMode, PlayerEventHandlers
-} from './MusicTypes.js';
+export { type Track, type TrackInfo } from '../../../types/music/track.js';
+export { type LoopMode, type NowPlayingOptions, type PlayNextResult } from '../../../types/music/playback.js';
+export { type QueueState } from '../../../types/music/queue.js';
+export { type PlayerEventHandlers } from '../../../types/music/events.js';
+export { type SkipResult, type VoteSkipResult, type ControlButtonOptions, type MusicStats } from '../../../types/music/facade.js';
+import type { Track } from '../../../types/music/track.js';
+import type { PlayNextResult, LoopMode } from '../../../types/music/playback.js';
+import type { QueueState } from '../../../types/music/queue.js';
+import type { SkipResult, VoteSkipResult, MusicStats } from '../../../types/music/facade.js';
+import type { PlayerEventHandlers } from '../../../types/music/events.js';
 
 export class MusicFacade {
     public readonly queueService: QueueService;
