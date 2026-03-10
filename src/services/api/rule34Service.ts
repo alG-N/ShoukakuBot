@@ -292,8 +292,7 @@ class Rule34Service {
         // Minimum score varies by timeframe (less strict for shorter timeframes)
         const minScore = timeframe === 'day' ? 5 : timeframe === 'week' ? 15 : 30;
 
-        // Sort by DATE (newest first) so we get recent posts, then filter by score
-        // Previously sorted by score which returned all-time top posts (years old)
+        // Sort by ID (newest first). date:desc is not consistently respected by Rule34.
         const startPage = pageOffset * 4; // each "trending page" spans multiple API pages
 
         logger.info('Rule34', `Fetching trending (${timeframe}) | offset: ${pageOffset}`);
@@ -306,7 +305,7 @@ class Rule34Service {
             const result = await this.search('', {
                 limit: 100,
                 page: startPage + page,
-                sort: 'date:desc', // Newest first — critical for getting recent posts
+                sort: 'id:desc',
                 minScore: 0,
                 excludeAi,
                 _silent: true // Suppress per-page logging
@@ -314,21 +313,29 @@ class Rule34Service {
 
             if (result.posts.length === 0) break;
 
-            // Filter posts by created_at date and minimum score
+            // Filter posts by timestamp and minimum score.
+            // Prefer `change` (epoch seconds) and fall back to `created_at` parsing.
             for (const post of result.posts) {
-                if (post.createdAt) {
-                    const postDate = new Date(post.createdAt);
-                    if (postDate >= cutoffDate && post.score >= minScore) {
-                        allPosts.push(post);
-                    }
-                    // If post is older than cutoff, stop (posts are sorted newest first)
-                    if (postDate < cutoffDate) {
-                        // All subsequent posts will be even older, can stop fetching
-                        page = maxPages; // break outer loop
-                        break;
-                    }
-                } else if (post.score >= minScore) {
+                const changeTs = typeof post.change === 'number' && Number.isFinite(post.change)
+                    ? post.change * 1000
+                    : Number.NaN;
+                const createdTs = post.createdAt ? Date.parse(post.createdAt) : Number.NaN;
+                const postTs = Number.isFinite(changeTs) ? changeTs : createdTs;
+
+                if (!Number.isFinite(postTs)) {
+                    continue;
+                }
+
+                const postDate = new Date(postTs);
+                if (postDate >= cutoffDate && post.score >= minScore) {
                     allPosts.push(post);
+                }
+
+                // If post is older than cutoff, stop (posts are sorted newest first)
+                if (postDate < cutoffDate) {
+                    // All subsequent posts will be even older, can stop fetching
+                    page = maxPages; // break outer loop
+                    break;
                 }
             }
         }

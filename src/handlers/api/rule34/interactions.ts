@@ -72,10 +72,6 @@ class Rule34InteractionController {
                         this.deps.rule34Cache?.resetPreferences?.(userId);
                         this.deps.rule34Cache?.clearBlacklist?.(userId);
                         await this._refreshSettingsEmbed(interaction, userId);
-                    } else if (parts[2] === 'refresh') {
-                        await this._refreshSettingsEmbed(interaction, userId);
-                    } else if (parts[2] === 'close') {
-                        await interaction.update({ components: [] });
                     } else if (parts[2] === 'back') {
                         await this._refreshSettingsEmbed(interaction, userId);
                     }
@@ -927,20 +923,10 @@ class Rule34InteractionController {
 
         const quickRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()
-                .setCustomId(`rule34_settings_refresh_${userId}`)
-                .setLabel('Refresh')
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji('🔄'),
-            new ButtonBuilder()
                 .setCustomId(`rule34_settings_reset_${userId}`)
                 .setLabel('Reset All')
                 .setStyle(ButtonStyle.Danger)
-                .setEmoji('🗑️'),
-            new ButtonBuilder()
-                .setCustomId(`rule34_settings_close_${userId}`)
-                .setLabel('Done')
-                .setStyle(ButtonStyle.Success)
-                .setEmoji('✅')
+                .setEmoji('🗑️')
         );
 
         await interaction.update({

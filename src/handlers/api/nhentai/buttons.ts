@@ -28,11 +28,6 @@ export async function createMainButtons(
 
     const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-            .setLabel('View on nhentai')
-            .setStyle(ButtonStyle.Link)
-            .setURL(`https://nhentai.net/g/${galleryId}/`)
-            .setEmoji('🔗'),
-        new ButtonBuilder()
             .setCustomId(`nhentai_read_${galleryId}_${userId}`)
             .setLabel(`Read (${numPages} pages)`)
             .setStyle(ButtonStyle.Success)
@@ -46,10 +41,7 @@ export async function createMainButtons(
             .setCustomId(`nhentai_random_${userId}`)
             .setLabel('Random')
             .setStyle(ButtonStyle.Secondary)
-            .setEmoji('🎲')
-    );
-
-    const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            .setEmoji('🎲'),
         new ButtonBuilder()
             .setCustomId(`nhentai_popular_${userId}`)
             .setLabel('Popular')
@@ -60,20 +52,10 @@ export async function createMainButtons(
             .setLabel('Translation')
             .setStyle(ButtonStyle.Secondary)
             .setEmoji('🌐')
-            .setDisabled(translationDisabled),
-        new ButtonBuilder()
-            .setCustomId(`nhentai_myfavs_${userId}`)
-            .setLabel('My Favourites')
-            .setStyle(ButtonStyle.Secondary)
-            .setEmoji('📚'),
-        new ButtonBuilder()
-            .setCustomId(`nhentai_settings_${userId}`)
-            .setLabel('Settings')
-            .setStyle(ButtonStyle.Secondary)
-            .setEmoji('⚙️')
+            .setDisabled(translationDisabled)
     );
 
-    return [row1, row2];
+    return [row1];
 }
 
 export function createFavouritesButtons(

@@ -27,7 +27,7 @@ class NHentaiCommand extends BaseCommand {
         super({
             category: CommandCategory.API,
             cooldown: 3,
-            deferReply: true,
+            deferReply: false,
             nsfw: true
         });
     }
@@ -125,6 +125,11 @@ class NHentaiCommand extends BaseCommand {
         }
 
         const subcommand = interaction.options.getSubcommand();
+
+        // Manual defer so /nhentai settings can be truly ephemeral.
+        if (!interaction.deferred && !interaction.replied) {
+            await interaction.deferReply({ ephemeral: subcommand === 'settings' });
+        }
 
         try {
             switch (subcommand) {
@@ -309,7 +314,8 @@ class NHentaiCommand extends BaseCommand {
 
         await this.safeReply(interaction, {
             embeds: [embed],
-            components
+            components,
+            ephemeral: true
         });
     }
 

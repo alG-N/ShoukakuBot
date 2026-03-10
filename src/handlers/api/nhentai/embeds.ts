@@ -4,7 +4,6 @@ import type { Gallery, GalleryTag, GalleryTitle } from '../../../types/api/handl
 import { NhentaiCdnClient } from './cdn.js';
 import {
     COLORS,
-    formatDate,
     formatTagList,
     getSortLabel,
     getTitle,
@@ -39,13 +38,13 @@ export function createGalleryEmbed(
     options: { isRandom?: boolean; isPopular?: boolean; popularPeriod?: string } = {}
 ): EmbedBuilder {
     const { isRandom = false, isPopular = false, popularPeriod } = options;
-    const { id, media_id, title, tags, num_pages, upload_date, images, num_favorites } = gallery;
+    const { id, media_id, title, tags, num_pages, images, num_favorites } = gallery;
 
     const embed = new EmbedBuilder()
         .setColor(COLORS.NHENTAI)
         .setTitle(getTitle(title))
         .setURL(`https://nhentai.net/g/${id}/`)
-        .setFooter({ text: `ID: ${id} • ${num_pages} pages • Uploaded: ${formatDate(upload_date)}` });
+        .setFooter({ text: 'You can click the link on the title or change the settings in /nhentai settings' });
 
     const coverType = images?.cover?.t || 'j';
     embed.setThumbnail(cdn.getThumbnailUrl(media_id, coverType));
@@ -161,8 +160,7 @@ export function createSettingsEmbed(userId: string, prefs: UserPreferences): Emb
         .setDescription('These settings apply to button actions for `Popular` and `Random`.')
         .addFields(
             { name: '🔥 Popular Timeframe', value: periodLabel(prefs.popularPeriod), inline: true },
-            { name: '🎲 Random Pool', value: randomPeriodLabel(prefs.randomPeriod), inline: true },
-            { name: '👤 User', value: `<@${userId}>`, inline: false }
+            { name: '🎲 Random Pool', value: randomPeriodLabel(prefs.randomPeriod), inline: true }
         )
         .setFooter({ text: 'Use the dropdown menus below to update your preferences' });
 }

@@ -75,7 +75,7 @@ class PixivCommand extends BaseCommand {
                     )
                     .addStringOption(option =>
                         option.setName('type')
-                            .setDescription('Override content type')
+                            .setDescription('Choose content type for this search')
                             .setRequired(false)
                             .addChoices(
                                 { name: '🎨 Illustration', value: 'illust' },
@@ -85,7 +85,7 @@ class PixivCommand extends BaseCommand {
                     )
                     .addStringOption(option =>
                         option.setName('sort')
-                            .setDescription('Override sort mode')
+                            .setDescription('Choose sort mode for this search')
                             .setRequired(false)
                             .addChoices(
                                 { name: '🔥 Popular', value: 'popular_desc' },
@@ -98,11 +98,11 @@ class PixivCommand extends BaseCommand {
                     )
                     .addStringOption(option =>
                         option.setName('nsfw')
-                            .setDescription('Override NSFW filter')
+                            .setDescription('Choose NSFW filter for this search')
                             .setRequired(false)
                             .addChoices(
                                 { name: '✅ SFW Only', value: 'sfw' },
-                                { name: '🔞 R18 + SFW (Show All)', value: 'all' },
+                                { name: '🔞 NSFW + SFW (Show All)', value: 'all' },
                                 { name: '🔥 R18 Only', value: 'r18only' }
                             )
                     )
@@ -467,6 +467,13 @@ class PixivCommand extends BaseCommand {
                 case 'sort':
                     await settingsHandler.setUserPreferences(userId, { sortMode: selected[0] });
                     break;
+
+                case 'minbookmarks': {
+                    const raw = selected[0] || '0';
+                    const value = Number.parseInt(raw, 10);
+                    await settingsHandler.setUserPreferences(userId, { minBookmarks: Number.isFinite(value) ? Math.max(0, value) : 0 });
+                    break;
+                }
             }
 
             // Refresh settings UI
@@ -504,6 +511,18 @@ class PixivCommand extends BaseCommand {
                     break;
                 case 'translate':
                     await settingsHandler.setUserPreferences(userId, { translate: !prefs.translate });
+                    break;
+                case 'reset':
+                    await settingsHandler.setUserPreferences(userId, {
+                        contentTypes: ['illust'],
+                        r18Enabled: false,
+                        nsfwMode: 'sfw',
+                        sortMode: 'popular_desc',
+                        aiFilter: false,
+                        qualityFilter: false,
+                        minBookmarks: 0,
+                        translate: false
+                    });
                     break;
             }
 

@@ -7,7 +7,6 @@ import {
     EmbedBuilder,
     ModalBuilder,
     ModalSubmitInteraction,
-    StringSelectMenuBuilder,
     TextInputBuilder,
     TextInputStyle
 } from 'discord.js';
@@ -42,9 +41,6 @@ export interface NhentaiButtonInteractionDeps {
     createGalleryResponse: (gallery: Gallery, options?: GalleryResponseOptions) => Promise<{ embed: EmbedBuilder; files: AttachmentBuilder[] }>;
     createMainButtons: (galleryId: number, userId: string, numPages: number, gallery?: Gallery | null) => Promise<ActionRowBuilder<ButtonBuilder>[]>;
     getUserPreferences: (userId: string) => Promise<UserPreferences>;
-    setUserPreferences: (userId: string, prefs: Partial<UserPreferences>) => Promise<UserPreferences>;
-    createSettingsEmbed: (userId: string, prefs: UserPreferences) => EmbedBuilder;
-    createSettingsComponents: (userId: string, prefs: UserPreferences, galleryId?: number | null) => ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[];
     getSearchSession: (userId: string) => Promise<SearchSession | null>;
     setSearchSession: (userId: string, data: Partial<SearchSession>) => Promise<void>;
     createSearchResultsEmbed: (query: string, data: SearchData, page: number, sort: string) => EmbedBuilder;
@@ -327,43 +323,6 @@ export async function handleNhentaiButtonInteraction(
                 break;
             }
 
-            case 'settings': {
-                const prefs = await deps.getUserPreferences(userId);
-                const embed = deps.createSettingsEmbed(userId, prefs);
-                const settingsGalleryId = extractGalleryIdFromMessage(interaction);
-                const rows = deps.createSettingsComponents(userId, prefs, settingsGalleryId);
-                await interaction.editReply({ embeds: [embed], components: rows, files: [] });
-                break;
-            }
-
-            case 'settingsback': {
-                const galleryId = Number.parseInt(parts[2] || '', 10);
-                if (!Number.isInteger(galleryId) || galleryId <= 0) {
-                    await interaction.followUp({
-                        content: '❌ Back target not found. Please open a gallery again.',
-                        ephemeral: true
-                    });
-                    break;
-                }
-
-                const result = await withNhentaiFetchingState(interaction, 'other doujin', async () =>
-                    nhentaiService.fetchGallery(galleryId)
-                );
-                if (!result.success || !result.data) {
-                    await interaction.editReply({
-                        embeds: [deps.createErrorEmbed(result.error || 'Gallery not found')],
-                        components: []
-                    });
-                    break;
-                }
-
-                const gallery = result.data;
-                const { embed, files } = await deps.createGalleryResponse(gallery);
-                const rows = await deps.createMainButtons(gallery.id, userId, gallery.num_pages, gallery);
-                await interaction.editReply({ embeds: [embed], components: rows, files });
-                break;
-            }
-
             case 'translate': {
                 const galleryId = parts[2];
                 const result = await withNhentaiFetchingState(interaction, 'translated version', async () =>
@@ -446,19 +405,6 @@ export async function handleNhentaiButtonInteraction(
                 break;
             }
 
-            case 'myfavs': {
-                const { embed, totalPages, totalCount } = await deps.createFavouritesEmbed(userId, 1);
-                if (totalCount === 0) {
-                    await interaction.editReply({ embeds: [embed], components: [] });
-                    return;
-                }
-                const favourites = await nhentaiRepository.getUserFavourites(userId, 10, 0);
-                const rows = deps.createFavouritesButtons(userId, 1, totalPages, favourites);
-                await deps.setSearchSession(userId, { favPage: 1, expiresAt: Date.now() + deps.sessionTtl * 1000 });
-                await interaction.editReply({ embeds: [embed], components: rows });
-                break;
-            }
-
             case 'randfav': {
                 const favourites = await nhentaiRepository.getUserFavourites(userId, 100, 0);
                 if (favourites.length === 0) {
@@ -531,24 +477,6 @@ function buildFetchingEmbed(
         embed.setThumbnail(null);
     }
     return embed;
-}
-
-function extractGalleryIdFromMessage(interaction: ButtonInteraction): number | null {
-    for (const row of interaction.message.components) {
-        if (row.type !== ComponentType.ActionRow) continue;
-        const rowComponents = (row as unknown as { components?: Array<{ customId?: string }> }).components || [];
-        for (const component of rowComponents) {
-            const customId = component?.customId;
-            if (!customId) continue;
-            const match = customId.match(/^nhentai_(?:read|info|fav|translate|first|prev|next|last|jump|view)_(\d+)_/);
-            if (!match || !match[1]) continue;
-            const galleryId = Number.parseInt(match[1], 10);
-            if (Number.isInteger(galleryId) && galleryId > 0) {
-                return galleryId;
-            }
-        }
-    }
-    return null;
 }
 
 type FetchingStateOptions = {

@@ -150,7 +150,7 @@ export class NHentaiHandler {
     createSettingsComponents(
         userId: string,
         prefs: UserPreferences,
-        galleryId: number | null = null
+        _galleryId: number | null = null
     ): ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] {
         const popularRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
             new StringSelectMenuBuilder()
@@ -176,31 +176,15 @@ export class NHentaiHandler {
                 )
         );
 
-        const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-            new ButtonBuilder()
-                .setCustomId(`nhentai_settingsback_${galleryId ?? 0}_${userId}`)
-                .setLabel('Back')
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji('↩️')
-                .setDisabled(!galleryId)
-        );
+            const resetRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+                new ButtonBuilder()
+                .setCustomId(`nhentai_settingsreset_${userId}`)
+                .setLabel('Reset')
+                .setStyle(ButtonStyle.Danger)
+                .setEmoji('🗑️')
+            );
 
-        return [popularRow, randomRow, backRow];
-    }
-
-    private extractSettingsGalleryId(interaction: StringSelectMenuInteraction): number | null {
-        for (const row of interaction.message.components) {
-            const rowComponents = (row as unknown as { components?: Array<{ customId?: string }> }).components || [];
-            for (const component of rowComponents) {
-                const customId = component?.customId;
-                if (!customId || !customId.startsWith('nhentai_settingsback_')) continue;
-                const match = customId.match(/^nhentai_settingsback_(\d+)_/);
-                if (!match || !match[1]) continue;
-                const galleryId = Number.parseInt(match[1], 10);
-                return Number.isInteger(galleryId) && galleryId > 0 ? galleryId : null;
-            }
-        }
-        return null;
+            return [popularRow, randomRow, resetRow];
     }
 
     async handleFavouriteToggle(
@@ -274,6 +258,24 @@ export class NHentaiHandler {
     }
 
     async handleButton(interaction: ButtonInteraction): Promise<void> {
+        if (interaction.customId.startsWith('nhentai_settingsreset_')) {
+            const userId = interaction.customId.split('_').pop() || '';
+            if (interaction.user.id !== userId) {
+                await interaction.reply({ content: '❌ This button is not for you!', ephemeral: true });
+                return;
+            }
+
+            await interaction.deferUpdate();
+            const prefs = await this.setUserPreferences(userId, {
+                popularPeriod: 'all',
+                randomPeriod: 'all'
+            });
+            const embed = this.createSettingsEmbed(userId, prefs);
+            const components = this.createSettingsComponents(userId, prefs, null);
+            await interaction.editReply({ embeds: [embed], components });
+            return;
+        }
+
         await handleNhentaiButtonInteraction(interaction, {
             sessionTtl: this.SESSION_TTL,
             createErrorEmbed: (message) => this.createErrorEmbed(message),
@@ -285,9 +287,6 @@ export class NHentaiHandler {
             createGalleryResponse: (gallery, options) => this.createGalleryResponse(gallery, options),
             createMainButtons: (galleryId, userId, numPages, gallery) => this.createMainButtons(galleryId, userId, numPages, gallery),
             getUserPreferences: (targetUserId) => this.getUserPreferences(targetUserId),
-            setUserPreferences: (targetUserId, prefs) => this.setUserPreferences(targetUserId, prefs),
-            createSettingsEmbed: (targetUserId, prefs) => this.createSettingsEmbed(targetUserId, prefs),
-            createSettingsComponents: (targetUserId, prefs, galleryId) => this.createSettingsComponents(targetUserId, prefs, galleryId),
             getSearchSession: (userId) => this.getSearchSession(userId),
             setSearchSession: (userId, data) => this.setSearchSession(userId, data),
             createSearchResultsEmbed: (searchQuery, searchData, searchPage, sortBy) => this.createSearchResultsEmbed(searchQuery, searchData, searchPage, sortBy),
@@ -325,8 +324,7 @@ export class NHentaiHandler {
 
         const prefs = await this.getUserPreferences(userId);
         const embed = this.createSettingsEmbed(userId, prefs);
-        const galleryId = this.extractSettingsGalleryId(interaction);
-        const components = this.createSettingsComponents(userId, prefs, galleryId);
+        const components = this.createSettingsComponents(userId, prefs, null);
         await interaction.update({ embeds: [embed], components });
     }
 

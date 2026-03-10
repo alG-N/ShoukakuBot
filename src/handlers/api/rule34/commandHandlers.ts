@@ -383,20 +383,10 @@ export async function handleRule34SettingsCommand(
 
     const quickRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-            .setCustomId(`rule34_settings_refresh_${userId}`)
-            .setLabel('Refresh')
-            .setStyle(ButtonStyle.Secondary)
-            .setEmoji('🔄'),
-        new ButtonBuilder()
             .setCustomId(`rule34_settings_reset_${userId}`)
             .setLabel('Reset All')
             .setStyle(ButtonStyle.Danger)
-            .setEmoji('🗑️'),
-        new ButtonBuilder()
-            .setCustomId(`rule34_settings_close_${userId}`)
-            .setLabel('Done')
-            .setStyle(ButtonStyle.Success)
-            .setEmoji('✅')
+            .setEmoji('🗑️')
     );
 
     await interaction.reply({

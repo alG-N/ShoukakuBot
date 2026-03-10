@@ -49,6 +49,7 @@ class AutoModCommand extends BaseCommand {
             category: CommandCategory.ADMIN,
             cooldown: 3,
             deferReply: true,
+            ephemeral: true,
             userPermissions: [PermissionFlagsBits.ManageGuild]
         });
     }

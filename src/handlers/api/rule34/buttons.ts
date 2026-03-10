@@ -176,12 +176,7 @@ export function createSettingsComponents(
             .setCustomId(`rule34_settings_reset_${userId}`)
             .setLabel('Reset All')
             .setStyle(ButtonStyle.Danger)
-            .setEmoji('🔄'),
-        new ButtonBuilder()
-            .setCustomId(`rule34_settings_close_${userId}`)
-            .setLabel('Done')
-            .setStyle(ButtonStyle.Success)
-            .setEmoji('✅')
+            .setEmoji('🗑️')
     );
     rows.push(row5);
 

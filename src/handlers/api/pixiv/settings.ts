@@ -36,7 +36,7 @@ export function createSettingsEmbed(prefs: PixivUserPreferences): EmbedBuilder {
     if (prefs.r18Enabled) {
         nsfwDisplay = '🔥 R18 Only';
     } else if (prefs.nsfwMode === 'all') {
-        nsfwDisplay = '🔞 R18 + SFW (All)';
+        nsfwDisplay = '🔞 NSFW + SFW (All)';
     } else {
         nsfwDisplay = '✅ SFW Only';
     }
@@ -46,7 +46,7 @@ export function createSettingsEmbed(prefs: PixivUserPreferences): EmbedBuilder {
         .setTitle('⚙️ Pixiv Settings')
         .setDescription(
             'These settings will be used as defaults when you use `/pixiv [character_name]`.\n' +
-            'Command-level options will override these settings.'
+            'Command-level options will take priority over these settings.'
         )
         .addFields(
             { name: '📂 Content Types', value: contentDisplay, inline: true },
@@ -62,48 +62,7 @@ export function createSettingsEmbed(prefs: PixivUserPreferences): EmbedBuilder {
 }
 
 export function createSettingsComponents(userId: string, prefs: PixivUserPreferences): ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] {
-    // Row 1: Content type (multiple choice)
-    const contentTypeRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-        new StringSelectMenuBuilder()
-            .setCustomId(`pixiv_setting_contenttype_${userId}`)
-            .setPlaceholder('Select content types')
-            .setMinValues(1)
-            .setMaxValues(3)
-            .addOptions(
-                { label: 'Illustration', value: 'illust', emoji: '🎨', default: prefs.contentTypes.includes('illust') },
-                { label: 'Manga', value: 'manga', emoji: '📚', default: prefs.contentTypes.includes('manga') },
-                { label: 'Light Novel', value: 'novel', emoji: '📖', default: prefs.contentTypes.includes('novel') }
-            )
-    );
-
-    // Row 2: NSFW mode — R18 vs SFW/All (mutually exclusive behavior)
-    const nsfwRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-        new StringSelectMenuBuilder()
-            .setCustomId(`pixiv_setting_nsfw_${userId}`)
-            .setPlaceholder('Select NSFW mode')
-            .addOptions(
-                { label: 'SFW Only', value: 'sfw', emoji: '✅', default: !prefs.r18Enabled && prefs.nsfwMode === 'sfw' },
-                { label: 'R18 + SFW (All)', value: 'all', emoji: '🔞', default: !prefs.r18Enabled && prefs.nsfwMode === 'all' },
-                { label: 'R18 Only', value: 'r18', emoji: '🔥', default: prefs.r18Enabled }
-            )
-    );
-
-    // Row 3: Sort mode
-    const sortRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-        new StringSelectMenuBuilder()
-            .setCustomId(`pixiv_setting_sort_${userId}`)
-            .setPlaceholder('Select sort mode')
-            .addOptions(
-                { label: 'Popular', value: 'popular_desc', emoji: '🔥', default: prefs.sortMode === 'popular_desc' },
-                { label: 'Newest First', value: 'date_desc', emoji: '🆕', default: prefs.sortMode === 'date_desc' },
-                { label: 'Oldest First', value: 'date_asc', emoji: '📅', default: prefs.sortMode === 'date_asc' },
-                { label: 'Daily Ranking', value: 'day', emoji: '📊', default: prefs.sortMode === 'day' },
-                { label: 'Weekly Ranking', value: 'week', emoji: '📈', default: prefs.sortMode === 'week' },
-                { label: 'Monthly Ranking', value: 'month', emoji: '🏆', default: prefs.sortMode === 'month' }
-            )
-    );
-
-    // Row 4: Toggle buttons for filters
+    // Single row: 3 toggles + reset.
     const filterRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
             .setCustomId(`pixiv_setting_ai_${userId}`)
@@ -116,8 +75,13 @@ export function createSettingsComponents(userId: string, prefs: PixivUserPrefere
         new ButtonBuilder()
             .setCustomId(`pixiv_setting_translate_${userId}`)
             .setLabel(prefs.translate ? '🌐 Translate: ON' : '🌐 Translate: OFF')
-            .setStyle(prefs.translate ? ButtonStyle.Success : ButtonStyle.Secondary)
+            .setStyle(prefs.translate ? ButtonStyle.Success : ButtonStyle.Secondary),
+        new ButtonBuilder()
+            .setCustomId(`pixiv_setting_reset_${userId}`)
+            .setLabel('Reset')
+            .setStyle(ButtonStyle.Danger)
+            .setEmoji('🗑️')
     );
 
-    return [contentTypeRow, nsfwRow, sortRow, filterRow];
+    return [filterRow];
 }
