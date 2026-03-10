@@ -83,5 +83,17 @@ export function createSettingsComponents(userId: string, prefs: PixivUserPrefere
             .setEmoji('🗑️')
     );
 
-    return [filterRow];
+    const settingMenuRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+        new StringSelectMenuBuilder()
+            .setCustomId(`pixiv_setting_menu_${userId}`)
+            .setPlaceholder('⚙️ Select a setting to change...')
+            .addOptions(
+                { label: 'Content Types', value: 'contenttype', emoji: '📂', description: 'Choose default content type(s)' },
+                { label: 'NSFW Mode', value: 'nsfw', emoji: '🔞', description: 'Choose SFW / NSFW+SFW / R18 only' },
+                { label: 'Sort Mode', value: 'sort', emoji: '📊', description: 'Choose default sort mode' },
+                { label: 'Min Bookmarks', value: 'minbookmarks', emoji: '📖', description: 'Set bookmark threshold' }
+            )
+    );
+
+    return [filterRow, settingMenuRow];
 }

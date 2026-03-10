@@ -13,8 +13,10 @@ import {
     StringSelectMenuInteraction,
     ActionRowBuilder,
     ButtonBuilder,
+    ButtonStyle,
     ComponentType,
-    EmbedBuilder
+    EmbedBuilder,
+    StringSelectMenuBuilder
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from './BaseCommand.js';
 import { checkAccess, AccessType } from '../services/index.js';
@@ -450,6 +452,15 @@ class PixivCommand extends BaseCommand {
             const selected = interaction.values;
 
             switch (settingType) {
+                case 'menu': {
+                    const option = selected[0] as 'contenttype' | 'nsfw' | 'sort' | 'minbookmarks';
+                    const prefs = await settingsHandler.getUserPreferences(userId);
+                    const embed = settingsHandler.createSettingsEmbed(prefs);
+                    const components = this._buildSettingsSubmenu(option, userId, prefs);
+                    await interaction.editReply({ embeds: [embed], components });
+                    return;
+                }
+
                 case 'contenttype':
                     await settingsHandler.setUserPreferences(userId, { contentTypes: selected });
                     break;
@@ -524,6 +535,8 @@ class PixivCommand extends BaseCommand {
                         translate: false
                     });
                     break;
+                case 'back':
+                    break;
             }
 
             const updated = await settingsHandler.getUserPreferences(userId);
@@ -534,6 +547,77 @@ class PixivCommand extends BaseCommand {
             logger.error('Pixiv', `Settings button error: ${(error as Error).message}`);
             await interaction.followUp({ content: '❌ Failed to update setting.', ephemeral: true }).catch(() => {});
         }
+    }
+
+    private _buildSettingsSubmenu(
+        option: 'contenttype' | 'nsfw' | 'sort' | 'minbookmarks',
+        userId: string,
+        prefs: PixivUserPreferences
+    ): ActionRowBuilder<any>[] {
+        let selectRow: ActionRowBuilder<StringSelectMenuBuilder>;
+
+        if (option === 'contenttype') {
+            selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+                new StringSelectMenuBuilder()
+                    .setCustomId(`pixiv_setting_contenttype_${userId}`)
+                    .setPlaceholder('Select content types')
+                    .setMinValues(1)
+                    .setMaxValues(3)
+                    .addOptions(
+                        { label: 'Illustration', value: 'illust', emoji: '🎨', default: prefs.contentTypes.includes('illust') },
+                        { label: 'Manga', value: 'manga', emoji: '📚', default: prefs.contentTypes.includes('manga') },
+                        { label: 'Light Novel', value: 'novel', emoji: '📖', default: prefs.contentTypes.includes('novel') }
+                    )
+            );
+        } else if (option === 'nsfw') {
+            selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+                new StringSelectMenuBuilder()
+                    .setCustomId(`pixiv_setting_nsfw_${userId}`)
+                    .setPlaceholder('Select NSFW mode')
+                    .addOptions(
+                        { label: 'SFW Only', value: 'sfw', emoji: '✅', default: !prefs.r18Enabled && prefs.nsfwMode === 'sfw' },
+                        { label: 'NSFW + SFW (All)', value: 'all', emoji: '🔞', default: !prefs.r18Enabled && prefs.nsfwMode === 'all' },
+                        { label: 'R18 Only', value: 'r18', emoji: '🔥', default: prefs.r18Enabled }
+                    )
+            );
+        } else if (option === 'sort') {
+            selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+                new StringSelectMenuBuilder()
+                    .setCustomId(`pixiv_setting_sort_${userId}`)
+                    .setPlaceholder('Select sort mode')
+                    .addOptions(
+                        { label: 'Popular', value: 'popular_desc', emoji: '🔥', default: prefs.sortMode === 'popular_desc' },
+                        { label: 'Newest First', value: 'date_desc', emoji: '🆕', default: prefs.sortMode === 'date_desc' },
+                        { label: 'Oldest First', value: 'date_asc', emoji: '📅', default: prefs.sortMode === 'date_asc' },
+                        { label: 'Daily Ranking', value: 'day', emoji: '📊', default: prefs.sortMode === 'day' },
+                        { label: 'Weekly Ranking', value: 'week', emoji: '📈', default: prefs.sortMode === 'week' },
+                        { label: 'Monthly Ranking', value: 'month', emoji: '🏆', default: prefs.sortMode === 'month' }
+                    )
+            );
+        } else {
+            selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+                new StringSelectMenuBuilder()
+                    .setCustomId(`pixiv_setting_minbookmarks_${userId}`)
+                    .setPlaceholder('Select minimum bookmarks')
+                    .addOptions(
+                        { label: 'No minimum', value: '0', emoji: '✅', default: prefs.minBookmarks === 0 },
+                        { label: 'At least 50', value: '50', emoji: '⭐', default: prefs.minBookmarks === 50 },
+                        { label: 'At least 100', value: '100', emoji: '⭐', default: prefs.minBookmarks === 100 },
+                        { label: 'At least 500', value: '500', emoji: '⭐', default: prefs.minBookmarks === 500 },
+                        { label: 'At least 1000', value: '1000', emoji: '🏆', default: prefs.minBookmarks === 1000 }
+                    )
+            );
+        }
+
+        const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+                .setCustomId(`pixiv_setting_back_${userId}`)
+                .setLabel('Back')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('◀️')
+        );
+
+        return [selectRow, backRow];
     }
 
     private async _loadSearchPage(interaction: ButtonInteraction, cached: CachedSearch, cacheKey: string, newPage: number): Promise<void> {
