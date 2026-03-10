@@ -202,7 +202,24 @@ export const playHandler = {
             }
 
             let tracks = playlistData.tracks;
-            
+
+            // If the URL contains an index parameter, rotate the playlist so
+            // the track at that position plays first (e.g. &index=12 → start from track 12)
+            if (!shouldShuffle) {
+                try {
+                    const url = new URL(query);
+                    const indexParam = url.searchParams.get('index');
+                    if (indexParam) {
+                        const startIndex = Math.max(0, parseInt(indexParam, 10) - 1);
+                        if (!isNaN(startIndex) && startIndex > 0 && startIndex < tracks.length) {
+                            tracks = [...tracks.slice(startIndex), ...tracks.slice(0, startIndex)];
+                        }
+                    }
+                } catch {
+                    // Not a valid URL or no index param — use default order
+                }
+            }
+
             if (shouldShuffle) {
                 for (let i = tracks.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));

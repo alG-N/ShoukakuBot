@@ -423,10 +423,15 @@ export const buttonHandler = {
         }
     },
 
-    async fetchLyrics(title: string, artist?: string): Promise<string | null> {
+    async fetchLyrics(title: unknown, artist?: unknown): Promise<string | null> {
         try {
-            let cleanTitle = title;
-            let cleanArtist = artist || '';
+            if (typeof title !== 'string' || title.trim().length === 0) {
+                return null;
+            }
+
+            let cleanTitle = title.trim();
+            const originalArtist = typeof artist === 'string' ? artist : '';
+            let cleanArtist = originalArtist;
             
             if (title.includes(' - ')) {
                 const parts = title.split(' - ');
@@ -491,8 +496,8 @@ export const buttonHandler = {
                 }
             }
 
-            if (artist && artist !== cleanArtist) {
-                const origArtist = artist.replace(/\s*-\s*Topic$/i, '').replace(/VEVO$/i, '').trim();
+            if (originalArtist && originalArtist !== cleanArtist) {
+                const origArtist = originalArtist.replace(/\s*-\s*Topic$/i, '').replace(/VEVO$/i, '').trim();
                 const fallback2 = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(origArtist)}/${encodeURIComponent(simplifiedTitle)}`);
                 if (fallback2.ok) {
                     const data = await fallback2.json() as { lyrics?: string };

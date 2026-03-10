@@ -19,10 +19,9 @@ import type {
     SpotifyTrack,
     SpotifyArtist,
     SpotifyAlbum,
-    SpotifySearchResult,
     EmbedTrack
 } from '../../../types/music/spotify-service.js';
-export { type SpotifyToken, type SpotifyTrack, type SpotifyArtist, type SpotifyAlbum, type SpotifySearchResult, type EmbedTrack };
+export { type SpotifyToken, type SpotifyTrack, type SpotifyArtist, type SpotifyAlbum, type EmbedTrack };
 
 // ── TYPES ────────────────────────────────────────────────────────────
 
@@ -144,22 +143,6 @@ class SpotifyService {
 
     // ── SEARCH ───────────────────────────────────────────────────────
 
-    /** Search for tracks on Spotify */
-    async searchTrack(query: string, limit: number = 5): Promise<SpotifyTrack[]> {
-        try {
-            const result = await this.apiRequest<SpotifySearchResult>('/search', {
-                q: query,
-                type: 'track',
-                limit: String(limit),
-                market: 'US',
-            });
-            return result.tracks?.items || [];
-        } catch (error) {
-            logger.error('Spotify', `Search error: ${(error as Error).message}`);
-            return [];
-        }
-    }
-
     /** Get a track by Spotify ID */
     async getTrack(trackId: string): Promise<SpotifyTrack | null> {
         try {
@@ -167,13 +150,6 @@ class SpotifyService {
         } catch {
             return null;
         }
-    }
-
-    /** Search Spotify for a track by title + artist, return the best match */
-    async findTrack(title: string, artist?: string): Promise<SpotifyTrack | null> {
-        const query = artist ? `track:${title} artist:${artist}` : title;
-        const results = await this.searchTrack(query, 1);
-        return results[0] || null;
     }
 
     // ── PLAYLIST / ALBUM (EMBED SCRAPING) ────────────────────────────

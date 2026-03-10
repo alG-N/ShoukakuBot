@@ -6,7 +6,7 @@ import { autoPlayService, AutoPlayService } from '../autoplay/index.js';
 import spotifyService from '../spotify/SpotifyService.js';
 import { musicEventBus, MusicEvents, playbackEventHandler } from '../events/index.js';
 import musicCache from '../../../cache/music/MusicCacheFacade.js';
-import trackHandler from '../../../handlers/music/trackHandler.js';
+import { createInfoEmbed, createQueueFinishedEmbed } from '../../../handlers/music/trackEmbeds.js';
 import { updateMusicMetrics, musicTracksPlayedTotal } from '../../../core/metrics.js';
 import logger from '../../../core/Logger.js';
 import { MusicNowPlayingManager } from './MusicNowPlayingManager.js';
@@ -464,7 +464,7 @@ export class MusicFacade {
                         const spotifyLabel = spotifyService.isConfigured() ? ' 🟢' : '';
                         const moodInfo = autoPlayService.getLastMoodProfile();
                         const moodLabel = moodInfo ? ` • ${typeof moodInfo === 'string' ? moodInfo : (moodInfo as { mood: string }).mood}` : '';
-                        const autoPlayEmbed = trackHandler.createInfoEmbed(
+                        const autoPlayEmbed = createInfoEmbed(
                             `🎵 Auto-Play${spotifyLabel}`,
                             `Now playing: **${similarTrack.info?.title}**${moodLabel}`
                         );
@@ -484,7 +484,7 @@ export class MusicFacade {
         await this.disableNowPlayingControls(guildId);
 
         if (queue?.textChannel && 'send' in queue.textChannel && typeof queue.textChannel.send === 'function') {
-            const finishedEmbed = trackHandler.createQueueFinishedEmbed(lastTrack as any);
+            const finishedEmbed = createQueueFinishedEmbed(lastTrack);
             await queue.textChannel.send({ embeds: [finishedEmbed] }).catch(() => {});
         }
 

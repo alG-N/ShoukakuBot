@@ -162,28 +162,6 @@ class MusicCommand extends BaseCommand {
                 .setDescription('Clear the queue (keeps current track)')
             )
             
-            // Seek subcommand
-            .addSubcommand(sub => sub
-                .setName('seek')
-                .setDescription('Seek to a position in the track')
-                .addStringOption(opt => opt
-                    .setName('position')
-                    .setDescription('Position (e.g., 1:30, 90)')
-                    .setRequired(true)
-                )
-            )
-            
-            // Lyrics subcommand
-            .addSubcommand(sub => sub
-                .setName('lyrics')
-                .setDescription('Get lyrics for current or specified song')
-                .addStringOption(opt => opt
-                    .setName('query')
-                    .setDescription('Song name (optional, uses current track if empty)')
-                    .setRequired(false)
-                )
-            )
-            
             // History subcommand
             .addSubcommand(sub => sub
                 .setName('history')
@@ -196,11 +174,7 @@ class MusicCommand extends BaseCommand {
                 .setDescription('Toggle autoplay mode')
             )
             
-            // Grab subcommand
-            .addSubcommand(sub => sub
-                .setName('grab')
-                .setDescription('Save current track info to DMs')
-            );
+;
     }
 
     async run(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -240,11 +214,8 @@ class MusicCommand extends BaseCommand {
                 'remove': handlers.handleRemove,
                 'move': handlers.handleMove,
                 'clear': handlers.handleClear,
-                'seek': handlers.handleSeek,
-                'lyrics': handlers.fetchLyrics as any,
                 'history': handlers.handleRecent,
                 'autoplay': handlers.handleAutoPlay,
-                'grab': handlers.handleNowPlaying, // Grab uses now playing info
             };
 
             const handler = handlerMap[subcommand];

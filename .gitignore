@@ -5,6 +5,7 @@ node_modules/
 .commands-hash.json
 *.db
 temp/
+dist/
 
 # Docker service data (plugins are binary, cookies are secrets)
 docker/lavalink/plugins/

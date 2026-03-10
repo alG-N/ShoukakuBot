@@ -300,8 +300,10 @@ export function createQueueListEmbed(tracks: Track[], currentTrack: Track | null
     // Current track section
     if (currentTrack) {
         embed.setTitle('Now Playing');
+        const trackTitle = currentTrack.title || 'Unknown';
+        const trackDisplay = currentTrack.url ? `**[${trackTitle}](${currentTrack.url})**` : `**${trackTitle}**`;
         embed.setDescription(
-            `**[${currentTrack.title}](${currentTrack.url})**\n` +
+            `${trackDisplay}\n` +
             `${currentTrack.author || 'Unknown'} • ${fmtDur(currentTrack.lengthSeconds)}`
         );
 
@@ -314,14 +316,18 @@ export function createQueueListEmbed(tracks: Track[], currentTrack: Track | null
     if (pageItems.length > 0) {
         const queueText = pageItems.map((track, i) => {
             const position = start + i + 1;
-            const title = truncate(track.title, 40);
+            const title = truncate(track.title || 'Unknown', 40);
             const duration = fmtDur(track.lengthSeconds);
-            return `\`${String(position).padStart(2, '0')}.\` [${title}](${track.url})\n　　 ${duration} • ${truncate(track.author, 20)}`;
+            const titleDisplay = track.url ? `[${title}](${track.url})` : `**${title}**`;
+            return `\`${String(position).padStart(2, '0')}.\` ${titleDisplay}\n　　 ${duration} • ${truncate(track.author || 'Unknown', 20)}`;
         }).join('\n\n');
+
+        // Discord field value limit is 1024 chars
+        const safeQueueText = queueText.length > 1024 ? queueText.slice(0, 1020) + '...' : queueText;
 
         embed.addFields({
             name: `📑 Up Next (${tracks.length} track${tracks.length !== 1 ? 's' : ''})`,
-            value: queueText,
+            value: safeQueueText,
             inline: false
         });
     } else if (!currentTrack) {
@@ -387,12 +393,18 @@ export function createLyricsEmbed(track: Track, lyrics: string): EmbedBuilder {
         displayLyrics = lyrics.substring(0, maxLength - 50) + '\n\n... *[Lyrics truncated]*';
     }
 
+    const safeTitle = (track.title || '').trim() || 'Unknown Track';
+    const safeUrl = (track.url || '').trim();
+
     const embed = new EmbedBuilder()
         .setColor(COLORS.lyrics as `#${string}`)
         .setAuthor({ name: '📝 Lyrics' })
-        .setTitle(track.title)
-        .setURL(track.url)
+        .setTitle(safeTitle)
         .setDescription(displayLyrics);
+
+    if (/^https?:\/\//i.test(safeUrl)) {
+        embed.setURL(safeUrl);
+    }
 
     if (track.thumbnail) {
         embed.setThumbnail(track.thumbnail);

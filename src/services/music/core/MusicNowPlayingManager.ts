@@ -5,10 +5,17 @@
  * @module services/music/MusicNowPlayingManager
  */
 
-import { Message, TextBasedChannel, TextChannel } from 'discord.js';
+import {
+    Message,
+    TextBasedChannel,
+    TextChannel,
+    ComponentType,
+    type Guild
+} from 'discord.js';
 import musicCache from '../../../cache/music/MusicCacheFacade.js';
 import type { MessageRef } from '../../../cache/music/QueueCache.js';
-import trackHandler from '../../../handlers/music/trackHandler.js';
+import { createNowPlayingEmbed } from '../../../handlers/music/trackEmbeds.js';
+import { createControlButtons } from '../../../handlers/music/trackButtons.js';
 import { queueService } from '../queue/index.js';
 import { voiceConnectionService } from '../voice/index.js';
 import type { Track } from '../../../types/music/track.js';
@@ -61,18 +68,30 @@ export class MusicNowPlayingManager {
         if (!message?.components?.length) return;
 
         try {
-            const disabledRows = message.components.map((row: any) => ({
-                type: row.type,
-                components: row.components.map((c: any) => ({
-                    ...c.data,
-                    disabled: true
-                }))
-            }));
+            const disabledRows = message.components
+                .filter(row => row.type === ComponentType.ActionRow)
+                .map(row => {
+                    const rowJson = row.toJSON();
+                    const components = rowJson.components.map(component => {
+                        if (component.type === ComponentType.Button) {
+                            return {
+                                ...component,
+                                disabled: true
+                            };
+                        }
+                        return component;
+                    });
 
-            // Cast: manually-constructed component objects don't match MessageActionRowComponentData
-            await message.edit({ components: disabledRows as any });
-        } catch (error: any) {
-            if (error.code === 10008) {
+                    return {
+                        type: ComponentType.ActionRow,
+                        components
+                    };
+                });
+
+            await message.edit({ components: disabledRows });
+        } catch (error: unknown) {
+            const err = error as { code?: number };
+            if (err.code === 10008) {
                 musicCache.setNowPlayingMessage(guildId, null);
             }
         }
@@ -92,23 +111,23 @@ export class MusicNowPlayingManager {
             const channel = queue.textChannel;
             const guild = (channel && 'guild' in channel) ? (channel as { guild?: unknown }).guild : undefined;
             if (!guild || !('id' in (guild as object))) return;
-            const listenerCount = voiceConnectionService.getListenerCount(guildId, guild as any);
+            const listenerCount = voiceConnectionService.getListenerCount(guildId, guild as Guild);
             const voteSkipStatus = musicCache.getVoteSkipStatus(guildId, listenerCount);
 
-            const embed = trackHandler.createNowPlayingEmbed(currentTrack as any, {
+            const embed = createNowPlayingEmbed(currentTrack, {
                 volume: queueService.getVolume(guildId),
                 isPaused: queue.isPaused || false,
                 loopMode: queueService.getLoopMode(guildId) as LoopMode,
                 isShuffled: queueService.isShuffled(guildId),
                 queueLength: queueList.length,
-                nextTrack: (queueList[0] || null) as any,
+                nextTrack: queueList[0] || null,
                 loopCount: 0,
                 voteSkipCount: voteSkipStatus.count,
                 voteSkipRequired: voteSkipStatus.required,
                 listenerCount: listenerCount
             });
 
-            const rows = trackHandler.createControlButtons(guildId, {
+            const rows = createControlButtons(guildId, {
                 isPaused: queue.isPaused || false,
                 loopMode: queueService.getLoopMode(guildId) as LoopMode,
                 isShuffled: queueService.isShuffled(guildId),
@@ -142,23 +161,23 @@ export class MusicNowPlayingManager {
             const channel = queue.textChannel;
             const guild = (channel && 'guild' in channel) ? (channel as { guild?: unknown }).guild : undefined;
             if (!guild || !('id' in (guild as object))) return;
-            const listenerCount = voiceConnectionService.getListenerCount(guildId, guild as any);
+            const listenerCount = voiceConnectionService.getListenerCount(guildId, guild as Guild);
             const voteSkipStatus = musicCache.getVoteSkipStatus(guildId, listenerCount);
 
-            const embed = trackHandler.createNowPlayingEmbed(currentTrack as any, {
+            const embed = createNowPlayingEmbed(currentTrack, {
                 volume: queueService.getVolume(guildId),
                 isPaused: queue.isPaused || false,
                 loopMode: queueService.getLoopMode(guildId) as LoopMode,
                 isShuffled: queueService.isShuffled(guildId),
                 queueLength: queueList.length,
-                nextTrack: (queueList[0] || null) as any,
+                nextTrack: queueList[0] || null,
                 loopCount: loopCount,
                 voteSkipCount: voteSkipStatus.count,
                 voteSkipRequired: voteSkipStatus.required,
                 listenerCount: listenerCount
             });
 
-            const rows = trackHandler.createControlButtons(guildId, {
+            const rows = createControlButtons(guildId, {
                 isPaused: queue.isPaused || false,
                 loopMode: queueService.getLoopMode(guildId) as LoopMode,
                 isShuffled: queueService.isShuffled(guildId),

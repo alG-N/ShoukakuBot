@@ -249,7 +249,14 @@ export const controlHandler = {
     },
 
     async handleSeek(interaction: ChatInputCommandInteraction, guildId: string): Promise<void> {
-        const timeStr = interaction.options.getString('time')!;
+        const timeStr = interaction.options.getString('position');
+        if (!timeStr) {
+            await interaction.reply({
+                embeds: [trackHandler.createErrorEmbed('Please provide a time position.')],
+                ephemeral: true
+            });
+            return;
+        }
         const currentTrack = musicService.getCurrentTrack(guildId) as Track | null;
 
         if (!currentTrack) {
