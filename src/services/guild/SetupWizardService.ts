@@ -488,7 +488,7 @@ export class SetupWizardService {
                 },
                 {
                     name: '🎵 Music Player',
-                    value: '`/music play [song]` - Full music bot with queue, loop, shuffle, lyrics & more!\nPlay from YouTube, Spotify, SoundCloud.',
+                    value: '`/music play [song]` - Full music bot with queue, loop, shuffle & more!\nPlay from YouTube, Spotify, SoundCloud.',
                     inline: false
                 },
                 {

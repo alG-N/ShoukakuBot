@@ -67,7 +67,6 @@ const mockHandleRemove = jest.fn().mockResolvedValue(undefined);
 const mockHandleMove = jest.fn().mockResolvedValue(undefined);
 const mockHandleClear = jest.fn().mockResolvedValue(undefined);
 const mockHandleSeek = jest.fn().mockResolvedValue(undefined);
-const mockFetchLyrics = jest.fn().mockResolvedValue(null);
 const mockHandleRecent = jest.fn().mockResolvedValue(undefined);
 const mockHandleAutoPlay = jest.fn().mockResolvedValue(undefined);
 const mockHandleButton = jest.fn().mockResolvedValue(undefined);
@@ -88,7 +87,6 @@ jest.mock('../../../src/handlers/music/index', () => ({
         handleMove: mockHandleMove,
         handleClear: mockHandleClear,
         handleSeek: mockHandleSeek,
-        fetchLyrics: mockFetchLyrics,
         handleRecent: mockHandleRecent,
         handleAutoPlay: mockHandleAutoPlay,
         handleButton: mockHandleButton,
@@ -150,10 +148,8 @@ describe('MusicCommand', () => {
             expect(subcommandNames).toContain('volume');
             expect(subcommandNames).toContain('loop');
             expect(subcommandNames).toContain('shuffle');
-            expect(subcommandNames).toContain('lyrics');
             expect(subcommandNames).toContain('history');
             expect(subcommandNames).toContain('autoplay');
-            expect(subcommandNames).toContain('grab');
         });
     });
 
@@ -221,22 +217,6 @@ describe('MusicCommand', () => {
             await musicCommand.run(interaction);
 
             expect(handler).toHaveBeenCalledWith(interaction, '111', '222');
-        });
-
-        it('should route "grab" to handleNowPlaying', async () => {
-            const interaction = createMockInteraction('grab');
-
-            await musicCommand.run(interaction);
-
-            expect(mockHandleNowPlaying).toHaveBeenCalledWith(interaction, '111', '222');
-        });
-
-        it('should route "lyrics" to fetchLyrics handler', async () => {
-            const interaction = createMockInteraction('lyrics');
-
-            await musicCommand.run(interaction);
-
-            expect(mockFetchLyrics).toHaveBeenCalledWith(interaction, '111', '222');
         });
     });
 

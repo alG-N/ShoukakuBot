@@ -62,18 +62,30 @@ export function createControlButtons(guildId: string, options: ControlButtonsOpt
     );
     rows.push(controlRow);
 
-    // Row 2: Volume, queue and autoplay controls
+    // Row 2: Volume, queue, autoplay and vote skip controls
     const volumeRow = new ActionRowBuilder<ButtonBuilder>();
+
+    const voteSkipButton = new ButtonBuilder()
+        .setCustomId(`music_voteskip:${guildId}`)
+        .setEmoji('🗳️')
+        .setStyle(ButtonStyle.Secondary);
+
+    if (options.listenerCount && options.listenerCount <= 1) {
+        voteSkipButton.setLabel('Vote Skip').setDisabled(true);
+    } else {
+        voteSkipButton.setLabel('Vote Skip');
+    }
+
     volumeRow.addComponents(
-        new ButtonBuilder()
-            .setCustomId(`music_voldown:${guildId}`)
-            .setLabel('-10')
-            .setEmoji('🔉')
-            .setStyle(ButtonStyle.Secondary),
         new ButtonBuilder()
             .setCustomId(`music_volup:${guildId}`)
             .setLabel('+10')
             .setEmoji('🔊')
+            .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+            .setCustomId(`music_voldown:${guildId}`)
+            .setLabel('-10')
+            .setEmoji('🔉')
             .setStyle(ButtonStyle.Secondary),
         new ButtonBuilder()
             .setCustomId(`music_queue:${guildId}`)
@@ -84,40 +96,10 @@ export function createControlButtons(guildId: string, options: ControlButtonsOpt
             .setCustomId(`music_autoplay:${guildId}`)
             .setLabel('Autoplay')
             .setEmoji('🎵')
-            .setStyle(autoPlay ? ButtonStyle.Success : ButtonStyle.Secondary)
+            .setStyle(autoPlay ? ButtonStyle.Success : ButtonStyle.Secondary),
+        voteSkipButton
     );
     rows.push(volumeRow);
-
-    // Row 3: Extra features
-    if (trackUrl) {
-        const extraRow = new ActionRowBuilder<ButtonBuilder>();
-        extraRow.addComponents(
-            new ButtonBuilder()
-                .setLabel('Open Link')
-                .setStyle(ButtonStyle.Link)
-                .setURL(trackUrl)
-                .setEmoji('🔗'),
-            new ButtonBuilder()
-                .setCustomId(`music_lyrics:${guildId}`)
-                .setLabel('Lyrics')
-                .setEmoji('📝')
-                .setStyle(ButtonStyle.Primary)
-        );
-
-        const voteSkipButton = new ButtonBuilder()
-            .setCustomId(`music_voteskip:${guildId}`)
-            .setEmoji('🗳️')
-            .setStyle(ButtonStyle.Secondary);
-
-        if (options.listenerCount && options.listenerCount <= 1) {
-            voteSkipButton.setLabel('Vote Skip').setDisabled(true);
-        } else {
-            voteSkipButton.setLabel('Vote Skip');
-        }
-        extraRow.addComponents(voteSkipButton);
-
-        rows.push(extraRow);
-    }
 
     return rows;
 }

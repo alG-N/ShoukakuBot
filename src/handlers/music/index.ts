@@ -60,11 +60,9 @@ export const handlers = {
     handleButtonVolume: buttonHandler.handleButtonVolume.bind(buttonHandler),
     handleButtonQueue: buttonHandler.handleButtonQueue.bind(buttonHandler),
     handleButtonFavorite: buttonHandler.handleButtonFavorite.bind(buttonHandler),
-    handleButtonLyrics: buttonHandler.handleButtonLyrics.bind(buttonHandler),
     handleButtonVoteSkip: buttonHandler.handleButtonVoteSkip.bind(buttonHandler),
     handleButtonQueuePage: buttonHandler.handleButtonQueuePage.bind(buttonHandler),
     handleButtonConfirm: buttonHandler.handleButtonConfirm.bind(buttonHandler),
-    fetchLyrics: buttonHandler.fetchLyrics.bind(buttonHandler),
     
     // Settings handlers
     handleSettings: settingsHandler.handleSettings.bind(settingsHandler),

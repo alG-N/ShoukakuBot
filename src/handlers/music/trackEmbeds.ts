@@ -383,43 +383,6 @@ export function createSkipVoteEmbed(track: Track | null, currentVotes: number, r
 }
 
 /**
- * Create lyrics embed
- */
-export function createLyricsEmbed(track: Track, lyrics: string): EmbedBuilder {
-    const maxLength = 4000;
-    let displayLyrics = lyrics;
-
-    if (lyrics.length > maxLength) {
-        displayLyrics = lyrics.substring(0, maxLength - 50) + '\n\n... *[Lyrics truncated]*';
-    }
-
-    const safeTitle = (track.title || '').trim() || 'Unknown Track';
-    const safeUrl = (track.url || '').trim();
-
-    const embed = new EmbedBuilder()
-        .setColor(COLORS.lyrics as `#${string}`)
-        .setAuthor({ name: '📝 Lyrics' })
-        .setTitle(safeTitle)
-        .setDescription(displayLyrics);
-
-    if (/^https?:\/\//i.test(safeUrl)) {
-        embed.setURL(safeUrl);
-    }
-
-    if (track.thumbnail) {
-        embed.setThumbnail(track.thumbnail);
-    }
-
-    const avatarUrl = track.requestedBy?.displayAvatarURL?.() || undefined;
-    embed.setFooter({
-        text: `Artist: ${track.author || 'Unknown'} • Powered by lyrics.ovh`,
-        iconURL: avatarUrl
-    });
-
-    return embed;
-}
-
-/**
  * Create info embed
  */
 export function createInfoEmbed(title: string, description: string, type: InfoEmbedType = 'info'): EmbedBuilder {

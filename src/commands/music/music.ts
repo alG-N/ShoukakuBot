@@ -4,11 +4,12 @@
  * @module commands/music/MusicCommand
  */
 
-import { SlashCommandBuilder, ChatInputCommandInteraction, ButtonInteraction } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, ButtonInteraction, AutocompleteInteraction } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import logger from '../../core/Logger.js';
 import _musicHandlers from '../../handlers/music/index.js';
+import lavalinkService from '../../services/music/core/LavalinkService.js';
 import type { MusicHandler, MusicHandlers } from '../../types/commands/music-command.js';
 // COMMAND
 class MusicCommand extends BaseCommand {
@@ -42,6 +43,7 @@ class MusicCommand extends BaseCommand {
                     .setName('query')
                     .setDescription('Song name, URL, or playlist URL')
                     .setRequired(true)
+                    .setAutocomplete(true)
                 )
                 .addBooleanOption(opt => opt
                     .setName('shuffle')
@@ -249,6 +251,72 @@ class MusicCommand extends BaseCommand {
             if (!interaction.replied && !interaction.deferred) {
                 await interaction.reply({ content: '❌ An error occurred.', ephemeral: true });
             }
+        }
+    }
+
+    private static readonly PLAYLIST_PATTERNS = [
+        /youtube\.com.*list=/i,
+        /spotify\.com\/playlist\//i,
+        /spotify\.com\/album\//i,
+    ];
+
+    private static readonly autocompleteCache = new Map<string, { results: Array<{ name: string; value: string }>; timestamp: number }>();
+    private static readonly AUTOCOMPLETE_CACHE_TTL = 30000;
+
+    async autocomplete(interaction: AutocompleteInteraction): Promise<void> {
+        const safeRespond = async (choices: Array<{ name: string; value: string }>): Promise<void> => {
+            try {
+                await interaction.respond(choices);
+            } catch (error) {
+                const err = error as { code?: number; message?: string };
+                if (err?.code === 10062 || err?.code === 40060 || err?.message?.includes('already been acknowledged')) return;
+                throw error;
+            }
+        };
+
+        const focused = interaction.options.getFocused();
+
+        if (focused.length < 2) {
+            await safeRespond([]);
+            return;
+        }
+
+        // Don't autocomplete playlist URLs
+        if (MusicCommand.PLAYLIST_PATTERNS.some(p => p.test(focused))) {
+            await safeRespond([{ name: focused.length > 100 ? focused.slice(0, 97) + '...' : focused, value: focused.slice(0, 100) }]);
+            return;
+        }
+
+        // For single track URLs, just show the URL itself
+        if (/^https?:\/\//i.test(focused)) {
+            await safeRespond([{ name: focused.length > 100 ? focused.slice(0, 97) + '...' : focused, value: focused.slice(0, 100) }]);
+            return;
+        }
+
+        const cacheKey = focused.toLowerCase().trim();
+        const cached = MusicCommand.autocompleteCache.get(cacheKey);
+        if (cached && Date.now() - cached.timestamp < MusicCommand.AUTOCOMPLETE_CACHE_TTL) {
+            await safeRespond(cached.results);
+            return;
+        }
+
+        try {
+            const results = await lavalinkService.searchMultiple(focused, 10);
+            const choices = results.slice(0, 25).map(track => {
+                const title = track.title || track.info?.title || 'Unknown';
+                const author = track.author || track.info?.author || '';
+                const display = author ? `${title} — ${author}` : title;
+                return {
+                    name: display.length > 100 ? display.slice(0, 97) + '...' : display,
+                    value: (track.url || track.info?.uri || title).slice(0, 100)
+                };
+            });
+
+            MusicCommand.autocompleteCache.set(cacheKey, { results: choices, timestamp: Date.now() });
+            await safeRespond(choices);
+        } catch (error) {
+            logger.debug('Music', `Autocomplete error: ${(error as Error).message}`);
+            try { await safeRespond([]); } catch { /* ignore */ }
         }
     }
 }

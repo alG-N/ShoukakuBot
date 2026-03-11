@@ -47,7 +47,7 @@ wait_stack_running "docker-compose.yml" "Bot stack" 120
 
 echo
 echo "Waiting for startup logs..."
-sleep 8
+sleep 8 
 
 print_container_summary
 

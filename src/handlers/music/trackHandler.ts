@@ -53,9 +53,6 @@ class TrackHandler {
     createSkipVoteEmbed(track: Track | null, currentVotes: number, requiredVotes: number, timeRemaining?: number) {
         return embeds.createSkipVoteEmbed(track, currentVotes, requiredVotes, timeRemaining);
     }
-    createLyricsEmbed(track: Track, lyrics: string) {
-        return embeds.createLyricsEmbed(track, lyrics);
-    }
     createInfoEmbed(title: string, description: string, type?: InfoEmbedType) {
         return embeds.createInfoEmbed(title, description, type);
     }

@@ -142,8 +142,7 @@ class HelpCommand extends BaseCommand {
                             value: [
                                 '`/music volume [0-100]` - Adjust volume',
                                 '`/music loop [off/track/queue]` - Toggle loop mode',
-                                '`/music seek [time]` - Seek to position',
-                                '`/music lyrics` - Get song lyrics'
+                                '`/music seek [time]` - Seek to position'
                             ].join('\n'),
                             inline: false 
                         }

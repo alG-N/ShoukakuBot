@@ -16,7 +16,6 @@ export interface MusicHandlers {
     handleMove?: MusicHandler;
     handleClear?: MusicHandler;
     handleSeek?: MusicHandler;
-    fetchLyrics?: (title: string, artist?: string) => Promise<string | null>;
     handleRecent?: MusicHandler;
     handleAutoPlay?: MusicHandler;
     handleButton?: (interaction: ButtonInteraction) => Promise<void>;

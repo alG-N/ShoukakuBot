@@ -31,7 +31,6 @@ export const COLORS = {
     error: '#ED4245',        // Discord red
     warning: '#FEE75C',      // Discord yellow
     success: '#57F287',      // Discord green
-    lyrics: '#E91E63',       // Pink for lyrics
     favorites: '#FF6B9D',    // Soft pink for favorites
     history: '#3498DB'       // Sky blue for history
 } as const;
@@ -49,7 +48,7 @@ export const LOOP_DISPLAY: Record<LoopMode, LoopDisplayInfo> = {
  * Source platform styling
  */
 export const SOURCE_PLATFORM: Record<SourcePlatform, SourceInfo> = {
-    youtube: { emoji: '🔴', name: 'YouTube', color: '#FF0000' },
+    youtube: { emoji: '�', name: 'SoundCloud', color: '#FF5500' },
     soundcloud: { emoji: '🟠', name: 'SoundCloud', color: '#FF5500' },
     spotify: { emoji: '🟢', name: 'Spotify', color: '#1DB954' },
     unknown: { emoji: '🎵', name: 'Music', color: COLORS.info }
