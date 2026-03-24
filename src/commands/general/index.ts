@@ -12,3 +12,4 @@ export { default as afk, removeAfk, formatDuration } from './afk.js';
 export { default as invite } from './invite.js';
 export { default as report, handleModal as reportHandleModal } from './report.js';
 export { default as roleinfo } from './roleinfo.js';
+export { default as display } from './display.js';

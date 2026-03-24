@@ -48,8 +48,8 @@ export const LOOP_DISPLAY: Record<LoopMode, LoopDisplayInfo> = {
  * Source platform styling
  */
 export const SOURCE_PLATFORM: Record<SourcePlatform, SourceInfo> = {
-    youtube: { emoji: '�', name: 'SoundCloud', color: '#FF5500' },
-    soundcloud: { emoji: '🟠', name: 'SoundCloud', color: '#FF5500' },
+    youtube: { emoji: '☁️', name: 'SoundCloud', color: '#FF5500' },
+    soundcloud: { emoji: '☁️', name: 'SoundCloud', color: '#FF5500' },
     spotify: { emoji: '🟢', name: 'Spotify', color: '#1DB954' },
     unknown: { emoji: '🎵', name: 'Music', color: COLORS.info }
 };

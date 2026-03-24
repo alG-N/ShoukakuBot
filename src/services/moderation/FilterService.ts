@@ -82,6 +82,10 @@ export function matchesFilter(text: string, filter: Filter): boolean {
 
         case 'regex': {
             try {
+                // ReDoS protection: reject patterns that are too long or contain
+                // nested quantifiers known to cause catastrophic backtracking.
+                if (filter.pattern.length > 200) return false;
+                if (/([+*?]\??){2,}|\([^)]*\)[+*?][+*?]/.test(filter.pattern)) return false;
                 const regex = new RegExp(filter.pattern, 'i');
                 return regex.test(text);
             } catch {

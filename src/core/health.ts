@@ -123,8 +123,6 @@ export function setStatus(status: HealthStatus): void {
  */
 export function startHealthServer(port: number = 3000): Server {
     const server = http.createServer(async (req: IncomingMessage, res: ServerResponse) => {
-        // CORS headers
-        res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Content-Type', 'application/json');
 
         if (req.url === '/health' || req.url === '/healthz') {

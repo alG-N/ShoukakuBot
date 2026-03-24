@@ -146,7 +146,7 @@ services:
     networks:
       - shoukaku-net
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"  # Restricted to localhost; Prometheus accesses via internal Docker network
     volumes:
       - video_temp:/app/dist/services/video/temp
     depends_on:

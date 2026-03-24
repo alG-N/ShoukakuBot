@@ -38,9 +38,9 @@ echo "[5/5] Removing shared network..."
 docker network rm shoukaku-net >/dev/null 2>&1 || true
 
 echo
-echo "Pruning dangling Docker resources..."
-docker image prune -f >/dev/null 2>&1 || true
-docker volume prune -f >/dev/null 2>&1 || true
+echo "Nuking ALL Docker resources (images, volumes, networks, build cache)..."
+docker system prune -af --volumes >/dev/null 2>&1 || true
+docker builder prune -af >/dev/null 2>&1 || true
 
 echo
 echo "=============================================="

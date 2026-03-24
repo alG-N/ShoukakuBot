@@ -49,6 +49,11 @@ const BLOCKED_HOST_PATTERNS: RegExp[] = [
     // Kubernetes internal
     /^kubernetes\.default/i,
     /^\.internal$/i,
+
+    // Single-label hostnames (no dots) — internal Docker container names,
+    // intranet names, etc. (e.g. "redis", "postgres", "lavalink-1").
+    // All public DNS names contain at least one dot.
+    /^[^.]+$/,
 ];
 // Functions
 /**
