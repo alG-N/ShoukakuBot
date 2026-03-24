@@ -117,8 +117,12 @@ refresh_direct_npm_dependencies() {
   # hanging forever. Override via NPM_FETCH_TIMEOUT (ms) env var.
   local npm_fetch_timeout="${NPM_FETCH_TIMEOUT:-60000}"
   log_info "Updating npm dependencies to latest compatible versions using $NPM_UPDATE_IMAGE (timeout: ${npm_fetch_timeout}ms)"
-  docker run --rm "${docker_user_args[@]}" -v "$ROOT_DIR:/workspace" -w /workspace "$NPM_UPDATE_IMAGE" \
+  docker run --rm "${docker_user_args[@]}" \
+    -e NPM_CONFIG_UPDATE_NOTIFIER=false \
+    -v "$ROOT_DIR:/workspace" -w /workspace "$NPM_UPDATE_IMAGE" \
     npm update --package-lock-only \
+      --no-audit \
+      --no-fund \
       --fetch-timeout="$npm_fetch_timeout" \
       --fetch-retry-mintimeout=5000 \
       --fetch-retry-maxtimeout=30000 \
