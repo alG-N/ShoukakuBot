@@ -108,41 +108,15 @@ refresh_direct_npm_dependencies() {
     docker_user_args=("-u" "$(id -u):$(id -g)")
   fi
 
-  local prod_raw=""
-  local dev_raw=""
+  # Use `npm update` so packages are bumped to the latest version that satisfies
+  # the ranges in package.json. This avoids ERESOLVE peer-dependency failures
+  # that occur when installing everything at @latest (e.g. TypeScript 6 landing
+  # while ts-jest still requires typescript <6).
+  log_info "Updating npm dependencies to latest compatible versions using $NPM_UPDATE_IMAGE"
+  docker run --rm "${docker_user_args[@]}" -v "$ROOT_DIR:/workspace" -w /workspace "$NPM_UPDATE_IMAGE" \
+    npm update --package-lock-only
 
-  prod_raw="$(docker run --rm -v "$ROOT_DIR:/workspace" -w /workspace "$NPM_UPDATE_IMAGE" node -e "const pkg=require('./package.json'); const deps=Object.keys(pkg.dependencies||{}); process.stdout.write(deps.map((name)=>name + '@latest').join(' '));")"
-  dev_raw="$(docker run --rm -v "$ROOT_DIR:/workspace" -w /workspace "$NPM_UPDATE_IMAGE" node -e "const pkg=require('./package.json'); const deps=Object.keys(pkg.devDependencies||{}); process.stdout.write(deps.map((name)=>name + '@latest').join(' '));")"
-
-  local prod_deps=()
-  local dev_deps=()
-
-  if [[ -n "$prod_raw" ]]; then
-    # shellcheck disable=SC2206
-    prod_deps=($prod_raw)
-  fi
-
-  if [[ -n "$dev_raw" ]]; then
-    # shellcheck disable=SC2206
-    dev_deps=($dev_raw)
-  fi
-
-  if [[ "${#prod_deps[@]}" -eq 0 && "${#dev_deps[@]}" -eq 0 ]]; then
-    log_warn "No direct npm dependencies found to refresh"
-    return 0
-  fi
-
-  log_info "Refreshing direct npm dependencies using $NPM_UPDATE_IMAGE"
-
-  if [[ "${#prod_deps[@]}" -gt 0 ]]; then
-    docker run --rm "${docker_user_args[@]}" -v "$ROOT_DIR:/workspace" -w /workspace "$NPM_UPDATE_IMAGE" npm install --package-lock-only "${prod_deps[@]}"
-  fi
-
-  if [[ "${#dev_deps[@]}" -gt 0 ]]; then
-    docker run --rm "${docker_user_args[@]}" -v "$ROOT_DIR:/workspace" -w /workspace "$NPM_UPDATE_IMAGE" npm install --package-lock-only -D "${dev_deps[@]}"
-  fi
-
-  log_ok "package.json and package-lock.json refreshed to the latest direct dependency versions"
+  log_ok "package-lock.json refreshed to latest compatible dependency versions"
 }
 
 validate_env_soft() {
