@@ -112,9 +112,17 @@ refresh_direct_npm_dependencies() {
   # the ranges in package.json. This avoids ERESOLVE peer-dependency failures
   # that occur when installing everything at @latest (e.g. TypeScript 6 landing
   # while ts-jest still requires typescript <6).
-  log_info "Updating npm dependencies to latest compatible versions using $NPM_UPDATE_IMAGE"
+  #
+  # Network timeouts are set so a slow/unreliable registry fails fast instead of
+  # hanging forever. Override via NPM_FETCH_TIMEOUT (ms) env var.
+  local npm_fetch_timeout="${NPM_FETCH_TIMEOUT:-60000}"
+  log_info "Updating npm dependencies to latest compatible versions using $NPM_UPDATE_IMAGE (timeout: ${npm_fetch_timeout}ms)"
   docker run --rm "${docker_user_args[@]}" -v "$ROOT_DIR:/workspace" -w /workspace "$NPM_UPDATE_IMAGE" \
-    npm update --package-lock-only
+    npm update --package-lock-only \
+      --fetch-timeout="$npm_fetch_timeout" \
+      --fetch-retry-mintimeout=5000 \
+      --fetch-retry-maxtimeout=30000 \
+      --fetch-retries=2
 
   log_ok "package-lock.json refreshed to latest compatible dependency versions"
 }
