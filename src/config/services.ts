@@ -42,7 +42,7 @@ export const rule34 = {
 };
 
 export const nhentai = {
-    baseUrl: 'https://nhentai.net/api',
+    baseUrl: 'https://nhentai.net/api/v2',
     imageUrl: 'https://i.nhentai.net',
     thumbUrl: 'https://t.nhentai.net',
     rateLimit: 20,  // requests per minute

@@ -20,16 +20,16 @@ import type {
 } from '../../types/api/models/nhentai.js';
 import type { NHentaiSearchResponse } from '../../types/api/services/nhentai-service.js';
 export { type NHentaiGallery, type NHentaiTag, type NHentaiPage, type NHentaiImages, type NHentaiTitle, type GalleryResult, type SearchData, type NHentaiSearchResult, type PageUrl, type ParsedTags } from '../../types/api/models/nhentai.js';
-// API Configuration
-const API_BASE = nhentaiConfig.baseUrl;
-const GALLERY_ENDPOINT = '/gallery';
+// API Configuration — nhentai v2 API
+const API_BASE = nhentaiConfig.baseUrl; // https://nhentai.net/api/v2
+const GALLERY_ENDPOINT = '/galleries';  // v2: /galleries/{id}  (was /gallery/{id})
 const THUMBNAIL_BASE = 'https://t.nhentai.net/galleries';
 const IMAGE_BASE = 'https://i.nhentai.net/galleries';
 
 // Alternative API mirrors to try when main API is Cloudflare-blocked
 const API_MIRRORS = [
-    'https://nhentai.net/api',        // Primary
-    'https://nhentai.to/api',         // Mirror 1
+    'https://nhentai.net/api/v2',     // Primary
+    'https://nhentai.to/api/v2',      // Mirror 1
 ];
 
 // Image type mapping (includes webp — nhentai now uses 'w' for many covers)
@@ -38,6 +38,14 @@ const IMAGE_TYPES: Record<string, string> = {
     'p': 'png',
     'g': 'gif',
     'w': 'webp'
+};
+
+// Reverse map: file extension → nhentai type letter (for adapting v2 API paths)
+const EXT_TO_TYPE: Record<string, string> = {
+    'jpg': 'j', 'jpeg': 'j',
+    'png': 'p',
+    'gif': 'g',
+    'webp': 'w'
 };
 
 // Known popular gallery IDs (curated fallback list)
@@ -100,6 +108,73 @@ class NHentaiService {
     }
 
     /**
+     * Extract nhentai type letter ('j','p','g','w') from a v2 API path string.
+     * v2 API returns full paths like "galleries/123456/1.webp" instead of type letters.
+     */
+    private _extractTypeFromPath(path: string): string {
+        const ext = (path || '').split('.').pop()?.toLowerCase() || 'jpg';
+        return EXT_TO_TYPE[ext] || 'j';
+    }
+
+    /**
+     * Adapt a v2 GalleryDetailResponse into the legacy NHentaiGallery shape
+     * so all existing handlers continue to work without modification.
+     */
+    private _adaptGalleryDetailV2(v2: any): NHentaiGallery {
+        const pages = (v2.pages || []).map((p: any) => ({
+            t: this._extractTypeFromPath(p.path || ''),
+            w: p.width || 0,
+            h: p.height || 0
+        }));
+        const coverType = this._extractTypeFromPath(v2.cover?.path || '');
+        const thumbType = this._extractTypeFromPath(v2.thumbnail?.path || v2.cover?.path || '');
+        return {
+            id: v2.id,
+            media_id: v2.media_id,
+            title: v2.title || {},
+            images: {
+                pages,
+                cover: { t: coverType, w: v2.cover?.width || 0, h: v2.cover?.height || 0 },
+                thumbnail: { t: thumbType, w: v2.thumbnail?.width || 0, h: v2.thumbnail?.height || 0 }
+            },
+            scanlator: v2.scanlator || '',
+            upload_date: v2.upload_date || 0,
+            tags: (v2.tags || []).map((t: any) => ({
+                id: t.id, type: t.type, name: t.name, url: t.url, count: t.count
+            })),
+            num_pages: v2.num_pages || 0,
+            num_favorites: v2.num_favorites || 0
+        };
+    }
+
+    /**
+     * Adapt a v2 GalleryListItem (lightweight search/list result) into NHentaiGallery.
+     * List items lack page data, tags, and upload_date — those will be empty/zero.
+     */
+    private _adaptGalleryListItemV2(item: any): NHentaiGallery {
+        const thumbType = this._extractTypeFromPath(item.thumbnail || '');
+        return {
+            id: item.id,
+            media_id: item.media_id,
+            title: {
+                english: item.english_title || '',
+                japanese: item.japanese_title || undefined,
+                pretty: item.english_title || ''
+            },
+            images: {
+                pages: [],
+                cover: { t: thumbType, w: item.thumbnail_width || 0, h: item.thumbnail_height || 0 },
+                thumbnail: { t: thumbType, w: item.thumbnail_width || 0, h: item.thumbnail_height || 0 }
+            },
+            scanlator: '',
+            upload_date: 0,
+            tags: [],
+            num_pages: 0,
+            num_favorites: 0
+        };
+    }
+
+    /**
      * Fetch gallery data by code with circuit breaker + automatic 403 retry
      */
     async fetchGallery(code: number | string): Promise<GalleryResult> {
@@ -111,23 +186,37 @@ class NHentaiService {
             return this._fetchWithRetry(
                 `${API_BASE}${GALLERY_ENDPOINT}/${code}`,
                 async (url) => {
-                    const response = await axios.get<NHentaiGallery>(url, getRequestConfig());
-                    await cacheService.set(this.CACHE_NS, `nhentai:gallery_${code}`, response.data, this.CACHE_TTL);
-                    return { success: true, data: response.data };
+                    const response = await axios.get<any>(url, getRequestConfig());
+                    const gallery = this._adaptGalleryDetailV2(response.data);
+                    await cacheService.set(this.CACHE_NS, `nhentai:gallery_${code}`, gallery, this.CACHE_TTL);
+                    return { success: true, data: gallery };
                 }
             );
         });
     }
 
     /**
-     * Fetch random gallery with circuit breaker
+     * Fetch random gallery with circuit breaker.
+     * Uses v2 /galleries/random endpoint first, falls back to ID-guessing + curated list.
      */
     async fetchRandomGallery(): Promise<GalleryResult> {
-        const maxAttempts = 3;
+        // v2 API has a dedicated random endpoint — use it first
+        try {
+            const response = await axios.get<{ id: number }>(
+                `${API_BASE}/galleries/random`,
+                getRequestConfig({ timeout: 8000 })
+            );
+            if (response.data?.id) {
+                return this.fetchGallery(response.data.id);
+            }
+        } catch {
+            // Fall through to ID-based random
+        }
 
+        const maxAttempts = 3;
         for (let i = 0; i < maxAttempts; i++) {
-            // Generate random ID between 1 and current max (~500000)
-            const randomCode = Math.floor(Math.random() * 500000) + 1;
+            // Generate random ID between 1 and current max (~640000)
+            const randomCode = Math.floor(Math.random() * 640000) + 1;
             const result = await this.fetchGallery(randomCode);
 
             if (result.success) {
@@ -166,56 +255,50 @@ class NHentaiService {
     }
 
     /**
-     * Fetch a popular gallery - tries actual popular API first, falls back to curated list
-     * @param period - Time period: 'today', 'week', 'month', or 'all' (default)
+     * Fetch a popular gallery using v2 API.
+     * Primary: /galleries/popular endpoint (today's popular).
+     * Fallback: /search with sort-by-period for week/month/all.
      */
     async fetchPopularGallery(period: 'today' | 'week' | 'month' | 'all' = 'all'): Promise<GalleryResult> {
-        // Map period to nhentai API sort parameter
-        const sortEndpoints: Record<string, string> = {
-            'today': '/galleries/search?query=*&sort=popular-today',
-            'week': '/galleries/search?query=*&sort=popular-week',
-            'month': '/galleries/search?query=*&sort=popular-month',
-            'all': '/galleries/search?query=*&sort=popular'
-        };
-
-        // First, try to fetch from actual popular/homepage API
+        // v2 dedicated popular endpoint — returns an array of GalleryListItem
         try {
-            const endpoint = sortEndpoints[period] || sortEndpoints['all'];
-            const response = await axios.get(`${API_BASE}${endpoint}`, getRequestConfig({ timeout: 10000 }));
-            
-            if (response.data?.result && Array.isArray(response.data.result) && response.data.result.length > 0) {
-                // Pick a random gallery from popular results
-                const randomIndex = Math.floor(Math.random() * response.data.result.length);
-                const gallery = response.data.result[randomIndex] as NHentaiGallery;
-                if (gallery?.id) {
-                    await cacheService.set(this.CACHE_NS, `nhentai:gallery_${gallery.id}`, gallery, this.CACHE_TTL);
-                    return { success: true, data: gallery };
-                }
+            const response = await axios.get<any[]>(
+                `${API_BASE}/galleries/popular`,
+                getRequestConfig({ timeout: 10000 })
+            );
+            if (Array.isArray(response.data) && response.data.length > 0) {
+                const idx = Math.floor(Math.random() * response.data.length);
+                const id = response.data[idx]?.id;
+                if (id) return this.fetchGallery(id);
             }
         } catch {
-            // API failed, try homepage
+            // Fall through to search-based approach
         }
 
-        // Try homepage galleries
+        // Fallback: v2 search endpoint with period-based sort
+        // Use a broad language filter instead of query=* (v2 requires minLength:1 query)
         try {
-            const response = await axios.get(`${API_BASE}/galleries/all`, getRequestConfig({
-                params: { page: 1 },
-                timeout: 10000
-            }));
-            
+            const sortMap: Record<string, string> = {
+                today: 'popular-today',
+                week: 'popular-week',
+                month: 'popular-month',
+                all: 'popular'
+            };
+            const sort = sortMap[period] || 'popular';
+            const response = await axios.get<any>(
+                `${API_BASE}/search?query=language:english&sort=${sort}&page=1`,
+                getRequestConfig({ timeout: 10000 })
+            );
             if (response.data?.result && Array.isArray(response.data.result) && response.data.result.length > 0) {
-                const randomIndex = Math.floor(Math.random() * Math.min(25, response.data.result.length));
-                const gallery = response.data.result[randomIndex] as NHentaiGallery;
-                if (gallery?.id) {
-                    await cacheService.set(this.CACHE_NS, `nhentai:gallery_${gallery.id}`, gallery, this.CACHE_TTL);
-                    return { success: true, data: gallery };
-                }
+                const idx = Math.floor(Math.random() * Math.min(10, response.data.result.length));
+                const id = response.data.result[idx]?.id;
+                if (id) return this.fetchGallery(id);
             }
         } catch {
-            // Homepage API also failed, fall back to curated list
+            // Fall through to curated list
         }
 
-        // Fallback: try curated popular galleries list
+        // Last resort: curated popular galleries list
         const curatedFallback = await this._fetchFromCuratedFallbackIds();
         if (curatedFallback.success) {
             return curatedFallback;
@@ -256,28 +339,22 @@ class NHentaiService {
      */
     private async _fetchRandomFromRecentPages(period: 'today' | 'week' | 'month' | 'all'): Promise<GalleryResult> {
         const maxAttempts = 6;
-        const nowSec = Math.floor(Date.now() / 1000);
-        const maxAge = this.getPeriodWindowSeconds(period);
 
+        // v2: /galleries endpoint (ordered newest first, no upload_date in list items)
+        // Period filtering is approximated by page range (newer galleries = lower pages)
         let totalPages = 1;
         try {
             const firstPage = await axios.get<NHentaiSearchResponse>(
-                `${API_BASE}/galleries/all?page=1`,
+                `${API_BASE}/galleries?page=1`,
                 getRequestConfig({ timeout: 10000 })
             );
             totalPages = Math.max(1, firstPage.data?.num_pages || 1);
 
-            const firstPageMatches = (firstPage.data?.result || []).filter(gallery => {
-                if (!gallery?.id || !gallery?.upload_date) return false;
-                if (!Number.isFinite(maxAge)) return true;
-                return (nowSec - gallery.upload_date) <= maxAge;
-            });
-
-            if (firstPageMatches.length > 0) {
-                const pick = firstPageMatches[Math.floor(Math.random() * firstPageMatches.length)];
+            const firstPageResults = firstPage.data?.result || [];
+            if (firstPageResults.length > 0) {
+                const pick = firstPageResults[Math.floor(Math.random() * firstPageResults.length)] as any;
                 if (pick?.id) {
-                    await cacheService.set(this.CACHE_NS, `nhentai:gallery_${pick.id}`, pick, this.CACHE_TTL);
-                    return { success: true, data: pick };
+                    return this.fetchGallery(pick.id);
                 }
             }
         } catch {
@@ -290,25 +367,16 @@ class NHentaiService {
 
             try {
                 const response = await axios.get<NHentaiSearchResponse>(
-                    `${API_BASE}/galleries/all?page=${randomPage}`,
+                    `${API_BASE}/galleries?page=${randomPage}`,
                     getRequestConfig({ timeout: 10000 })
                 );
 
                 const galleries = response.data?.result || [];
-                const matches = galleries.filter(gallery => {
-                    if (!gallery?.id || !gallery?.upload_date) return false;
-                    if (!Number.isFinite(maxAge)) return true;
-                    return (nowSec - gallery.upload_date) <= maxAge;
-                });
+                if (galleries.length === 0) continue;
 
-                if (matches.length === 0) {
-                    continue;
-                }
-
-                const pick = matches[Math.floor(Math.random() * matches.length)];
+                const pick = galleries[Math.floor(Math.random() * galleries.length)] as any;
                 if (pick?.id) {
-                    await cacheService.set(this.CACHE_NS, `nhentai:gallery_${pick.id}`, pick, this.CACHE_TTL);
-                    return { success: true, data: pick };
+                    return this.fetchGallery(pick.id);
                 }
             } catch {
                 // Try another random page.
@@ -362,20 +430,20 @@ class NHentaiService {
         return circuitBreakerRegistry.execute('nsfw', async () => {
             try {
                 const encodedQuery = encodeURIComponent(query);
-                // Pass sort parameter directly to nhentai API
-                // Valid values: date, popular-today, popular-week, popular-month, popular
-                const sortParam = sort;
-
+                // v2 search endpoint: /api/v2/search?query=...&page=...&sort=...
+                // Valid sort values: date, popular-today, popular-week, popular-month, popular
                 const response = await axios.get<NHentaiSearchResponse>(
-                    `${API_BASE}/galleries/search?query=${encodedQuery}&page=${page}&sort=${sortParam}`,
+                    `${API_BASE}/search?query=${encodedQuery}&page=${page}&sort=${sort}`,
                     getRequestConfig()
                 );
 
+                const results = (response.data.result || []).map(item => this._adaptGalleryListItemV2(item));
+
                 const data: SearchData = {
-                    results: response.data.result || [],
+                    results,
                     numPages: response.data.num_pages || 1,
                     perPage: response.data.per_page || 25,
-                    totalResults: (response.data.num_pages || 1) * (response.data.per_page || 25)
+                    totalResults: response.data.total ?? ((response.data.num_pages || 1) * (response.data.per_page || 25))
                 };
 
                 await cacheService.set(this.CACHE_NS, cacheKey, data, this.CACHE_TTL);
@@ -388,7 +456,8 @@ class NHentaiService {
     }
 
     /**
-     * Get autocomplete suggestions for search with circuit breaker
+     * Get autocomplete suggestions for search using v2 POST /tags/autocomplete.
+     * Returns tag names that match the query.
      */
     async getSearchSuggestions(query: string): Promise<string[]> {
         if (!query || query.length < 2) return [];
@@ -399,35 +468,20 @@ class NHentaiService {
 
         return circuitBreakerRegistry.execute('nsfw', async () => {
             try {
-                const response = await axios.get<NHentaiSearchResponse>(
-                    `${API_BASE}/galleries/search?query=${encodeURIComponent(query)}&page=1`,
+                // v2 provides a proper autocomplete endpoint for tags
+                const response = await axios.post<Array<{ id: number; type: string; name: string; slug: string; url: string; count: number }>>(
+                    `${API_BASE}/tags/autocomplete`,
+                    { type: 'tag', query, limit: 15 },
                     getRequestConfig({ timeout: 3000 })
                 );
 
-                const results = response.data.result || [];
+                const results = Array.isArray(response.data) ? response.data : [];
+                const suggestions = results
+                    .filter(t => t?.name)
+                    .map(t => t.name)
+                    .slice(0, 15);
 
-                // Extract unique tags from results
-                const tagSet = new Set<string>();
-                results.forEach(gallery => {
-                    gallery.tags?.forEach(tag => {
-                        if (tag.type === 'tag' || tag.type === 'character' || tag.type === 'parody') {
-                            if (tag.name.toLowerCase().includes(query.toLowerCase())) {
-                                tagSet.add(tag.name);
-                            }
-                        }
-                    });
-                });
-
-                // Also add titles that match
-                const titleMatches = results
-                    .filter(g => g.title?.english?.toLowerCase().includes(query.toLowerCase()) ||
-                        g.title?.japanese?.toLowerCase().includes(query.toLowerCase()))
-                    .slice(0, 5)
-                    .map(g => g.title.english || g.title.japanese || '');
-
-                const suggestions = [...new Set([...tagSet, ...titleMatches])].slice(0, 15);
                 await cacheService.set(this.CACHE_NS, cacheKey, suggestions, this.CACHE_TTL);
-
                 return suggestions;
             } catch (error) {
                 logger.error('NHentai', `Autocomplete error: ${(error as Error).message}`);
