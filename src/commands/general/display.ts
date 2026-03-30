@@ -45,23 +45,14 @@ class DisplayCommand extends BaseCommand {
         const guild = interaction.guild!;
         const targetMember = interaction.member as GuildMember;
 
-        // Check permission to change own nickname
-        if (!targetMember.permissions.has(PermissionFlagsBits.ChangeNickname)) {
-            await interaction.reply({
-                content: '❌ You don\'t have permission to change your display name in this server.',
-                ephemeral: true,
-            });
-            return;
-        }
-
         const oldName = targetMember.displayName;
         const isResetting = newName === null;
 
         try {
-            await targetMember.setNickname(
-                newName,
-                `${interaction.user.tag} used /display`
-            );
+            await guild.members.edit(targetMember, {
+                nick: newName ?? null,
+                reason: `${interaction.user.tag} used /display`,
+            });
         } catch {
             await interaction.reply({
                 content: '❌ Failed to change the display name. Please try again.',
