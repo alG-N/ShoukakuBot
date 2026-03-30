@@ -456,8 +456,9 @@ class NHentaiService {
     }
 
     /**
-     * Get autocomplete suggestions for search using GET /api/search/autocomplete (non-v2 endpoint).
-     * Returns tag names that match the query.
+     * Get autocomplete suggestions for search by running a lightweight v2 search
+     * and returning matching titles. nhentai has no public unauthenticated autocomplete
+     * endpoint — all tag-specific endpoints return 404/400 without auth cookies.
      */
     async getSearchSuggestions(query: string): Promise<string[]> {
         if (!query || query.length < 2) return [];
@@ -468,17 +469,23 @@ class NHentaiService {
 
         return circuitBreakerRegistry.execute('nsfw', async () => {
             try {
-                // Autocomplete lives at /api/search/autocomplete — NOT under /api/v2/
-                const response = await axios.get<Array<{ id: number; type: string; name: string; slug: string; url: string; count: number }>>(
-                    `https://nhentai.net/api/search/autocomplete?term=${encodeURIComponent(query)}`,
+                const response = await axios.get<NHentaiSearchResponse>(
+                    `${API_BASE}/search?query=${encodeURIComponent(query)}&page=1&sort=date`,
                     getRequestConfig({ timeout: 3000 })
                 );
 
-                const results = Array.isArray(response.data) ? response.data : [];
-                const suggestions = results
-                    .filter(t => t?.name)
-                    .map(t => t.name)
-                    .slice(0, 15);
+                const items = Array.isArray(response.data?.result) ? response.data.result : [];
+                const seen = new Set<string>();
+                const suggestions: string[] = [];
+
+                for (const item of items) {
+                    const title = (item.english_title || item.japanese_title || '').trim();
+                    if (!title || seen.has(title)) continue;
+                    seen.add(title);
+                    // Discord autocomplete: name ≤100 chars, value ≤100 chars
+                    suggestions.push(title.slice(0, 100));
+                    if (suggestions.length >= 25) break;
+                }
 
                 await cacheService.set(this.CACHE_NS, cacheKey, suggestions, this.CACHE_TTL);
                 return suggestions;
