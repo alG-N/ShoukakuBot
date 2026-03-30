@@ -456,7 +456,7 @@ class NHentaiService {
     }
 
     /**
-     * Get autocomplete suggestions for search using v2 POST /tags/autocomplete.
+     * Get autocomplete suggestions for search using v2 GET /search/autocomplete.
      * Returns tag names that match the query.
      */
     async getSearchSuggestions(query: string): Promise<string[]> {
@@ -468,10 +468,8 @@ class NHentaiService {
 
         return circuitBreakerRegistry.execute('nsfw', async () => {
             try {
-                // v2 provides a proper autocomplete endpoint for tags
-                const response = await axios.post<Array<{ id: number; type: string; name: string; slug: string; url: string; count: number }>>(
-                    `${API_BASE}/tags/autocomplete`,
-                    { type: 'tag', query, limit: 15 },
+                const response = await axios.get<Array<{ id: number; type: string; name: string; slug: string; url: string; count: number }>>(
+                    `${API_BASE}/search/autocomplete?query=${encodeURIComponent(query)}&limit=15`,
                     getRequestConfig({ timeout: 3000 })
                 );
 

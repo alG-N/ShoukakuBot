@@ -88,12 +88,6 @@ class NHentaiCommand extends BaseCommand {
                         { name: '🏆 All Time Popular', value: 'popular' }
                     )
                 )
-                .addIntegerOption(opt => opt
-                    .setName('page')
-                    .setDescription('Page number')
-                    .setMinValue(1)
-                    .setMaxValue(100)
-                )
             )
             .addSubcommand(sub => sub
                 .setName('favourites')
@@ -233,12 +227,11 @@ class NHentaiCommand extends BaseCommand {
     private async _handleSearch(interaction: ChatInputCommandInteraction): Promise<void> {
         const query = interaction.options.getString('query', true);
         const sortRaw = interaction.options.getString('sort') || 'date';
-        const page = interaction.options.getInteger('page') || 1;
 
         // Pass sort value directly to the service (date, popular-today, popular-week, popular-month, popular)
         const sort = sortRaw;
 
-        const result = await nhentaiService!.searchGalleries(query, page, sort);
+        const result = await nhentaiService!.searchGalleries(query, 1, sort);
 
         if (!result?.success || !result?.data || result.data.results.length === 0) {
             await this.safeReply(interaction, { 
@@ -255,17 +248,17 @@ class NHentaiCommand extends BaseCommand {
             query,
             sort: sortRaw,
             results: searchData.results,
-            currentPage: page,
+            currentPage: 1,
             numPages: searchData.numPages,
         });
 
         // Show search results with navigation
         const embed = nhentaiHandler!.createSearchResultsEmbed?.(
-            query, searchData, page, sortRaw
+            query, searchData, 1, sortRaw
         ) || nhentaiHandler!.createGalleryEmbed(searchData.results[0]);
 
         const buttons = nhentaiHandler!.createSearchButtons?.(
-            query, searchData, page, interaction.user.id
+            query, searchData, 1, interaction.user.id
         ) || await nhentaiHandler!.createMainButtons(
             searchData.results[0].id,
             interaction.user.id,
