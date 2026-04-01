@@ -53,9 +53,10 @@ class DisplayCommand extends BaseCommand {
                 nick: newName ?? null,
                 reason: `${interaction.user.tag} used /display`,
             });
-        } catch {
+        } catch (error) {
+            const detail = error instanceof Error ? error.message : String(error);
             await interaction.reply({
-                content: '❌ Failed to change the display name. Please try again.',
+                content: `❌ Failed to change the display name.\n\`\`\`${detail}\`\`\``,
                 ephemeral: true,
             });
             return;

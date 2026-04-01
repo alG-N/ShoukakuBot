@@ -396,7 +396,8 @@ export async function executeAction(
         
         // Get warn settings from guild settings
         results.warnThreshold = settings.warn_threshold || 3;
-        results.muteDuration = settings.mute_duration || 15; // minutes
+        // mute_duration is stored in the DB as milliseconds (default 300000 = 5 min); convert to minutes for display/use
+        results.muteDuration = settings.mute_duration ? Math.round(settings.mute_duration / 60000) : 15;
         const warnResetHours = settings.warn_reset_hours || 1;
 
         // Delete message if action includes delete

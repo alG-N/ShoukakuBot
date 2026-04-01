@@ -44,9 +44,11 @@ class CobaltService extends EventEmitter {
 
         const timestamp = Date.now();
         let lastError: Error | null = null;
-        this.currentQuality = options.quality || (videoConfig as { COBALT_VIDEO_QUALITY?: string }).COBALT_VIDEO_QUALITY || '720';
+        // Capture quality as a local constant so concurrent requests don't interfere via this.currentQuality
+        const quality = options.quality || (videoConfig as { COBALT_VIDEO_QUALITY?: string }).COBALT_VIDEO_QUALITY || '720';
+        this.currentQuality = quality; // kept for logging/compat
         
-        logger.info('CobaltService', `Cobalt quality requested: ${this.currentQuality}p`);
+        logger.info('CobaltService', `Cobalt quality requested: ${quality}p`);
 
         this.emit('stage', { stage: 'connecting', message: 'Connecting to Cobalt API...' });
 
@@ -54,7 +56,7 @@ class CobaltService extends EventEmitter {
         for (let attempt = 0; attempt < this.apiUrls.length; attempt++) {
             try {
                 this.emit('attempt', { attempt: attempt + 1, total: this.apiUrls.length, api: this.apiUrl });
-                const result = await this._tryDownload(url, tempDir, timestamp);
+                const result = await this._tryDownload(url, tempDir, timestamp, quality);
                 return result;
             } catch (error) {
                 lastError = error as Error;
@@ -67,9 +69,9 @@ class CobaltService extends EventEmitter {
         throw lastError || new Error('All Cobalt API instances failed');
     }
 
-    private async _tryDownload(url: string, tempDir: string, timestamp: number): Promise<string> {
+    private async _tryDownload(url: string, tempDir: string, timestamp: number, quality: string): Promise<string> {
         this.emit('stage', { stage: 'analyzing', message: 'Analyzing video...' });
-        const downloadInfo = await this._requestDownload(url);
+        const downloadInfo = await this._requestDownload(url, quality);
 
         if (!downloadInfo.url) {
             throw new Error(downloadInfo.error || 'Failed to get download URL');
@@ -103,12 +105,12 @@ class CobaltService extends EventEmitter {
         return outputPath;
     }
 
-    private _requestDownload(url: string): Promise<DownloadInfo> {
+    private _requestDownload(url: string, quality: string): Promise<DownloadInfo> {
         return new Promise((resolve, reject) => {
             // Cobalt API format (v10+ compatible)
             const requestBody = JSON.stringify({
                 url: url,
-                videoQuality: this.currentQuality || (videoConfig as { COBALT_VIDEO_QUALITY?: string }).COBALT_VIDEO_QUALITY || '720',
+                videoQuality: quality || (videoConfig as { COBALT_VIDEO_QUALITY?: string }).COBALT_VIDEO_QUALITY || '720',
                 filenameStyle: 'basic'
             });
 

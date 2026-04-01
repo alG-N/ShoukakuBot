@@ -57,11 +57,6 @@ class SayCommand extends BaseCommand {
                     .setDescription('Send the message as an embed?')
                     .setRequired(false)
             )
-            .addBooleanOption(option =>
-                option.setName('credit')
-                    .setDescription('Show who requested this message?')
-                    .setRequired(false)
-            )
             .addStringOption(option =>
                 option.setName('type')
                     .setDescription('Type of message: normal, info, warning, error, success')
@@ -87,7 +82,6 @@ class SayCommand extends BaseCommand {
         const message = interaction.options.getString('message', true);
         const channel = (interaction.options.getChannel('channel') || interaction.channel) as GuildTextBasedChannel;
         const useEmbed = interaction.options.getBoolean('embed') || false;
-        const showCredit = interaction.options.getBoolean('credit');
         const type = interaction.options.getString('type') || 'normal';
 
         // Validate channel
@@ -122,11 +116,6 @@ class SayCommand extends BaseCommand {
                     .replace(/```/g, '\\`\\`\\`');
             }
             
-            const creditText = showCredit 
-                ? `\n\n*— Requested by <@${interaction.user.id}>*`
-                : '';
-
-            // Build "I am the bot" button linking to user profile
             const userProfileButton = new ActionRowBuilder<ButtonBuilder>().addComponents(
                 new ButtonBuilder()
                     .setLabel(`Sent by ${interaction.user.displayName}`)
@@ -138,11 +127,11 @@ class SayCommand extends BaseCommand {
             if (useEmbed) {
                 const embed = new EmbedBuilder()
                     .setColor(TYPE_COLORS[type] || COLORS.PRIMARY)
-                    .setDescription(safeMessage + creditText);
+                    .setDescription(safeMessage);
 
                 await channel.send({ embeds: [embed], components: [userProfileButton] });
             } else {
-                await channel.send({ content: safeMessage + creditText, components: [userProfileButton] });
+                await channel.send({ content: safeMessage, components: [userProfileButton] });
             }
 
             await interaction.reply({ 

@@ -77,23 +77,22 @@ async function sendViolationNotice(message: Message, violation: Violation, resul
         
         if (result.escalated && result.muted) {
             // User was muted due to reaching threshold
-            noticeText = `⚠️ <@${message.author.id}>, you have been **muted for ${result.muteDuration || 15} minutes** for repeated violations.`;
+            noticeText = `⚠️ you have been **muted for ${result.muteDuration || 15} minutes** for repeated rule violations.`;
         } else if (result.warned && result.warnCount && result.warnThreshold) {
             // Regular warn with count
             const remaining = result.warnThreshold - result.warnCount;
             if (remaining > 0) {
-                noticeText = `⚠️ <@${message.author.id}>, you violated the rules: **${violation.trigger}**. **${remaining}** more violation${remaining > 1 ? 's' : ''} and you will be muted for **${result.muteDuration || 15} minutes**.`;
+                noticeText = `⚠️ you violated the rules: **${violation.trigger}**. **${remaining}** more violation${remaining > 1 ? 's' : ''} and you will be muted for **${result.muteDuration || 15} minutes**.`;
             } else {
-                noticeText = `⚠️ <@${message.author.id}>, you violated the rules: **${violation.trigger}**.`;
+                noticeText = `⚠️ you violated the rules: **${violation.trigger}**. A mute will be applied on your next violation.`;
             }
         } else {
             // Fallback
-            noticeText = `⚠️ <@${message.author.id}>, you violated the rules: **${violation.trigger}**. Please follow server rules.`;
+            noticeText = `⚠️ you violated the rules: **${violation.trigger}**. Please follow server rules.`;
         }
 
-        const notice = await channel.send(noticeText);
-
-        // Auto-delete notice after 15 seconds
+        // Send notice in channel, mention the user, then auto-delete after 15s
+        const notice = await channel.send(`<@${message.author.id}> ${noticeText}`);
         setTimeout(() => {
             notice.delete().catch(() => {});
         }, 15000);

@@ -11,7 +11,8 @@ import {
     ActionRowBuilder, 
     ButtonBuilder, 
     ButtonStyle,
-    ChatInputCommandInteraction
+    ChatInputCommandInteraction,
+    GuildTextBasedChannel
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
@@ -161,7 +162,7 @@ class DownloadCommand extends BaseCommand {
         super({
             category: CommandCategory.VIDEO,
             cooldown: 5,
-            deferReply: true // Auto defer to prevent interaction timeout
+            deferReply: false // Manual defer inside run() so we can control ephemeral per response type
         });
     }
 
@@ -196,6 +197,10 @@ class DownloadCommand extends BaseCommand {
     }
 
     async run(interaction: ChatInputCommandInteraction): Promise<void> {
+        // Defer ephemerally so all progress/error messages are private;
+        // the final video file will be sent via channel.send() to stay public.
+        await interaction.deferReply({ ephemeral: true });
+
         // Access control
         const access = await checkAccess(interaction, AccessType.SUB);
         if (access.blocked) {
@@ -507,12 +512,13 @@ class DownloadCommand extends BaseCommand {
                             await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s before retry
                         }
                         
-                        await interaction.editReply({ 
+                        await (interaction.channel as GuildTextBasedChannel).send({ 
                             content: successMessage,
-                            embeds: [],
                             files: [attachment],
                             components: [originalButton]
                         });
+                        // Update the ephemeral deferred reply to confirm completion
+                        await interaction.editReply({ content: '✅ Video downloaded and sent!', embeds: [], files: [], components: [] });
                         
                         uploadSuccess = true;
                         logger.info('Video', `Upload successful (${uploadFileSize.toFixed(2)} MB)`);
