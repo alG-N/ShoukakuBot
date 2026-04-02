@@ -155,19 +155,21 @@ async def download_video(req: DownloadRequest):
 
 # ── Core Logic (runs in thread pool) ──
 
-# YouTube-style format: prefer split streams with h264 for Discord compatibility
+# YouTube-style format: prefer split streams with h264 for Discord compatibility.
+# Use height<={q} throughout (no exact match) and rely on format_sort to pick the
+# highest resolution + highest bitrate stream within the cap.
 _YT_FORMAT = (
-    "bestvideo[height={q}][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/"
     "bestvideo[height<={q}][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/"
-    "bestvideo[height<={q}][ext=mp4]+bestaudio[ext=m4a]/"
+    "bestvideo[height<={q}][ext=mp4][vcodec^=avc1]+bestaudio/"
+    "bestvideo[height<={q}][ext=mp4]+bestaudio/"
     "bestvideo[height<={q}]+bestaudio/"
-    "best[height<={q}][vcodec!*=none]"
+    "best[height<={q}]/"
+    "best"
 )
 
-# TikTok-style format: single combined stream, no split video+audio
-# TikTok serves pre-muxed mp4 files; format IDs like 'download_addr', 'play_addr', 'h264_540p' etc.
+# TikTok-style format: single combined stream, no split video+audio.
+# TikTok serves pre-muxed mp4 files; use height<={q} and let format_sort rank by bitrate.
 _TIKTOK_FORMAT = (
-    "best[height={q}][ext=mp4]/"
     "best[height<={q}][ext=mp4]/"
     "best[height<={q}]/"
     "best[ext=mp4]/"
@@ -187,6 +189,14 @@ def _get_format_string(url: str, quality: str) -> str:
     return _YT_FORMAT.format(q=quality)
 
 
+# format_sort: within all formats passing the format string filter, rank by:
+# 1. Highest resolution (res)
+# 2. Highest total/video/audio bitrate (br, vbr, abr)
+# 3. Prefer mp4/m4a over webm for Discord compat
+# 4. Prefer h264/avc1 for broadest device support
+_FORMAT_SORT = ["res", "br", "vbr", "abr", "ext:mp4:m4a:webm", "vcodec:avc1:h264:vp9"]
+
+
 def _extract_info(url: str, quality: str = "720") -> dict:
     """Extract video info using yt-dlp library with quality-aware format selection"""
     format_string = _get_format_string(url, quality)
@@ -198,6 +208,8 @@ def _extract_info(url: str, quality: str = "720") -> dict:
         "no_check_certificate": True,
         "socket_timeout": 15,
         "format": format_string,
+        "format_sort": _FORMAT_SORT,
+        "extractor_retries": 3,
     }
 
     if NETSCAPE_COOKIE_FILE:
@@ -238,6 +250,7 @@ def _download(url: str, quality: str, filename: str | None) -> dict:
 
     opts = {
         "format": format_string,
+        "format_sort": _FORMAT_SORT,
         "outtmpl": output_template,
         "noplaylist": True,
         "no_warnings": True,
@@ -245,6 +258,8 @@ def _download(url: str, quality: str, filename: str | None) -> dict:
         "socket_timeout": 30,
         "retries": 5,
         "fragment_retries": 5,
+        "extractor_retries": 3,
+        "concurrent_fragment_downloads": 4,  # Faster segmented downloads (HLS/DASH)
         "merge_output_format": "mp4",
         "quiet": True,
         # Hard limit: abort download if file exceeds limit (prevents massive downloads)
