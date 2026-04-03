@@ -388,7 +388,8 @@ class CobaltService extends EventEmitter {
     }
 
     async getVideoInfo(url: string): Promise<DownloadInfo> {
-        return this._requestDownload(url);
+        const quality = (videoConfig as { COBALT_VIDEO_QUALITY?: string }).COBALT_VIDEO_QUALITY || '720';
+        return this._requestDownload(url, quality);
     }
 }
 
