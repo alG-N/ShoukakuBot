@@ -41,7 +41,6 @@ import {
     createCooldownEmbed,
     createErrorEmbed,
     createGalleryEmbed,
-    createPageEmbed,
     createSearchResultsEmbed,
     createSettingsEmbed
 } from './embeds.js';
@@ -61,7 +60,7 @@ export class NHentaiHandler {
     private readonly cdn = new NhentaiCdnClient();
 
     async createPageResponse(gallery: Gallery, pageNum: number): Promise<{ embed: EmbedBuilder; files: AttachmentBuilder[] }> {
-        const { id, media_id, title, num_pages, images } = gallery;
+        const { id, media_id, num_pages, images } = gallery;
         const pages = images?.pages || [];
 
         if (pageNum < 1 || pageNum > pages.length) {
@@ -73,10 +72,6 @@ export class NHentaiHandler {
 
         const embed = new EmbedBuilder()
             .setColor(0xED2553)
-            .setAuthor({
-                name: title.english || title.japanese || title.pretty || 'Unknown Title',
-                url: `https://nhentai.net/g/${id}/`
-            })
             .setImage(imageUrl)
             .setFooter({ text: `Page ${pageNum}/${num_pages} • ID: ${id}` });
 
@@ -108,10 +103,6 @@ export class NHentaiHandler {
 
     createGalleryEmbed(gallery: Gallery, options: { isRandom?: boolean; isPopular?: boolean; popularPeriod?: string } = {}): EmbedBuilder {
         return createGalleryEmbed(this.cdn, gallery, options);
-    }
-
-    createPageEmbed(gallery: Gallery, pageNum: number): EmbedBuilder {
-        return createPageEmbed(this.cdn, gallery, pageNum);
     }
 
     async createMainButtons(

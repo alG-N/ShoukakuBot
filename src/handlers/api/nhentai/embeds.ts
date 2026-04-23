@@ -96,29 +96,6 @@ export function createGalleryEmbed(
     return embed;
 }
 
-export function createPageEmbed(cdn: NhentaiCdnClient, gallery: Gallery, pageNum: number): EmbedBuilder {
-    const { id, media_id, title, num_pages, images } = gallery;
-    const pages = images?.pages || [];
-
-    if (pageNum < 1 || pageNum > pages.length) {
-        return createErrorEmbed('Invalid page number.');
-    }
-
-    const page = pages[pageNum - 1];
-    const imageUrl = cdn.getPageImageUrl(media_id, pageNum, page.t);
-    const thumbUrl = cdn.getPageThumbUrl(media_id, pageNum, page.t);
-
-    return new EmbedBuilder()
-        .setColor(COLORS.NHENTAI)
-        .setAuthor({
-            name: truncate(getTitle(title), 100),
-            url: `https://nhentai.net/g/${id}/`
-        })
-        .setImage(imageUrl)
-        .setThumbnail(thumbUrl)
-        .setFooter({ text: `Page ${pageNum}/${num_pages} • ID: ${id}` });
-}
-
 export function createSearchResultsEmbed(query: string, data: SearchData, page: number, sort: string): EmbedBuilder {
     const { results, numPages, totalResults } = data;
 
