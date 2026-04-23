@@ -69,8 +69,7 @@ export class NHentaiHandler {
         }
 
         const page = pages[pageNum - 1];
-        const ext = getExt(page.t);
-        const filename = `page_${pageNum}.${ext}`;
+        const imageUrl = this.cdn.getPageImageUrl(media_id, pageNum, page.t);
 
         const embed = new EmbedBuilder()
             .setColor(0xED2553)
@@ -78,42 +77,10 @@ export class NHentaiHandler {
                 name: title.english || title.japanese || title.pretty || 'Unknown Title',
                 url: `https://nhentai.net/g/${id}/`
             })
+            .setImage(imageUrl)
             .setFooter({ text: `Page ${pageNum}/${num_pages} • ID: ${id}` });
 
-        const imageBuffer = await this.cdn.fetchPageImageWithCache(media_id, pageNum, page.t);
-        const files: AttachmentBuilder[] = [];
-
-        if (imageBuffer) {
-            const attachment = new AttachmentBuilder(imageBuffer, { name: filename });
-            files.push(attachment);
-            embed.setImage(`attachment://${filename}`);
-        } else {
-            const pageUrls = this.cdn.getAllPageImageUrls(media_id, pageNum, page.t);
-            embed.setImage(pageUrls[0]);
-        }
-
-        // Pre-fetch adjacent pages in background so navigation feels instant
-        this.prefetchAdjacentPages(gallery, pageNum);
-
-        return { embed, files };
-    }
-
-    private prefetchAdjacentPages(gallery: Gallery, currentPage: number): void {
-        const pages = gallery.images?.pages || [];
-        const candidates = [currentPage + 1, currentPage - 1].filter(p => p >= 1 && p <= pages.length);
-        for (const p of candidates) {
-            this.prefetchPage(gallery, p);
-        }
-    }
-
-    private prefetchPage(gallery: Gallery, pageNum: number): void {
-        const pages = gallery.images?.pages || [];
-        const pageData = pages[pageNum - 1];
-        if (!pageData) return;
-
-        if (!this.cdn.getPageImageCached(gallery.media_id, pageNum, pageData.t)) {
-            this.cdn.fetchPageImageWithCache(gallery.media_id, pageNum, pageData.t).catch(() => {});
-        }
+        return { embed, files: [] };
     }
 
     async createGalleryResponse(
@@ -135,8 +102,6 @@ export class NHentaiHandler {
             files.push(attachment);
             embed.setThumbnail(`attachment://${filename}`);
         }
-
-        this.prefetchPage(gallery, 1);
 
         return { embed, files };
     }
