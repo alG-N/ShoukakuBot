@@ -51,6 +51,8 @@ export interface NhentaiButtonInteractionDeps {
 
 // Per-user lock to prevent race conditions when spamming page navigation
 const navigatingUsers = new Set<string>();
+const navigationCooldowns = new Map<string, number>();
+const NAVIGATION_SETTLE_MS = 1500;
 
 export async function handleNhentaiButtonInteraction(
     interaction: ButtonInteraction,
@@ -59,6 +61,7 @@ export async function handleNhentaiButtonInteraction(
     const parts = interaction.customId.split('_');
     const action = parts[1];
     const userId = parts[parts.length - 1];
+    let applyNavigationCooldown = false;
 
     if (userId !== interaction.user.id) {
         await interaction.reply({
@@ -71,6 +74,15 @@ export async function handleNhentaiButtonInteraction(
     // Guard page navigation actions against concurrent clicks
     const pageActions = ['prev', 'next', 'first', 'last', 'read'];
     if (pageActions.includes(action)) {
+        const cooldownUntil = navigationCooldowns.get(userId);
+        if (cooldownUntil && cooldownUntil > Date.now()) {
+            await interaction.deferUpdate().catch(() => {});
+            return;
+        }
+        if (cooldownUntil && cooldownUntil <= Date.now()) {
+            navigationCooldowns.delete(userId);
+        }
+
         if (navigatingUsers.has(userId)) {
             await interaction.deferUpdate().catch(() => {});
             return;
@@ -151,6 +163,7 @@ export async function handleNhentaiButtonInteraction(
                 const pageRows = deps.createPageButtons(parseInt(galleryId), userId, 1, gallery.num_pages);
                 await interaction.editReply({ embeds: [pageEmbed], components: pageRows, files: pageFiles });
                 await deps.setPageSession(userId, gallery, 1);
+                applyNavigationCooldown = true;
                 break;
             }
 
@@ -164,6 +177,11 @@ export async function handleNhentaiButtonInteraction(
                         embeds: [deps.createErrorEmbed('Session expired. Please start again.')],
                         components: []
                     });
+                    return;
+                }
+
+                const requestedPage = Number(parts[3]);
+                if (Number.isInteger(requestedPage) && requestedPage !== session.currentPage) {
                     return;
                 }
 
@@ -181,6 +199,7 @@ export async function handleNhentaiButtonInteraction(
                 const pageRows = deps.createPageButtons(session.galleryId, userId, newPage, session.totalPages);
                 await interaction.editReply({ embeds: [pageEmbed], components: pageRows, files: pageFiles });
                 await deps.updatePageSession(userId, newPage);
+                applyNavigationCooldown = true;
                 break;
             }
 
@@ -453,6 +472,9 @@ export async function handleNhentaiButtonInteraction(
         }).catch(() => {});
     } finally {
         navigatingUsers.delete(userId);
+        if (applyNavigationCooldown) {
+            navigationCooldowns.set(userId, Date.now() + NAVIGATION_SETTLE_MS);
+        }
     }
 }
 

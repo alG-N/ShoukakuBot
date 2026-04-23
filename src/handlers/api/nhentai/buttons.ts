@@ -117,30 +117,30 @@ export function createPageButtons(
 ): ActionRowBuilder<ButtonBuilder>[] {
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-            .setCustomId(`nhentai_first_${galleryId}_${userId}`)
+            .setCustomId(`nhentai_first_${galleryId}_${currentPage}_${userId}`)
             .setLabel('First')
             .setStyle(ButtonStyle.Secondary)
             .setEmoji('⏮️')
             .setDisabled(currentPage <= 1),
         new ButtonBuilder()
-            .setCustomId(`nhentai_prev_${galleryId}_${userId}`)
+            .setCustomId(`nhentai_prev_${galleryId}_${currentPage}_${userId}`)
             .setLabel('Prev')
             .setStyle(ButtonStyle.Primary)
             .setEmoji('◀️')
             .setDisabled(currentPage <= 1),
         new ButtonBuilder()
-            .setCustomId(`nhentai_page_${galleryId}_${userId}`)
+            .setCustomId(`nhentai_page_${galleryId}_${currentPage}_${userId}`)
             .setLabel(`${currentPage}/${totalPages}`)
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(true),
         new ButtonBuilder()
-            .setCustomId(`nhentai_next_${galleryId}_${userId}`)
+            .setCustomId(`nhentai_next_${galleryId}_${currentPage}_${userId}`)
             .setLabel('Next')
             .setStyle(ButtonStyle.Primary)
             .setEmoji('▶️')
             .setDisabled(currentPage >= totalPages),
         new ButtonBuilder()
-            .setCustomId(`nhentai_last_${galleryId}_${userId}`)
+            .setCustomId(`nhentai_last_${galleryId}_${currentPage}_${userId}`)
             .setLabel('Last')
             .setStyle(ButtonStyle.Secondary)
             .setEmoji('⏭️')
