@@ -30,6 +30,8 @@ type GalleryResponseOptions = {
     spoilerCover?: boolean;
 };
 
+const FETCHING_GIF_URL = 'https://media.discordapp.net/attachments/1227126218755670070/1494610199431090347/8995335b58f7443aa814d3ba9b10f970_tplv-dhq7zx4c1p-video2sticker-mid.gif?ex=69eb24b8&is=69e9d338&hm=6a41f79f48c481312c955395ecfb3fadc713e55ca71b84d856c7e7f17613c9cb&=&width=270&height=270';
+
 export interface NhentaiButtonInteractionDeps {
     sessionTtl: number;
     createErrorEmbed: (message: string) => EmbedBuilder;
@@ -275,9 +277,27 @@ export async function handleNhentaiButtonInteraction(
 
             case 'random': {
                 const prefs = await deps.getUserPreferences(userId);
-                const result = await withNhentaiFetchingState(interaction, 'other manga', async () =>
-                    nhentaiService.fetchRandomGalleryByPeriod(prefs.randomPeriod)
-                , { disableButtons: true, showStatusText: true });
+                let result;
+                try {
+                    result = await withNhentaiFetchingState(interaction, 'other manga', async () =>
+                        nhentaiService.fetchRandomGalleryByPeriod(prefs.randomPeriod)
+                    , {
+                        disableButtons: true,
+                        loadingImageUrl: FETCHING_GIF_URL,
+                        replaceEmbedContent: true,
+                        showStatusText: true,
+                        timeoutSeconds: 60
+                    });
+                } catch (error) {
+                    if (isNhentaiFetchTimeoutError(error)) {
+                        await interaction.editReply({
+                            embeds: [deps.createErrorEmbed(error.message)],
+                            components: []
+                        });
+                        return;
+                    }
+                    throw error;
+                }
                 if (!result.success || !result.data) {
                     await interaction.editReply({
                         embeds: [deps.createErrorEmbed(result.error || 'Could not fetch random gallery')],
@@ -294,9 +314,27 @@ export async function handleNhentaiButtonInteraction(
 
             case 'popular': {
                 const prefs = await deps.getUserPreferences(userId);
-                const result = await withNhentaiFetchingState(interaction, 'other manga', async () =>
-                    nhentaiService.fetchPopularGallery(prefs.popularPeriod)
-                , { disableButtons: true, showStatusText: true });
+                let result;
+                try {
+                    result = await withNhentaiFetchingState(interaction, 'other manga', async () =>
+                        nhentaiService.fetchPopularGallery(prefs.popularPeriod)
+                    , {
+                        disableButtons: true,
+                        loadingImageUrl: FETCHING_GIF_URL,
+                        replaceEmbedContent: true,
+                        showStatusText: true,
+                        timeoutSeconds: 60
+                    });
+                } catch (error) {
+                    if (isNhentaiFetchTimeoutError(error)) {
+                        await interaction.editReply({
+                            embeds: [deps.createErrorEmbed(error.message)],
+                            components: []
+                        });
+                        return;
+                    }
+                    throw error;
+                }
                 if (!result.success || !result.data) {
                     await interaction.editReply({
                         embeds: [deps.createErrorEmbed(result.error || 'Could not fetch popular gallery')],
@@ -458,14 +496,30 @@ function buildDisabledButtonRows(interaction: ButtonInteraction): ActionRowBuild
 function buildLoadingEmbed(
     currentEmbed: EmbedBuilder,
     context: string,
+    elapsedSeconds: number,
     options: FetchingStateOptions = {}
 ): EmbedBuilder {
+    if (options.replaceEmbedContent === true) {
+        const embed = new EmbedBuilder()
+            .setColor(currentEmbed.data.color ?? 0xED2553);
+
+        if (options.showStatusText) {
+            embed.setDescription(`Shoukaku is fetching ${context}, please wait...(${elapsedSeconds}s / ${(options.timeoutSeconds || 60)}s)`);
+        }
+
+        if (options.loadingImageUrl) {
+            embed.setImage(options.loadingImageUrl);
+        }
+
+        return embed;
+    }
+
     const embed = EmbedBuilder.from(currentEmbed);
     const currentDescription = embed.data.description || '';
     const cleanedDescription = currentDescription.replace(/^⏳ Shoukaku is fetching[^\n]*\n\n?/i, '');
 
     if (options.showStatusText) {
-        const statusLine = `Shoukaku is fetching ${context}, please wait...(0 / 60s)`;
+        const statusLine = `Shoukaku is fetching ${context}, please wait...(${elapsedSeconds}s / ${(options.timeoutSeconds || 60)}s)`;
         embed.setDescription(cleanedDescription ? `${statusLine}\n\n${cleanedDescription}` : statusLine);
     } else if (cleanedDescription !== currentDescription) {
         embed.setDescription(cleanedDescription || null);
@@ -482,6 +536,9 @@ type FetchingStateOptions = {
     hideMedia?: boolean;
     disableButtons?: boolean;
     showStatusText?: boolean;
+    replaceEmbedContent?: boolean;
+    loadingImageUrl?: string;
+    timeoutSeconds?: number;
 };
 
 async function withNhentaiFetchingState<T>(
@@ -494,22 +551,55 @@ async function withNhentaiFetchingState<T>(
         return task();
     }
 
-    if (options.hideMedia !== true && options.showStatusText !== true && options.disableButtons !== true) {
+    if (options.hideMedia !== true && options.showStatusText !== true && options.disableButtons !== true && options.replaceEmbedContent !== true) {
         return task();
     }
 
     const baseEmbed = EmbedBuilder.from(interaction.message.embeds[0]!);
-    const loadingEmbed = buildLoadingEmbed(baseEmbed, context, options);
-    const components = options.disableButtons === true
-        ? buildDisabledButtonRows(interaction)
-        : undefined;
-    await interaction.editReply({ embeds: [loadingEmbed], components, files: [] }).catch(() => {});
+    const timeoutSeconds = options.timeoutSeconds || 60;
+    let elapsedSeconds = 0;
+    let stopped = false;
+
+    const updateLoadingReply = async (): Promise<void> => {
+        if (stopped) return;
+        const loadingEmbed = buildLoadingEmbed(baseEmbed, context, elapsedSeconds, options);
+        const components = options.disableButtons === true
+            ? buildDisabledButtonRows(interaction)
+            : undefined;
+        await interaction.editReply({ embeds: [loadingEmbed], components, files: [] }).catch(() => {});
+    };
+
+    await updateLoadingReply();
+
+    const interval = setInterval(() => {
+        elapsedSeconds += 1;
+        if (elapsedSeconds <= timeoutSeconds) {
+            void updateLoadingReply();
+        }
+    }, 1000);
+
+    let timeoutHandle: NodeJS.Timeout | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+            const timeoutError = new Error(`Fetching ${context} timed out after ${timeoutSeconds} seconds. Please try again.`);
+            timeoutError.name = 'NhentaiFetchTimeout';
+            reject(timeoutError);
+        }, timeoutSeconds * 1000);
+    });
 
     try {
-        return await task();
+        return await Promise.race([task(), timeoutPromise]);
     } finally {
-        // The caller always replaces the temporary disabled state with the final response.
+        stopped = true;
+        clearInterval(interval);
+        if (timeoutHandle) {
+            clearTimeout(timeoutHandle);
+        }
     }
+}
+
+function isNhentaiFetchTimeoutError(error: unknown): error is Error {
+    return error instanceof Error && error.name === 'NhentaiFetchTimeout';
 }
 
 export interface NhentaiModalInteractionDeps {
