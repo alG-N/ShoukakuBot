@@ -141,12 +141,16 @@ export async function handleNhentaiButtonInteraction(
                         return;
                     }
                     gallery = result.data as Gallery;
-                    await deps.setPageSession(userId, gallery, 1);
                 }
 
-                const { embed: pageEmbed, files: pageFiles } = await deps.createPageResponse(gallery, 1);
+                const { embed: pageEmbed, files: pageFiles } = await withNhentaiFetchingState(
+                    interaction,
+                    'page 1',
+                    async () => deps.createPageResponse(gallery, 1)
+                );
                 const pageRows = deps.createPageButtons(parseInt(galleryId), userId, 1, gallery.num_pages);
                 await interaction.editReply({ embeds: [pageEmbed], components: pageRows, files: pageFiles });
+                await deps.setPageSession(userId, gallery, 1);
                 break;
             }
 
@@ -169,10 +173,14 @@ export async function handleNhentaiButtonInteraction(
                 else if (action === 'first') newPage = 1;
                 else if (action === 'last') newPage = session.totalPages;
 
-                await deps.updatePageSession(userId, newPage);
-                const { embed: pageEmbed, files: pageFiles } = await deps.createPageResponse(session.gallery, newPage);
+                const { embed: pageEmbed, files: pageFiles } = await withNhentaiFetchingState(
+                    interaction,
+                    `page ${newPage}`,
+                    async () => deps.createPageResponse(session.gallery, newPage)
+                );
                 const pageRows = deps.createPageButtons(session.galleryId, userId, newPage, session.totalPages);
                 await interaction.editReply({ embeds: [pageEmbed], components: pageRows, files: pageFiles });
+                await deps.updatePageSession(userId, newPage);
                 break;
             }
 

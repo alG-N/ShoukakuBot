@@ -100,15 +100,19 @@ export class NHentaiHandler {
 
     private prefetchAdjacentPages(gallery: Gallery, currentPage: number): void {
         const pages = gallery.images?.pages || [];
-        const { media_id } = gallery;
-
         const candidates = [currentPage + 1, currentPage - 1].filter(p => p >= 1 && p <= pages.length);
         for (const p of candidates) {
-            const pageData = pages[p - 1];
-            if (!pageData) continue;
-            if (!this.cdn.getPageImageCached(media_id, p, pageData.t)) {
-                this.cdn.fetchPageImageWithCache(media_id, p, pageData.t).catch(() => {});
-            }
+            this.prefetchPage(gallery, p);
+        }
+    }
+
+    private prefetchPage(gallery: Gallery, pageNum: number): void {
+        const pages = gallery.images?.pages || [];
+        const pageData = pages[pageNum - 1];
+        if (!pageData) return;
+
+        if (!this.cdn.getPageImageCached(gallery.media_id, pageNum, pageData.t)) {
+            this.cdn.fetchPageImageWithCache(gallery.media_id, pageNum, pageData.t).catch(() => {});
         }
     }
 
@@ -131,6 +135,8 @@ export class NHentaiHandler {
             files.push(attachment);
             embed.setThumbnail(`attachment://${filename}`);
         }
+
+        this.prefetchPage(gallery, 1);
 
         return { embed, files };
     }
