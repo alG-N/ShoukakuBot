@@ -495,18 +495,11 @@ function buildDisabledButtonRows(interaction: ButtonInteraction): ActionRowBuild
     return rows;
 }
 
-function buildFetchingEmbed(
+function buildLoadingEmbed(
     currentEmbed: EmbedBuilder,
-    context: string,
-    elapsedSec: number,
-    totalSec: number = 60,
     hideMedia: boolean = false
 ): EmbedBuilder {
     const embed = EmbedBuilder.from(currentEmbed);
-    const statusLine = `⏳ Shoukaku is fetching ${context}... (${Math.min(elapsedSec, totalSec)}s / ${totalSec}s)`;
-    const currentDescription = embed.data.description || '';
-    const cleaned = currentDescription.replace(/^⏳ Shoukaku is fetching[^\n]*\n\n?/i, '');
-    embed.setDescription(cleaned ? `${statusLine}\n\n${cleaned}` : statusLine);
     if (hideMedia) {
         embed.setImage(null);
         embed.setThumbnail(null);
@@ -520,7 +513,7 @@ type FetchingStateOptions = {
 
 async function withNhentaiFetchingState<T>(
     interaction: ButtonInteraction,
-    context: string,
+    _context: string,
     task: () => Promise<T>,
     options: FetchingStateOptions = {}
 ): Promise<T> {
@@ -530,31 +523,13 @@ async function withNhentaiFetchingState<T>(
 
     const baseEmbed = EmbedBuilder.from(interaction.message.embeds[0]!);
     const disabledRows = buildDisabledButtonRows(interaction);
-    let elapsed = 0;
-    let stopped = false;
-
-    const pushStatus = async (): Promise<void> => {
-        if (stopped) return;
-        const loadingEmbed = buildFetchingEmbed(baseEmbed, context, elapsed, 60, options.hideMedia === true);
-        await interaction.editReply({ embeds: [loadingEmbed], components: disabledRows, files: [] }).catch(() => {});
-    };
-
-    await pushStatus();
-
-    const timer = setInterval(() => {
-        elapsed += 1;
-        if (elapsed <= 60) {
-            void pushStatus();
-        } else {
-            clearInterval(timer);
-        }
-    }, 1000);
+    const loadingEmbed = buildLoadingEmbed(baseEmbed, options.hideMedia === true);
+    await interaction.editReply({ embeds: [loadingEmbed], components: disabledRows, files: [] }).catch(() => {});
 
     try {
         return await task();
     } finally {
-        stopped = true;
-        clearInterval(timer);
+        // The caller always replaces the temporary disabled state with the final response.
     }
 }
 

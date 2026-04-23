@@ -52,8 +52,8 @@ import {
 } from './buttons.js';
 import {
     createFavouritesEmbed,
-    handleFavouriteToggle
 } from './favourites.js';
+import type { NHentaiFavourite } from '../../../repositories/api/nhentaiRepository.js';
 
 export class NHentaiHandler {
     private readonly SESSION_TTL = 1800;
@@ -166,14 +166,6 @@ export class NHentaiHandler {
             return [popularRow, randomRow, resetRow];
     }
 
-    async handleFavouriteToggle(
-        userId: string,
-        _galleryId: string,
-        gallery: Gallery
-    ): Promise<{ added: boolean; removed: boolean; error?: string }> {
-        return handleFavouriteToggle(userId, gallery);
-    }
-
     async createFavouritesEmbed(userId: string, page: number = 1, perPage: number = 10): Promise<FavouritesData> {
         return createFavouritesEmbed(userId, page, perPage);
     }
@@ -182,9 +174,9 @@ export class NHentaiHandler {
         userId: string,
         currentPage: number,
         totalPages: number,
-        favourites: any[]
+        favourites: NHentaiFavourite[]
     ): ActionRowBuilder<ButtonBuilder>[] {
-        return createFavouritesButtons(userId, currentPage, totalPages, favourites as any);
+        return createFavouritesButtons(userId, currentPage, totalPages, favourites);
     }
 
     createPageButtons(
