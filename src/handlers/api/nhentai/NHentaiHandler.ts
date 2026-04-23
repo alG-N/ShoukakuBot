@@ -80,8 +80,7 @@ export class NHentaiHandler {
             })
             .setFooter({ text: `Page ${pageNum}/${num_pages} • ID: ${id}` });
 
-        const pageUrls = this.cdn.getAllPageImageUrls(media_id, pageNum, page.t);
-        const imageBuffer = await this.cdn.fetchImageWithRetry(pageUrls);
+        const imageBuffer = await this.cdn.fetchPageImageWithCache(media_id, pageNum, page.t);
         const files: AttachmentBuilder[] = [];
 
         if (imageBuffer) {
@@ -89,10 +88,28 @@ export class NHentaiHandler {
             files.push(attachment);
             embed.setImage(`attachment://${filename}`);
         } else {
+            const pageUrls = this.cdn.getAllPageImageUrls(media_id, pageNum, page.t);
             embed.setImage(pageUrls[0]);
         }
 
+        // Pre-fetch adjacent pages in background so navigation feels instant
+        this.prefetchAdjacentPages(gallery, pageNum);
+
         return { embed, files };
+    }
+
+    private prefetchAdjacentPages(gallery: Gallery, currentPage: number): void {
+        const pages = gallery.images?.pages || [];
+        const { media_id } = gallery;
+
+        const candidates = [currentPage + 1, currentPage - 1].filter(p => p >= 1 && p <= pages.length);
+        for (const p of candidates) {
+            const pageData = pages[p - 1];
+            if (!pageData) continue;
+            if (!this.cdn.getPageImageCached(media_id, p, pageData.t)) {
+                this.cdn.fetchPageImageWithCache(media_id, p, pageData.t).catch(() => {});
+            }
+        }
     }
 
     async createGalleryResponse(

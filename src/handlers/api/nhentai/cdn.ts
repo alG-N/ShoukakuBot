@@ -3,6 +3,15 @@ import logger from '../../../core/Logger.js';
 import { nhentai as nhentaiConfig } from '../../../config/services.js';
 import { getExt } from './utils.js';
 
+interface PageCacheEntry {
+    buffer: Buffer;
+    cachedAt: number;
+}
+
+const PAGE_IMAGE_CACHE = new Map<string, PageCacheEntry>();
+const PAGE_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const PAGE_CACHE_MAX_ENTRIES = 60;
+
 export class NhentaiCdnClient {
     private readonly CDN_MIRRORS = ['i', 'i2', 'i3', 'i1'];
     private readonly THUMB_MIRRORS = ['t', 't2', 't3', 't1'];
@@ -103,5 +112,34 @@ export class NhentaiCdnClient {
         const extension = getExt(pageType);
         const mirror = this.THUMB_MIRRORS[pageNum % this.THUMB_MIRRORS.length];
         return `https://${mirror}.nhentai.net/galleries/${mediaId}/${pageNum}t.${extension}`;
+    }
+
+    getPageImageCached(mediaId: string, pageNum: number, pageType: string): Buffer | null {
+        const key = `${mediaId}_${pageNum}_${getExt(pageType)}`;
+        const entry = PAGE_IMAGE_CACHE.get(key);
+        if (!entry) return null;
+        if (Date.now() - entry.cachedAt > PAGE_CACHE_TTL_MS) {
+            PAGE_IMAGE_CACHE.delete(key);
+            return null;
+        }
+        return entry.buffer;
+    }
+
+    private setPageImageCached(mediaId: string, pageNum: number, pageType: string, buffer: Buffer): void {
+        const key = `${mediaId}_${pageNum}_${getExt(pageType)}`;
+        if (PAGE_IMAGE_CACHE.size >= PAGE_CACHE_MAX_ENTRIES) {
+            const oldest = [...PAGE_IMAGE_CACHE.entries()].sort((a, b) => a[1].cachedAt - b[1].cachedAt)[0];
+            if (oldest) PAGE_IMAGE_CACHE.delete(oldest[0]);
+        }
+        PAGE_IMAGE_CACHE.set(key, { buffer, cachedAt: Date.now() });
+    }
+
+    async fetchPageImageWithCache(mediaId: string, pageNum: number, pageType: string): Promise<Buffer | null> {
+        const cached = this.getPageImageCached(mediaId, pageNum, pageType);
+        if (cached) return cached;
+        const urls = this.getAllPageImageUrls(mediaId, pageNum, pageType);
+        const buffer = await this.fetchImageWithRetry(urls);
+        if (buffer) this.setPageImageCached(mediaId, pageNum, pageType, buffer);
+        return buffer;
     }
 }

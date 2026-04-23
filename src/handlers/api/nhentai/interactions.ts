@@ -210,15 +210,20 @@ export async function handleNhentaiButtonInteraction(
                 const isFav = await nhentaiRepository.isFavourited(userId, parseInt(galleryId));
                 if (isFav) {
                     await nhentaiRepository.removeFavourite(userId, parseInt(galleryId));
-                    await interaction.followUp({ content: '💔 Removed from favourites', ephemeral: true });
                 } else {
                     if (!gallery) {
                         await interaction.followUp({ content: '❌ Cannot add to favourites - gallery data unavailable', ephemeral: true });
                         return;
                     }
                     await nhentaiRepository.addFavourite(userId, gallery as NHentaiGallery);
-                    await interaction.followUp({ content: '❤️ Added to favourites!', ephemeral: true });
                 }
+                // Rebuild buttons so the ❤️/💔 state reflects the new value
+                const newFavRows = await deps.createMainButtons(parseInt(galleryId), userId, gallery!.num_pages, gallery!);
+                await interaction.editReply({ components: newFavRows });
+                await interaction.followUp({
+                    content: isFav ? '💔 Removed from favourites' : '❤️ Added to favourites!',
+                    ephemeral: true
+                });
                 break;
             }
 
