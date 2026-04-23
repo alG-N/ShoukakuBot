@@ -3,7 +3,6 @@ import {
     AttachmentBuilder,
     ButtonBuilder,
     ButtonInteraction,
-    ComponentType,
     EmbedBuilder,
     ModalBuilder,
     ModalSubmitInteraction,
@@ -49,8 +48,6 @@ export interface NhentaiButtonInteractionDeps {
     createFavouritesButtons: (userId: string, currentPage: number, totalPages: number, favourites: NHentaiFavourite[]) => ActionRowBuilder<ButtonBuilder>[];
 }
 
-// Per-user lock to prevent race conditions when spamming page navigation
-const navigatingUsers = new Set<string>();
 const navigationCooldowns = new Map<string, number>();
 const NAVIGATION_SETTLE_MS = 1500;
 
@@ -61,7 +58,6 @@ export async function handleNhentaiButtonInteraction(
     const parts = interaction.customId.split('_');
     const action = parts[1];
     const userId = parts[parts.length - 1];
-    let applyNavigationCooldown = false;
 
     if (userId !== interaction.user.id) {
         await interaction.reply({
@@ -79,15 +75,7 @@ export async function handleNhentaiButtonInteraction(
             await interaction.deferUpdate().catch(() => {});
             return;
         }
-        if (cooldownUntil && cooldownUntil <= Date.now()) {
-            navigationCooldowns.delete(userId);
-        }
-
-        if (navigatingUsers.has(userId)) {
-            await interaction.deferUpdate().catch(() => {});
-            return;
-        }
-        navigatingUsers.add(userId);
+        navigationCooldowns.set(userId, Date.now() + NAVIGATION_SETTLE_MS);
     }
 
     try {
@@ -155,15 +143,10 @@ export async function handleNhentaiButtonInteraction(
                     gallery = result.data as Gallery;
                 }
 
-                const { embed: pageEmbed, files: pageFiles } = await withNhentaiFetchingState(
-                    interaction,
-                    'page 1',
-                    async () => deps.createPageResponse(gallery, 1)
-                );
+                const { embed: pageEmbed, files: pageFiles } = await deps.createPageResponse(gallery, 1);
                 const pageRows = deps.createPageButtons(parseInt(galleryId), userId, 1, gallery.num_pages);
                 await interaction.editReply({ embeds: [pageEmbed], components: pageRows, files: pageFiles });
                 await deps.setPageSession(userId, gallery, 1);
-                applyNavigationCooldown = true;
                 break;
             }
 
@@ -191,15 +174,10 @@ export async function handleNhentaiButtonInteraction(
                 else if (action === 'first') newPage = 1;
                 else if (action === 'last') newPage = session.totalPages;
 
-                const { embed: pageEmbed, files: pageFiles } = await withNhentaiFetchingState(
-                    interaction,
-                    `page ${newPage}`,
-                    async () => deps.createPageResponse(session.gallery, newPage)
-                );
+                const { embed: pageEmbed, files: pageFiles } = await deps.createPageResponse(session.gallery, newPage);
                 const pageRows = deps.createPageButtons(session.galleryId, userId, newPage, session.totalPages);
                 await interaction.editReply({ embeds: [pageEmbed], components: pageRows, files: pageFiles });
                 await deps.updatePageSession(userId, newPage);
-                applyNavigationCooldown = true;
                 break;
             }
 
@@ -312,7 +290,7 @@ export async function handleNhentaiButtonInteraction(
                 const prefs = await deps.getUserPreferences(userId);
                 const result = await withNhentaiFetchingState(interaction, 'other doujin', async () =>
                     nhentaiService.fetchRandomGalleryByPeriod(prefs.randomPeriod)
-                , { hideMedia: true });
+                , { hideMedia: true, showStatusText: true, statusNoun: 'other manga' });
                 if (!result.success || !result.data) {
                     await interaction.editReply({
                         embeds: [deps.createErrorEmbed(result.error || 'Could not fetch random gallery')],
@@ -331,7 +309,7 @@ export async function handleNhentaiButtonInteraction(
                 const prefs = await deps.getUserPreferences(userId);
                 const result = await withNhentaiFetchingState(interaction, 'other doujin', async () =>
                     nhentaiService.fetchPopularGallery(prefs.popularPeriod)
-                , { hideMedia: true });
+                , { hideMedia: true, showStatusText: true, statusNoun: 'other manga' });
                 if (!result.success || !result.data) {
                     await interaction.editReply({
                         embeds: [deps.createErrorEmbed(result.error || 'Could not fetch popular gallery')],
@@ -470,37 +448,26 @@ export async function handleNhentaiButtonInteraction(
             content: '❌ An error occurred. Please try again.',
             ephemeral: true
         }).catch(() => {});
-    } finally {
-        navigatingUsers.delete(userId);
-        if (applyNavigationCooldown) {
-            navigationCooldowns.set(userId, Date.now() + NAVIGATION_SETTLE_MS);
-        }
     }
-}
-
-function buildDisabledButtonRows(interaction: ButtonInteraction): ActionRowBuilder<ButtonBuilder>[] {
-    const rows: ActionRowBuilder<ButtonBuilder>[] = [];
-
-    for (const row of interaction.message.components) {
-        if (row.type !== ComponentType.ActionRow) continue;
-        const rowComponents = (row as unknown as { components?: Array<unknown> }).components || [];
-        const buttonRow = new ActionRowBuilder<ButtonBuilder>();
-        for (const component of rowComponents as Array<any>) {
-            if (component.type !== ComponentType.Button) continue;
-            buttonRow.addComponents(ButtonBuilder.from(component as any).setDisabled(true));
-        }
-        if (buttonRow.components.length > 0) rows.push(buttonRow);
-    }
-
-    return rows;
 }
 
 function buildLoadingEmbed(
     currentEmbed: EmbedBuilder,
-    hideMedia: boolean = false
+    options: FetchingStateOptions = {}
 ): EmbedBuilder {
     const embed = EmbedBuilder.from(currentEmbed);
-    if (hideMedia) {
+    const currentDescription = embed.data.description || '';
+    const cleanedDescription = currentDescription.replace(/^⏳ Shoukaku is fetching[^\n]*\n\n?/i, '');
+
+    if (options.showStatusText) {
+        const noun = options.statusNoun || 'other manga';
+        const statusLine = `⏳ Shoukaku is fetching ${noun}...`;
+        embed.setDescription(cleanedDescription ? `${statusLine}\n\n${cleanedDescription}` : statusLine);
+    } else if (cleanedDescription !== currentDescription) {
+        embed.setDescription(cleanedDescription || null);
+    }
+
+    if (options.hideMedia === true) {
         embed.setImage(null);
         embed.setThumbnail(null);
     }
@@ -509,6 +476,8 @@ function buildLoadingEmbed(
 
 type FetchingStateOptions = {
     hideMedia?: boolean;
+    showStatusText?: boolean;
+    statusNoun?: string;
 };
 
 async function withNhentaiFetchingState<T>(
@@ -521,10 +490,13 @@ async function withNhentaiFetchingState<T>(
         return task();
     }
 
+    if (options.hideMedia !== true && options.showStatusText !== true) {
+        return task();
+    }
+
     const baseEmbed = EmbedBuilder.from(interaction.message.embeds[0]!);
-    const disabledRows = buildDisabledButtonRows(interaction);
-    const loadingEmbed = buildLoadingEmbed(baseEmbed, options.hideMedia === true);
-    await interaction.editReply({ embeds: [loadingEmbed], components: disabledRows, files: [] }).catch(() => {});
+    const loadingEmbed = buildLoadingEmbed(baseEmbed, options);
+    await interaction.editReply({ embeds: [loadingEmbed], files: [] }).catch(() => {});
 
     try {
         return await task();
