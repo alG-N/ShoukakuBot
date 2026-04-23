@@ -559,6 +559,7 @@ async function withNhentaiFetchingState<T>(
     const timeoutSeconds = options.timeoutSeconds || 60;
     let elapsedSeconds = 0;
     let stopped = false;
+    let progressHandle: NodeJS.Timeout | undefined;
 
     const updateLoadingReply = async (): Promise<void> => {
         if (stopped) return;
@@ -566,17 +567,31 @@ async function withNhentaiFetchingState<T>(
         const components = options.disableButtons === true
             ? buildDisabledButtonRows(interaction)
             : undefined;
-        await interaction.editReply({ embeds: [loadingEmbed], components, files: [] }).catch(() => {});
+        try {
+            await interaction.editReply({ embeds: [loadingEmbed], components, files: [] });
+        } catch (error) {
+            logger.warn('NHentai', `Failed to update fetching progress: ${(error as Error).message}`);
+        }
     };
 
     await updateLoadingReply();
 
-    const interval = setInterval(() => {
-        elapsedSeconds += 1;
-        if (elapsedSeconds <= timeoutSeconds) {
-            void updateLoadingReply();
-        }
-    }, 1000);
+    const scheduleProgressUpdate = (): void => {
+        progressHandle = setTimeout(() => {
+            if (stopped) return;
+
+            elapsedSeconds += 1;
+            if (elapsedSeconds <= timeoutSeconds) {
+                void updateLoadingReply().finally(() => {
+                    if (!stopped && elapsedSeconds < timeoutSeconds) {
+                        scheduleProgressUpdate();
+                    }
+                });
+            }
+        }, 1000);
+    };
+
+    scheduleProgressUpdate();
 
     let timeoutHandle: NodeJS.Timeout | undefined;
     const timeoutPromise = new Promise<never>((_, reject) => {
@@ -591,7 +606,9 @@ async function withNhentaiFetchingState<T>(
         return await Promise.race([task(), timeoutPromise]);
     } finally {
         stopped = true;
-        clearInterval(interval);
+        if (progressHandle) {
+            clearTimeout(progressHandle);
+        }
         if (timeoutHandle) {
             clearTimeout(timeoutHandle);
         }
