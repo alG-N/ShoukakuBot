@@ -56,6 +56,62 @@ const POPULAR_GALLERIES: number[] = [
     386483, 393321, 393497, 396823, 400485
 ];
 
+type NhentaiRequestOptions = {
+    signal?: AbortSignal;
+};
+
+function getAbortError(signal?: AbortSignal): Error {
+    const reason = signal?.reason;
+    if (reason instanceof Error) {
+        return reason;
+    }
+
+    const abortError = new Error('Request was aborted.');
+    abortError.name = 'AbortError';
+    return abortError;
+}
+
+function isAbortError(error: unknown): boolean {
+    const err = error as { code?: string; name?: string };
+    return err?.code === 'ERR_CANCELED'
+        || err?.name === 'AbortError'
+        || err?.name === 'CanceledError'
+        || err?.name === 'NhentaiFetchTimeout';
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+    if (signal?.aborted) {
+        throw getAbortError(signal);
+    }
+}
+
+function abortableDelay(ms: number, signal?: AbortSignal): Promise<void> {
+    if (!signal) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    throwIfAborted(signal);
+
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+            cleanup();
+            resolve();
+        }, ms);
+
+        const onAbort = (): void => {
+            clearTimeout(timer);
+            cleanup();
+            reject(getAbortError(signal));
+        };
+
+        const cleanup = (): void => {
+            signal.removeEventListener('abort', onAbort);
+        };
+
+        signal.addEventListener('abort', onAbort, { once: true });
+    });
+}
+
 /**
  * Build request headers with Cloudflare bypass support.
  * nhentai.net uses Cloudflare protection — requests without proper
@@ -102,9 +158,101 @@ class NHentaiService {
     private readonly CACHE_NS = 'api:nhentai';
     private readonly CACHE_TTL = 300; // 5 minutes in seconds
     private readonly TRANSLATE_CACHE_NS = 'api:translate';
+    private readonly AUTOCOMPLETE_CACHE_TTL_MS = 30_000;
+    private readonly autocompleteCache = new Map<string, { suggestions: string[]; timestamp: number }>();
+    private readonly autocompleteInflight = new Map<string, Promise<string[]>>();
 
     constructor() {
         // No local cache setup needed — uses centralized cacheService
+    }
+
+    private _getLocalAutocompleteSuggestions(query: string): string[] | null {
+        const entry = this.autocompleteCache.get(query);
+        if (!entry) {
+            return null;
+        }
+
+        if (Date.now() - entry.timestamp > this.AUTOCOMPLETE_CACHE_TTL_MS) {
+            this.autocompleteCache.delete(query);
+            return null;
+        }
+
+        return entry.suggestions;
+    }
+
+    private _setLocalAutocompleteSuggestions(query: string, suggestions: string[]): void {
+        this.autocompleteCache.set(query, {
+            suggestions,
+            timestamp: Date.now()
+        });
+
+        if (this.autocompleteCache.size > 200) {
+            const oldestKey = this.autocompleteCache.keys().next().value;
+            if (oldestKey) {
+                this.autocompleteCache.delete(oldestKey);
+            }
+        }
+    }
+
+    private _findPrefixAutocompleteSuggestions(query: string): string[] | null {
+        let bestPrefix: string | null = null;
+        let bestSuggestions: string[] | null = null;
+
+        for (const [cachedQuery, entry] of this.autocompleteCache.entries()) {
+            if (!query.startsWith(cachedQuery)) {
+                continue;
+            }
+
+            if (Date.now() - entry.timestamp > this.AUTOCOMPLETE_CACHE_TTL_MS) {
+                this.autocompleteCache.delete(cachedQuery);
+                continue;
+            }
+
+            if (!bestPrefix || cachedQuery.length > bestPrefix.length) {
+                bestPrefix = cachedQuery;
+                bestSuggestions = entry.suggestions;
+            }
+        }
+
+        if (!bestSuggestions) {
+            return null;
+        }
+
+        const filtered = bestSuggestions.filter((suggestion) =>
+            suggestion.toLowerCase().includes(query)
+        );
+
+        return filtered.length > 0 ? filtered : null;
+    }
+
+    private async _fetchAutocompleteSuggestions(query: string): Promise<string[]> {
+        return circuitBreakerRegistry.execute('nsfw', async () => {
+            try {
+                const response = await axios.get<NHentaiSearchResponse>(
+                    `${API_BASE}/search?query=${encodeURIComponent(query)}&page=1&sort=date`,
+                    getRequestConfig({ timeout: 3000 })
+                );
+
+                const items = Array.isArray(response.data?.result) ? response.data.result : [];
+                const seen = new Set<string>();
+                const suggestions: string[] = [];
+
+                for (const item of items) {
+                    const title = (item.english_title || item.japanese_title || '').trim();
+                    if (!title || seen.has(title)) continue;
+                    seen.add(title);
+                    suggestions.push(title.slice(0, 100));
+                    if (suggestions.length >= 25) break;
+                }
+
+                await cacheService.set(this.CACHE_NS, `nhentai:suggest_${query}`, suggestions, this.CACHE_TTL);
+                this._setLocalAutocompleteSuggestions(query, suggestions);
+                return suggestions;
+            } catch (error) {
+                logger.error('NHentai', `Autocomplete error: ${(error as Error).message}`);
+                return [];
+            }
+        });
     }
 
     /**
@@ -177,7 +325,9 @@ class NHentaiService {
     /**
      * Fetch gallery data by code with circuit breaker + automatic 403 retry
      */
-    async fetchGallery(code: number | string): Promise<GalleryResult> {
+    async fetchGallery(code: number | string, options: NhentaiRequestOptions = {}): Promise<GalleryResult> {
+        throwIfAborted(options.signal);
+
         // Check cache first
         const cached = await cacheService.get<NHentaiGallery>(this.CACHE_NS, `nhentai:gallery_${code}`);
         if (cached) return { success: true, data: cached, fromCache: true };
@@ -186,11 +336,14 @@ class NHentaiService {
             return this._fetchWithRetry(
                 `${API_BASE}${GALLERY_ENDPOINT}/${code}`,
                 async (url) => {
-                    const response = await axios.get<any>(url, getRequestConfig());
+                    throwIfAborted(options.signal);
+                    const response = await axios.get<any>(url, getRequestConfig({ signal: options.signal }));
                     const gallery = this._adaptGalleryDetailV2(response.data);
                     await cacheService.set(this.CACHE_NS, `nhentai:gallery_${code}`, gallery, this.CACHE_TTL);
                     return { success: true, data: gallery };
-                }
+                },
+                2,
+                options.signal
             );
         });
     }
@@ -199,59 +352,68 @@ class NHentaiService {
      * Fetch random gallery with circuit breaker.
      * Uses v2 /galleries/random endpoint first, falls back to ID-guessing + curated list.
      */
-    async fetchRandomGallery(): Promise<GalleryResult> {
+    async fetchRandomGallery(options: NhentaiRequestOptions = {}): Promise<GalleryResult> {
+        throwIfAborted(options.signal);
+
         // v2 API has a dedicated random endpoint — use it first
         try {
             const response = await axios.get<{ id: number }>(
                 `${API_BASE}/galleries/random`,
-                getRequestConfig({ timeout: 8000 })
+                getRequestConfig({ timeout: 8000, signal: options.signal })
             );
             if (response.data?.id) {
-                return this.fetchGallery(response.data.id);
+                return this.fetchGallery(response.data.id, options);
             }
-        } catch {
+        } catch (error) {
+            if (isAbortError(error)) {
+                throw error;
+            }
             // Fall through to ID-based random
         }
 
         const maxAttempts = 3;
         for (let i = 0; i < maxAttempts; i++) {
+            throwIfAborted(options.signal);
+
             // Generate random ID between 1 and current max (~640000)
             const randomCode = Math.floor(Math.random() * 640000) + 1;
-            const result = await this.fetchGallery(randomCode);
+            const result = await this.fetchGallery(randomCode, options);
 
             if (result.success) {
                 return result;
             }
 
             // Proper delay between retries to avoid rate limiting (exponential backoff)
-            await new Promise(r => setTimeout(r, 500 * (i + 1)));
+            await abortableDelay(500 * (i + 1), options.signal);
         }
 
         // Fallback to recent feed random if ID-based random misses repeatedly.
-        const recentFallback = await this._fetchRandomFromRecentPages('all');
+        const recentFallback = await this._fetchRandomFromRecentPages('all', options.signal);
         if (recentFallback.success) {
             return recentFallback;
         }
 
         // Last resort: curated IDs to avoid complete failure.
-        return this._fetchFromCuratedFallbackIds();
+        return this._fetchFromCuratedFallbackIds(options.signal);
     }
 
     /**
      * Fetch random gallery from a specific period bucket.
      */
-    async fetchRandomGalleryByPeriod(period: 'today' | 'week' | 'month' | 'all' = 'all'): Promise<GalleryResult> {
+    async fetchRandomGalleryByPeriod(period: 'today' | 'week' | 'month' | 'all' = 'all', options: NhentaiRequestOptions = {}): Promise<GalleryResult> {
+        throwIfAborted(options.signal);
+
         if (period === 'all') {
-            return this.fetchRandomGallery();
+            return this.fetchRandomGallery(options);
         }
 
-        const periodResult = await this._fetchRandomFromRecentPages(period);
+        const periodResult = await this._fetchRandomFromRecentPages(period, options.signal);
         if (periodResult.success) {
             return periodResult;
         }
 
         // Graceful fallback for strict buckets: broaden to fully-random.
-        return this.fetchRandomGallery();
+        return this.fetchRandomGallery(options);
     }
 
     /**
@@ -259,19 +421,24 @@ class NHentaiService {
      * Primary: /galleries/popular endpoint (today's popular).
      * Fallback: /search with sort-by-period for week/month/all.
      */
-    async fetchPopularGallery(period: 'today' | 'week' | 'month' | 'all' = 'all'): Promise<GalleryResult> {
+    async fetchPopularGallery(period: 'today' | 'week' | 'month' | 'all' = 'all', options: NhentaiRequestOptions = {}): Promise<GalleryResult> {
+        throwIfAborted(options.signal);
+
         // v2 dedicated popular endpoint — returns an array of GalleryListItem
         try {
             const response = await axios.get<any[]>(
                 `${API_BASE}/galleries/popular`,
-                getRequestConfig({ timeout: 10000 })
+                getRequestConfig({ timeout: 10000, signal: options.signal })
             );
             if (Array.isArray(response.data) && response.data.length > 0) {
                 const idx = Math.floor(Math.random() * response.data.length);
                 const id = response.data[idx]?.id;
-                if (id) return this.fetchGallery(id);
+                if (id) return this.fetchGallery(id, options);
             }
-        } catch {
+        } catch (error) {
+            if (isAbortError(error)) {
+                throw error;
+            }
             // Fall through to search-based approach
         }
 
@@ -287,19 +454,22 @@ class NHentaiService {
             const sort = sortMap[period] || 'popular';
             const response = await axios.get<any>(
                 `${API_BASE}/search?query=language:english&sort=${sort}&page=1`,
-                getRequestConfig({ timeout: 10000 })
+                getRequestConfig({ timeout: 10000, signal: options.signal })
             );
             if (response.data?.result && Array.isArray(response.data.result) && response.data.result.length > 0) {
                 const idx = Math.floor(Math.random() * Math.min(10, response.data.result.length));
                 const id = response.data.result[idx]?.id;
-                if (id) return this.fetchGallery(id);
+                if (id) return this.fetchGallery(id, options);
             }
-        } catch {
+        } catch (error) {
+            if (isAbortError(error)) {
+                throw error;
+            }
             // Fall through to curated list
         }
 
         // Last resort: curated popular galleries list
-        const curatedFallback = await this._fetchFromCuratedFallbackIds();
+        const curatedFallback = await this._fetchFromCuratedFallbackIds(options.signal);
         if (curatedFallback.success) {
             return curatedFallback;
         }
@@ -337,7 +507,9 @@ class NHentaiService {
      * Fetch a random gallery by sampling recent feed pages and filtering by upload date.
      * This keeps random independent from popular ranking endpoints.
      */
-    private async _fetchRandomFromRecentPages(period: 'today' | 'week' | 'month' | 'all'): Promise<GalleryResult> {
+    private async _fetchRandomFromRecentPages(period: 'today' | 'week' | 'month' | 'all', signal?: AbortSignal): Promise<GalleryResult> {
+        throwIfAborted(signal);
+
         const maxAttempts = 6;
 
         // v2: /galleries endpoint (ordered newest first, no upload_date in list items)
@@ -346,7 +518,7 @@ class NHentaiService {
         try {
             const firstPage = await axios.get<NHentaiSearchResponse>(
                 `${API_BASE}/galleries?page=1`,
-                getRequestConfig({ timeout: 10000 })
+                getRequestConfig({ timeout: 10000, signal })
             );
             totalPages = Math.max(1, firstPage.data?.num_pages || 1);
 
@@ -354,21 +526,25 @@ class NHentaiService {
             if (firstPageResults.length > 0) {
                 const pick = firstPageResults[Math.floor(Math.random() * firstPageResults.length)] as any;
                 if (pick?.id) {
-                    return this.fetchGallery(pick.id);
+                    return this.fetchGallery(pick.id, { signal });
                 }
             }
-        } catch {
+        } catch (error) {
+            if (isAbortError(error)) {
+                throw error;
+            }
             // Continue with best-effort sampling fallback.
         }
 
         const pageWindow = Math.min(this.getMaxRecentPageWindow(period), totalPages);
         for (let i = 0; i < maxAttempts; i++) {
+            throwIfAborted(signal);
             const randomPage = Math.floor(Math.random() * pageWindow) + 1;
 
             try {
                 const response = await axios.get<NHentaiSearchResponse>(
                     `${API_BASE}/galleries?page=${randomPage}`,
-                    getRequestConfig({ timeout: 10000 })
+                    getRequestConfig({ timeout: 10000, signal })
                 );
 
                 const galleries = response.data?.result || [];
@@ -376,14 +552,17 @@ class NHentaiService {
 
                 const pick = galleries[Math.floor(Math.random() * galleries.length)] as any;
                 if (pick?.id) {
-                    return this.fetchGallery(pick.id);
+                    return this.fetchGallery(pick.id, { signal });
                 }
-            } catch {
+            } catch (error) {
+                if (isAbortError(error)) {
+                    throw error;
+                }
                 // Try another random page.
             }
 
             // Back off slightly between attempts.
-            await new Promise(r => setTimeout(r, 250 + (i * 100)));
+            await abortableDelay(250 + (i * 100), signal);
         }
 
         return {
@@ -392,23 +571,28 @@ class NHentaiService {
         };
     }
 
-    private async _fetchFromCuratedFallbackIds(): Promise<GalleryResult> {
+    private async _fetchFromCuratedFallbackIds(signal?: AbortSignal): Promise<GalleryResult> {
         const shuffled = [...POPULAR_GALLERIES].sort(() => Math.random() - 0.5);
 
         for (let i = 0; i < Math.min(5, shuffled.length); i++) {
+            throwIfAborted(signal);
+
             const galleryId = shuffled[i];
             if (galleryId === undefined) continue;
 
             try {
-                const result = await this.fetchGallery(galleryId);
+                const result = await this.fetchGallery(galleryId, { signal });
                 if (result.success && result.data) {
                     return result;
                 }
-            } catch {
+            } catch (error) {
+                if (isAbortError(error)) {
+                    throw error;
+                }
                 // Try next gallery.
             }
 
-            if (i < 4) await new Promise(r => setTimeout(r, 300));
+            if (i < 4) await abortableDelay(300, signal);
         }
 
         return { success: false, error: 'Could not fetch any fallback gallery.' };
@@ -421,8 +605,11 @@ class NHentaiService {
     async searchGalleries(
         query: string,
         page: number = 1,
-        sort: string = 'popular'
+        sort: string = 'popular',
+        options: NhentaiRequestOptions = {}
     ): Promise<NHentaiSearchResult> {
+        throwIfAborted(options.signal);
+
         const cacheKey = `nhentai:search_${query}_${page}_${sort}`;
         const cached = await cacheService.get<SearchData>(this.CACHE_NS, cacheKey);
         if (cached) return { success: true, data: cached, fromCache: true };
@@ -434,7 +621,7 @@ class NHentaiService {
                 // Valid sort values: date, popular-today, popular-week, popular-month, popular
                 const response = await axios.get<NHentaiSearchResponse>(
                     `${API_BASE}/search?query=${encodedQuery}&page=${page}&sort=${sort}`,
-                    getRequestConfig()
+                    getRequestConfig({ signal: options.signal })
                 );
 
                 const results = (response.data.result || []).map(item => this._adaptGalleryListItemV2(item));
@@ -450,6 +637,9 @@ class NHentaiService {
 
                 return { success: true, data };
             } catch (error) {
+                if (isAbortError(error)) {
+                    throw error;
+                }
                 return this._handleError(error);
             }
         });
@@ -461,39 +651,36 @@ class NHentaiService {
      * endpoint — all tag-specific endpoints return 404/400 without auth cookies.
      */
     async getSearchSuggestions(query: string): Promise<string[]> {
-        if (!query || query.length < 2) return [];
+        const normalizedQuery = (query || '').trim().toLowerCase();
+        if (normalizedQuery.length < 2) return [];
 
-        const cacheKey = `nhentai:suggest_${query.toLowerCase()}`;
+        const localExact = this._getLocalAutocompleteSuggestions(normalizedQuery);
+        if (localExact) return localExact;
+
+        const cacheKey = `nhentai:suggest_${normalizedQuery}`;
         const cached = await cacheService.get<string[]>(this.CACHE_NS, cacheKey);
-        if (cached) return cached;
+        if (cached) {
+            this._setLocalAutocompleteSuggestions(normalizedQuery, cached);
+            return cached;
+        }
 
-        return circuitBreakerRegistry.execute('nsfw', async () => {
-            try {
-                const response = await axios.get<NHentaiSearchResponse>(
-                    `${API_BASE}/search?query=${encodeURIComponent(query)}&page=1&sort=date`,
-                    getRequestConfig({ timeout: 3000 })
-                );
+        const prefixSuggestions = this._findPrefixAutocompleteSuggestions(normalizedQuery);
+        if (prefixSuggestions) {
+            this._setLocalAutocompleteSuggestions(normalizedQuery, prefixSuggestions);
+            return prefixSuggestions;
+        }
 
-                const items = Array.isArray(response.data?.result) ? response.data.result : [];
-                const seen = new Set<string>();
-                const suggestions: string[] = [];
+        const inflight = this.autocompleteInflight.get(normalizedQuery);
+        if (inflight) {
+            return inflight;
+        }
 
-                for (const item of items) {
-                    const title = (item.english_title || item.japanese_title || '').trim();
-                    if (!title || seen.has(title)) continue;
-                    seen.add(title);
-                    // Discord autocomplete: name ≤100 chars, value ≤100 chars
-                    suggestions.push(title.slice(0, 100));
-                    if (suggestions.length >= 25) break;
-                }
-
-                await cacheService.set(this.CACHE_NS, cacheKey, suggestions, this.CACHE_TTL);
-                return suggestions;
-            } catch (error) {
-                logger.error('NHentai', `Autocomplete error: ${(error as Error).message}`);
-                return [];
-            }
+        const request = this._fetchAutocompleteSuggestions(normalizedQuery).finally(() => {
+            this.autocompleteInflight.delete(normalizedQuery);
         });
+
+        this.autocompleteInflight.set(normalizedQuery, request);
+        return request;
     }
 
     async translateToEnglish(text: string): Promise<string | null> {
@@ -601,11 +788,14 @@ class NHentaiService {
     private async _fetchWithRetry(
         url: string,
         fetchFn: (url: string) => Promise<GalleryResult>,
-        maxRetries: number = 2
+        maxRetries: number = 2,
+        signal?: AbortSignal
     ): Promise<GalleryResult> {
         let lastError: unknown;
 
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            throwIfAborted(signal);
+
             try {
                 // On retry, try using a mirror URL
                 let targetUrl = url;
@@ -615,6 +805,10 @@ class NHentaiService {
                 }
                 return await fetchFn(targetUrl);
             } catch (error) {
+                if (isAbortError(error)) {
+                    throw error;
+                }
+
                 lastError = error;
                 const err = error as { response?: { status: number } };
 
@@ -624,7 +818,7 @@ class NHentaiService {
                         // Exponential backoff with jitter: 1-2s, 2-4s
                         const delay = (1000 * Math.pow(2, attempt)) + Math.random() * 1000;
                         logger.warn('NHentai', `${err.response.status} on attempt ${attempt + 1}, retrying in ${Math.round(delay)}ms...`);
-                        await new Promise(r => setTimeout(r, delay));
+                        await abortableDelay(delay, signal);
                         continue;
                     }
                 }
@@ -642,6 +836,10 @@ class NHentaiService {
      */
     private _handleError(error: unknown): { success: false; error: string; code: string } {
         const err = error as { response?: { status: number }; code?: string; message?: string };
+
+        if (isAbortError(error)) {
+            return { success: false, error: 'Request was cancelled.', code: 'CANCELLED' };
+        }
 
         if (err.response?.status === 404) {
             return { success: false, error: 'Gallery not found. Please check the code.', code: 'NOT_FOUND' };

@@ -354,6 +354,8 @@ class PixivCommand extends BaseCommand {
         const cacheKey = parts.slice(2).join('_');
 
         try {
+            await pixivCache?.ensureSearchResultsHydrated?.(cacheKey);
+
             const cached = pixivCache?.getSearchResults?.(cacheKey);
             if (!cached || !cached.items) {
                 await interaction.reply({

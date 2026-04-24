@@ -228,6 +228,7 @@ export async function handleActionSelect(
     originalInteraction: ChatInputCommandInteraction,
     actionType: string,
     pendingActionSelect: Map<string, string>,
+    panelKey: string,
     config: ModerationConfig
 ): Promise<void> {
     const actionOptions = [
@@ -238,7 +239,7 @@ export async function handleActionSelect(
         { label: 'Kick', value: 'kick', emoji: '👢', description: 'Kick from server' }
     ];
 
-    pendingActionSelect.set(originalInteraction.user.id, actionType);
+    pendingActionSelect.set(panelKey, actionType);
 
     const embed = new EmbedBuilder()
         .setColor(config?.COLORS?.INFO || 0x0099FF)
@@ -268,17 +269,18 @@ export async function handleActionValue(
     i: StringSelectMenuInteraction,
     originalInteraction: ChatInputCommandInteraction,
     pendingActionSelect: Map<string, string>,
+    panelKey: string,
     service: AutoModService,
     config: ModerationConfig
 ): Promise<void> {
-    const actionType = pendingActionSelect.get(originalInteraction.user.id);
+    const actionType = pendingActionSelect.get(panelKey);
     const actionValue = i.values[0];
 
     if (!actionType) {
         return showActionsSection(originalInteraction, service, config);
     }
 
-    pendingActionSelect.delete(originalInteraction.user.id);
+    pendingActionSelect.delete(panelKey);
 
     await service.updateSettings(originalInteraction.guildId!, { [actionType]: actionValue });
     return showActionsSection(originalInteraction, service, config);

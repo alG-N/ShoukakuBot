@@ -111,10 +111,8 @@ export const favoritesHandler = {
             return;
         }
 
-        // Clear all favorites
-        for (const fav of favorites) {
-            await musicService.removeFavorite(userId, fav.url);
-        }
+        // Clear all favorites in parallel
+        await Promise.all(favorites.map(fav => musicService.removeFavorite(userId, fav.url)));
 
         await interaction.reply({
             embeds: [trackHandler.createInfoEmbed('🗑️ Cleared', 'All favorites have been cleared', 'success')]

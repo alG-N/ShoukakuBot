@@ -3,6 +3,7 @@ import nhentaiRepository, { NHentaiFavourite } from '../../../repositories/api/n
 import logger from '../../../core/Logger.js';
 import type { Gallery, FavouritesData } from '../../../types/api/handlers/nhentai-handler.js';
 import { COLORS, truncate } from './utils.js';
+import { createFavouritesButtons } from './buttons.js';
 
 export async function handleFavouriteToggle(
     userId: string,
@@ -16,10 +17,9 @@ export async function handleFavouriteToggle(
     }
 }
 
-export async function createFavouritesEmbed(userId: string, page: number = 1, perPage: number = 10): Promise<FavouritesData> {
+export async function createFavouritesEmbed(userId: string, page: number = 1, perPage: number = 10, sessionId: string = 'latest'): Promise<FavouritesData> {
     const offset = (page - 1) * perPage;
-    const favourites = await nhentaiRepository.getUserFavourites(userId, perPage, offset);
-    const totalCount = await nhentaiRepository.getFavouritesCount(userId);
+    const { favourites, totalCount } = await nhentaiRepository.getUserFavouritesPage(userId, perPage, offset);
     const totalPages = Math.ceil(totalCount / perPage) || 1;
 
     const embed = new EmbedBuilder()
@@ -39,5 +39,7 @@ export async function createFavouritesEmbed(userId: string, page: number = 1, pe
         embed.setDescription(description);
     }
 
-    return { embed, totalPages, totalCount };
+    const buttons = createFavouritesButtons(userId, page, totalPages, favourites, sessionId);
+
+    return { embed, totalPages, totalCount, buttons };
 }

@@ -12,7 +12,7 @@
  * @module handlers/music/trackHandler
  */
 
-import { ActionRowBuilder, ButtonBuilder, StringSelectMenuBuilder, User } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, User } from 'discord.js';
 import type {
     Track,
     NowPlayingOptions,
@@ -84,9 +84,6 @@ class TrackHandler {
     createHistoryEmbed(history: Track[], userId: string, page?: number, perPage?: number) {
         return embeds.createHistoryEmbed(history, userId, page, perPage);
     }
-    async createSettingsEmbed(userId: string) {
-        return embeds.createSettingsEmbed(userId);
-    }
     createLongVideoConfirmEmbed(track: Track, maxDuration: number) {
         return embeds.createLongVideoConfirmEmbed(track, maxDuration);
     }
@@ -103,9 +100,6 @@ class TrackHandler {
     }
     createConfirmButtons(guildId: string, action: string) {
         return buttons.createConfirmButtons(guildId, action);
-    }
-    async createSettingsComponents(userId: string): Promise<ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[]> {
-        return buttons.createSettingsComponents(userId);
     }
     disableButtons(rows: ActionRowBuilder<ButtonBuilder>[]) {
         return buttons.disableButtons(rows);

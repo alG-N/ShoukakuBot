@@ -55,11 +55,6 @@ export async function handleSaleCommand(interaction: ChatInputCommandInteraction
             }
         }));
 
-        if (showDetailed) {
-            await interaction.editReply({ content: '📊 Fetching detailed stats from SteamSpy...' });
-            await enrichWithSteamSpyData(enrichedGames.slice(0, 15));
-        }
-
         const state: SaleState = {
             games: enrichedGames,
             currentPage: 0,
@@ -72,6 +67,19 @@ export async function handleSaleCommand(interaction: ChatInputCommandInteraction
         const components = totalPages > 1 ? [createPaginationButtons(0, totalPages, interaction.user.id)] : [];
 
         const message = await interaction.editReply({ content: '', embeds: [embed], components }) as Message;
+
+        if (showDetailed) {
+            void enrichWithSteamSpyData(enrichedGames.slice(0, 15))
+                .then(async () => {
+                    await message.edit({
+                        content: '',
+                        embeds: [generateSaleEmbed(state)]
+                    });
+                })
+                .catch((error) => {
+                    logger.warn('SteamSale', `SteamSpy background enrichment failed: ${(error as Error).message}`);
+                });
+        }
 
         if (totalPages <= 1) return;
 

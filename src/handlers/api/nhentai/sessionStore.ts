@@ -10,8 +10,12 @@ const DEFAULT_PREFERENCES: UserPreferences = {
     randomPeriod: 'all'
 };
 
-export async function setPageSession(userId: string, gallery: Gallery, currentPage: number, sessionTtl: number): Promise<void> {
-    await cacheService.set<PageSession>(NHENTAI_CACHE_NS, `nhentai:page:${userId}`, {
+function buildSessionKey(type: 'page' | 'search', userId: string, sessionId: string = 'latest'): string {
+    return `nhentai:${type}:${userId}:${sessionId}`;
+}
+
+export async function setPageSession(userId: string, gallery: Gallery, currentPage: number, sessionTtl: number, sessionId: string = 'latest'): Promise<void> {
+    await cacheService.set<PageSession>(NHENTAI_CACHE_NS, buildSessionKey('page', userId, sessionId), {
         galleryId: gallery.id,
         gallery,
         currentPage,
@@ -20,31 +24,31 @@ export async function setPageSession(userId: string, gallery: Gallery, currentPa
     }, sessionTtl);
 }
 
-export function getPageSession(userId: string): Promise<PageSession | null> {
-    return cacheService.peek<PageSession>(NHENTAI_CACHE_NS, `nhentai:page:${userId}`);
+export function getPageSession(userId: string, sessionId: string = 'latest'): Promise<PageSession | null> {
+    return cacheService.peek<PageSession>(NHENTAI_CACHE_NS, buildSessionKey('page', userId, sessionId));
 }
 
-export async function updatePageSession(userId: string, currentPage: number, sessionTtl: number): Promise<void> {
-    const session = await getPageSession(userId);
+export async function updatePageSession(userId: string, currentPage: number, sessionTtl: number, sessionId: string = 'latest'): Promise<void> {
+    const session = await getPageSession(userId, sessionId);
     if (!session) return;
     session.currentPage = currentPage;
     session.expiresAt = Date.now() + sessionTtl * 1000;
-    await cacheService.set<PageSession>(NHENTAI_CACHE_NS, `nhentai:page:${userId}`, session, sessionTtl);
+    await cacheService.set<PageSession>(NHENTAI_CACHE_NS, buildSessionKey('page', userId, sessionId), session, sessionTtl);
 }
 
-export function clearPageSession(userId: string): Promise<void> {
-    return cacheService.delete(NHENTAI_CACHE_NS, `nhentai:page:${userId}`);
+export function clearPageSession(userId: string, sessionId: string = 'latest'): Promise<void> {
+    return cacheService.delete(NHENTAI_CACHE_NS, buildSessionKey('page', userId, sessionId));
 }
 
-export async function setSearchSession(userId: string, data: Partial<SearchSession>, sessionTtl: number): Promise<void> {
-    await cacheService.set<SearchSession>(NHENTAI_CACHE_NS, `nhentai:search:${userId}`, {
+export async function setSearchSession(userId: string, data: Partial<SearchSession>, sessionTtl: number, sessionId: string = 'latest'): Promise<void> {
+    await cacheService.set<SearchSession>(NHENTAI_CACHE_NS, buildSessionKey('search', userId, sessionId), {
         ...data,
         expiresAt: Date.now() + sessionTtl * 1000
     } as SearchSession, sessionTtl);
 }
 
-export function getSearchSession(userId: string): Promise<SearchSession | null> {
-    return cacheService.peek<SearchSession>(NHENTAI_CACHE_NS, `nhentai:search:${userId}`);
+export function getSearchSession(userId: string, sessionId: string = 'latest'): Promise<SearchSession | null> {
+    return cacheService.peek<SearchSession>(NHENTAI_CACHE_NS, buildSessionKey('search', userId, sessionId));
 }
 
 export async function getUserPreferences(userId: string): Promise<UserPreferences> {

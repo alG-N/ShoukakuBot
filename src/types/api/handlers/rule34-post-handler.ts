@@ -23,6 +23,7 @@ export interface PostEmbedOptions {
     searchPage?: number;
     query?: string;
     userId?: string;
+    sessionId?: string;
     showTags?: boolean;
     compactMode?: boolean;
     hasMore?: boolean;

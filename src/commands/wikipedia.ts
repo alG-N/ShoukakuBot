@@ -7,22 +7,56 @@
 import { 
     SlashCommandBuilder, 
     ChatInputCommandInteraction,
-    AutocompleteInteraction
+    AutocompleteInteraction,
+    ButtonInteraction,
+    StringSelectMenuInteraction
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from './BaseCommand.js';
+import cacheService from '../cache/CacheService.js';
 import { checkAccess, AccessType } from '../services/index.js';
 import logger from '../core/Logger.js';
-import _wikipediaServiceModule from '../services/api/wikipediaService.js';
-import _wikipediaHandlerModule from '../handlers/api/wikipedia/index.js';
+import wikipediaService from '../services/api/wikipediaService.js';
+import wikipediaHandler from '../handlers/api/wikipedia/index.js';
 import type {
-    OnThisDayDate
+    OnThisDayDate,
+    WikiSearchResult
 } from '../types/api/models/wikipedia.js';
-import type { WikipediaHandler, WikipediaService } from '../types/commands/external/wikipedia-command.js';
-// SERVICE IMPORTS — static ESM imports (converted from CJS require())
-const wikipediaService: WikipediaService = _wikipediaServiceModule as any;
-const wikipediaHandler: WikipediaHandler = _wikipediaHandlerModule as any;
+
+const WIKIPEDIA_SEARCH_SESSION_NS = 'api:search';
+const WIKIPEDIA_SEARCH_SESSION_TTL = 600;
+
+type WikipediaSearchSession = {
+    query: string;
+    language: string;
+    results: WikiSearchResult[];
+};
+
 // COMMAND
 class WikipediaCommand extends BaseCommand {
+    private _buildSearchSessionKey(userId: string, token: string): string {
+        return `wikipedia:search:${userId}:${token}`;
+    }
+
+    private _createSearchSessionToken(): string {
+        return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    private async _setSearchSession(userId: string, token: string, session: WikipediaSearchSession): Promise<void> {
+        await cacheService.set<WikipediaSearchSession>(
+            WIKIPEDIA_SEARCH_SESSION_NS,
+            this._buildSearchSessionKey(userId, token),
+            session,
+            WIKIPEDIA_SEARCH_SESSION_TTL
+        );
+    }
+
+    private async _getSearchSession(userId: string, token: string): Promise<WikipediaSearchSession | null> {
+        return cacheService.get<WikipediaSearchSession>(
+            WIKIPEDIA_SEARCH_SESSION_NS,
+            this._buildSearchSessionKey(userId, token)
+        );
+    }
+
     constructor() {
         super({
             category: CommandCategory.API,
@@ -124,59 +158,154 @@ class WikipediaCommand extends BaseCommand {
 
     private async _handleSearch(interaction: ChatInputCommandInteraction): Promise<void> {
         const query = interaction.options.getString('query', true);
-        const result = await wikipediaService!.search(query);
+        const language = 'en';
+        const result = await wikipediaService.search(query, { language });
         
         if (!result || !result.results?.length) {
             await this.errorReply(interaction, `No Wikipedia articles found for: **${query}**`);
             return;
         }
 
-        const embed = wikipediaHandler!.createSearchResultsEmbed(query, result.results);
-        await this.safeReply(interaction, { embeds: [embed] });
+        const sessionToken = this._createSearchSessionToken();
+        await this._setSearchSession(interaction.user.id, sessionToken, {
+            query,
+            language,
+            results: result.results
+        });
+
+        const embed = wikipediaHandler.createSearchResultsEmbed(query, result.results);
+        const selectMenu = wikipediaHandler.createSearchSelectMenu(result.results, interaction.user.id, sessionToken);
+        await this.safeReply(interaction, {
+            embeds: [embed],
+            components: selectMenu ? [selectMenu] : []
+        });
     }
 
     private async _handleArticle(interaction: ChatInputCommandInteraction): Promise<void> {
         const title = interaction.options.getString('title', true);
         const language = interaction.options.getString('language') || 'en';
-        
-        const article = await wikipediaService!.getArticle(title, language);
-        
-        if (!article) {
-            await this.errorReply(interaction, `Article not found: **${title}**`);
+
+        const result = await wikipediaService.getArticleSummary(title, language);
+
+        if (!result.success || !result.article) {
+            await this.errorReply(interaction, result.error || `Article not found: **${title}**`);
             return;
         }
 
-        const embed = wikipediaHandler!.createArticleEmbed(article);
-        const buttons = wikipediaHandler!.createArticleButtons(article);
+        const article = result.article;
+        const embed = wikipediaHandler.createArticleEmbed(article);
+        const buttons = wikipediaHandler.createArticleButtons(article, interaction.user.id);
         await this.safeReply(interaction, { embeds: [embed], components: [buttons] });
     }
 
     private async _handleRandom(interaction: ChatInputCommandInteraction): Promise<void> {
         const language = interaction.options.getString('language') || 'en';
-        const article = await wikipediaService!.getRandomArticle(language);
-        
-        if (!article) {
-            await this.errorReply(interaction, 'Failed to fetch random article.');
+        const result = await wikipediaService.getRandomArticle(language);
+
+        if (!result.success || !result.article) {
+            await this.errorReply(interaction, result.error || 'Failed to fetch random article.');
             return;
         }
 
-        const embed = wikipediaHandler!.createArticleEmbed(article);
-        const buttons = wikipediaHandler!.createArticleButtons(article);
+        const article = result.article;
+        const embed = wikipediaHandler.createRandomArticleEmbed(article);
+        const buttons = wikipediaHandler.createArticleButtons(article, interaction.user.id);
         await this.safeReply(interaction, { embeds: [embed], components: [buttons] });
     }
 
     private async _handleToday(interaction: ChatInputCommandInteraction): Promise<void> {
-        const events = await wikipediaService!.getOnThisDay();
-        
-        if (!events || !events.length) {
-            await this.errorReply(interaction, 'Failed to fetch events for today.');
+        const now = new Date();
+        const result = await wikipediaService.getOnThisDay(now.getMonth() + 1, now.getDate());
+
+        if (!result.success || !result.events?.length) {
+            await this.errorReply(interaction, result.error || 'Failed to fetch events for today.');
             return;
         }
 
-        const now = new Date();
-        const date: OnThisDayDate = { month: now.getMonth() + 1, day: now.getDate() };
-        const embed = wikipediaHandler!.createOnThisDayEmbed(events, date);
+        const date: OnThisDayDate = result.date || { month: now.getMonth() + 1, day: now.getDate() };
+        const embed = wikipediaHandler.createOnThisDayEmbed(result.events, date);
         await this.safeReply(interaction, { embeds: [embed] });
+    }
+
+    async handleButton(interaction: ButtonInteraction): Promise<void> {
+        const parts = interaction.customId.split('_');
+        const action = parts[1];
+        const language = parts[2] || 'en';
+        const targetUserId = parts[3];
+
+        if (action !== 'random' || !targetUserId) {
+            return;
+        }
+
+        if (interaction.user.id !== targetUserId) {
+            await interaction.reply({ content: '❌ This button is not for you!', ephemeral: true });
+            return;
+        }
+
+        await interaction.deferUpdate();
+
+        const result = await wikipediaService.getRandomArticle(language);
+        if (!result.success || !result.article) {
+            await interaction.followUp({
+                content: result.error || '❌ Failed to fetch a random article.',
+                ephemeral: true
+            }).catch(() => {});
+            return;
+        }
+
+        const embed = wikipediaHandler.createRandomArticleEmbed(result.article);
+        const buttons = wikipediaHandler.createArticleButtons(result.article, targetUserId);
+        await interaction.editReply({ embeds: [embed], components: [buttons] });
+    }
+
+    async handleSelectMenu(interaction: StringSelectMenuInteraction): Promise<void> {
+        const parts = interaction.customId.split('_');
+        const action = parts[1];
+        const sessionToken = parts[2];
+        const targetUserId = parts[3];
+
+        if (action !== 'search' || !sessionToken || !targetUserId) {
+            return;
+        }
+
+        if (interaction.user.id !== targetUserId) {
+            await interaction.reply({ content: '❌ This menu is not for you!', ephemeral: true });
+            return;
+        }
+
+        const selectedValue = interaction.values[0];
+        const selectedIndex = Number.parseInt(selectedValue || '', 10);
+        if (!Number.isInteger(selectedIndex) || selectedIndex < 0) {
+            await interaction.reply({ content: '❌ Invalid selection.', ephemeral: true });
+            return;
+        }
+
+        const session = await this._getSearchSession(targetUserId, sessionToken);
+        if (!session) {
+            await interaction.reply({ content: '⏱️ Search session expired. Please run the command again.', ephemeral: true });
+            return;
+        }
+
+        const selectedResult = session.results[selectedIndex];
+        if (!selectedResult) {
+            await interaction.reply({ content: '❌ Selected article is no longer available.', ephemeral: true });
+            return;
+        }
+
+        await interaction.deferUpdate();
+
+        const articleResult = await wikipediaService.getArticleSummary(selectedResult.title, session.language);
+        if (!articleResult.success || !articleResult.article) {
+            await interaction.followUp({
+                content: articleResult.error || '❌ Failed to load the selected article.',
+                ephemeral: true
+            }).catch(() => {});
+            return;
+        }
+
+        const embed = wikipediaHandler.createArticleEmbed(articleResult.article);
+        const buttons = wikipediaHandler.createArticleButtons(articleResult.article, targetUserId);
+        await interaction.editReply({ embeds: [embed], components: [buttons] });
     }
 
     async autocomplete(interaction: AutocompleteInteraction): Promise<void> {
@@ -188,7 +317,13 @@ class WikipediaCommand extends BaseCommand {
         }
 
         try {
-            const suggestions = await wikipediaService!.autocomplete(focused);
+            const result = await wikipediaService.search(focused, { limit: 10 });
+            if (!result.success || !result.results?.length) {
+                await interaction.respond([]).catch(() => {});
+                return;
+            }
+
+            const suggestions = [...new Set(result.results.map(resultItem => resultItem.title).filter(Boolean))];
             const choices = suggestions.slice(0, 25).map(s => ({
                 name: s.slice(0, 100),
                 value: s.slice(0, 100)
@@ -201,9 +336,3 @@ class WikipediaCommand extends BaseCommand {
 }
 
 export default new WikipediaCommand();
-
-
-
-
-
-

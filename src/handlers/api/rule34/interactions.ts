@@ -32,9 +32,29 @@ export interface Rule34InteractionDeps {
 class Rule34InteractionController {
     constructor(private readonly deps: Rule34InteractionDeps) {}
 
+    private _getSessionId(action: string, parts: string[]): string {
+        switch (action) {
+            case 'watch':
+            case 'fav':
+                return parts.length >= 5 ? parts[3] : 'latest';
+            case 'prev':
+            case 'next':
+            case 'counter':
+            case 'selectpost':
+            case 'watchback':
+            case 'prevpage':
+            case 'nextpage':
+            case 'pageinfo':
+                return parts.length >= 4 ? parts[2] : 'latest';
+            default:
+                return 'latest';
+        }
+    }
+
     async handleButton(interaction: ButtonInteraction): Promise<void> {
         const parts = interaction.customId.split('_');
         const action = parts[1];
+        const sessionId = this._getSessionId(action, parts);
         const userId = parts[parts.length - 1];
 
         if (userId !== interaction.user.id) {
@@ -46,26 +66,28 @@ class Rule34InteractionController {
         }
 
         try {
+            await this.deps.rule34Cache?.ensureHydrated?.(userId, sessionId);
+
             switch (action) {
                 case 'prev':
                 case 'next':
-                    await this._handleNavigation(interaction, action, userId);
+                    await this._handleNavigation(interaction, action, userId, sessionId);
                     break;
                 case 'selectpost':
-                    await this._handleSelectPost(interaction, userId);
+                    await this._handleSelectPost(interaction, userId, sessionId);
                     break;
                 case 'watch':
-                    await this._handleWatchVideo(interaction, parts[2], userId);
+                    await this._handleWatchVideo(interaction, parts[2], userId, sessionId);
                     break;
                 case 'watchback':
-                    await this._handleWatchBack(interaction, userId);
+                    await this._handleWatchBack(interaction, userId, sessionId);
                     break;
                 case 'prevpage':
                 case 'nextpage':
-                    await this._handlePageNavigation(interaction, action, userId);
+                    await this._handlePageNavigation(interaction, action, userId, sessionId);
                     break;
                 case 'fav':
-                    await this._handleFavoriteToggle(interaction, parts[2], userId);
+                    await this._handleFavoriteToggle(interaction, parts[2], userId, sessionId);
                     break;
                 case 'settings':
                     if (parts[2] === 'reset') {
@@ -110,6 +132,8 @@ class Rule34InteractionController {
         const value = interaction.values[0];
 
         try {
+            await this.deps.rule34Cache?.ensureHydrated?.(userId);
+
             if (interaction.customId.startsWith('rule34_settingmenu_')) {
                 await this._handleSettingMenuSelect(interaction, value, userId);
                 return;
@@ -134,8 +158,8 @@ class Rule34InteractionController {
         }
     }
 
-    private async _handleNavigation(interaction: ButtonInteraction, action: string, userId: string): Promise<void> {
-        const session = this.deps.rule34Cache?.getSession?.(userId);
+    private async _handleNavigation(interaction: ButtonInteraction, action: string, userId: string, sessionId: string): Promise<void> {
+        const session = this.deps.rule34Cache?.getSession?.(userId, sessionId);
 
         if (!session) {
             await interaction.reply({
@@ -155,7 +179,7 @@ class Rule34InteractionController {
             newIndex = Math.min(session.posts.length - 1, newIndex + 1);
         }
 
-        this.deps.rule34Cache?.updateSession?.(userId, { currentIndex: newIndex });
+        this.deps.rule34Cache?.updateSession?.(userId, { currentIndex: newIndex }, sessionId);
 
         const post = session.posts[newIndex];
         const sessionHasMore = session.hasMore ?? true;
@@ -166,6 +190,7 @@ class Rule34InteractionController {
                 resultIndex: newIndex,
                 totalResults: session.posts.length,
                 userId,
+                sessionId,
                 searchPage: session.currentPage || 1,
                 hasMore: sessionHasMore,
                 sessionType: (session.type as any) || 'search',
@@ -180,6 +205,7 @@ class Rule34InteractionController {
             totalResults: session.posts.length,
             query: session.query,
             userId,
+            sessionId,
             searchPage: session.currentPage || 1,
             hasMore: sessionHasMore,
             sessionType: (session.type as any) || 'search',
@@ -189,8 +215,8 @@ class Rule34InteractionController {
         await interaction.editReply({ content: '', embeds: [embed], components: rows });
     }
 
-    private async _handleSelectPost(interaction: ButtonInteraction, userId: string): Promise<void> {
-        const session = this.deps.rule34Cache?.getSession?.(userId);
+    private async _handleSelectPost(interaction: ButtonInteraction, userId: string, sessionId: string): Promise<void> {
+        const session = this.deps.rule34Cache?.getSession?.(userId, sessionId);
         if (!session || !Array.isArray(session.posts) || session.posts.length === 0) {
             await interaction.reply({
                 content: '⏱️ Session expired. Please run the command again.',
@@ -209,7 +235,7 @@ class Rule34InteractionController {
         }
 
         const modal = new ModalBuilder()
-            .setCustomId(`rule34_selectpost_modal_${userId}`)
+            .setCustomId(`rule34_selectpost_modal_${sessionId}_${userId}`)
             .setTitle('Select Post');
 
         const input = new TextInputBuilder()
@@ -226,7 +252,7 @@ class Rule34InteractionController {
 
         try {
             const modalResponse = await interaction.awaitModalSubmit({
-                filter: i => i.customId === `rule34_selectpost_modal_${userId}` && i.user.id === userId,
+                filter: i => i.customId === `rule34_selectpost_modal_${sessionId}_${userId}` && i.user.id === userId,
                 time: 60000
             });
 
@@ -248,8 +274,8 @@ class Rule34InteractionController {
                 return;
             }
 
-            this.deps.rule34Cache?.updateSession?.(userId, { currentIndex: targetIndex });
-            const activeSession = this.deps.rule34Cache?.getSession?.(userId);
+            this.deps.rule34Cache?.updateSession?.(userId, { currentIndex: targetIndex }, sessionId);
+            const activeSession = this.deps.rule34Cache?.getSession?.(userId, sessionId);
             if (!activeSession || !activeSession.posts[targetIndex]) {
                 await modalResponse.editReply({ content: '❌ Session expired. Please run the command again.' });
                 return;
@@ -264,6 +290,7 @@ class Rule34InteractionController {
                     resultIndex: targetIndex,
                     totalResults: activeSession.posts.length,
                     userId,
+                    sessionId,
                     searchPage: activeSession.currentPage || 1,
                     hasMore: sessionHasMore,
                     sessionType: (activeSession.type as any) || 'search',
@@ -279,6 +306,7 @@ class Rule34InteractionController {
                 totalResults: activeSession.posts.length,
                 query: activeSession.query,
                 userId,
+                sessionId,
                 searchPage: activeSession.currentPage || 1,
                 hasMore: sessionHasMore,
                 sessionType: (activeSession.type as any) || 'search',
@@ -292,8 +320,8 @@ class Rule34InteractionController {
         }
     }
 
-    private async _handlePageNavigation(interaction: ButtonInteraction, action: string, userId: string): Promise<void> {
-        const session = this.deps.rule34Cache?.getSession?.(userId);
+    private async _handlePageNavigation(interaction: ButtonInteraction, action: string, userId: string, sessionId: string): Promise<void> {
+        const session = this.deps.rule34Cache?.getSession?.(userId, sessionId);
 
         if (!session || !['search', 'random', 'trending'].includes(session.type)) {
             await interaction.reply({
@@ -307,11 +335,11 @@ class Rule34InteractionController {
 
         const currentPage = session.currentPage || 1;
         const newPage = action === 'nextpage' ? currentPage + 1 : Math.max(1, currentPage - 1);
-        await this._navigateToPage(interaction, userId, newPage, action === 'nextpage');
+        await this._navigateToPage(interaction, userId, sessionId, newPage, action === 'nextpage');
     }
 
-    private async _navigateToPage(interaction: ButtonInteraction, userId: string, newPage: number, isForward: boolean = true): Promise<void> {
-        const session = this.deps.rule34Cache?.getSession?.(userId);
+    private async _navigateToPage(interaction: ButtonInteraction, userId: string, sessionId: string, newPage: number, isForward: boolean = true): Promise<void> {
+        const session = this.deps.rule34Cache?.getSession?.(userId, sessionId);
         if (!session || !['search', 'random', 'trending'].includes(session.type)) {
             await interaction.followUp({
                 content: '⏱️ Session expired. Please run the command again.',
@@ -474,7 +502,7 @@ class Rule34InteractionController {
                 });
             }
             // Update session to disable the next page button
-            this.deps.rule34Cache?.updateSession?.(userId, { hasMore: false });
+            this.deps.rule34Cache?.updateSession?.(userId, { hasMore: false }, sessionId);
             return;
         }
 
@@ -492,7 +520,7 @@ class Rule34InteractionController {
             updateData.seenPostIds = [...newSeen];
             updateData.overflowPosts = session.overflowPosts || [];
         }
-        this.deps.rule34Cache?.updateSession?.(userId, updateData);
+        this.deps.rule34Cache?.updateSession?.(userId, updateData, sessionId);
 
         const post = posts[0];
         this.deps.rule34Cache?.addToHistory?.(userId, post.id, { score: post.score });
@@ -502,6 +530,7 @@ class Rule34InteractionController {
                 resultIndex: 0,
                 totalResults: posts.length,
                 userId,
+                sessionId,
                 searchPage: newPage,
                 hasMore,
                 sessionType: (session.type as any) || 'search',
@@ -520,6 +549,7 @@ class Rule34InteractionController {
             totalResults: posts.length,
             query: session.query,
             userId,
+            sessionId,
             searchPage: newPage,
             hasMore,
             sessionType: (session.type as any) || 'search',
@@ -533,8 +563,8 @@ class Rule34InteractionController {
         }
     }
 
-    private async _handleRelatedFromSession(interaction: ButtonInteraction, userId: string): Promise<void> {
-        const session = this.deps.rule34Cache?.getSession?.(userId);
+    private async _handleRelatedFromSession(interaction: ButtonInteraction, userId: string, sessionId: string = 'latest'): Promise<void> {
+        const session = this.deps.rule34Cache?.getSession?.(userId, sessionId);
 
         if (!session) {
             await interaction.reply({
@@ -569,8 +599,8 @@ class Rule34InteractionController {
         await interaction.followUp({ embeds: [embed], ephemeral: true });
     }
 
-    private async _handleWatchVideo(interaction: ButtonInteraction, postIdStr: string, userId: string): Promise<void> {
-        const session = this.deps.rule34Cache?.getSession?.(userId);
+    private async _handleWatchVideo(interaction: ButtonInteraction, postIdStr: string, userId: string, sessionId: string): Promise<void> {
+        const session = this.deps.rule34Cache?.getSession?.(userId, sessionId);
         if (!session || !Array.isArray(session.posts) || session.posts.length === 0) {
             await interaction.reply({
                 content: '⏱️ Session expired. Please run the command again.',
@@ -593,20 +623,20 @@ class Rule34InteractionController {
         }
 
         await interaction.deferUpdate();
-        this.deps.rule34Cache?.updateSession?.(userId, { currentIndex: safeIndex });
+        this.deps.rule34Cache?.updateSession?.(userId, { currentIndex: safeIndex }, sessionId);
 
         // Hide the embed entirely so Discord's native video player can render
         const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()
-                .setCustomId(`rule34_watchback_${userId}`)
+                .setCustomId(`rule34_watchback_${sessionId}_${userId}`)
                 .setLabel('◀ Back to Browse')
                 .setStyle(ButtonStyle.Secondary)
         );
         await interaction.editReply({ content: `[Video](${post.fileUrl})`, embeds: [], components: [backRow] });
     }
 
-    private async _handleWatchBack(interaction: ButtonInteraction, userId: string): Promise<void> {
-        const session = this.deps.rule34Cache?.getSession?.(userId);
+    private async _handleWatchBack(interaction: ButtonInteraction, userId: string, sessionId: string): Promise<void> {
+        const session = this.deps.rule34Cache?.getSession?.(userId, sessionId);
         if (!session || !session.posts?.length) {
             await interaction.reply({ content: '⏱️ Session expired. Please run the command again.', ephemeral: true });
             return;
@@ -622,6 +652,7 @@ class Rule34InteractionController {
                 resultIndex: session.currentIndex,
                 totalResults: session.posts.length,
                 userId,
+                sessionId,
                 searchPage: session.currentPage || 1,
                 showTags: session.showTags,
                 hasMore: sessionHasMore,
@@ -637,6 +668,7 @@ class Rule34InteractionController {
             totalResults: session.posts.length,
             query: session.query,
             userId,
+            sessionId,
             searchPage: session.currentPage || 1,
             showTags: session.showTags,
             hasMore: sessionHasMore,
@@ -712,7 +744,7 @@ class Rule34InteractionController {
         }
     }
 
-    private async _handleFavoriteToggle(interaction: ButtonInteraction, postIdStr: string, userId: string): Promise<void> {
+    private async _handleFavoriteToggle(interaction: ButtonInteraction, postIdStr: string, userId: string, sessionId: string): Promise<void> {
         const postId = parseInt(postIdStr);
         const isFavorited = this.deps.rule34Cache?.isFavorited?.(userId, postId);
 
@@ -723,7 +755,7 @@ class Rule34InteractionController {
                 ephemeral: true
             });
         } else {
-            const session = this.deps.rule34Cache?.getSession?.(userId);
+            const session = this.deps.rule34Cache?.getSession?.(userId, sessionId);
             const post = session?.posts.find(p => p.id === postId);
 
             this.deps.rule34Cache?.addFavorite?.(userId, postId, {

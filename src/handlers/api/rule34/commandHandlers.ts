@@ -23,12 +23,17 @@ export interface Rule34CommandHandlerDeps {
     infoEmbed: (title: string, description: string) => EmbedBuilder;
 }
 
+function createSessionToken(): string {
+    return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export async function handleRule34SearchCommand(
     interaction: ChatInputCommandInteraction,
     userId: string,
     deps: Rule34CommandHandlerDeps
 ): Promise<void> {
     await interaction.deferReply();
+    const sessionId = createSessionToken();
 
     const tags = interaction.options.getString('tags', true);
     const contentType = interaction.options.getString('content_type');
@@ -70,7 +75,7 @@ export async function handleRule34SearchCommand(
         currentIndex: 0,
         currentPage: 1,
         hasMore: result.hasMore
-    });
+    }, sessionId);
 
     const post = result.posts[0];
     deps.rule34Cache?.addToHistory?.(userId, post.id, { score: post.score });
@@ -80,6 +85,7 @@ export async function handleRule34SearchCommand(
             resultIndex: 0,
             totalResults: result.posts.length,
             userId,
+            sessionId,
             searchPage: 1,
             hasMore: result.hasMore,
             sessionType: 'search',
@@ -94,6 +100,7 @@ export async function handleRule34SearchCommand(
         totalResults: result.posts.length,
         query: tags,
         userId,
+        sessionId,
         searchPage: 1,
         hasMore: result.hasMore,
         sessionType: 'search',
@@ -109,6 +116,7 @@ export async function handleRule34RandomCommand(
     deps: Rule34CommandHandlerDeps
 ): Promise<void> {
     await interaction.deferReply();
+    const sessionId = createSessionToken();
 
     await deps.rule34Cache?.ensureHydrated?.(userId);
     const prefs = deps.rule34Cache?.getPreferences?.(userId) || {};
@@ -168,7 +176,7 @@ export async function handleRule34RandomCommand(
         } as any,
         currentIndex: 0,
         currentPage: 1
-    });
+    }, sessionId);
 
     const post = filteredPosts[0];
     deps.rule34Cache?.addToHistory?.(userId, post.id, { score: post.score });
@@ -178,6 +186,7 @@ export async function handleRule34RandomCommand(
             resultIndex: 0,
             totalResults: filteredPosts.length,
             userId,
+            sessionId,
             sessionType: 'random',
             maxPage: 200
         });
@@ -189,6 +198,7 @@ export async function handleRule34RandomCommand(
         resultIndex: 0,
         totalResults: filteredPosts.length,
         userId,
+        sessionId,
         sessionType: 'random',
         maxPage: 200
     });
@@ -202,6 +212,7 @@ export async function handleRule34GetByIdCommand(
     deps: Rule34CommandHandlerDeps
 ): Promise<void> {
     await interaction.deferReply();
+    const sessionId = createSessionToken();
 
     const postId = interaction.options.getInteger('post_id', true);
     const post = await deps.rule34Service?.getPostById?.(postId);
@@ -217,7 +228,7 @@ export async function handleRule34GetByIdCommand(
         type: 'single',
         posts: [post],
         currentIndex: 0
-    });
+    }, sessionId);
 
     deps.rule34Cache?.addToHistory?.(userId, post.id, { score: post.score });
 
@@ -226,6 +237,7 @@ export async function handleRule34GetByIdCommand(
             resultIndex: 0,
             totalResults: 1,
             userId,
+            sessionId,
             sessionType: 'single',
             maxPage: 1
         });
@@ -237,6 +249,7 @@ export async function handleRule34GetByIdCommand(
         resultIndex: 0,
         totalResults: 1,
         userId,
+        sessionId,
         sessionType: 'single',
         maxPage: 1
     });
@@ -250,6 +263,7 @@ export async function handleRule34TrendingCommand(
     deps: Rule34CommandHandlerDeps
 ): Promise<void> {
     await interaction.deferReply();
+    const sessionId = createSessionToken();
 
     const timeframe = (interaction.options.getString('timeframe') || 'day') as 'day' | 'week' | 'month';
 
@@ -296,7 +310,7 @@ export async function handleRule34TrendingCommand(
             highQualityOnly: useSettings ? (prefs.highQualityOnly ?? false) : false,
             excludeLowQuality: useSettings ? (prefs.excludeLowQuality ?? false) : false
         } as any
-    });
+    }, sessionId);
 
     const post = filteredPosts[0];
     deps.rule34Cache?.addToHistory?.(userId, post.id, { score: post.score });
@@ -306,6 +320,7 @@ export async function handleRule34TrendingCommand(
             resultIndex: 0,
             totalResults: filteredPosts.length,
             userId,
+            sessionId,
             sessionType: 'trending',
             maxPage: 1
         });
@@ -318,6 +333,7 @@ export async function handleRule34TrendingCommand(
         totalResults: filteredPosts.length,
         query: `🔥 Trending (${timeframe})`,
         userId,
+        sessionId,
         sessionType: 'trending',
         maxPage: 1
     });

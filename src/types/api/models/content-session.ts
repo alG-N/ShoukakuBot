@@ -1,5 +1,5 @@
 import type { MALMediaType, AnimeContentSource } from './mal.js';
-import type { NHentaiGallery } from './nhentai.js';
+import type { NHentaiGallery, SearchData } from './nhentai.js';
 
 export interface AutocompleteOption {
     name: string;
@@ -80,6 +80,7 @@ export interface NHentaiSearchSession {
     results?: NHentaiGallery[];
     currentPage?: number;
     numPages?: number;
+    pageCache?: Record<string, SearchData>;
     favPage?: number;
     expiresAt: number;
 }

@@ -8,10 +8,8 @@
 import {
     ActionRowBuilder,
     ButtonBuilder,
-    ButtonStyle,
-    StringSelectMenuBuilder
+    ButtonStyle
 } from 'discord.js';
-import musicCache from '../../cache/music/MusicCacheFacade.js';
 import { type ControlButtonsOptions, LOOP_DISPLAY } from './trackTypes.js';
 
 /**
@@ -101,6 +99,19 @@ export function createControlButtons(guildId: string, options: ControlButtonsOpt
     );
     rows.push(volumeRow);
 
+    // Row 3: Favorites toggle (only when userId is available)
+    if (options.userId) {
+        const favRow = new ActionRowBuilder<ButtonBuilder>();
+        favRow.addComponents(
+            new ButtonBuilder()
+                .setCustomId(`music_fav:${guildId}:${options.userId}`)
+                .setLabel('Favorite')
+                .setEmoji('❤️')
+                .setStyle(ButtonStyle.Secondary)
+        );
+        rows.push(favRow);
+    }
+
     return rows;
 }
 
@@ -182,65 +193,6 @@ export function createConfirmButtons(guildId: string, action: string): ActionRow
     );
 
     return row;
-}
-
-/**
- * Create settings select menus
- */
-export async function createSettingsComponents(userId: string): Promise<ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[]> {
-    const prefs = await musicCache.getPreferences(userId);
-    const rows: ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[] = [];
-
-    // Volume select
-    const volumeSelect = new StringSelectMenuBuilder()
-        .setCustomId(`music_setting_volume:${userId}`)
-        .setPlaceholder('🔊 Select Default Volume')
-        .addOptions([
-            { label: '🔈 25% - Quiet', value: '25', description: 'Low volume', default: prefs.defaultVolume === 25 },
-            { label: '🔉 50% - Medium', value: '50', description: 'Medium volume', default: prefs.defaultVolume === 50 },
-            { label: '🔉 75% - Moderate', value: '75', description: 'Moderate volume', default: prefs.defaultVolume === 75 },
-            { label: '🔊 100% - Normal', value: '100', description: 'Default volume', default: prefs.defaultVolume === 100 },
-            { label: '🔊 125% - Loud', value: '125', description: 'Above normal', default: prefs.defaultVolume === 125 },
-            { label: '📢 150% - Very Loud', value: '150', description: 'High volume', default: prefs.defaultVolume === 150 }
-        ]);
-    rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(volumeSelect));
-
-    // Max duration select
-    const durationSelect = new StringSelectMenuBuilder()
-        .setCustomId(`music_setting_duration:${userId}`)
-        .setPlaceholder('⏱️ Max Track Duration')
-        .addOptions([
-            { label: '5 minutes', value: '300', emoji: '⏱️', description: 'Short tracks only', default: prefs.maxTrackDuration === 300 },
-            { label: '10 minutes', value: '600', emoji: '⏱️', description: 'Standard limit', default: prefs.maxTrackDuration === 600 },
-            { label: '15 minutes', value: '900', emoji: '⏱️', description: 'Extended tracks', default: prefs.maxTrackDuration === 900 },
-            { label: '30 minutes', value: '1800', emoji: '⏱️', description: 'Long tracks', default: prefs.maxTrackDuration === 1800 },
-            { label: '1 hour', value: '3600', emoji: '⏱️', description: 'Very long tracks', default: prefs.maxTrackDuration === 3600 },
-            { label: '♾️ Unlimited', value: '99999', emoji: '♾️', description: 'No limit', default: prefs.maxTrackDuration >= 99999 }
-        ]);
-    rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(durationSelect));
-
-    // Toggles row
-    const toggleRow = new ActionRowBuilder<ButtonBuilder>();
-    toggleRow.addComponents(
-        new ButtonBuilder()
-            .setCustomId(`music_setting_announce:${userId}`)
-            .setLabel(prefs.announceTrack ? 'Announce: ON' : 'Announce: OFF')
-            .setEmoji('📢')
-            .setStyle(prefs.announceTrack ? ButtonStyle.Success : ButtonStyle.Secondary),
-        new ButtonBuilder()
-            .setCustomId(`music_setting_voteskip:${userId}`)
-            .setLabel(prefs.voteSkipEnabled ? 'Vote Skip: ON' : 'Vote Skip: OFF')
-            .setEmoji('🗳️')
-            .setStyle(prefs.voteSkipEnabled ? ButtonStyle.Success : ButtonStyle.Secondary),
-        new ButtonBuilder()
-            .setCustomId(`music_setting_thumbnails:${userId}`)
-            .setLabel(prefs.showThumbnails ? 'Thumbnails: ON' : 'Thumbnails: OFF')
-            .setEmoji('🖼️')
-            .setStyle(prefs.showThumbnails ? ButtonStyle.Success : ButtonStyle.Secondary)
-    );
-    rows.push(toggleRow);
-
-    return rows;
 }
 
 /**

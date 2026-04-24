@@ -19,7 +19,8 @@ export async function sendPostListEmbed(
     posts: RedditPost[],
     sortBy: RedditSortType,
     currentPage: number,
-    isNsfwChannel: boolean = false
+    isNsfwChannel: boolean = false,
+    sessionId: string = 'latest'
 ): Promise<void> {
     const totalPages = Math.ceil(posts.length / POSTS_PER_PAGE);
     const startIdx = currentPage * POSTS_PER_PAGE;
@@ -33,11 +34,11 @@ export async function sendPostListEmbed(
     }
 
     const components: ActionRowBuilder<ButtonBuilder>[] = [
-        ...createPostButtons(pagePosts.length, startIdx, interaction.user.id)
+        ...createPostButtons(pagePosts.length, startIdx, interaction.user.id, sessionId)
     ];
 
     if (totalPages > 1) {
-        components.push(createPaginationButtons(currentPage, totalPages, interaction.user.id));
+        components.push(createPaginationButtons(currentPage, totalPages, interaction.user.id, sessionId));
     }
 
     await interaction.editReply({ embeds: [embed], components });
@@ -47,7 +48,8 @@ export async function showPostDetails(
     interaction: ChatInputCommandInteraction | ButtonInteraction,
     post: RedditPost,
     postIndex: number,
-    userId: string
+    userId: string,
+    sessionId: string = 'latest'
 ): Promise<void> {
     const subreddit = post.permalink.split('/')[4];
 
@@ -65,7 +67,7 @@ export async function showPostDetails(
         inline: true
     };
 
-    const components: ActionRowBuilder<ButtonBuilder>[] = [createBackButton(userId)];
+    const components: ActionRowBuilder<ButtonBuilder>[] = [createBackButton(userId, sessionId)];
 
     switch (post.contentType) {
         case 'video':
@@ -106,7 +108,7 @@ export async function showPostDetails(
                         inline: true
                     }
                 );
-                components.unshift(createGalleryButtons(galleryPage, post.gallery.length, postIndex, userId));
+                components.unshift(createGalleryButtons(galleryPage, post.gallery.length, postIndex, userId, sessionId));
             }
             break;
 

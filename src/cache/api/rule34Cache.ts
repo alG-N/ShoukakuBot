@@ -87,6 +87,14 @@ function hydrateInBackground<T>(
     }).catch(() => {});
 }
 
+function buildSessionKey(userId: string, sessionId: string = 'latest'): string {
+    return `${userId}:${sessionId}`;
+}
+
+function getLegacySessionKey(userId: string): string {
+    return userId;
+}
+
 // ── Rule34Cache Class ────────────────────────────────────────────────
 class Rule34Cache {
     // In-memory Maps (synchronous read surface)
@@ -152,45 +160,75 @@ class Rule34Cache {
     // SESSIONS (ephemeral — 2h TTL)
     // ══════════════════════════════════════════════════════════════════
 
-    setSession(userId: string, sessionData: Partial<Rule34Session>): Rule34Session {
+    setSession(userId: string, sessionData: Partial<Rule34Session>, sessionId: string = 'latest'): Rule34Session {
+        const sessionKey = buildSessionKey(userId, sessionId);
         const session: Rule34Session = {
             ...sessionData,
             userId,
             createdAt: Date.now(),
             updatedAt: Date.now(),
         };
-        this.userSessions.set(userId, session);
+        this.userSessions.set(sessionKey, session);
         this._evictFifo(this.userSessions, this.MAX_SESSIONS);
-        persist(NS.SESSION, userId, session, TTL.SESSION);
+        persist(NS.SESSION, sessionKey, session, TTL.SESSION);
         return session;
     }
 
-    getSession(userId: string): Rule34Session | null {
-        const session = this.userSessions.get(userId);
+    private _resolveSessionLookupKey(userId: string, sessionId: string = 'latest'): string | null {
+        const sessionKey = buildSessionKey(userId, sessionId);
+        if (this.userSessions.has(sessionKey)) {
+            return sessionKey;
+        }
+
+        if (sessionId === 'latest') {
+            const legacyKey = getLegacySessionKey(userId);
+            if (this.userSessions.has(legacyKey)) {
+                return legacyKey;
+            }
+        }
+
+        return null;
+    }
+
+    getSession(userId: string, sessionId: string = 'latest'): Rule34Session | null {
+        const resolvedKey = this._resolveSessionLookupKey(userId, sessionId);
+        const session = resolvedKey ? this.userSessions.get(resolvedKey) : null;
         if (!session) {
-            hydrateInBackground(this.userSessions, NS.SESSION, userId);
+            const sessionKey = buildSessionKey(userId, sessionId);
+            hydrateInBackground(this.userSessions, NS.SESSION, sessionKey);
+            if (sessionId === 'latest') {
+                hydrateInBackground(this.userSessions, NS.SESSION, getLegacySessionKey(userId));
+            }
             return null;
         }
         if (Date.now() - session.updatedAt > this.SESSION_DURATION) {
-            this.userSessions.delete(userId);
-            unpersist(NS.SESSION, userId);
+            this.userSessions.delete(resolvedKey!);
+            unpersist(NS.SESSION, resolvedKey!);
             return null;
         }
         return session;
     }
 
-    updateSession(userId: string, updates: Partial<Rule34Session>): Rule34Session | null {
-        const session = this.getSession(userId);
+    updateSession(userId: string, updates: Partial<Rule34Session>, sessionId: string = 'latest'): Rule34Session | null {
+        const session = this.getSession(userId, sessionId);
         if (!session) return null;
+        const resolvedKey = this._resolveSessionLookupKey(userId, sessionId) || buildSessionKey(userId, sessionId);
         const updated: Rule34Session = { ...session, ...updates, updatedAt: Date.now() };
-        this.userSessions.set(userId, updated);
-        persist(NS.SESSION, userId, updated, TTL.SESSION);
+        this.userSessions.set(resolvedKey, updated);
+        persist(NS.SESSION, resolvedKey, updated, TTL.SESSION);
         return updated;
     }
 
-    clearSession(userId: string): void {
-        this.userSessions.delete(userId);
-        unpersist(NS.SESSION, userId);
+    clearSession(userId: string, sessionId: string = 'latest'): void {
+        const sessionKey = buildSessionKey(userId, sessionId);
+        this.userSessions.delete(sessionKey);
+        unpersist(NS.SESSION, sessionKey);
+
+        if (sessionId === 'latest') {
+            const legacyKey = getLegacySessionKey(userId);
+            this.userSessions.delete(legacyKey);
+            unpersist(NS.SESSION, legacyKey);
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -290,11 +328,13 @@ class Rule34Cache {
     }
 
     /**
-     * Await hydration of user preferences and blacklist from Redis.
-     * Call once at the start of command handlers to ensure first-call accuracy.
+     * Await hydration of user state that can affect command and interaction flows.
+     * This keeps Redis-backed sessions/preferences usable after local cache cold starts.
      */
-    async ensureHydrated(userId: string): Promise<void> {
-        const existing = this.pendingHydrations.get(userId);
+    async ensureHydrated(userId: string, sessionId: string = 'latest'): Promise<void> {
+        const sessionKey = buildSessionKey(userId, sessionId);
+        const hydrationKey = `${userId}:${sessionId}`;
+        const existing = this.pendingHydrations.get(hydrationKey);
         if (existing) {
             await this._withTimeout(existing, this.HYDRATE_WAIT_MS);
             return;
@@ -319,19 +359,47 @@ class Rule34Cache {
                 }).catch(() => {})
             );
         }
+        if (!this.userSessions.has(sessionKey)) {
+            tasks.push(
+                cacheService.peek<Rule34Session>(NS.SESSION, sessionKey).then(value => {
+                    if (value !== null && !this.userSessions.has(sessionKey)) {
+                        this.userSessions.set(sessionKey, value);
+                    }
+                }).catch(() => {})
+            );
+        }
+        if (sessionId === 'latest' && !this.userSessions.has(getLegacySessionKey(userId))) {
+            tasks.push(
+                cacheService.peek<Rule34Session>(NS.SESSION, getLegacySessionKey(userId)).then(value => {
+                    const legacyKey = getLegacySessionKey(userId);
+                    if (value !== null && !this.userSessions.has(legacyKey)) {
+                        this.userSessions.set(legacyKey, value);
+                    }
+                }).catch(() => {})
+            );
+        }
+        if (!this.userFavorites.has(userId)) {
+            tasks.push(
+                cacheService.peek<Rule34Favorite[]>(NS.FAVORITES, userId).then(value => {
+                    if (value !== null && !this.userFavorites.has(userId)) {
+                        this.userFavorites.set(userId, value);
+                    }
+                }).catch(() => {})
+            );
+        }
 
         if (tasks.length === 0) {
             return;
         }
 
         const hydration = Promise.all(tasks).then(() => {});
-        this.pendingHydrations.set(userId, hydration);
+        this.pendingHydrations.set(hydrationKey, hydration);
 
         try {
             await this._withTimeout(hydration, this.HYDRATE_WAIT_MS);
         } finally {
-            if (this.pendingHydrations.get(userId) === hydration) {
-                this.pendingHydrations.delete(userId);
+            if (this.pendingHydrations.get(hydrationKey) === hydration) {
+                this.pendingHydrations.delete(hydrationKey);
             }
         }
     }
@@ -442,7 +510,7 @@ class Rule34Cache {
     // PAGINATION (delegates to session)
     // ══════════════════════════════════════════════════════════════════
 
-    setPagination(userId: string, state: Partial<PaginationState>): Rule34Session | null {
+    setPagination(userId: string, state: Partial<PaginationState>, sessionId: string = 'latest'): Rule34Session | null {
         return this.updateSession(userId, {
             pagination: {
                 currentIndex: state.currentIndex || 0,
@@ -450,11 +518,11 @@ class Rule34Cache {
                 totalResults: state.totalResults || 0,
                 hasMore: state.hasMore || false,
             },
-        });
+        }, sessionId);
     }
 
-    getPagination(userId: string): PaginationState | null {
-        const session = this.getSession(userId);
+    getPagination(userId: string, sessionId: string = 'latest'): PaginationState | null {
+        const session = this.getSession(userId, sessionId);
         return session?.pagination || null;
     }
 

@@ -31,6 +31,7 @@ class AnilistService {
     private client: GraphQLClient;
     private circuitBreaker: ReturnType<typeof circuitBreakerRegistry.get> | null = null;
     private readonly cacheTTL: number = 3600; // 1 hour
+    private readonly autocompleteCacheTTL: number = 300; // 5 minutes
 
     constructor() {
         this.client = new GraphQLClient('https://graphql.anilist.co');
@@ -66,6 +67,10 @@ class AnilistService {
      */
     private _getCacheKey(searchTerm: string): string {
         return `anime:${searchTerm.toLowerCase().trim()}`;
+    }
+
+    private _getAutocompleteCacheKey(searchTerm: string, limit: number): string {
+        return `anime:autocomplete:${limit}:${searchTerm.toLowerCase().trim()}`;
     }
 
     /**
@@ -209,6 +214,12 @@ class AnilistService {
      * Search anime for autocomplete suggestions
      */
     async searchAnimeAutocomplete(searchTerm: string, limit: number = 10): Promise<AutocompleteMedia[]> {
+        const cacheKey = this._getAutocompleteCacheKey(searchTerm, limit);
+        const cached = await cacheService.get<AutocompleteMedia[]>('api:anime', cacheKey);
+        if (cached) {
+            return cached;
+        }
+
         const query = gql`
             query ($search: String, $perPage: Int) {
                 Page(page: 1, perPage: $perPage) {
@@ -230,7 +241,11 @@ class AnilistService {
                 perPage: limit 
             });
             const media = data.Page?.media;
-            return Array.isArray(media) ? media : [];
+            const results = Array.isArray(media) ? media : [];
+            if (results.length > 0) {
+                await cacheService.set('api:anime', cacheKey, results, this.autocompleteCacheTTL);
+            }
+            return results;
         } catch (error) {
             logger.error('AniList', `Autocomplete error: ${(error as Error).message}`);
             return [];

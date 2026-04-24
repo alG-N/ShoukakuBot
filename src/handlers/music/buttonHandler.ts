@@ -4,7 +4,7 @@
  * @module handlers/music/buttonHandler
  */
 
-import { ButtonInteraction, TextChannel } from 'discord.js';
+import { ButtonInteraction, Message, TextChannel } from 'discord.js';
 import { trackHandler } from './trackHandler.js';
 import { playHandler } from './playHandler.js';
 import musicCache from '../../cache/music/MusicCacheFacade.js';
@@ -18,6 +18,32 @@ import type { VoteResult, VoteSkipStatus } from '../../types/music/vote.js';
 
 const { minVotesRequired: MIN_VOTES_REQUIRED = 5 } = music.voting || {};
 const SKIP_VOTE_TIMEOUT = 15000;
+
+function parseQueuePageFromFooter(interaction: ButtonInteraction): number {
+    const footerText = interaction.message.embeds[0]?.footer?.text || '';
+    const match = footerText.match(/Page\s+(\d+)\s*\/\s*(\d+)/i);
+    const parsed = Number.parseInt(match?.[1] || '', 10);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+}
+
+async function resolveSkipVoteMessage(interaction: ButtonInteraction, guildId: string): Promise<Message | null> {
+    const ref = musicCache.getSkipVoteMessage(guildId);
+    if (!ref) return null;
+
+    if (interaction.message.id === ref.messageId) {
+        return interaction.message as Message;
+    }
+
+    const currentChannel = interaction.channel;
+    if (currentChannel && 'id' in currentChannel && currentChannel.id === ref.channelId && 'messages' in currentChannel) {
+        return await (currentChannel as TextChannel).messages.fetch(ref.messageId).catch(() => null);
+    }
+
+    const fetchedChannel = await interaction.client.channels.fetch(ref.channelId).catch(() => null);
+    if (!fetchedChannel || !('messages' in fetchedChannel)) return null;
+
+    return await (fetchedChannel as TextChannel).messages.fetch(ref.messageId).catch(() => null);
+}
 /**
  * Build now playing embed options consistently
  */
@@ -336,6 +362,7 @@ export const buttonHandler = {
     async handleButtonQueue(interaction: ButtonInteraction, guildId: string): Promise<void> {
         const tracks = musicService.getQueueList(guildId) as Track[];
         const currentTrack = musicService.getCurrentTrack(guildId) as Track | null;
+        const totalPages = Math.ceil(tracks.length / 10) || 1;
 
         const embed = trackHandler.createQueueListEmbed(tracks, currentTrack, {
             loopMode: musicService.getLoopMode(guildId),
@@ -343,7 +370,9 @@ export const buttonHandler = {
             volume: musicService.getVolume(guildId)
         });
 
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        const row = trackHandler.createQueuePaginationButtons(guildId, 1, totalPages);
+
+        await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
     },
 
     async handleButtonFavorite(interaction: ButtonInteraction, guildId: string, _targetUserId: string): Promise<void> {
@@ -425,16 +454,20 @@ export const buttonHandler = {
                 return;
             }
 
+            const voteSession = musicCache.voteCache.getSkipVoteSession(guildId);
+            const voteMessage = await resolveSkipVoteMessage(interaction, guildId);
+
             if (musicService.hasEnoughSkipVotes(guildId)) {
+                await interaction.deferUpdate();
                 musicService.endSkipVote(guildId);
                 const skippedTrack = musicService.getCurrentTrack(guildId) as Track | null;
                 musicService.disableNowPlayingControls(guildId).catch(() => {});
                 const skipResult = await musicService.skip(guildId);
                 
-                await interaction.update({
+                await voteMessage?.edit({
                     embeds: [trackHandler.createSkippedEmbed(skippedTrack, interaction.user, 'vote')],
                     components: []
-                });
+                }).catch(() => {});
 
                 // Send new now playing embed for the next track
                 const nextTrack = musicService.getCurrentTrack(guildId) as Track | null;
@@ -444,11 +477,22 @@ export const buttonHandler = {
                 return;
             }
 
+            await interaction.deferUpdate();
             const required = musicCache.getRequiredVotes(musicCache.getSkipVoteListenerCount(guildId) || listenerCount);
-            await interaction.reply({
+            const currentTrack = musicService.getCurrentTrack(guildId) as Track | null;
+            const remainingMs = Math.max(0, SKIP_VOTE_TIMEOUT - (Date.now() - (voteSession?.startedAt ?? Date.now())));
+
+            if (voteMessage) {
+                await voteMessage.edit({
+                    embeds: [trackHandler.createSkipVoteEmbed(currentTrack, result.voteCount, required, remainingMs)],
+                    components: [trackHandler.createSkipVoteButton(guildId, result.voteCount, required)]
+                }).catch(() => {});
+            }
+
+            await interaction.followUp({
                 content: `🗳️ Vote added! **${result.voteCount}/${required}**`,
                 ephemeral: true
-            });
+            }).catch(() => {});
             return;
         }
 
@@ -459,12 +503,19 @@ export const buttonHandler = {
         const embed = trackHandler.createSkipVoteEmbed(currentTrack, voteResult.voteCount, voteResult.required, SKIP_VOTE_TIMEOUT);
         const row = trackHandler.createSkipVoteButton(guildId, voteResult.voteCount, voteResult.required);
 
-        await interaction.reply({ embeds: [embed], components: [row] });
+        const response = await interaction.reply({ embeds: [embed], components: [row], withResponse: true });
+        const voteMessage = response?.resource?.message || await interaction.fetchReply();
+        musicCache.setSkipVoteMessage(guildId, voteMessage);
 
         // Set timeout via VoteCache (single source of truth for vote state)
         const voteTimeout = setTimeout(async () => {
             try {
                 musicService.endSkipVote(guildId);
+
+                await voteMessage.edit({
+                    embeds: [trackHandler.createInfoEmbed('⏱️ Vote Expired', 'Not enough votes to skip.', 'warning')],
+                    components: []
+                }).catch(() => {});
             } catch (error: unknown) {
                 const err = error as { message?: string };
                 logger.error('Button', `Skip vote timeout error: ${err.message}`);
@@ -473,8 +524,51 @@ export const buttonHandler = {
         musicCache.setSkipVoteTimeout(guildId, voteTimeout);
     },
 
-    async handleButtonQueuePage(interaction: ButtonInteraction, _guildId: string, _pageAction: string): Promise<void> {
-        await interaction.deferUpdate();
+    async handleButtonQueuePage(interaction: ButtonInteraction, guildId: string, pageAction: string): Promise<void> {
+        try {
+            await interaction.deferUpdate();
+
+            const tracks = musicService.getQueueList(guildId) as Track[];
+            const currentTrack = musicService.getCurrentTrack(guildId) as Track | null;
+            const totalPages = Math.ceil(tracks.length / 10) || 1;
+            const currentPage = Math.min(parseQueuePageFromFooter(interaction), totalPages);
+
+            let nextPage = currentPage;
+            switch (pageAction) {
+                case 'first':
+                    nextPage = 1;
+                    break;
+                case 'prev':
+                    nextPage = Math.max(1, currentPage - 1);
+                    break;
+                case 'next':
+                    nextPage = Math.min(totalPages, currentPage + 1);
+                    break;
+                case 'last':
+                    nextPage = totalPages;
+                    break;
+                case 'info':
+                default:
+                    return;
+            }
+
+            const embed = trackHandler.createQueueListEmbed(tracks, currentTrack, {
+                page: nextPage,
+                loopMode: musicService.getLoopMode(guildId),
+                isShuffled: musicService.isShuffled(guildId),
+                volume: musicService.getVolume(guildId)
+            });
+
+            const row = trackHandler.createQueuePaginationButtons(guildId, nextPage, totalPages);
+            await interaction.editReply({ embeds: [embed], components: [row] });
+        } catch (error: unknown) {
+            const err = error as { code?: number; message?: string };
+            if (err.code === 10062 || err.code === 10008) {
+                logger.debug('Button', 'Queue pagination interaction expired or message deleted, ignoring...');
+            } else {
+                logger.error('Button', `Queue pagination button error: ${err.message}`);
+            }
+        }
     },
 
     async handleButtonConfirm(interaction: ButtonInteraction, guildId: string, action: string, choice: string): Promise<void> {

@@ -124,6 +124,7 @@ export class WikipediaHandler {
     }
 
     createArticleButtons(article: WikipediaArticle, userId: string): ActionRowBuilder<ButtonBuilder> {
+        const language = article.language || 'en';
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()
                 .setLabel('Read on Wikipedia')
@@ -131,7 +132,7 @@ export class WikipediaHandler {
                 .setURL(article.url || 'https://en.wikipedia.org')
                 .setEmoji('📖'),
             new ButtonBuilder()
-                .setCustomId(`wiki_random_${userId}`)
+                .setCustomId(`wikipedia_random_${language}_${userId}`)
                 .setLabel('Random Article')
                 .setStyle(ButtonStyle.Secondary)
                 .setEmoji('🎲')
@@ -152,20 +153,21 @@ export class WikipediaHandler {
 
     createSearchSelectMenu(
         results: WikiSearchResult[],
-        userId: string
+        userId: string,
+        sessionToken: string
     ): ActionRowBuilder<StringSelectMenuBuilder> | null {
         if (results.length === 0) return null;
 
         const options = results.map((result, i) => ({
             label: this.truncate(result.title, 100),
             description: this.truncate(result.description, 100),
-            value: `wiki_select_${i}_${userId}`,
+            value: String(i),
             emoji: '📄'
         }));
 
         return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
             new StringSelectMenuBuilder()
-                .setCustomId(`wiki_search_${userId}`)
+                .setCustomId(`wikipedia_search_${sessionToken}_${userId}`)
                 .setPlaceholder('Select an article to view...')
                 .addOptions(options)
         );

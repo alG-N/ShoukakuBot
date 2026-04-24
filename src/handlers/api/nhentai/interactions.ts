@@ -30,25 +30,54 @@ type GalleryResponseOptions = {
     spoilerCover?: boolean;
 };
 
-const FETCHING_GIF_URL = 'https://media.discordapp.net/attachments/1227126218755670070/1494610199431090347/8995335b58f7443aa814d3ba9b10f970_tplv-dhq7zx4c1p-video2sticker-mid.gif?ex=69eb24b8&is=69e9d338&hm=6a41f79f48c481312c955395ecfb3fadc713e55ca71b84d856c7e7f17613c9cb&=&width=270&height=270';
+const FETCHING_GIF_URL = 'https://media.discordapp.net/attachments/1458402483448840225/1497112513790083122/aq0fly.gif?ex=69ec562e&is=69eb04ae&hm=e65a0cfef2c989d54df6462d210bf06b0881760e85723e9c0f4a5fe651111fd7&=&width=405&height=224';
 
 export interface NhentaiButtonInteractionDeps {
     sessionTtl: number;
     createErrorEmbed: (message: string) => EmbedBuilder;
-    getPageSession: (userId: string) => Promise<PageSession | null>;
-    setPageSession: (userId: string, gallery: Gallery, currentPage?: number) => Promise<void>;
-    updatePageSession: (userId: string, currentPage: number) => Promise<void>;
+    getPageSession: (userId: string, sessionId?: string) => Promise<PageSession | null>;
+    setPageSession: (userId: string, gallery: Gallery, currentPage?: number, sessionId?: string) => Promise<void>;
+    updatePageSession: (userId: string, currentPage: number, sessionId?: string) => Promise<void>;
     createPageResponse: (gallery: Gallery, pageNum: number) => Promise<{ embed: EmbedBuilder; files: AttachmentBuilder[] }>;
-    createPageButtons: (galleryId: number, userId: string, currentPage: number, totalPages: number) => ActionRowBuilder<ButtonBuilder>[];
+    createPageButtons: (galleryId: number, userId: string, currentPage: number, totalPages: number, sessionId?: string) => ActionRowBuilder<ButtonBuilder>[];
     createGalleryResponse: (gallery: Gallery, options?: GalleryResponseOptions) => Promise<{ embed: EmbedBuilder; files: AttachmentBuilder[] }>;
-    createMainButtons: (galleryId: number, userId: string, numPages: number, gallery?: Gallery | null) => Promise<ActionRowBuilder<ButtonBuilder>[]>;
+    createMainButtons: (galleryId: number, userId: string, numPages: number, gallery?: Gallery | null, sessionId?: string) => Promise<ActionRowBuilder<ButtonBuilder>[]>;
     getUserPreferences: (userId: string) => Promise<UserPreferences>;
-    getSearchSession: (userId: string) => Promise<SearchSession | null>;
-    setSearchSession: (userId: string, data: Partial<SearchSession>) => Promise<void>;
+    getSearchSession: (userId: string, sessionId?: string) => Promise<SearchSession | null>;
+    setSearchSession: (userId: string, data: Partial<SearchSession>, sessionId?: string) => Promise<void>;
     createSearchResultsEmbed: (query: string, data: SearchData, page: number, sort: string) => EmbedBuilder;
-    createSearchButtons: (query: string, data: SearchData, page: number, userId: string) => ActionRowBuilder<ButtonBuilder>[];
-    createFavouritesEmbed: (userId: string, page: number) => Promise<FavouritesData>;
-    createFavouritesButtons: (userId: string, currentPage: number, totalPages: number, favourites: NHentaiFavourite[]) => ActionRowBuilder<ButtonBuilder>[];
+    createSearchButtons: (query: string, data: SearchData, page: number, userId: string, sessionId?: string) => ActionRowBuilder<ButtonBuilder>[];
+    createFavouritesEmbed: (userId: string, page: number, sessionId?: string) => Promise<FavouritesData>;
+    createFavouritesButtons: (userId: string, currentPage: number, totalPages: number, favourites: NHentaiFavourite[], sessionId?: string) => ActionRowBuilder<ButtonBuilder>[];
+}
+
+function getNhentaiSessionId(action: string, parts: string[]): string {
+    switch (action) {
+        case 'view':
+        case 'read':
+        case 'fav':
+        case 'translate':
+        case 'jump':
+        case 'info':
+            return parts.length >= 5 ? parts[3] : 'latest';
+        case 'random':
+        case 'popular':
+        case 'sprev':
+        case 'snext':
+        case 'spage':
+        case 'scount':
+            return parts.length >= 4 ? parts[2] : 'latest';
+        case 'favpage':
+            return parts.length >= 5 ? parts[3] : 'latest';
+        case 'first':
+        case 'prev':
+        case 'page':
+        case 'next':
+        case 'last':
+            return parts.length >= 6 ? parts[4] : 'latest';
+        default:
+            return 'latest';
+    }
 }
 
 export async function handleNhentaiButtonInteraction(
@@ -57,6 +86,7 @@ export async function handleNhentaiButtonInteraction(
 ): Promise<void> {
     const parts = interaction.customId.split('_');
     const action = parts[1];
+    const sessionId = getNhentaiSessionId(action, parts);
     const userId = parts[parts.length - 1];
 
     if (userId !== interaction.user.id) {
@@ -70,11 +100,11 @@ export async function handleNhentaiButtonInteraction(
     try {
         if (action === 'jump') {
             const galleryId = parts[2];
-            const session = await deps.getPageSession(userId);
+            const session = await deps.getPageSession(userId, sessionId);
             const totalPages = session?.totalPages || 1;
 
             const modal = new ModalBuilder()
-                .setCustomId(`nhentai_jumpmodal_${galleryId}_${userId}`)
+                .setCustomId(`nhentai_jumpmodal_${galleryId}_${sessionId}_${userId}`)
                 .setTitle('Jump to Page');
 
             const pageInput = new TextInputBuilder()
@@ -98,8 +128,8 @@ export async function handleNhentaiButtonInteraction(
         switch (action) {
             case 'view': {
                 const galleryId = parts[2];
-                const result = await withNhentaiFetchingState(interaction, 'other doujin', async () =>
-                    nhentaiService.fetchGallery(galleryId)
+                const result = await withNhentaiFetchingState(interaction, 'other doujin', async (signal) =>
+                    nhentaiService.fetchGallery(galleryId, { signal })
                 );
                 if (!result.success || !result.data) {
                     await interaction.editReply({
@@ -110,14 +140,14 @@ export async function handleNhentaiButtonInteraction(
                 }
                 const gallery = result.data;
                 const { embed, files } = await deps.createGalleryResponse(gallery);
-                const rows = await deps.createMainButtons(gallery.id, userId, gallery.num_pages, gallery);
+                const rows = await deps.createMainButtons(gallery.id, userId, gallery.num_pages, gallery, sessionId);
                 await interaction.editReply({ embeds: [embed], components: rows, files });
                 break;
             }
 
             case 'read': {
                 const galleryId = parts[2];
-                const session = await deps.getPageSession(userId);
+                const session = await deps.getPageSession(userId, sessionId);
                 let gallery: Gallery | undefined = session?.gallery;
 
                 if (!gallery || gallery.id !== parseInt(galleryId)) {
@@ -133,9 +163,9 @@ export async function handleNhentaiButtonInteraction(
                 }
 
                 const { embed: pageEmbed, files: pageFiles } = await deps.createPageResponse(gallery, 1);
-                const pageRows = deps.createPageButtons(parseInt(galleryId), userId, 1, gallery.num_pages);
+                const pageRows = deps.createPageButtons(parseInt(galleryId), userId, 1, gallery.num_pages, sessionId);
                 await interaction.editReply({ embeds: [pageEmbed], components: pageRows, files: pageFiles });
-                await deps.setPageSession(userId, gallery, 1);
+                await deps.setPageSession(userId, gallery, 1, sessionId);
                 break;
             }
 
@@ -143,7 +173,7 @@ export async function handleNhentaiButtonInteraction(
             case 'next':
             case 'first':
             case 'last': {
-                const session = await deps.getPageSession(userId);
+                const session = await deps.getPageSession(userId, sessionId);
                 if (!session) {
                     await interaction.editReply({
                         embeds: [deps.createErrorEmbed('Session expired. Please start again.')],
@@ -164,9 +194,9 @@ export async function handleNhentaiButtonInteraction(
                 else if (action === 'last') newPage = session.totalPages;
 
                 const { embed: pageEmbed, files: pageFiles } = await deps.createPageResponse(session.gallery, newPage);
-                const pageRows = deps.createPageButtons(session.galleryId, userId, newPage, session.totalPages);
+                const pageRows = deps.createPageButtons(session.galleryId, userId, newPage, session.totalPages, sessionId);
                 await interaction.editReply({ embeds: [pageEmbed], components: pageRows, files: pageFiles });
-                await deps.updatePageSession(userId, newPage);
+                await deps.updatePageSession(userId, newPage, sessionId);
                 break;
             }
 
@@ -182,14 +212,14 @@ export async function handleNhentaiButtonInteraction(
                 }
                 const gallery = result.data;
                 const { embed, files } = await deps.createGalleryResponse(gallery);
-                const rows = await deps.createMainButtons(parseInt(galleryId), userId, gallery.num_pages, gallery);
+                const rows = await deps.createMainButtons(parseInt(galleryId), userId, gallery.num_pages, gallery, sessionId);
                 await interaction.editReply({ embeds: [embed], components: rows, files });
                 break;
             }
 
             case 'fav': {
                 const galleryId = parts[2];
-                const session = await deps.getPageSession(userId);
+                const session = await deps.getPageSession(userId, sessionId);
                 let gallery: Gallery | undefined = session?.gallery;
 
                 if (!gallery || gallery.id !== parseInt(galleryId)) {
@@ -212,7 +242,7 @@ export async function handleNhentaiButtonInteraction(
                     await nhentaiRepository.addFavourite(userId, gallery as NHentaiGallery);
                 }
                 // Rebuild buttons so the ❤️/💔 state reflects the new value
-                const newFavRows = await deps.createMainButtons(parseInt(galleryId), userId, gallery!.num_pages, gallery!);
+                const newFavRows = await deps.createMainButtons(parseInt(galleryId), userId, gallery!.num_pages, gallery!, sessionId);
                 await interaction.editReply({ components: newFavRows });
                 await interaction.followUp({
                     content: isFav ? '💔 Removed from favourites' : '❤️ Added to favourites!',
@@ -223,7 +253,7 @@ export async function handleNhentaiButtonInteraction(
 
             case 'sprev':
             case 'snext': {
-                const searchSession = await deps.getSearchSession(userId);
+                const searchSession = await deps.getSearchSession(userId, sessionId);
                 if (!searchSession) {
                     await interaction.editReply({
                         embeds: [deps.createErrorEmbed('Search session expired. Please search again.')],
@@ -236,42 +266,61 @@ export async function handleNhentaiButtonInteraction(
                     ? Math.max(1, (searchSession.currentPage || 1) - 1)
                     : Math.min(searchSession.numPages || 1, (searchSession.currentPage || 1) + 1);
 
-                const searchResult = await withNhentaiFetchingState(interaction, 'other doujin', async () =>
-                    nhentaiService.searchGalleries(searchSession.query || '', newPage, searchSession.sort as 'popular' | 'recent' || 'popular')
-                );
-                if (!searchResult.success || !searchResult.data || searchResult.data.results.length === 0) {
-                    await interaction.editReply({
-                        embeds: [deps.createErrorEmbed(searchResult.error || 'No results found')],
-                        components: []
-                    });
-                    return;
+                const sort = searchSession.sort || 'popular';
+                let searchData = getCachedSearchPage(searchSession, newPage);
+
+                if (!searchData) {
+                    const searchResult = await withNhentaiFetchingState(interaction, 'other doujin', async (signal) =>
+                        nhentaiService.searchGalleries(searchSession.query || '', newPage, sort, { signal })
+                    );
+                    if (!searchResult.success || !searchResult.data || searchResult.data.results.length === 0) {
+                        await interaction.editReply({
+                            embeds: [deps.createErrorEmbed(searchResult.error || 'No results found')],
+                            components: []
+                        });
+                        return;
+                    }
+
+                    searchData = searchResult.data;
                 }
 
-                await deps.setSearchSession(userId, { ...searchSession, currentPage: newPage, results: searchResult.data.results });
-                const embed = deps.createSearchResultsEmbed(searchSession.query || '', searchResult.data, newPage, searchSession.sort || 'popular');
-                const rows = deps.createSearchButtons(searchSession.query || '', searchResult.data, newPage, userId);
+                const updatedPageCache = {
+                    ...getSearchPageCache(searchSession),
+                    [String(newPage)]: searchData
+                };
+
+                await deps.setSearchSession(userId, {
+                    ...searchSession,
+                    currentPage: newPage,
+                    numPages: searchData.numPages,
+                    results: searchData.results,
+                    pageCache: updatedPageCache
+                }, sessionId);
+
+                prefetchNhentaiSearchPage(searchSession.query, newPage + 1, sort, searchData.numPages, updatedPageCache);
+
+                const embed = deps.createSearchResultsEmbed(searchSession.query || '', searchData, newPage, sort);
+                const rows = deps.createSearchButtons(searchSession.query || '', searchData, newPage, userId, sessionId);
                 await interaction.editReply({ embeds: [embed], components: rows });
                 break;
             }
 
             case 'favpage': {
                 const direction = parts[2];
-                const searchSession = await deps.getSearchSession(userId);
+                const searchSession = await deps.getSearchSession(userId, sessionId);
                 const currentPage = searchSession?.favPage || 1;
                 const newPage = direction === 'prev'
                     ? Math.max(1, currentPage - 1)
                     : currentPage + 1;
 
-                const { embed, totalPages } = await deps.createFavouritesEmbed(userId, newPage);
+                const { embed, totalPages, buttons } = await deps.createFavouritesEmbed(userId, newPage, sessionId);
                 if (newPage > totalPages) {
                     await interaction.followUp({ content: '❌ No more pages', ephemeral: true });
                     return;
                 }
 
-                const favourites = await nhentaiRepository.getUserFavourites(userId, 10, (newPage - 1) * 10);
-                const rows = deps.createFavouritesButtons(userId, newPage, totalPages, favourites);
-                await deps.setSearchSession(userId, { ...searchSession, favPage: newPage });
-                await interaction.editReply({ embeds: [embed], components: rows });
+                await deps.setSearchSession(userId, { ...searchSession, favPage: newPage }, sessionId);
+                await interaction.editReply({ embeds: [embed], components: buttons });
                 break;
             }
 
@@ -279,14 +328,15 @@ export async function handleNhentaiButtonInteraction(
                 const prefs = await deps.getUserPreferences(userId);
                 let result;
                 try {
-                    result = await withNhentaiFetchingState(interaction, 'other manga', async () =>
-                        nhentaiService.fetchRandomGalleryByPeriod(prefs.randomPeriod)
+                    result = await withNhentaiFetchingState(interaction, 'other manga', async (signal) =>
+                        nhentaiService.fetchRandomGalleryByPeriod(prefs.randomPeriod, { signal })
                     , {
                         disableButtons: true,
                         loadingImageUrl: FETCHING_GIF_URL,
+                        maxSecondsLabel: 15,
                         replaceEmbedContent: true,
                         showStatusText: true,
-                        timeoutSeconds: 60
+                        timeoutSeconds: 15
                     });
                 } catch (error) {
                     if (isNhentaiFetchTimeoutError(error)) {
@@ -307,7 +357,7 @@ export async function handleNhentaiButtonInteraction(
                 }
                 const gallery = result.data;
                 const { embed, files } = await deps.createGalleryResponse(gallery, { isRandom: true, spoilerCover: true });
-                const rows = await deps.createMainButtons(gallery.id, userId, gallery.num_pages, gallery);
+                const rows = await deps.createMainButtons(gallery.id, userId, gallery.num_pages, gallery, sessionId);
                 await interaction.editReply({ embeds: [embed], components: rows, files });
                 break;
             }
@@ -316,14 +366,15 @@ export async function handleNhentaiButtonInteraction(
                 const prefs = await deps.getUserPreferences(userId);
                 let result;
                 try {
-                    result = await withNhentaiFetchingState(interaction, 'other manga', async () =>
-                        nhentaiService.fetchPopularGallery(prefs.popularPeriod)
+                    result = await withNhentaiFetchingState(interaction, 'other manga', async (signal) =>
+                        nhentaiService.fetchPopularGallery(prefs.popularPeriod, { signal })
                     , {
                         disableButtons: true,
                         loadingImageUrl: FETCHING_GIF_URL,
+                        maxSecondsLabel: 15,
                         replaceEmbedContent: true,
                         showStatusText: true,
-                        timeoutSeconds: 60
+                        timeoutSeconds: 15
                     });
                 } catch (error) {
                     if (isNhentaiFetchTimeoutError(error)) {
@@ -353,15 +404,15 @@ export async function handleNhentaiButtonInteraction(
                     isPopular: true,
                     popularPeriod: periodLabels[prefs.popularPeriod] || 'All Time'
                 });
-                const rows = await deps.createMainButtons(gallery.id, userId, gallery.num_pages, gallery);
+                const rows = await deps.createMainButtons(gallery.id, userId, gallery.num_pages, gallery, sessionId);
                 await interaction.editReply({ embeds: [embed], components: rows, files });
                 break;
             }
 
             case 'translate': {
                 const galleryId = parts[2];
-                const result = await withNhentaiFetchingState(interaction, 'translated version', async () =>
-                    nhentaiService.fetchGallery(galleryId)
+                const result = await withNhentaiFetchingState(interaction, 'translated version', async (signal) =>
+                    nhentaiService.fetchGallery(galleryId, { signal })
                 );
                 if (!result.success || !result.data) {
                     await interaction.editReply({
@@ -390,14 +441,14 @@ export async function handleNhentaiButtonInteraction(
                 }
 
                 const searchQuery = searchParts.join(' ');
-                const searchResult = await withNhentaiFetchingState(interaction, 'translated version', async () =>
-                    nhentaiService.searchGalleries(searchQuery, 1, 'popular')
+                const searchResult = await withNhentaiFetchingState(interaction, 'translated version', async (signal) =>
+                    nhentaiService.searchGalleries(searchQuery, 1, 'popular', { signal })
                 );
 
                 if (!searchResult.success || !searchResult.data || searchResult.data.results.length === 0) {
                     // No translated version found, show original with message
                     const { embed, files } = await deps.createGalleryResponse(gallery);
-                    const rows = await deps.createMainButtons(gallery.id, userId, gallery.num_pages, gallery);
+                    const rows = await deps.createMainButtons(gallery.id, userId, gallery.num_pages, gallery, sessionId);
                     await interaction.editReply({ embeds: [embed], components: rows, files });
                     await interaction.followUp({
                         content: '❌ No English-translated version found for this gallery.',
@@ -414,7 +465,7 @@ export async function handleNhentaiButtonInteraction(
 
                 if (!englishGallery) {
                     const { embed, files } = await deps.createGalleryResponse(gallery);
-                    const rows = await deps.createMainButtons(gallery.id, userId, gallery.num_pages, gallery);
+                    const rows = await deps.createMainButtons(gallery.id, userId, gallery.num_pages, gallery, sessionId);
                     await interaction.editReply({ embeds: [embed], components: rows, files });
                     await interaction.followUp({
                         content: '❌ No English-translated version found for this gallery.',
@@ -435,20 +486,19 @@ export async function handleNhentaiButtonInteraction(
 
                 const translatedGallery = englishResult.data;
                 const { embed: translatedEmbed, files: translatedFiles } = await deps.createGalleryResponse(translatedGallery);
-                const translatedRows = await deps.createMainButtons(translatedGallery.id, userId, translatedGallery.num_pages, translatedGallery);
+                const translatedRows = await deps.createMainButtons(translatedGallery.id, userId, translatedGallery.num_pages, translatedGallery, sessionId);
                 await interaction.editReply({ embeds: [translatedEmbed], components: translatedRows, files: translatedFiles });
                 break;
             }
 
             case 'randfav': {
-                const favourites = await nhentaiRepository.getUserFavourites(userId, 100, 0);
-                if (favourites.length === 0) {
+                const randomFav = await nhentaiRepository.getRandomFavourite(userId);
+                if (!randomFav) {
                     await interaction.followUp({ content: '❌ You have no favourites yet!', ephemeral: true });
                     return;
                 }
-                const randomFav = favourites[Math.floor(Math.random() * favourites.length)];
-                const result = await withNhentaiFetchingState(interaction, 'other doujin', async () =>
-                    nhentaiService.fetchGallery(randomFav.gallery_id)
+                const result = await withNhentaiFetchingState(interaction, 'other doujin', async (signal) =>
+                    nhentaiService.fetchGallery(randomFav.gallery_id, { signal })
                 );
                 if (!result.success || !result.data) {
                     await interaction.editReply({
@@ -459,7 +509,7 @@ export async function handleNhentaiButtonInteraction(
                 }
                 const gallery = result.data;
                 const { embed, files } = await deps.createGalleryResponse(gallery);
-                const rows = await deps.createMainButtons(gallery.id, userId, gallery.num_pages, gallery);
+                const rows = await deps.createMainButtons(gallery.id, userId, gallery.num_pages, gallery, sessionId);
                 await interaction.editReply({ embeds: [embed], components: rows, files });
                 break;
             }
@@ -468,6 +518,19 @@ export async function handleNhentaiButtonInteraction(
                 await interaction.followUp({ content: '❌ Unknown action', ephemeral: true });
         }
     } catch (error) {
+        if (isNhentaiFetchTimeoutError(error)) {
+            await interaction.editReply({
+                embeds: [deps.createErrorEmbed(error.message)],
+                components: []
+            }).catch(async () => {
+                await interaction.followUp?.({
+                    content: `❌ ${error.message}`,
+                    ephemeral: true
+                }).catch(() => {});
+            });
+            return;
+        }
+
         logger.error('NHentai', `Button error: ${(error as Error).message}`);
         await interaction.followUp?.({
             content: '❌ An error occurred. Please try again.',
@@ -496,7 +559,6 @@ function buildDisabledButtonRows(interaction: ButtonInteraction): ActionRowBuild
 function buildLoadingEmbed(
     currentEmbed: EmbedBuilder,
     context: string,
-    elapsedSeconds: number,
     options: FetchingStateOptions = {}
 ): EmbedBuilder {
     if (options.replaceEmbedContent === true) {
@@ -504,7 +566,7 @@ function buildLoadingEmbed(
             .setColor(currentEmbed.data.color ?? 0xED2553);
 
         if (options.showStatusText) {
-            embed.setDescription(`Shoukaku is fetching ${context}, please wait...(${elapsedSeconds}s / ${(options.timeoutSeconds || 60)}s)`);
+            embed.setDescription(`Shoukaku is fetching ${context}, please wait...\nMax: ${(options.maxSecondsLabel || options.timeoutSeconds || 30)}s`);
         }
 
         if (options.loadingImageUrl) {
@@ -516,10 +578,10 @@ function buildLoadingEmbed(
 
     const embed = EmbedBuilder.from(currentEmbed);
     const currentDescription = embed.data.description || '';
-    const cleanedDescription = currentDescription.replace(/^⏳ Shoukaku is fetching[^\n]*\n\n?/i, '');
+    const cleanedDescription = currentDescription.replace(/^Shoukaku is fetching[^\n]*(?:\nMax: \d+s)?\n\n?/i, '');
 
     if (options.showStatusText) {
-        const statusLine = `Shoukaku is fetching ${context}, please wait...(${elapsedSeconds}s / ${(options.timeoutSeconds || 60)}s)`;
+        const statusLine = `Shoukaku is fetching ${context}, please wait...\nMax: ${(options.maxSecondsLabel || options.timeoutSeconds || 30)}s`;
         embed.setDescription(cleanedDescription ? `${statusLine}\n\n${cleanedDescription}` : statusLine);
     } else if (cleanedDescription !== currentDescription) {
         embed.setDescription(cleanedDescription || null);
@@ -536,79 +598,94 @@ type FetchingStateOptions = {
     hideMedia?: boolean;
     disableButtons?: boolean;
     showStatusText?: boolean;
+    maxSecondsLabel?: number;
     replaceEmbedContent?: boolean;
     loadingImageUrl?: string;
     timeoutSeconds?: number;
 };
 
+function getSearchPageCache(session: SearchSession | null | undefined): Record<string, SearchData> {
+    return session?.pageCache || {};
+}
+
+function getCachedSearchPage(session: SearchSession | null | undefined, page: number): SearchData | null {
+    return getSearchPageCache(session)[String(page)] || null;
+}
+
+function prefetchNhentaiSearchPage(
+    query: string | undefined,
+    page: number,
+    sort: string | undefined,
+    numPages: number,
+    pageCache: Record<string, SearchData>
+): void {
+    if (!query || page <= 0 || page > numPages || pageCache[String(page)]) {
+        return;
+    }
+
+    void nhentaiService.searchGalleries(query, page, sort || 'popular').catch((error) => {
+        logger.debug('NHentai', `Search prefetch failed: ${(error as Error).message}`);
+    });
+}
+
+function isAbortLikeError(error: unknown): boolean {
+    const err = error as { code?: string; name?: string };
+    return err?.code === 'ERR_CANCELED' || err?.name === 'AbortError' || err?.name === 'CanceledError';
+}
+
 async function withNhentaiFetchingState<T>(
     interaction: ButtonInteraction,
     context: string,
-    task: () => Promise<T>,
+    task: (signal: AbortSignal) => Promise<T>,
     options: FetchingStateOptions = {}
 ): Promise<T> {
-    if (!interaction.message.embeds.length) {
-        return task();
-    }
-
-    if (options.hideMedia !== true && options.showStatusText !== true && options.disableButtons !== true && options.replaceEmbedContent !== true) {
-        return task();
-    }
-
-    const baseEmbed = EmbedBuilder.from(interaction.message.embeds[0]!);
+    const shouldUpdateLoadingState = interaction.message.embeds.length > 0
+        && (options.hideMedia === true || options.showStatusText === true || options.disableButtons === true || options.replaceEmbedContent === true);
+    const baseEmbed = shouldUpdateLoadingState ? EmbedBuilder.from(interaction.message.embeds[0]!) : null;
     const timeoutSeconds = options.timeoutSeconds || 60;
-    let elapsedSeconds = 0;
+    const controller = new AbortController();
+    const timeoutError = new Error(`Fetching ${context} timed out after ${timeoutSeconds} seconds. Please try again.`);
+    timeoutError.name = 'NhentaiFetchTimeout';
+    let timedOut = false;
     let stopped = false;
-    let progressHandle: NodeJS.Timeout | undefined;
 
     const updateLoadingReply = async (): Promise<void> => {
-        if (stopped) return;
-        const loadingEmbed = buildLoadingEmbed(baseEmbed, context, elapsedSeconds, options);
+        if (stopped || !shouldUpdateLoadingState || !baseEmbed) return;
+        const loadingEmbed = buildLoadingEmbed(baseEmbed, context, options);
         const components = options.disableButtons === true
             ? buildDisabledButtonRows(interaction)
             : undefined;
         try {
             await interaction.editReply({ embeds: [loadingEmbed], components, files: [] });
         } catch (error) {
-            logger.warn('NHentai', `Failed to update fetching progress: ${(error as Error).message}`);
+            logger.warn('NHentai', `Failed to update fetching state: ${(error as Error).message}`);
         }
     };
 
-    await updateLoadingReply();
-
-    const scheduleProgressUpdate = (): void => {
-        progressHandle = setTimeout(() => {
-            if (stopped) return;
-
-            elapsedSeconds += 1;
-            if (elapsedSeconds <= timeoutSeconds) {
-                void updateLoadingReply().finally(() => {
-                    if (!stopped && elapsedSeconds < timeoutSeconds) {
-                        scheduleProgressUpdate();
-                    }
-                });
-            }
-        }, 1000);
-    };
-
-    scheduleProgressUpdate();
+    if (shouldUpdateLoadingState) {
+        await updateLoadingReply();
+    }
 
     let timeoutHandle: NodeJS.Timeout | undefined;
     const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutHandle = setTimeout(() => {
-            const timeoutError = new Error(`Fetching ${context} timed out after ${timeoutSeconds} seconds. Please try again.`);
-            timeoutError.name = 'NhentaiFetchTimeout';
+            timedOut = true;
             reject(timeoutError);
+            controller.abort(timeoutError);
         }, timeoutSeconds * 1000);
     });
 
     try {
-        return await Promise.race([task(), timeoutPromise]);
+        const taskPromise = task(controller.signal).catch((error) => {
+            if (timedOut && isAbortLikeError(error)) {
+                throw timeoutError;
+            }
+            throw error;
+        });
+
+        return await Promise.race([taskPromise, timeoutPromise]);
     } finally {
         stopped = true;
-        if (progressHandle) {
-            clearTimeout(progressHandle);
-        }
         if (timeoutHandle) {
             clearTimeout(timeoutHandle);
         }
@@ -621,7 +698,8 @@ function isNhentaiFetchTimeoutError(error: unknown): error is Error {
 
 export interface NhentaiModalInteractionDeps {
     createPageResponse: (gallery: Gallery, pageNum: number) => Promise<{ embed: EmbedBuilder; files: AttachmentBuilder[] }>;
-    createPageButtons: (galleryId: number, userId: string, currentPage: number, totalPages: number) => ActionRowBuilder<ButtonBuilder>[];
+    createPageButtons: (galleryId: number, userId: string, currentPage: number, totalPages: number, sessionId?: string) => ActionRowBuilder<ButtonBuilder>[];
+    setPageSession: (userId: string, gallery: Gallery, currentPage?: number, sessionId?: string) => Promise<void>;
 }
 
 export async function handleNhentaiModalInteraction(
@@ -632,7 +710,8 @@ export async function handleNhentaiModalInteraction(
     if (parts[1] !== 'jumpmodal') return;
 
     const galleryId = parseInt(parts[2]);
-    const userId = parts[3];
+    const sessionId = parts.length >= 5 ? parts[3] : 'latest';
+    const userId = parts[parts.length - 1];
 
     if (interaction.user.id !== userId) {
         await interaction.reply({
@@ -670,7 +749,8 @@ export async function handleNhentaiModalInteraction(
         const clampedPage = Math.max(1, Math.min(targetPage, totalPages));
 
         const { embed, files } = await deps.createPageResponse(gallery, clampedPage);
-        const buttons = deps.createPageButtons(galleryId, userId, clampedPage, totalPages);
+    const buttons = deps.createPageButtons(galleryId, userId, clampedPage, totalPages, sessionId);
+    await deps.setPageSession(userId, gallery, clampedPage, sessionId);
 
         await interaction.editReply({ embeds: [embed], components: buttons, files });
     } catch (error) {

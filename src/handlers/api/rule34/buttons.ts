@@ -15,6 +15,7 @@ export function createPostButtons(
         resultIndex = 0,
         totalResults = 1,
         userId = '',
+        sessionId = 'latest',
         searchPage = 1,
         hasMore = true,
         sessionType = 'search',
@@ -26,22 +27,22 @@ export function createPostButtons(
     const navRow = new ActionRowBuilder<ButtonBuilder>();
     navRow.addComponents(
         new ButtonBuilder()
-            .setCustomId(`rule34_prev_${userId}`)
+            .setCustomId(`rule34_prev_${sessionId}_${userId}`)
             .setLabel('◀')
             .setStyle(ButtonStyle.Primary)
             .setDisabled(resultIndex === 0 && searchPage === 1),
         new ButtonBuilder()
-            .setCustomId(`rule34_counter_${userId}`)
+            .setCustomId(`rule34_counter_${sessionId}_${userId}`)
             .setLabel(`${resultIndex + 1}/${totalResults}`)
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(true),
         new ButtonBuilder()
-            .setCustomId(`rule34_next_${userId}`)
+            .setCustomId(`rule34_next_${sessionId}_${userId}`)
             .setLabel('▶')
             .setStyle(ButtonStyle.Primary)
             .setDisabled(resultIndex >= totalResults - 1),
         new ButtonBuilder()
-            .setCustomId(`rule34_selectpost_${userId}`)
+            .setCustomId(`rule34_selectpost_${sessionId}_${userId}`)
             .setLabel('🔢 Select Post')
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(totalResults <= 1)
@@ -52,7 +53,7 @@ export function createPostButtons(
     if (post.hasVideo) {
         actionRow.addComponents(
             new ButtonBuilder()
-                .setCustomId(`rule34_watch_${post.id}_${userId}`)
+                .setCustomId(`rule34_watch_${post.id}_${sessionId}_${userId}`)
                 .setLabel('▶️ Watch Video')
                 .setStyle(ButtonStyle.Success),
             new ButtonBuilder().setLabel('View on Site').setStyle(ButtonStyle.Link).setURL(post.pageUrl)
@@ -67,7 +68,7 @@ export function createPostButtons(
     const isFavorited = rule34Cache.isFavorited(userId, post.id);
     actionRow.addComponents(
         new ButtonBuilder()
-            .setCustomId(`rule34_fav_${post.id}_${userId}`)
+            .setCustomId(`rule34_fav_${post.id}_${sessionId}_${userId}`)
             .setLabel(isFavorited ? '💔' : '❤️')
             .setStyle(isFavorited ? ButtonStyle.Danger : ButtonStyle.Secondary)
     );
@@ -80,17 +81,17 @@ export function createPostButtons(
         const pageRow = new ActionRowBuilder<ButtonBuilder>();
         pageRow.addComponents(
             new ButtonBuilder()
-                .setCustomId(`rule34_prevpage_${userId}`)
+                .setCustomId(`rule34_prevpage_${sessionId}_${userId}`)
                 .setLabel('⏮ Prev Page')
                 .setStyle(ButtonStyle.Primary)
                 .setDisabled(searchPage <= 1),
             new ButtonBuilder()
-                .setCustomId(`rule34_pageinfo_${userId}`)
+                .setCustomId(`rule34_pageinfo_${sessionId}_${userId}`)
                 .setLabel(`Page ${searchPage}`)
                 .setStyle(ButtonStyle.Secondary)
                 .setDisabled(true),
             new ButtonBuilder()
-                .setCustomId(`rule34_nextpage_${userId}`)
+                .setCustomId(`rule34_nextpage_${sessionId}_${userId}`)
                 .setLabel('Next Page ⏭')
                 .setStyle(ButtonStyle.Primary)
                 .setDisabled(disableNextPage)

@@ -39,7 +39,7 @@ export type Rule34ServiceContract = {
 };
 
 export interface Rule34CacheContract {
-    ensureHydrated?: (userId: string) => Promise<void>;
+    ensureHydrated?: (userId: string, sessionId?: string) => Promise<void>;
     getPreferences?: (userId: string) => Preferences | null;
     setPreferences?: (userId: string, prefs: Partial<Preferences>) => void;
     resetPreferences?: (userId: string) => void;
@@ -47,9 +47,9 @@ export interface Rule34CacheContract {
     addToBlacklist?: (userId: string, tag: string) => boolean;
     removeFromBlacklist?: (userId: string, tag: string) => boolean;
     clearBlacklist?: (userId: string) => void;
-    getSession?: (userId: string) => Session | null;
-    setSession?: (userId: string, session: Session) => void;
-    updateSession?: (userId: string, updates: Partial<Session>) => void;
+    getSession?: (userId: string, sessionId?: string) => Session | null;
+    setSession?: (userId: string, session: Session, sessionId?: string) => void;
+    updateSession?: (userId: string, updates: Partial<Session>, sessionId?: string) => void;
     addToHistory?: (userId: string, postId: number, data: { score?: number }) => void;
     isFavorited?: (userId: string, postId: number) => boolean;
     addFavorite?: (userId: string, postId: number, data: { score?: number; rating?: string }) => void;
@@ -64,6 +64,7 @@ export interface Rule34PostHandlerContract {
         totalResults: number;
         query?: string;
         userId: string;
+        sessionId?: string;
         searchPage?: number;
         showTags?: boolean;
         hasMore?: boolean;
@@ -74,6 +75,7 @@ export interface Rule34PostHandlerContract {
         resultIndex: number;
         totalResults: number;
         userId: string;
+        sessionId?: string;
         searchPage?: number;
         showTags?: boolean;
         hasMore?: boolean;

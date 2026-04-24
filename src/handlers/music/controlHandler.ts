@@ -4,7 +4,7 @@
  * @module handlers/music/controlHandler
  */
 
-import { ChatInputCommandInteraction } from 'discord.js';
+import { ChatInputCommandInteraction, Message, TextChannel } from 'discord.js';
 import { trackHandler, LoopMode } from './trackHandler.js';
 import musicCache from '../../cache/music/MusicCacheFacade.js';
 import { checkSameVoiceChannel } from '../../middleware/voiceChannelCheck.js';
@@ -16,6 +16,22 @@ import type { Track } from '../../types/music/track.js';
 // Import voting constants from config
 const { minVotesRequired: MIN_VOTES_REQUIRED = 5 } = music.voting || {};
 const SKIP_VOTE_TIMEOUT = 15000;
+
+async function resolveSkipVoteMessage(interaction: ChatInputCommandInteraction, guildId: string): Promise<Message | null> {
+    const ref = musicCache.getSkipVoteMessage(guildId);
+    if (!ref) return null;
+
+    const currentChannel = interaction.channel;
+    if (currentChannel && 'id' in currentChannel && currentChannel.id === ref.channelId && 'messages' in currentChannel) {
+        return await (currentChannel as TextChannel).messages.fetch(ref.messageId).catch(() => null);
+    }
+
+    const fetchedChannel = await interaction.client.channels.fetch(ref.channelId).catch(() => null);
+    if (!fetchedChannel || !('messages' in fetchedChannel)) return null;
+
+    return await (fetchedChannel as TextChannel).messages.fetch(ref.messageId).catch(() => null);
+}
+
 export const controlHandler = {
     async handleStop(interaction: ChatInputCommandInteraction, guildId: string): Promise<void> {
         if (!musicService.isConnected(guildId)) {
@@ -86,11 +102,19 @@ export const controlHandler = {
                 return;
             }
 
+            const voteSession = musicCache.voteCache.getSkipVoteSession(guildId);
+            const voteMessage = await resolveSkipVoteMessage(interaction, guildId);
+
             if (musicService.hasEnoughSkipVotes(guildId)) {
                 musicService.endSkipVote(guildId);
                 const skippedTrack = musicService.getCurrentTrack(guildId) as Track | null;
                 musicService.disableNowPlayingControls(guildId).catch(() => {});
                 const skipResult = await musicService.skip(guildId);
+
+                await voteMessage?.edit({
+                    embeds: [trackHandler.createSkippedEmbed(skippedTrack, interaction.user, 'vote')],
+                    components: []
+                }).catch(() => {});
                 
                 await interaction.reply({
                     embeds: [trackHandler.createSkippedEmbed(skippedTrack, interaction.user, 'vote')]
@@ -102,6 +126,18 @@ export const controlHandler = {
                     await musicService.sendNowPlayingEmbed(guildId);
                 }
                 return;
+            }
+
+            const currentTrack = musicService.getCurrentTrack(guildId) as Track | null;
+            const currentVotes = result.voteCount ?? voteSession?.votes.size ?? 0;
+            const requiredVotes = result.required ?? voteSession?.required ?? 0;
+            const remainingMs = Math.max(0, SKIP_VOTE_TIMEOUT - (Date.now() - (voteSession?.startedAt ?? Date.now())));
+
+            if (voteMessage) {
+                await voteMessage.edit({
+                    embeds: [trackHandler.createSkipVoteEmbed(currentTrack, currentVotes, requiredVotes, remainingMs)],
+                    components: [trackHandler.createSkipVoteButton(guildId, currentVotes, requiredVotes)]
+                }).catch(() => {});
             }
 
             await interaction.reply({
@@ -120,6 +156,7 @@ export const controlHandler = {
 
         const response = await interaction.reply({ embeds: [embed], components: [row], withResponse: true });
         const message = response?.resource?.message || await interaction.fetchReply();
+        musicCache.setSkipVoteMessage(guildId, message);
 
         // Set timeout via VoteCache (single source of truth for vote state)
         const voteTimeout = setTimeout(async () => {

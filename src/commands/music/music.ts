@@ -1,6 +1,6 @@
 /**
  * Music Command
- * Comprehensive music bot with play, queue, controls, and settings
+ * Comprehensive music bot with play, queue, and playback controls
  * @module commands/music/MusicCommand
  */
 
@@ -8,7 +8,7 @@ import { SlashCommandBuilder, ChatInputCommandInteraction, ButtonInteraction, Au
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import logger from '../../core/Logger.js';
-import _musicHandlers from '../../handlers/music/index.js';
+import _musicHandlers, { historyHandler, favoritesHandler } from '../../handlers/music/index.js';
 import lavalinkService from '../../services/music/core/LavalinkService.js';
 import type { MusicHandler, MusicHandlers } from '../../types/commands/music-command.js';
 // COMMAND
@@ -167,7 +167,25 @@ class MusicCommand extends BaseCommand {
             // History subcommand
             .addSubcommand(sub => sub
                 .setName('history')
-                .setDescription('View recently played tracks')
+                .setDescription('View your listening history')
+                .addIntegerOption(opt => opt
+                    .setName('page')
+                    .setDescription('Page number')
+                    .setRequired(false)
+                    .setMinValue(1)
+                )
+            )
+            
+            // Favorites subcommand
+            .addSubcommand(sub => sub
+                .setName('favorites')
+                .setDescription('View your saved favorite tracks')
+                .addIntegerOption(opt => opt
+                    .setName('page')
+                    .setDescription('Page number')
+                    .setRequired(false)
+                    .setMinValue(1)
+                )
             )
             
             // Autoplay subcommand
@@ -202,6 +220,16 @@ class MusicCommand extends BaseCommand {
         // Delegate to appropriate handler
         const handlers = this.handlers;
         try {
+            if (subcommand === 'history') {
+                await historyHandler.handleHistoryList(interaction, userId);
+                return;
+            }
+
+            if (subcommand === 'favorites') {
+                await favoritesHandler.handleFavoritesList(interaction, userId);
+                return;
+            }
+
             // Handler map with proper method names from handlers index
             const handlerMap: Record<string, MusicHandler | undefined> = {
                 'play': handlers.handlePlay,
@@ -216,7 +244,6 @@ class MusicCommand extends BaseCommand {
                 'remove': handlers.handleRemove,
                 'move': handlers.handleMove,
                 'clear': handlers.handleClear,
-                'history': handlers.handleRecent,
                 'autoplay': handlers.handleAutoPlay,
             };
 

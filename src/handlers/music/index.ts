@@ -11,7 +11,6 @@ import { playHandler } from './playHandler.js';
 import { controlHandler } from './controlHandler.js';
 import { queueHandler } from './queueHandler.js';
 import { buttonHandler } from './buttonHandler.js';
-import { settingsHandler } from './settingsHandler.js';
 import { favoritesHandler } from './favoritesHandler.js';
 import { historyHandler } from './historyHandler.js';
 
@@ -64,12 +63,6 @@ export const handlers = {
     handleButtonQueuePage: buttonHandler.handleButtonQueuePage.bind(buttonHandler),
     handleButtonConfirm: buttonHandler.handleButtonConfirm.bind(buttonHandler),
     
-    // Settings handlers
-    handleSettings: settingsHandler.handleSettings.bind(settingsHandler),
-    handleSelectMenu: settingsHandler.handleSelectMenu.bind(settingsHandler),
-    handleStatus: settingsHandler.handleStatus.bind(settingsHandler),
-    handleVolumeSelect: settingsHandler.handleVolumeSelect.bind(settingsHandler),
-    
     // Favorites handlers
     handleFavorites: favoritesHandler.handleFavorites.bind(favoritesHandler),
     handleFavoritesList: favoritesHandler.handleFavoritesList.bind(favoritesHandler),
@@ -89,7 +82,6 @@ export { playHandler } from './playHandler.js';
 export { controlHandler } from './controlHandler.js';
 export { queueHandler } from './queueHandler.js';
 export { buttonHandler } from './buttonHandler.js';
-export { settingsHandler } from './settingsHandler.js';
 export { favoritesHandler } from './favoritesHandler.js';
 export { historyHandler } from './historyHandler.js';
 

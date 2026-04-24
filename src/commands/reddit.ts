@@ -118,7 +118,12 @@ class RedditCommand extends BaseCommand {
         await this._handleBrowse(interaction);
     }
 
+    private _createSessionToken(): string {
+        return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    }
+
     private async _handleBrowse(interaction: ChatInputCommandInteraction): Promise<void> {
+        const sessionId = this._createSessionToken();
         const subreddit = interaction.options.getString('subreddit', true).replace(/\s/g, '').trim();
         const sortBy = interaction.options.getString('sort') || 'top';
         const count = parseInt(interaction.options.getString('count') || '5');
@@ -139,8 +144,6 @@ class RedditCommand extends BaseCommand {
             .setTimestamp();
 
         await interaction.editReply({ embeds: [loadingEmbed] });
-
-        await new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 1500));
 
         const result = await redditService!.fetchSubredditPosts(subreddit, sortBy, count);
 
@@ -176,15 +179,16 @@ class RedditCommand extends BaseCommand {
             }
         }
 
-        redditCache!.setPosts(interaction.user.id, filteredPosts);
-        redditCache!.setPage(interaction.user.id, 0);
-        redditCache!.setSort(interaction.user.id, sortBy);
-        redditCache!.setNsfwChannel(interaction.user.id, isNsfwChannel);
+        redditCache!.setPosts(interaction.user.id, filteredPosts, sessionId);
+        redditCache!.setPage(interaction.user.id, 0, sessionId);
+        redditCache!.setSort(interaction.user.id, sortBy, sessionId);
+        redditCache!.setNsfwChannel(interaction.user.id, isNsfwChannel, sessionId);
 
-        await postHandler!.sendPostListEmbed(interaction, subreddit, filteredPosts, sortBy, 0, isNsfwChannel);
+        await postHandler!.sendPostListEmbed(interaction, subreddit, filteredPosts, sortBy, 0, isNsfwChannel, sessionId);
     }
 
     private async _handleTrending(interaction: ChatInputCommandInteraction): Promise<void> {
+        const sessionId = this._createSessionToken();
         const source = interaction.options.getString('source') || 'popular';
         const count = parseInt(interaction.options.getString('count') || '10');
         const channel = interaction.channel;
@@ -202,7 +206,6 @@ class RedditCommand extends BaseCommand {
             .setTimestamp();
 
         await interaction.editReply({ embeds: [loadingEmbed] });
-        await new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 1500));
 
         let result: FetchResult;
         if (source === 'all') {
@@ -237,13 +240,13 @@ class RedditCommand extends BaseCommand {
             }
         }
 
-        redditCache!.setPosts(interaction.user.id, filteredPosts);
-        redditCache!.setPage(interaction.user.id, 0);
-        redditCache!.setSort(interaction.user.id, 'hot');
-        redditCache!.setNsfwChannel(interaction.user.id, isNsfwChannel);
+        redditCache!.setPosts(interaction.user.id, filteredPosts, sessionId);
+        redditCache!.setPage(interaction.user.id, 0, sessionId);
+        redditCache!.setSort(interaction.user.id, 'hot', sessionId);
+        redditCache!.setNsfwChannel(interaction.user.id, isNsfwChannel, sessionId);
 
         const displayName = source === 'all' ? 'all (Trending)' : 'popular (Trending)';
-        await postHandler!.sendPostListEmbed(interaction, displayName, filteredPosts, 'hot', 0, isNsfwChannel);
+        await postHandler!.sendPostListEmbed(interaction, displayName, filteredPosts, 'hot', 0, isNsfwChannel, sessionId);
     }
 
     async handleButton(interaction: ButtonInteraction): Promise<void> {
@@ -252,13 +255,21 @@ class RedditCommand extends BaseCommand {
 
         const parts = customId.split('_');
         const buttonUserId = parts[parts.length - 1];
+        const sessionId = (() => {
+            if (parts[1] === 'show' || parts[1] === 'gprev' || parts[1] === 'gnext' || parts[1] === 'gpage' || parts[1] === 'gclose') {
+                return parts.length >= 5 ? parts[2] : 'latest';
+            }
+            return parts.length >= 4 ? parts[2] : 'latest';
+        })();
 
         if (userId !== buttonUserId) {
             await interaction.reply({ content: '❌ This button is not for you!', ephemeral: true });
             return;
         }
 
-        const posts = redditCache!.getPosts(userId);
+        await redditCache.ensureHydrated?.(userId, sessionId);
+
+        const posts = redditCache!.getPosts(userId, sessionId);
         if (!posts || posts.length === 0) {
             await interaction.reply({ content: '⚠️ Session expired. Please run the command again.', ephemeral: true });
             return;
@@ -268,7 +279,7 @@ class RedditCommand extends BaseCommand {
 
         try {
             if (customId.startsWith('reddit_prev_') || customId.startsWith('reddit_next_')) {
-                const currentPage = redditCache!.getPage(userId);
+                const currentPage = redditCache!.getPage(userId, sessionId);
                 const totalPages = Math.ceil(posts.length / 5);
                 
                 let newPage = currentPage;
@@ -278,27 +289,27 @@ class RedditCommand extends BaseCommand {
                     newPage = Math.min(totalPages - 1, currentPage + 1);
                 }
                 
-                redditCache!.setPage(userId, newPage);
-                const sortBy = redditCache!.getSort(userId);
-                const isNsfw = redditCache!.getNsfwChannel(userId);
+                redditCache!.setPage(userId, newPage, sessionId);
+                const sortBy = redditCache!.getSort(userId, sessionId);
+                const isNsfw = redditCache!.getNsfwChannel(userId, sessionId);
                 
                 const subreddit = interaction.message?.embeds?.[0]?.title?.match(/r\/(\S+)/)?.[1] || 'reddit';
-                await postHandler!.sendPostListEmbed(interaction, subreddit, posts, sortBy, newPage, isNsfw);
+                await postHandler!.sendPostListEmbed(interaction, subreddit, posts, sortBy, newPage, isNsfw, sessionId);
             }
 
             else if (customId.startsWith('reddit_show_')) {
-                const postIndex = parseInt(parts[2]);
+                const postIndex = parseInt(sessionId === 'latest' ? parts[2] : parts[3]);
                 const post = posts[postIndex];
                 if (post) {
-                    await postHandler!.showPostDetails(interaction, post, postIndex, userId);
+                    await postHandler!.showPostDetails(interaction, post, postIndex, userId, sessionId);
                 }
             }
 
             else if (customId.startsWith('reddit_gprev_') || customId.startsWith('reddit_gnext_')) {
-                const postIndex = parseInt(parts[2]);
+                const postIndex = parseInt(sessionId === 'latest' ? parts[2] : parts[3]);
                 const post = posts[postIndex];
                 if (post && post.gallery) {
-                    const currentGalleryPage = redditCache!.getGalleryPage(userId, postIndex);
+                    const currentGalleryPage = redditCache!.getGalleryPage(userId, postIndex, sessionId);
                     let newGalleryPage = currentGalleryPage;
                     
                     if (customId.startsWith('reddit_gprev_')) {
@@ -307,17 +318,17 @@ class RedditCommand extends BaseCommand {
                         newGalleryPage = Math.min(post.gallery.length - 1, currentGalleryPage + 1);
                     }
                     
-                    redditCache!.setGalleryPage(userId, postIndex, newGalleryPage);
-                    await postHandler!.showPostDetails(interaction, post, postIndex, userId);
+                    redditCache!.setGalleryPage(userId, postIndex, newGalleryPage, sessionId);
+                    await postHandler!.showPostDetails(interaction, post, postIndex, userId, sessionId);
                 }
             }
 
             else if (customId.startsWith('reddit_back_') || customId.startsWith('reddit_gclose_')) {
-                const currentPage = redditCache!.getPage(userId);
-                const sortBy = redditCache!.getSort(userId);
-                const isNsfw = redditCache!.getNsfwChannel(userId);
+                const currentPage = redditCache!.getPage(userId, sessionId);
+                const sortBy = redditCache!.getSort(userId, sessionId);
+                const isNsfw = redditCache!.getNsfwChannel(userId, sessionId);
                 const subreddit = interaction.message?.embeds?.[0]?.footer?.text?.match(/r\/(\S+)/)?.[1] || 'reddit';
-                await postHandler!.sendPostListEmbed(interaction, subreddit, posts, sortBy, currentPage, isNsfw);
+                await postHandler!.sendPostListEmbed(interaction, subreddit, posts, sortBy, currentPage, isNsfw, sessionId);
             }
         } catch (error) {
             logger.error('Reddit', `Button error: ${(error as Error).message}`);

@@ -6,7 +6,6 @@
  */
 
 import { EmbedBuilder, User } from 'discord.js';
-import musicCache from '../../cache/music/MusicCacheFacade.js';
 import { formatSecondsToTime as fmtDur } from '../../utils/music/index.js';
 import { type Track, SourcePlatform, NowPlayingOptions, QueueListOptions, InfoEmbedType, SourceInfo, COLORS, LOOP_DISPLAY, SOURCE_PLATFORM, DECORATIONS, NOW_PLAYING_EMOJI, PAUSED_EMOJI } from './trackTypes.js';
 
@@ -571,59 +570,6 @@ export function createHistoryEmbed(history: Track[], _userId: string, page: numb
     embed.setFooter({
         text: `Page ${page}/${totalPages} • Use /music history play <number> to replay`
     });
-
-    return embed;
-}
-
-/**
- * Create settings embed
- */
-export async function createSettingsEmbed(userId: string): Promise<EmbedBuilder> {
-    const prefs = await musicCache.getPreferences(userId);
-
-    const embed = new EmbedBuilder()
-        .setColor(COLORS.info as `#${string}`)
-        .setAuthor({ name: '⚙️ Music Settings' })
-        .setTitle('Personal Preferences')
-        .setDescription(
-            `${DECORATIONS.line}\n\n` +
-            `Customize your music experience below.\n` +
-            `Changes apply to you only.\n\n` +
-            `${DECORATIONS.line}`
-        )
-        .addFields(
-            {
-                name: '🔊 Default Volume',
-                value: `\`${prefs.defaultVolume}%\``,
-                inline: true
-            },
-            {
-                name: '⏱️ Max Track Duration',
-                value: prefs.maxTrackDuration >= 99999 ? '`Unlimited`' : `\`${Math.floor(prefs.maxTrackDuration / 60)} min\``,
-                inline: true
-            },
-            {
-                name: '📋 Max Queue Size',
-                value: `\`${prefs.maxQueueSize} tracks\``,
-                inline: true
-            },
-            {
-                name: '📢 Track Announcements',
-                value: prefs.announceTrack ? '✅ Enabled' : '❌ Disabled',
-                inline: true
-            },
-            {
-                name: '🗳️ Vote Skip Required',
-                value: prefs.voteSkipEnabled ? '✅ Enabled' : '❌ Disabled',
-                inline: true
-            },
-            {
-                name: '🖼️ Show Thumbnails',
-                value: prefs.showThumbnails ? '✅ Enabled' : '❌ Disabled',
-                inline: true
-            }
-        )
-        .setFooter({ text: 'Use the menus below to change settings' });
 
     return embed;
 }

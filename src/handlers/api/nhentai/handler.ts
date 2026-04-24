@@ -83,10 +83,19 @@ export class NHentaiHandler {
         options: { isRandom?: boolean; isPopular?: boolean; popularPeriod?: string; spoilerCover?: boolean } = {}
     ): Promise<{ embed: EmbedBuilder; files: AttachmentBuilder[] }> {
         const embed = this.createGalleryEmbed(gallery, options);
+
+        // The regular path can use the CDN thumbnail directly. Only spoiler covers
+        // need a backend download so Discord can treat the attachment as spoilered.
+        if (!options.spoilerCover) {
+            return { embed, files: [] };
+        }
+
+        embed.setThumbnail(null);
+
         const { media_id, images } = gallery;
         const coverType = images?.cover?.t || 'j';
         const ext = getExt(coverType);
-        const filename = options.spoilerCover ? `SPOILER_cover.${ext}` : `cover.${ext}`;
+        const filename = `SPOILER_cover.${ext}`;
 
         const coverUrls = this.cdn.getAllThumbnailUrls(media_id, coverType);
         const imageBuffer = await this.cdn.fetchImageWithRetry(coverUrls);
@@ -109,9 +118,10 @@ export class NHentaiHandler {
         galleryId: number,
         userId: string,
         numPages: number,
-        gallery: Gallery | null = null
+        gallery: Gallery | null = null,
+        sessionId: string = 'latest'
     ): Promise<ActionRowBuilder<ButtonBuilder>[]> {
-        return createMainButtons(galleryId, userId, numPages, gallery);
+        return createMainButtons(galleryId, userId, numPages, gallery, sessionId);
     }
 
     async getUserPreferences(userId: string): Promise<UserPreferences> {
@@ -166,26 +176,28 @@ export class NHentaiHandler {
             return [popularRow, randomRow, resetRow];
     }
 
-    async createFavouritesEmbed(userId: string, page: number = 1, perPage: number = 10): Promise<FavouritesData> {
-        return createFavouritesEmbed(userId, page, perPage);
+    async createFavouritesEmbed(userId: string, page: number = 1, perPage: number = 10, sessionId: string = 'latest'): Promise<FavouritesData> {
+        return createFavouritesEmbed(userId, page, perPage, sessionId);
     }
 
     createFavouritesButtons(
         userId: string,
         currentPage: number,
         totalPages: number,
-        favourites: NHentaiFavourite[]
+        favourites: NHentaiFavourite[],
+        sessionId: string = 'latest'
     ): ActionRowBuilder<ButtonBuilder>[] {
-        return createFavouritesButtons(userId, currentPage, totalPages, favourites);
+        return createFavouritesButtons(userId, currentPage, totalPages, favourites, sessionId);
     }
 
     createPageButtons(
         galleryId: number,
         userId: string,
         currentPage: number,
-        totalPages: number
+        totalPages: number,
+        sessionId: string = 'latest'
     ): ActionRowBuilder<ButtonBuilder>[] {
-        return createPageButtons(galleryId, userId, currentPage, totalPages);
+        return createPageButtons(galleryId, userId, currentPage, totalPages, sessionId);
     }
 
     createErrorEmbed(message: string): EmbedBuilder {
@@ -196,36 +208,36 @@ export class NHentaiHandler {
         return createCooldownEmbed(remaining);
     }
 
-    async setPageSession(userId: string, gallery: Gallery, currentPage: number = 1): Promise<void> {
-        return setPageSession(userId, gallery, currentPage, this.SESSION_TTL);
+    async setPageSession(userId: string, gallery: Gallery, currentPage: number = 1, sessionId: string = 'latest'): Promise<void> {
+        return setPageSession(userId, gallery, currentPage, this.SESSION_TTL, sessionId);
     }
 
-    async getPageSession(userId: string): Promise<PageSession | null> {
-        return getPageSession(userId);
+    async getPageSession(userId: string, sessionId: string = 'latest'): Promise<PageSession | null> {
+        return getPageSession(userId, sessionId);
     }
 
-    async updatePageSession(userId: string, currentPage: number): Promise<void> {
-        return updatePageSession(userId, currentPage, this.SESSION_TTL);
+    async updatePageSession(userId: string, currentPage: number, sessionId: string = 'latest'): Promise<void> {
+        return updatePageSession(userId, currentPage, this.SESSION_TTL, sessionId);
     }
 
-    async clearPageSession(userId: string): Promise<void> {
-        return clearPageSession(userId);
+    async clearPageSession(userId: string, sessionId: string = 'latest'): Promise<void> {
+        return clearPageSession(userId, sessionId);
     }
 
-    async setSearchSession(userId: string, data: Partial<SearchSession>): Promise<void> {
-        return setSearchSession(userId, data, this.SESSION_TTL);
+    async setSearchSession(userId: string, data: Partial<SearchSession>, sessionId: string = 'latest'): Promise<void> {
+        return setSearchSession(userId, data, this.SESSION_TTL, sessionId);
     }
 
-    async getSearchSession(userId: string): Promise<SearchSession | null> {
-        return getSearchSession(userId);
+    async getSearchSession(userId: string, sessionId: string = 'latest'): Promise<SearchSession | null> {
+        return getSearchSession(userId, sessionId);
     }
 
     createSearchResultsEmbed(query: string, data: SearchData, page: number, sort: string): EmbedBuilder {
         return createSearchResultsEmbed(query, data, page, sort);
     }
 
-    createSearchButtons(query: string, data: SearchData, page: number, userId: string): ActionRowBuilder<ButtonBuilder>[] {
-        return createSearchButtons(query, data, page, userId);
+    createSearchButtons(query: string, data: SearchData, page: number, userId: string, sessionId: string = 'latest'): ActionRowBuilder<ButtonBuilder>[] {
+        return createSearchButtons(query, data, page, userId, sessionId);
     }
 
     async handleButton(interaction: ButtonInteraction): Promise<void> {
@@ -250,20 +262,20 @@ export class NHentaiHandler {
         await handleNhentaiButtonInteraction(interaction, {
             sessionTtl: this.SESSION_TTL,
             createErrorEmbed: (message) => this.createErrorEmbed(message),
-            getPageSession: (userId) => this.getPageSession(userId),
-            setPageSession: (userId, gallery, currentPage) => this.setPageSession(userId, gallery, currentPage),
-            updatePageSession: (userId, currentPage) => this.updatePageSession(userId, currentPage),
+            getPageSession: (userId, sessionId) => this.getPageSession(userId, sessionId),
+            setPageSession: (userId, gallery, currentPage, sessionId) => this.setPageSession(userId, gallery, currentPage, sessionId),
+            updatePageSession: (userId, currentPage, sessionId) => this.updatePageSession(userId, currentPage, sessionId),
             createPageResponse: (gallery, pageNum) => this.createPageResponse(gallery, pageNum),
-            createPageButtons: (galleryId, userId, currentPage, totalPages) => this.createPageButtons(galleryId, userId, currentPage, totalPages),
+            createPageButtons: (galleryId, userId, currentPage, totalPages, sessionId) => this.createPageButtons(galleryId, userId, currentPage, totalPages, sessionId),
             createGalleryResponse: (gallery, options) => this.createGalleryResponse(gallery, options),
-            createMainButtons: (galleryId, userId, numPages, gallery) => this.createMainButtons(galleryId, userId, numPages, gallery),
+            createMainButtons: (galleryId, userId, numPages, gallery, sessionId) => this.createMainButtons(galleryId, userId, numPages, gallery, sessionId),
             getUserPreferences: (targetUserId) => this.getUserPreferences(targetUserId),
-            getSearchSession: (userId) => this.getSearchSession(userId),
-            setSearchSession: (userId, data) => this.setSearchSession(userId, data),
+            getSearchSession: (userId, sessionId) => this.getSearchSession(userId, sessionId),
+            setSearchSession: (userId, data, sessionId) => this.setSearchSession(userId, data, sessionId),
             createSearchResultsEmbed: (searchQuery, searchData, searchPage, sortBy) => this.createSearchResultsEmbed(searchQuery, searchData, searchPage, sortBy),
-            createSearchButtons: (searchQuery, searchData, searchPage, targetUserId) => this.createSearchButtons(searchQuery, searchData, searchPage, targetUserId),
-            createFavouritesEmbed: (targetUserId, favPage) => this.createFavouritesEmbed(targetUserId, favPage),
-            createFavouritesButtons: (targetUserId, currentPage, totalPages, favourites) => this.createFavouritesButtons(targetUserId, currentPage, totalPages, favourites)
+            createSearchButtons: (searchQuery, searchData, searchPage, targetUserId, sessionId) => this.createSearchButtons(searchQuery, searchData, searchPage, targetUserId, sessionId),
+            createFavouritesEmbed: (targetUserId, favPage, sessionId) => this.createFavouritesEmbed(targetUserId, favPage, 10, sessionId),
+            createFavouritesButtons: (targetUserId, currentPage, totalPages, favourites, sessionId) => this.createFavouritesButtons(targetUserId, currentPage, totalPages, favourites, sessionId)
         });
     }
 
@@ -302,7 +314,8 @@ export class NHentaiHandler {
     async handleModal(interaction: ModalSubmitInteraction): Promise<void> {
         await handleNhentaiModalInteraction(interaction, {
             createPageResponse: (gallery, pageNum) => this.createPageResponse(gallery, pageNum),
-            createPageButtons: (galleryId, userId, currentPage, totalPages) => this.createPageButtons(galleryId, userId, currentPage, totalPages)
+            createPageButtons: (galleryId, userId, currentPage, totalPages, sessionId) => this.createPageButtons(galleryId, userId, currentPage, totalPages, sessionId),
+            setPageSession: (userId, gallery, currentPage, sessionId) => this.setPageSession(userId, gallery, currentPage, sessionId)
         });
     }
 

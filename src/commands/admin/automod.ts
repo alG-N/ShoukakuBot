@@ -44,6 +44,10 @@ const moderationConfig: ModerationConfig = _moderationConfigModule as any;
 class AutoModCommand extends BaseCommand {
     private _pendingActionSelect: Map<string, string> = new Map();
 
+    private _getPendingActionKey(originalInteraction: ChatInputCommandInteraction): string {
+        return originalInteraction.id;
+    }
+
     constructor() {
         super({
             category: CommandCategory.ADMIN,
@@ -97,6 +101,7 @@ class AutoModCommand extends BaseCommand {
         });
 
         collector.on('end', async () => {
+            this._pendingActionSelect.delete(this._getPendingActionKey(originalInteraction));
             try {
                 await originalInteraction.editReply({ components: [] });
             } catch {}
@@ -216,11 +221,25 @@ class AutoModCommand extends BaseCommand {
         }
 
         if (customId === 'automod_action_select') {
-            return handleActionSelect(i as StringSelectMenuInteraction, originalInteraction, (i as StringSelectMenuInteraction).values[0], this._pendingActionSelect, moderationConfig);
+            return handleActionSelect(
+                i as StringSelectMenuInteraction,
+                originalInteraction,
+                (i as StringSelectMenuInteraction).values[0],
+                this._pendingActionSelect,
+                this._getPendingActionKey(originalInteraction),
+                moderationConfig
+            );
         }
 
         if (customId === 'automod_action_value') {
-            return handleActionValue(i as StringSelectMenuInteraction, originalInteraction, this._pendingActionSelect, AutoModServiceInstance, moderationConfig);
+            return handleActionValue(
+                i as StringSelectMenuInteraction,
+                originalInteraction,
+                this._pendingActionSelect,
+                this._getPendingActionKey(originalInteraction),
+                AutoModServiceInstance,
+                moderationConfig
+            );
         }
     }
 }

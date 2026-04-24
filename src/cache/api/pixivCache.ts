@@ -49,9 +49,51 @@ function unpersist(ns: string, key: string): void {
 class PixivCache {
     private searchMap: Map<string, any[]> = new Map();
     private resultMap: Map<string, PixivResultData> = new Map();
+    private pendingResultHydrations: Map<string, Promise<void>> = new Map();
+    private readonly HYDRATE_WAIT_MS = 250;
 
     constructor() {
         registerNamespaces();
+    }
+
+    private _withTimeout(promise: Promise<void>, timeoutMs: number): Promise<void> {
+        let timer: NodeJS.Timeout | null = null;
+        const timeoutPromise = new Promise<void>(resolve => {
+            timer = setTimeout(resolve, timeoutMs);
+        });
+
+        return Promise.race([promise, timeoutPromise]).finally(() => {
+            if (timer) clearTimeout(timer);
+        }) as Promise<void>;
+    }
+
+    async ensureSearchResultsHydrated(cacheKey: string): Promise<void> {
+        if (this.resultMap.has(cacheKey)) {
+            return;
+        }
+
+        const existing = this.pendingResultHydrations.get(cacheKey);
+        if (existing) {
+            await this._withTimeout(existing, this.HYDRATE_WAIT_MS);
+            return;
+        }
+
+        const hydration = cacheService.peek<PixivResultData>(NS.RESULTS, cacheKey).then(val => {
+            if (val && !this.resultMap.has(cacheKey)) {
+                if (this.resultMap.size >= MAX.RESULTS) this._evictFifo(this.resultMap);
+                this.resultMap.set(cacheKey, val);
+            }
+        }).catch(() => {});
+
+        this.pendingResultHydrations.set(cacheKey, hydration);
+
+        try {
+            await this._withTimeout(hydration, this.HYDRATE_WAIT_MS);
+        } finally {
+            if (this.pendingResultHydrations.get(cacheKey) === hydration) {
+                this.pendingResultHydrations.delete(cacheKey);
+            }
+        }
     }
 
     // ── Search autocomplete cache ────────────────────────────────────
@@ -122,6 +164,7 @@ class PixivCache {
     destroy(): void {
         this.searchMap.clear();
         this.resultMap.clear();
+        this.pendingResultHydrations.clear();
     }
 
     // ── Internal helpers ─────────────────────────────────────────────

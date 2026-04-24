@@ -25,6 +25,7 @@ export async function createPostEmbed(post: Rule34Post, options: PostEmbedOption
         totalResults = 1,
         searchPage = 1,
         userId = '',
+        sessionId = 'latest',
         hasMore = true,
         sessionType = 'search',
         maxPage = 200
@@ -96,7 +97,7 @@ export async function createPostEmbed(post: Rule34Post, options: PostEmbedOption
     embed.setFooter({ text: footerParts.join(' • ') });
     embed.setTimestamp(post.createdAt ? new Date(post.createdAt) : new Date());
 
-    const rows = createPostButtons(post, { resultIndex, totalResults, userId, searchPage, hasMore, sessionType, maxPage });
+    const rows = createPostButtons(post, { resultIndex, totalResults, userId, sessionId, searchPage, hasMore, sessionType, maxPage });
     return { embed, rows };
 }
 

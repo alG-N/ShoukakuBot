@@ -12,14 +12,19 @@ import type { SteamGame } from '../../../types/api/models/steam.js';
 import { COLLECTOR_TIMEOUT, ITEMS_PER_PAGE } from './constants.js';
 
 export async function enrichWithSteamSpyData(games: SteamGame[]): Promise<void> {
-    for (const game of games) {
-        const spyData = await steamService.getSteamSpyData(game.id);
-        if (spyData) {
-            game.owners = spyData.owners;
-            game.positive = spyData.positive;
-            game.negative = spyData.negative;
-        }
-        await new Promise(resolve => setTimeout(resolve, 300));
+    const batchSize = 5;
+
+    for (let index = 0; index < games.length; index += batchSize) {
+        const batch = games.slice(index, index + batchSize);
+
+        await Promise.allSettled(batch.map(async (game) => {
+            const spyData = await steamService.getSteamSpyData(game.id);
+            if (spyData) {
+                game.owners = spyData.owners;
+                game.positive = spyData.positive;
+                game.negative = spyData.negative;
+            }
+        }));
     }
 }
 

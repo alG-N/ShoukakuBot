@@ -20,6 +20,7 @@ export type PixivService = {
 export interface PixivCache {
     getSearchSuggestions?: (query: string) => Array<{ name: string; value: string }> | null;
     setSearchSuggestions?: (query: string, suggestions: Array<{ name: string; value: string }>) => void;
+    ensureSearchResultsHydrated?: (key: string) => Promise<void>;
     setSearchResults?: (key: string, data: CachedSearch) => void;
     getSearchResults?: (key: string) => CachedSearch | null;
     updateSearchResults?: (key: string, updates: Partial<CachedSearch>) => void;

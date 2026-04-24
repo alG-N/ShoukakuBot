@@ -15,7 +15,8 @@ export async function createMainButtons(
     galleryId: number,
     userId: string,
     numPages: number,
-    gallery: Gallery | null = null
+    gallery: Gallery | null = null,
+    sessionId: string = 'latest'
 ): Promise<ActionRowBuilder<ButtonBuilder>[]> {
     let isFavourited = false;
     try {
@@ -28,27 +29,27 @@ export async function createMainButtons(
 
     const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-            .setCustomId(`nhentai_read_${galleryId}_${userId}`)
+            .setCustomId(`nhentai_read_${galleryId}_${sessionId}_${userId}`)
             .setLabel(`Read (${numPages} pages)`)
             .setStyle(ButtonStyle.Success)
             .setEmoji('📖'),
         new ButtonBuilder()
-            .setCustomId(`nhentai_fav_${galleryId}_${userId}`)
+            .setCustomId(`nhentai_fav_${galleryId}_${sessionId}_${userId}`)
             .setLabel(isFavourited ? 'Unfavourite' : 'Favourite')
             .setStyle(isFavourited ? ButtonStyle.Danger : ButtonStyle.Secondary)
             .setEmoji(isFavourited ? '💔' : '❤️'),
         new ButtonBuilder()
-            .setCustomId(`nhentai_random_${userId}`)
+            .setCustomId(`nhentai_random_${sessionId}_${userId}`)
             .setLabel('Random')
             .setStyle(ButtonStyle.Secondary)
             .setEmoji('🎲'),
         new ButtonBuilder()
-            .setCustomId(`nhentai_popular_${userId}`)
+            .setCustomId(`nhentai_popular_${sessionId}_${userId}`)
             .setLabel('Popular')
             .setStyle(ButtonStyle.Primary)
             .setEmoji('🔥'),
         new ButtonBuilder()
-            .setCustomId(`nhentai_translate_${galleryId}_${userId}`)
+            .setCustomId(`nhentai_translate_${galleryId}_${sessionId}_${userId}`)
             .setLabel('Translation')
             .setStyle(ButtonStyle.Secondary)
             .setEmoji('🌐')
@@ -62,7 +63,8 @@ export function createFavouritesButtons(
     userId: string,
     currentPage: number,
     totalPages: number,
-    favourites: NHentaiFavourite[]
+    favourites: NHentaiFavourite[],
+    sessionId: string = 'latest'
 ): ActionRowBuilder<ButtonBuilder>[] {
     const rows: ActionRowBuilder<ButtonBuilder>[] = [];
 
@@ -72,7 +74,7 @@ export function createFavouritesButtons(
         firstFive.forEach((fav, index) => {
             row1.addComponents(
                 new ButtonBuilder()
-                    .setCustomId(`nhentai_view_${fav.gallery_id}_${userId}`)
+                    .setCustomId(`nhentai_view_${fav.gallery_id}_${sessionId}_${userId}`)
                     .setLabel(`${index + 1}`)
                     .setStyle(ButtonStyle.Secondary)
             );
@@ -82,24 +84,24 @@ export function createFavouritesButtons(
 
     const navRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-            .setCustomId(`nhentai_favpage_prev_${userId}`)
+            .setCustomId(`nhentai_favpage_prev_${sessionId}_${userId}`)
             .setLabel('Prev')
             .setStyle(ButtonStyle.Primary)
             .setEmoji('◀️')
             .setDisabled(currentPage <= 1),
         new ButtonBuilder()
-            .setCustomId(`nhentai_favpage_num_${userId}`)
+            .setCustomId(`nhentai_favpage_num_${sessionId}_${userId}`)
             .setLabel(`${currentPage}/${totalPages}`)
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(true),
         new ButtonBuilder()
-            .setCustomId(`nhentai_favpage_next_${userId}`)
+            .setCustomId(`nhentai_favpage_next_${sessionId}_${userId}`)
             .setLabel('Next')
             .setStyle(ButtonStyle.Primary)
             .setEmoji('▶️')
             .setDisabled(currentPage >= totalPages),
         new ButtonBuilder()
-            .setCustomId(`nhentai_random_${userId}`)
+            .setCustomId(`nhentai_random_${sessionId}_${userId}`)
             .setLabel('Random')
             .setStyle(ButtonStyle.Secondary)
             .setEmoji('🎲')
@@ -113,34 +115,35 @@ export function createPageButtons(
     galleryId: number,
     userId: string,
     currentPage: number,
-    totalPages: number
+    totalPages: number,
+    sessionId: string = 'latest'
 ): ActionRowBuilder<ButtonBuilder>[] {
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-            .setCustomId(`nhentai_first_${galleryId}_${currentPage}_${userId}`)
+            .setCustomId(`nhentai_first_${galleryId}_${currentPage}_${sessionId}_${userId}`)
             .setLabel('First')
             .setStyle(ButtonStyle.Secondary)
             .setEmoji('⏮️')
             .setDisabled(currentPage <= 1),
         new ButtonBuilder()
-            .setCustomId(`nhentai_prev_${galleryId}_${currentPage}_${userId}`)
+            .setCustomId(`nhentai_prev_${galleryId}_${currentPage}_${sessionId}_${userId}`)
             .setLabel('Prev')
             .setStyle(ButtonStyle.Primary)
             .setEmoji('◀️')
             .setDisabled(currentPage <= 1),
         new ButtonBuilder()
-            .setCustomId(`nhentai_page_${galleryId}_${currentPage}_${userId}`)
+            .setCustomId(`nhentai_page_${galleryId}_${currentPage}_${sessionId}_${userId}`)
             .setLabel(`${currentPage}/${totalPages}`)
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(true),
         new ButtonBuilder()
-            .setCustomId(`nhentai_next_${galleryId}_${currentPage}_${userId}`)
+            .setCustomId(`nhentai_next_${galleryId}_${currentPage}_${sessionId}_${userId}`)
             .setLabel('Next')
             .setStyle(ButtonStyle.Primary)
             .setEmoji('▶️')
             .setDisabled(currentPage >= totalPages),
         new ButtonBuilder()
-            .setCustomId(`nhentai_last_${galleryId}_${currentPage}_${userId}`)
+            .setCustomId(`nhentai_last_${galleryId}_${currentPage}_${sessionId}_${userId}`)
             .setLabel('Last')
             .setStyle(ButtonStyle.Secondary)
             .setEmoji('⏭️')
@@ -149,12 +152,12 @@ export function createPageButtons(
 
     const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-            .setCustomId(`nhentai_jump_${galleryId}_${userId}`)
+            .setCustomId(`nhentai_jump_${galleryId}_${sessionId}_${userId}`)
             .setLabel('Jump to Page')
             .setStyle(ButtonStyle.Secondary)
             .setEmoji('🔢'),
         new ButtonBuilder()
-            .setCustomId(`nhentai_info_${galleryId}_${userId}`)
+            .setCustomId(`nhentai_info_${galleryId}_${sessionId}_${userId}`)
             .setLabel('Gallery Info')
             .setStyle(ButtonStyle.Secondary)
             .setEmoji('ℹ️'),
@@ -168,7 +171,7 @@ export function createPageButtons(
     return [row, row2];
 }
 
-export function createSearchButtons(_query: string, data: SearchData, page: number, userId: string): ActionRowBuilder<ButtonBuilder>[] {
+export function createSearchButtons(_query: string, data: SearchData, page: number, userId: string, sessionId: string = 'latest'): ActionRowBuilder<ButtonBuilder>[] {
     const { results, numPages, totalResults } = data;
 
     const row1 = new ActionRowBuilder<ButtonBuilder>();
@@ -176,7 +179,7 @@ export function createSearchButtons(_query: string, data: SearchData, page: numb
     firstFive.forEach((gallery, index) => {
         row1.addComponents(
             new ButtonBuilder()
-                .setCustomId(`nhentai_view_${gallery.id}_${userId}`)
+                .setCustomId(`nhentai_view_${gallery.id}_${sessionId}_${userId}`)
                 .setLabel(`${index + 1}`)
                 .setStyle(ButtonStyle.Secondary)
         );
@@ -188,7 +191,7 @@ export function createSearchButtons(_query: string, data: SearchData, page: numb
         secondFive.forEach((gallery, index) => {
             row2.addComponents(
                 new ButtonBuilder()
-                    .setCustomId(`nhentai_view_${gallery.id}_${userId}`)
+                    .setCustomId(`nhentai_view_${gallery.id}_${sessionId}_${userId}`)
                     .setLabel(`${index + 6}`)
                     .setStyle(ButtonStyle.Secondary)
             );
@@ -197,24 +200,24 @@ export function createSearchButtons(_query: string, data: SearchData, page: numb
 
     const row3 = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-            .setCustomId(`nhentai_sprev_${userId}`)
+            .setCustomId(`nhentai_sprev_${sessionId}_${userId}`)
             .setLabel('Prev Page')
             .setStyle(ButtonStyle.Primary)
             .setEmoji('◀️')
             .setDisabled(page <= 1),
         new ButtonBuilder()
-            .setCustomId(`nhentai_spage_${userId}`)
+            .setCustomId(`nhentai_spage_${sessionId}_${userId}`)
             .setLabel(`${page}/${numPages}`)
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(true),
         new ButtonBuilder()
-            .setCustomId(`nhentai_snext_${userId}`)
+            .setCustomId(`nhentai_snext_${sessionId}_${userId}`)
             .setLabel('Next Page')
             .setStyle(ButtonStyle.Primary)
             .setEmoji('▶️')
             .setDisabled(page >= numPages),
         new ButtonBuilder()
-            .setCustomId(`nhentai_scount_${userId}`)
+            .setCustomId(`nhentai_scount_${sessionId}_${userId}`)
             .setLabel(`${totalResults}+ results`)
             .setStyle(ButtonStyle.Secondary)
             .setEmoji('📊')

@@ -88,6 +88,55 @@ class NHentaiRepository {
     }
 
     /**
+     * Get one page of favourites plus the total favourite count in a single round-trip.
+     */
+    async getUserFavouritesPage(
+        userId: string,
+        limit: number = 25,
+        offset: number = 0
+    ): Promise<{ favourites: NHentaiFavourite[]; totalCount: number }> {
+        await this._initialize();
+        try {
+            const rows = await postgres.getMany(
+                `WITH total AS (
+                    SELECT COUNT(*)::int AS total_count
+                    FROM nhentai_favourites
+                    WHERE user_id = $1
+                 ),
+                 paged AS (
+                    SELECT gallery_id, gallery_title, num_pages, tags, created_at
+                    FROM nhentai_favourites
+                    WHERE user_id = $1
+                    ORDER BY created_at DESC
+                    LIMIT $2 OFFSET $3
+                 )
+                 SELECT
+                    paged.gallery_id,
+                    paged.gallery_title,
+                    paged.num_pages,
+                    paged.tags,
+                    paged.created_at,
+                    total.total_count
+                 FROM total
+                 LEFT JOIN paged ON true`,
+                [userId, limit, offset]
+            ) as unknown as Array<NHentaiFavourite & { total_count?: number | string | null; gallery_id?: number | null }>;
+
+            if (!rows || rows.length === 0) {
+                return { favourites: [], totalCount: 0 };
+            }
+
+            const totalCount = parseInt(String(rows[0]?.total_count ?? '0'));
+            const favourites = rows.filter((row) => row.gallery_id !== null && row.gallery_id !== undefined);
+
+            return { favourites, totalCount };
+        } catch (error: any) {
+            logger.error('NHentaiRepository', `Error getting favourites page: ${error.message}`);
+            return { favourites: [], totalCount: 0 };
+        }
+    }
+
+    /**
      * Get total count of user favourites
      */
     async getFavouritesCount(userId: string): Promise<number> {
@@ -262,6 +311,33 @@ class NHentaiRepository {
         } catch (error: any) {
             logger.error('NHentaiRepository', `Error searching favourites: ${error.message}`);
             return [];
+        }
+    }
+
+    /**
+     * Pick one random favourite uniformly across the user's whole favourites list.
+     */
+    async getRandomFavourite(userId: string): Promise<NHentaiFavourite | null> {
+        await this._initialize();
+        try {
+            const row = await postgres.getOne(
+                `SELECT gallery_id, gallery_title, num_pages, tags, created_at
+                 FROM nhentai_favourites
+                 WHERE user_id = $1
+                 ORDER BY created_at DESC
+                 OFFSET (
+                    SELECT FLOOR(RANDOM() * COUNT(*))::int
+                    FROM nhentai_favourites
+                    WHERE user_id = $1
+                 )
+                 LIMIT 1`,
+                [userId]
+            ) as NHentaiFavourite | null;
+
+            return row;
+        } catch (error: any) {
+            logger.error('NHentaiRepository', `Error getting random favourite: ${error.message}`);
+            return null;
         }
     }
 

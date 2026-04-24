@@ -16,6 +16,7 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from './BaseCommand.js';
 import { COLORS } from '../constants.js';
+import cacheService from '../cache/CacheService.js';
 import { checkAccess, AccessType } from '../services/index.js';
 import _anilistService from '../services/api/anilistService.js';
 import _myAnimeListService from '../services/api/myAnimeListService.js';
@@ -46,6 +47,55 @@ const autocompleteCache = new Map<string, AutocompleteCache>();
 const searchResultCache = new Map<string, CachedAnime>();
 const AUTOCOMPLETE_CACHE_DURATION = 60000;
 const SEARCH_CACHE_DURATION = 600000;
+const ANIME_SEARCH_CACHE_NS = 'api:anime';
+const SEARCH_CACHE_TTL_SECONDS = Math.floor(SEARCH_CACHE_DURATION / 1000);
+
+function resolveAnimeCacheId(anime: Partial<Anime> | null | undefined): string | null {
+    const animeId = anime?.id ?? anime?.idMal;
+    if (animeId === null || animeId === undefined) {
+        return null;
+    }
+    return String(animeId);
+}
+
+function buildSearchResultCacheKey(userId: string, source: AnimeContentSource, animeId: string): string {
+    return `anime:search:${userId}:${source}:${animeId}`;
+}
+
+async function setCachedSearchResult(userId: string, cached: CachedAnime): Promise<void> {
+    const animeId = resolveAnimeCacheId(cached.anime);
+    if (!animeId) {
+        return;
+    }
+
+    const cacheKey = buildSearchResultCacheKey(userId, cached.source, animeId);
+    searchResultCache.set(cacheKey, cached);
+    await cacheService.set<CachedAnime>(
+        ANIME_SEARCH_CACHE_NS,
+        cacheKey,
+        cached,
+        SEARCH_CACHE_TTL_SECONDS
+    );
+}
+
+async function getCachedSearchResult(userId: string, source: AnimeContentSource, animeId: string): Promise<CachedAnime | null> {
+    const cacheKey = buildSearchResultCacheKey(userId, source, animeId);
+    const local = searchResultCache.get(cacheKey);
+    if (local) {
+        if (Date.now() - local.timestamp < SEARCH_CACHE_DURATION) {
+            return local;
+        }
+        searchResultCache.delete(cacheKey);
+    }
+
+    const cached = await cacheService.peek<CachedAnime>(ANIME_SEARCH_CACHE_NS, cacheKey);
+    if (cached) {
+        searchResultCache.set(cacheKey, cached);
+        return cached;
+    }
+
+    return null;
+}
 
 // Cleanup
 const cacheCleanupTimer = setInterval(() => {
@@ -159,7 +209,7 @@ class AnimeCommand extends BaseCommand {
             const embed = await animeHandler!.createMediaEmbed(result, 'anilist', 'anime');
             const row = await this._createActionRow(result, 'anilist', 'anime', interaction.user.id);
 
-            searchResultCache.set(interaction.user.id, {
+            await setCachedSearchResult(interaction.user.id, {
                 anime: result,
                 source: 'anilist',
                 mediaType: 'anime',
@@ -188,7 +238,7 @@ class AnimeCommand extends BaseCommand {
             const embed = await animeHandler!.createMediaEmbed(result, 'mal', mediaType);
             const row = await this._createActionRow(result, 'mal', mediaType, interaction.user.id);
 
-            searchResultCache.set(interaction.user.id, {
+            await setCachedSearchResult(interaction.user.id, {
                 anime: result,
                 source: 'mal',
                 mediaType,
@@ -229,7 +279,10 @@ class AnimeCommand extends BaseCommand {
 
     private async _createActionRow(anime: Anime, source: AnimeContentSource, mediaType: MALMediaType, userId: string): Promise<ActionRowBuilder<ButtonBuilder>> {
         const typeInfo = MAL_TYPES[mediaType] || MAL_TYPES.anime;
-        const animeId = anime.id || anime.idMal;
+        const animeId = resolveAnimeCacheId(anime);
+        if (!animeId) {
+            throw new Error('Anime result is missing an ID');
+        }
         
         let buttonLabel: string;
         let buttonEmoji: string;
@@ -257,7 +310,7 @@ class AnimeCommand extends BaseCommand {
                 .setEmoji(buttonEmoji)
                 .setURL(url),
             new ButtonBuilder()
-                .setCustomId(`anime_fav_${animeId}`)
+                .setCustomId(`anime_fav_${source}_${animeId}`)
                 .setLabel(isFavourited ? 'Remove from Favourites' : 'Add to Favourites')
                 .setStyle(isFavourited ? ButtonStyle.Secondary : ButtonStyle.Primary)
                 .setEmoji(isFavourited ? '💔' : '⭐')
@@ -362,10 +415,31 @@ class AnimeCommand extends BaseCommand {
             await interaction.followUp({ content, ephemeral: true });
         };
 
+        const inferSourceFromMessage = (): AnimeContentSource | null => {
+            for (const row of interaction.message.components) {
+                const components = (row as unknown as { components?: Array<{ url?: string }> }).components || [];
+                for (const component of components) {
+                    if (typeof component.url === 'string') {
+                        if (component.url.includes('myanimelist.net')) return 'mal';
+                        if (component.url.includes('anilist.co')) return 'anilist';
+                    }
+                }
+            }
+            return null;
+        };
+
         const parts = interaction.customId.split('_');
         const action = parts[1]; // 'fav'
-        const animeId = parts[2];
+        const sourceFromId = parts[2] === 'anilist' || parts[2] === 'mal'
+            ? parts[2] as AnimeContentSource
+            : null;
+        const animeId = sourceFromId ? parts[3] : parts[2];
         const userId = interaction.user.id;
+
+        if (!animeId) {
+            await interaction.reply({ content: '❌ Invalid anime action.', ephemeral: true }).catch(() => {});
+            return;
+        }
 
         if (action === 'fav') {
             try {
@@ -373,9 +447,19 @@ class AnimeCommand extends BaseCommand {
                     await interaction.deferUpdate();
                 }
 
-                const cached = searchResultCache.get(userId);
+                let source: AnimeContentSource = sourceFromId || inferSourceFromMessage() || 'anilist';
+                let cached = await getCachedSearchResult(userId, source, animeId);
+
+                if (!cached && !sourceFromId) {
+                    const fallbackSource = source === 'anilist' ? 'mal' : 'anilist';
+                    const fallbackCached = await getCachedSearchResult(userId, fallbackSource, animeId);
+                    if (fallbackCached) {
+                        cached = fallbackCached;
+                        source = fallbackSource;
+                    }
+                }
+
                 let animeTitle = 'Unknown';
-                let source: AnimeContentSource = 'anilist';
                 
                 if (cached && cached.anime) {
                     const anime = cached.anime;
@@ -392,7 +476,7 @@ class AnimeCommand extends BaseCommand {
                     await animeRepository!.removeFavourite(userId, animeId);
                     
                     const row = await this._createActionRow(
-                        cached?.anime || { id: parseInt(animeId) }, 
+                        cached?.anime || { id: parseInt(animeId, 10) }, 
                         source, 
                         cached?.mediaType || 'anime', 
                         userId
@@ -404,7 +488,7 @@ class AnimeCommand extends BaseCommand {
                     await animeRepository!.addFavourite(userId, animeId, animeTitle, source);
                     
                     const row = await this._createActionRow(
-                        cached?.anime || { id: parseInt(animeId) }, 
+                        cached?.anime || { id: parseInt(animeId, 10) }, 
                         source, 
                         cached?.mediaType || 'anime', 
                         userId

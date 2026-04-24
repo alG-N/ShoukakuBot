@@ -26,22 +26,23 @@ export type RedditService = {
 };
 
 export interface RedditCache {
-    setPosts: (userId: string, posts: RedditPost[]) => void;
-    getPosts: (userId: string) => RedditPost[] | null;
-    setPage: (userId: string, page: number) => void;
-    getPage: (userId: string) => number;
-    setSort: (userId: string, sort: string) => void;
-    getSort: (userId: string) => string;
-    setNsfwChannel: (userId: string, isNsfw: boolean) => void;
-    getNsfwChannel: (userId: string) => boolean;
-    getGalleryPage: (userId: string, postIndex: number) => number;
-    setGalleryPage: (userId: string, postIndex: number, page: number) => void;
+    ensureHydrated?: (userId: string, sessionId?: string) => Promise<void>;
+    setPosts: (userId: string, posts: RedditPost[], sessionId?: string) => void;
+    getPosts: (userId: string, sessionId?: string) => RedditPost[] | null;
+    setPage: (userId: string, page: number, sessionId?: string) => void;
+    getPage: (userId: string, sessionId?: string) => number;
+    setSort: (userId: string, sort: string, sessionId?: string) => void;
+    getSort: (userId: string, sessionId?: string) => string;
+    setNsfwChannel: (userId: string, isNsfw: boolean, sessionId?: string) => void;
+    getNsfwChannel: (userId: string, sessionId?: string) => boolean;
+    getGalleryPage: (userId: string, postIndex: number, sessionId?: string) => number;
+    setGalleryPage: (userId: string, postIndex: number, page: number, sessionId?: string) => void;
 }
 
 export interface RedditPostHandler {
     createNotFoundEmbed: (subreddit: string, suggestions: SubredditSuggestion[]) => EmbedBuilder;
-    sendPostListEmbed: (interaction: ChatInputCommandInteraction | ButtonInteraction, subreddit: string, posts: RedditPost[], sortBy: string, page: number, isNsfw: boolean) => Promise<void>;
-    showPostDetails: (interaction: ButtonInteraction, post: RedditPost, postIndex: number, userId: string) => Promise<void>;
+    sendPostListEmbed: (interaction: ChatInputCommandInteraction | ButtonInteraction, subreddit: string, posts: RedditPost[], sortBy: string, page: number, isNsfw: boolean, sessionId?: string) => Promise<void>;
+    showPostDetails: (interaction: ButtonInteraction, post: RedditPost, postIndex: number, userId: string, sessionId?: string) => Promise<void>;
 }
 
 export type { AutocompleteInteraction };

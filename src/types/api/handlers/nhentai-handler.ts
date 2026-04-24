@@ -1,4 +1,4 @@
-import type { EmbedBuilder } from 'discord.js';
+import type { ActionRowBuilder, ButtonBuilder, EmbedBuilder } from 'discord.js';
 import type { NHentaiGallery } from '../../../repositories/api/nhentaiRepository.js';
 import type { NHentaiTitle, NHentaiTag, NHentaiImages } from '../models/nhentai.js';
 import type {
@@ -20,6 +20,7 @@ export interface FavouritesData {
     embed: EmbedBuilder;
     totalPages: number;
     totalCount: number;
+    buttons: ActionRowBuilder<ButtonBuilder>[];
 }
 
 export type Favourite = NHentaiFavouriteEntry;

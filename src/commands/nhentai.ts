@@ -155,7 +155,12 @@ class NHentaiCommand extends BaseCommand {
         }
     }
 
+    private _createSessionToken(): string {
+        return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    }
+
     private async _handleCode(interaction: ChatInputCommandInteraction): Promise<void> {
+        const sessionId = this._createSessionToken();
         const code = interaction.options.getInteger('code', true);
         const result = await nhentaiService!.fetchGallery(code);
 
@@ -172,13 +177,15 @@ class NHentaiCommand extends BaseCommand {
             result.data.id, 
             interaction.user.id, 
             result.data.num_pages,
-            result.data
+            result.data,
+            sessionId
         );
         
         await this.safeReply(interaction, { embeds: [embed], components: buttons, files });
     }
 
     private async _handleRandom(interaction: ChatInputCommandInteraction): Promise<void> {
+        const sessionId = this._createSessionToken();
         const result = await nhentaiService!.fetchRandomGallery();
 
         if (!result?.success || !result.data) {
@@ -194,13 +201,15 @@ class NHentaiCommand extends BaseCommand {
             result.data.id, 
             interaction.user.id, 
             result.data.num_pages,
-            result.data
+            result.data,
+            sessionId
         );
         
         await this.safeReply(interaction, { embeds: [embed], components: buttons, files });
     }
 
     private async _handlePopular(interaction: ChatInputCommandInteraction): Promise<void> {
+        const sessionId = this._createSessionToken();
         const period = interaction.options.getString('period') || 'all';
         const result = await nhentaiService!.fetchPopularGallery(period as 'today' | 'week' | 'month' | 'all');
 
@@ -218,13 +227,15 @@ class NHentaiCommand extends BaseCommand {
             result.data.id, 
             interaction.user.id, 
             result.data.num_pages,
-            result.data
+            result.data,
+            sessionId
         );
         
         await this.safeReply(interaction, { embeds: [embed], components: buttons, files });
     }
 
     private async _handleSearch(interaction: ChatInputCommandInteraction): Promise<void> {
+        const sessionId = this._createSessionToken();
         const query = interaction.options.getString('query', true);
         const sortRaw = interaction.options.getString('sort') || 'date';
 
@@ -250,7 +261,10 @@ class NHentaiCommand extends BaseCommand {
             results: searchData.results,
             currentPage: 1,
             numPages: searchData.numPages,
-        });
+            pageCache: {
+                '1': searchData
+            }
+        }, sessionId);
 
         // Show search results with navigation
         const embed = nhentaiHandler!.createSearchResultsEmbed?.(
@@ -258,19 +272,25 @@ class NHentaiCommand extends BaseCommand {
         ) || nhentaiHandler!.createGalleryEmbed(searchData.results[0]);
 
         const buttons = nhentaiHandler!.createSearchButtons?.(
-            query, searchData, 1, interaction.user.id
+            query, searchData, 1, interaction.user.id, sessionId
         ) || await nhentaiHandler!.createMainButtons(
             searchData.results[0].id,
             interaction.user.id,
             searchData.results[0].num_pages,
-            searchData.results[0]
+            searchData.results[0],
+            sessionId
         );
 
         await this.safeReply(interaction, { embeds: [embed], components: buttons });
+
+        if (searchData.numPages > 1) {
+            void nhentaiService!.searchGalleries(query, 2, sort).catch(() => {});
+        }
     }
 
     private async _handleFavourites(interaction: ChatInputCommandInteraction): Promise<void> {
-        const result = await nhentaiHandler!.createFavouritesEmbed(interaction.user.id);
+        const sessionId = this._createSessionToken();
+        const result = await nhentaiHandler!.createFavouritesEmbed(interaction.user.id, 1, 10, sessionId);
 
         if (!result?.embed) {
             await this.safeReply(interaction, { 

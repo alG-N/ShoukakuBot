@@ -180,6 +180,14 @@ class MusicCacheFacade {
         voteCache.setSkipVoteTimeout(guildId, timeout);
     }
 
+    setSkipVoteMessage(guildId: string, message: { id: string; channelId: string } | MessageRef): void {
+        voteCache.setSkipVoteMessage(guildId, message);
+    }
+
+    getSkipVoteMessage(guildId: string): MessageRef | null {
+        return voteCache.getSkipVoteSession(guildId)?.message ?? null;
+    }
+
     getSkipVoteListenerCount(guildId: string): number | null {
         const session = voteCache.getSkipVoteSession(guildId);
         return session?.listenerCount ?? null;

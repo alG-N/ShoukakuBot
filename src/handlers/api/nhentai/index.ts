@@ -1,1 +1,1 @@
-export { default, NHentaiHandler } from './NHentaiHandler.js';
+export { default, NHentaiHandler } from './handler.js';
