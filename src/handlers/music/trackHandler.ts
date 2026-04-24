@@ -41,9 +41,6 @@ class TrackHandler {
     createQueuedEmbed(track: Track, position: number, requester?: User) {
         return embeds.createQueuedEmbed(track, position, requester);
     }
-    createPriorityQueuedEmbed(track: Track, requester?: User) {
-        return embeds.createPriorityQueuedEmbed(track, requester);
-    }
     createPlaylistEmbed(playlistName: string, trackCount: number, requester?: User, firstTrack?: Track) {
         return embeds.createPlaylistEmbed(playlistName, trackCount, requester, firstTrack);
     }

@@ -324,8 +324,8 @@ describe('GracefulDegradation', () => {
         });
 
         it('should process queue on service recovery', async () => {
-            const handler = jest.fn();
-            gd.on('processQueuedWrite', handler);
+            const handler = jest.fn().mockResolvedValue(undefined);
+            gd.registerWriteReplay('db', handler);
 
             gd.markUnavailable('db');
             await gd.queueWrite('db', 'INSERT', { id: 1 });
@@ -338,6 +338,42 @@ describe('GracefulDegradation', () => {
             await new Promise(r => setTimeout(r, 10));
 
             expect(handler).toHaveBeenCalledTimes(2);
+            expect(gd.getQueueSize()).toBe(0);
+        });
+
+        it('should preserve queued writes when no replay handler is registered', async () => {
+            gd.markUnavailable('db');
+            await gd.queueWrite('db', 'INSERT', { id: 1 });
+
+            gd.markHealthy('db');
+            await new Promise(r => setTimeout(r, 10));
+
+            expect(gd.getQueueSize()).toBe(1);
+        });
+
+        it('should replay recovered writes immediately for healthy services with a handler', async () => {
+            const redis = {
+                lrange: jest.fn().mockResolvedValue([
+                    JSON.stringify({
+                        serviceName: 'db',
+                        operation: 'INSERT',
+                        data: { id: 99 },
+                        options: {},
+                        timestamp: Date.now(),
+                        retries: 0,
+                    })
+                ])
+            };
+            const handler = jest.fn().mockResolvedValue(undefined);
+
+            gd.registerService('db');
+            gd.registerWriteReplay('db', handler);
+            gd.markHealthy('db');
+
+            const recovered = await gd.recoverWriteQueue(redis as never);
+
+            expect(recovered).toBe(1);
+            expect(handler).toHaveBeenCalledTimes(1);
             expect(gd.getQueueSize()).toBe(0);
         });
 

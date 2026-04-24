@@ -106,44 +106,31 @@ export function createNowPlayingEmbed(track: Track, options: NowPlayingOptions =
         .setURL(track.url);
 
     // Search type text
-    const searchTypeText = track.searchedByLink
-        ? '[Link]'
-        : track.originalQuery
-            ? `[🔍 ${truncate(track.originalQuery, 20)}]`
-            : '[Search]';
-
-    // Row 1: Artist, Duration, Source
-    embed.addFields(
-        { name: '🎤 Artist', value: track.author || 'Unknown Artist', inline: true },
-        { name: '⏱️ Duration', value: fmtDur(track.lengthSeconds), inline: true },
-        { name: `${sourceInfo.emoji} Source`, value: `${sourceInfo.name} ${searchTypeText}`, inline: true }
-    );
-
-    // Row 2: Volume, Playback, Shuffle
-    const volBar = createVolumeBar(volume);
-    embed.addFields(
-        { name: '🔊 Volume', value: `${volBar} ${volume}%`, inline: true },
-        { name: '🔁 Playback', value: `${loopInfo.emoji} ${loopInfo.label}`, inline: true },
-        { name: '🔀 Shuffle', value: isShuffled ? '✅ On' : '➡️ Off', inline: true }
-    );
-
-    // Row 3: Looped count, Vote-skip, Queue size
-    let loopedText = '—';
-    if (loopMode === 'track') {
-        loopedText = loopCount > 0 ? `🔂 ${loopCount}x` : '🔂 Active';
-    } else if (loopMode === 'queue') {
-        loopedText = '🔁 Queue';
-    }
-
-    const voteSkipText = voteSkipRequired <= 1
-        ? '✅ Skippable'
-        : `${voteSkipCount} / ${voteSkipRequired}`;
+    const searchTypeText = track.searchedByLink ? ' [Link]' : '';
+    const loopedText = loopMode === 'off'
+        ? '—'
+        : loopMode === 'track' && loopCount > 0
+            ? `${loopCount}x`
+            : loopInfo.label;
+    const voteSkipText = voteSkipRequired > 1
+        ? `${voteSkipCount}/${voteSkipRequired}`
+        : '✅ Skippable';
+    const sourceText = `${sourceInfo.emoji} ${sourceInfo.name}${searchTypeText}`;
+    const volumeText = `${createVolumeBar(volume)} ${volume}%`;
+    const playbackText = `${loopInfo.emoji} ${loopInfo.label}`;
+    const shuffleText = isShuffled ? 'On' : 'Off';
 
     const queueSizeText = queueLength > 0
         ? `${queueLength} song${queueLength !== 1 ? 's' : ''}`
         : 'Empty';
 
     embed.addFields(
+        { name: '🎶 Artist', value: track.author || 'Unknown Artist', inline: true },
+        { name: '⏱️ Duration', value: fmtDur(track.lengthSeconds), inline: true },
+        { name: '☁️ Source', value: sourceText, inline: true },
+        { name: '🔊 Volume', value: volumeText, inline: true },
+        { name: '🔁 Playback', value: playbackText, inline: true },
+        { name: '🔀 Shuffle', value: shuffleText, inline: true },
         { name: '🔂 Looped', value: loopedText, inline: true },
         { name: '🗳️ Vote-skip', value: voteSkipText, inline: true },
         { name: '📋 Queue', value: queueSizeText, inline: true }
@@ -201,40 +188,6 @@ export function createQueuedEmbed(track: Track, position: number, requester?: Us
             value: position === 0 ? 'Playing Next!' : `#${position} in queue`,
             inline: true
         });
-
-    if (track.thumbnail) {
-        embed.setThumbnail(track.thumbnail);
-    }
-
-    if (requester) {
-        embed.setFooter({
-            text: `Requested by ${requester.displayName || requester.username}`,
-            iconURL: requester.displayAvatarURL() || undefined
-        });
-    }
-
-    embed.setTimestamp();
-
-    return embed;
-}
-
-/**
- * Create priority queued embed
- */
-export function createPriorityQueuedEmbed(track: Track, requester?: User): EmbedBuilder {
-    const sourceInfo = getSourceInfo(track);
-
-    const embed = new EmbedBuilder()
-        .setColor(COLORS.success as `#${string}`)
-        .setAuthor({ name: 'Priority Added - Playing Next!' })
-        .setTitle(track.title)
-        .setURL(track.url)
-        .setDescription(
-            `**Artist:** ${track.author || 'Unknown Artist'}\n` +
-            `**Duration:** ${fmtDur(track.lengthSeconds)}\n` +
-            `**Source:** ${sourceInfo.emoji} ${sourceInfo.name}\n\n` +
-            `*This track was added to the front of the queue.*`
-        );
 
     if (track.thumbnail) {
         embed.setThumbnail(track.thumbnail);

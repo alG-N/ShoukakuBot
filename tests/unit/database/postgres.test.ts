@@ -33,6 +33,7 @@ jest.mock('../../../src/core/metrics', () => ({
 const mockGracefulDegradation = {
     initialize: jest.fn(),
     registerFallback: jest.fn(),
+    registerWriteReplay: jest.fn(),
     markHealthy: jest.fn(),
     markUnavailable: jest.fn(),
     markDegraded: jest.fn(),
@@ -243,7 +244,46 @@ describe('PostgresDatabase', () => {
 
             expect(mockGracefulDegradation.initialize).toHaveBeenCalled();
             expect(mockGracefulDegradation.registerFallback).toHaveBeenCalledWith('database', expect.any(Function));
+            expect(mockGracefulDegradation.registerWriteReplay).toHaveBeenCalledWith('database', expect.any(Function));
             expect(mockGracefulDegradation.markHealthy).toHaveBeenCalledWith('database');
+        });
+
+        it('should replay queued insert/update/delete operations through the registered handler', async () => {
+            await db.initialize();
+
+            const replayHandler = mockGracefulDegradation.registerWriteReplay.mock.calls[0][1];
+            const insertSpy = jest.spyOn(db, 'insert').mockResolvedValue({ guild_id: '123' } as never);
+            const updateSpy = jest.spyOn(db, 'update').mockResolvedValue({ guild_id: '123' } as never);
+            const deleteSpy = jest.spyOn(db, 'delete').mockResolvedValue(1);
+
+            await replayHandler({
+                serviceName: 'database',
+                operation: 'insert',
+                data: { table: 'guild_settings', data: { guild_id: '123' } },
+                options: {},
+                timestamp: Date.now(),
+                retries: 0,
+            });
+            await replayHandler({
+                serviceName: 'database',
+                operation: 'update',
+                data: { table: 'guild_settings', data: { prefix: '!' }, where: { guild_id: '123' } },
+                options: {},
+                timestamp: Date.now(),
+                retries: 0,
+            });
+            await replayHandler({
+                serviceName: 'database',
+                operation: 'delete',
+                data: { table: 'guild_settings', where: { guild_id: '123' } },
+                options: {},
+                timestamp: Date.now(),
+                retries: 0,
+            });
+
+            expect(insertSpy).toHaveBeenCalledWith('guild_settings', { guild_id: '123' });
+            expect(updateSpy).toHaveBeenCalledWith('guild_settings', { prefix: '!' }, { guild_id: '123' });
+            expect(deleteSpy).toHaveBeenCalledWith('guild_settings', { guild_id: '123' });
         });
 
         it('should be idempotent', async () => {

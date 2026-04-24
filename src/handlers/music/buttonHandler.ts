@@ -103,8 +103,6 @@ export const buttonHandler = {
                 return await this.handleButtonVolume(interaction, guildId, 10);
             case 'music_queue':
                 return await this.handleButtonQueue(interaction, guildId);
-            case 'music_fav':
-                return await this.handleButtonFavorite(interaction, guildId, parts[2]);
             case 'music_voteskip':
             case 'music_voteskip_add':
                 return await this.handleButtonVoteSkip(interaction, guildId);
@@ -373,50 +371,6 @@ export const buttonHandler = {
         const row = trackHandler.createQueuePaginationButtons(guildId, 1, totalPages);
 
         await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
-    },
-
-    async handleButtonFavorite(interaction: ButtonInteraction, guildId: string, _targetUserId: string): Promise<void> {
-        try {
-            const currentTrack = musicService.getCurrentTrack(guildId) as Track | null;
-            
-            if (!currentTrack) {
-                await interaction.reply({ content: '❌ Nothing is playing', ephemeral: true });
-                return;
-            }
-
-            await interaction.deferUpdate();
-
-            const userId = interaction.user.id;
-            const isFavorited = await musicService.isFavorited(userId, currentTrack.url);
-
-            if (isFavorited) {
-                await musicService.removeFavorite(userId, currentTrack.url);
-            } else {
-                await musicService.addFavorite(userId, currentTrack);
-            }
-
-            const options = buildNowPlayingOptions(guildId, interaction);
-            const embed = trackHandler.createNowPlayingEmbed(currentTrack, options);
-
-            const rows = trackHandler.createControlButtons(guildId, {
-                isPaused: options.isPaused,
-                loopMode: options.loopMode,
-                isShuffled: options.isShuffled,
-                autoPlay: musicService.isAutoPlayEnabled(guildId),
-                trackUrl: currentTrack.url,
-                userId: interaction.user.id,
-                listenerCount: options.listenerCount
-            });
-
-            await interaction.editReply({ embeds: [embed], components: rows });
-        } catch (error: unknown) {
-            const err = error as { code?: number; message?: string };
-            if (err.code === 10062 || err.code === 10008) {
-                logger.debug('Button', 'Interaction expired or message deleted, ignoring...');
-            } else {
-                logger.error('Button', `Favorite button error: ${err.message}`);
-            }
-        }
     },
 
     async handleButtonVoteSkip(interaction: ButtonInteraction, guildId: string): Promise<void> {

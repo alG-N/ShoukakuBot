@@ -99,19 +99,6 @@ export function createControlButtons(guildId: string, options: ControlButtonsOpt
     );
     rows.push(volumeRow);
 
-    // Row 3: Favorites toggle (only when userId is available)
-    if (options.userId) {
-        const favRow = new ActionRowBuilder<ButtonBuilder>();
-        favRow.addComponents(
-            new ButtonBuilder()
-                .setCustomId(`music_fav:${guildId}:${options.userId}`)
-                .setLabel('Favorite')
-                .setEmoji('❤️')
-                .setStyle(ButtonStyle.Secondary)
-        );
-        rows.push(favRow);
-    }
-
     return rows;
 }
 

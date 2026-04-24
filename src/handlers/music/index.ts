@@ -11,7 +11,6 @@ import { playHandler } from './playHandler.js';
 import { controlHandler } from './controlHandler.js';
 import { queueHandler } from './queueHandler.js';
 import { buttonHandler } from './buttonHandler.js';
-import { favoritesHandler } from './favoritesHandler.js';
 import { historyHandler } from './historyHandler.js';
 
 // Re-export types
@@ -25,7 +24,6 @@ export const handlers = {
     handlePlaylistAdd: playHandler.handlePlaylistAdd.bind(playHandler),
     handleLongTrackConfirmation: playHandler.handleLongTrackConfirmation.bind(playHandler),
     handleLongTrackButton: playHandler.handleLongTrackButton.bind(playHandler),
-    handlePriorityVote: playHandler.handlePriorityVote.bind(playHandler),
     refreshNowPlayingMessage: playHandler.refreshNowPlayingMessage.bind(playHandler),
     isPlaylistUrl: playHandler.isPlaylistUrl.bind(playHandler),
     
@@ -58,17 +56,9 @@ export const handlers = {
     handleButtonAutoplay: buttonHandler.handleButtonAutoplay.bind(buttonHandler),
     handleButtonVolume: buttonHandler.handleButtonVolume.bind(buttonHandler),
     handleButtonQueue: buttonHandler.handleButtonQueue.bind(buttonHandler),
-    handleButtonFavorite: buttonHandler.handleButtonFavorite.bind(buttonHandler),
     handleButtonVoteSkip: buttonHandler.handleButtonVoteSkip.bind(buttonHandler),
     handleButtonQueuePage: buttonHandler.handleButtonQueuePage.bind(buttonHandler),
     handleButtonConfirm: buttonHandler.handleButtonConfirm.bind(buttonHandler),
-    
-    // Favorites handlers
-    handleFavorites: favoritesHandler.handleFavorites.bind(favoritesHandler),
-    handleFavoritesList: favoritesHandler.handleFavoritesList.bind(favoritesHandler),
-    handleFavoritesPlay: favoritesHandler.handleFavoritesPlay.bind(favoritesHandler),
-    handleFavoritesRemove: favoritesHandler.handleFavoritesRemove.bind(favoritesHandler),
-    handleFavoritesClear: favoritesHandler.handleFavoritesClear.bind(favoritesHandler),
     
     // History handlers
     handleHistory: historyHandler.handleHistory.bind(historyHandler),
@@ -82,7 +72,6 @@ export { playHandler } from './playHandler.js';
 export { controlHandler } from './controlHandler.js';
 export { queueHandler } from './queueHandler.js';
 export { buttonHandler } from './buttonHandler.js';
-export { favoritesHandler } from './favoritesHandler.js';
 export { historyHandler } from './historyHandler.js';
 
 // Default export

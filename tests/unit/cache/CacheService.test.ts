@@ -34,6 +34,7 @@ const createMockRedis = () => ({
     set: jest.fn(),
     setex: jest.fn(),
     del: jest.fn(),
+    eval: jest.fn(),
     keys: jest.fn().mockResolvedValue([]),
     incr: jest.fn(),
     expire: jest.fn(),
@@ -97,6 +98,7 @@ describe('CacheService', () => {
             expect(stats.namespaces).toContain('api:anime');
             expect(stats.namespaces).toContain('api:search');
             expect(stats.namespaces).toContain('music');
+            expect(stats.namespaces).toContain('video');
             expect(stats.namespaces).toContain('automod');
             expect(stats.namespaces).toContain('ratelimit');
         });
@@ -348,6 +350,64 @@ describe('CacheService', () => {
             
             expect(mockMulti.incr).toHaveBeenCalledWith('ratelimit:counter');
             expect(count).toBe(5);
+        });
+    });
+
+    describe('checkSlidingWindowLimit()', () => {
+        it('should allow requests until the sliding-window limit is reached', async () => {
+            const first = await cache.checkSlidingWindowLimit('video', 'burst:user1', 60000, 2);
+            const second = await cache.checkSlidingWindowLimit('video', 'burst:user1', 60000, 2);
+            const third = await cache.checkSlidingWindowLimit('video', 'burst:user1', 60000, 2);
+
+            expect(first.allowed).toBe(true);
+            expect(second.allowed).toBe(true);
+            expect(third.allowed).toBe(false);
+            expect(third.count).toBe(2);
+            expect(third.remaining).toBeGreaterThan(0);
+        });
+
+        it('should use Redis scripting when available', async () => {
+            const mockRedis = createMockRedis();
+            mockRedis.eval.mockResolvedValue([0, 3, 2500]);
+            cache.setRedis(mockRedis as any);
+
+            const result = await cache.checkSlidingWindowLimit('video', 'burst:user1', 60000, 3);
+
+            expect(mockRedis.eval).toHaveBeenCalled();
+            expect(result).toEqual({ allowed: false, count: 3, remaining: 2500 });
+        });
+    });
+
+    describe('expiring slot leases', () => {
+        it('should acquire and release slots in memory fallback mode', async () => {
+            const first = await cache.tryAcquireExpiringSlot('video', 'active:global', 'lease-1', 2, 60000);
+            const second = await cache.tryAcquireExpiringSlot('video', 'active:global', 'lease-2', 2, 60000);
+            const third = await cache.tryAcquireExpiringSlot('video', 'active:global', 'lease-3', 2, 60000);
+
+            expect(first).toEqual({ acquired: true, count: 1 });
+            expect(second).toEqual({ acquired: true, count: 2 });
+            expect(third).toEqual({ acquired: false, count: 2 });
+
+            const remaining = await cache.releaseExpiringSlot('video', 'active:global', 'lease-1');
+            expect(remaining).toBe(1);
+
+            const retry = await cache.tryAcquireExpiringSlot('video', 'active:global', 'lease-3', 2, 60000);
+            expect(retry).toEqual({ acquired: true, count: 2 });
+        });
+
+        it('should use Redis scripting for slot acquisition and release when available', async () => {
+            const mockRedis = createMockRedis();
+            mockRedis.eval
+                .mockResolvedValueOnce([1, 1])
+                .mockResolvedValueOnce(0);
+            cache.setRedis(mockRedis as any);
+
+            const acquired = await cache.tryAcquireExpiringSlot('video', 'active:global', 'lease-1', 2, 60000);
+            const remaining = await cache.releaseExpiringSlot('video', 'active:global', 'lease-1');
+
+            expect(mockRedis.eval).toHaveBeenCalledTimes(2);
+            expect(acquired).toEqual({ acquired: true, count: 1 });
+            expect(remaining).toBe(0);
         });
     });
 

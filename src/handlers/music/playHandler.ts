@@ -15,8 +15,6 @@ import type { Track } from '../../types/music/track.js';
 import type { VoteSkipStatus } from '../../types/music/vote.js';
 import type { PendingLongTrack, PlaylistData } from '../../types/music/handlers.js';
 
-// Import voting constants from config
-const { minVotesRequired: MIN_VOTES_REQUIRED = 5 } = music.voting || {};
 const CONFIRMATION_TIMEOUT = music.timeouts?.confirmation || 60000;
 // Store pending long track confirmations (internal only — not used externally despite prior export)
 const pendingLongTracks = new Map<string, PendingLongTrack>();
@@ -64,7 +62,6 @@ export const playHandler = {
 
         const query = interaction.options.getString('query')!;
         const shouldShuffle = interaction.options.getBoolean('shuffle') || false;
-        const priority = interaction.options.getBoolean('priority') || false;
 
         try {
             // Connect to voice
@@ -110,17 +107,8 @@ export const playHandler = {
 
             // Add track
             const currentTrack = musicService.getCurrentTrack(guildId) as Track | null;
-            
-            if (priority && currentTrack) {
-                // Priority requires vote if 5+ listeners
-                const listenerCount = musicService.getListenerCount(guildId, interaction.guild);
-                if (listenerCount >= MIN_VOTES_REQUIRED) {
-                    return await this.handlePriorityVote(interaction, trackData, guildId);
-                }
-                musicService.addTrackToFront(guildId, trackData);
-            } else {
-                musicService.addTrack(guildId, trackData);
-            }
+
+            musicService.addTrack(guildId, trackData);
 
             // Add to user history
             await musicService.addToHistory(userId, trackData);
@@ -157,9 +145,7 @@ export const playHandler = {
                 }
             } else {
                 const position = musicService.getQueueLength(guildId);
-                const embed = priority && position === 1
-                    ? trackHandler.createPriorityQueuedEmbed(trackData, interaction.user)
-                    : trackHandler.createQueuedEmbed(trackData, position, interaction.user);
+                const embed = trackHandler.createQueuedEmbed(trackData, position, interaction.user);
 
                 await interaction.editReply({ embeds: [embed] });
                 
@@ -412,14 +398,6 @@ export const playHandler = {
                 components: []
             }).catch(() => {});
         }
-    },
-
-    async handlePriorityVote(interaction: ChatInputCommandInteraction, _trackData: Track, _guildId: string): Promise<void> {
-        const embed = trackHandler.createInfoEmbed(
-            '🗳️ Vote Required',
-            `Priority play requires ${MIN_VOTES_REQUIRED} votes.\nThis feature is coming soon!`
-        );
-        await interaction.editReply({ embeds: [embed] });
     },
 
     async refreshNowPlayingMessage(guildId: string, userId: string, guild: Guild | null = null): Promise<void> {

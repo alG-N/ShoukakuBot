@@ -18,6 +18,7 @@ import type {
     WriteQueueEntry
 } from '../types/infrastructure/database.js';
 import type { AllowedTable, PgError } from '../types/infrastructure/database-extra.js';
+import type { QueuedWrite } from '../types/core/runtime.js';
 
 export { type DatabaseStatus, type QueuedResponse, type QueryOptions, type RetryConfig, type TransactionCallback, type WriteQueueEntry } from '../types/infrastructure/database.js';
 export { type AllowedTable, type PgError } from '../types/infrastructure/database-extra.js';
@@ -176,6 +177,7 @@ export class PostgresDatabase {
             // Register with graceful degradation
             gracefulDegradation.initialize();
             gracefulDegradation.registerFallback('database', async () => null);
+            gracefulDegradation.registerWriteReplay('database', this._replayQueuedWrite.bind(this));
             gracefulDegradation.markHealthy('database');
             
             // Start write queue processor
@@ -692,6 +694,45 @@ export class PostgresDatabase {
     async queueWrite(operation: WriteQueueEntry['operation'], params: WriteQueueEntry['params']): Promise<void> {
         gracefulDegradation.queueWrite('database', operation, params);
         logger.warn('PostgreSQL', `Queued ${operation} for later execution`);
+    }
+
+    /**
+     * Replay a queued database write after the service recovers
+     */
+    private async _replayQueuedWrite(entry: QueuedWrite): Promise<void> {
+        if (!this.isConnected) {
+            throw new Error('Database is not connected for queued write replay');
+        }
+
+        const params = entry.data as WriteQueueEntry['params'];
+        if (!params?.table) {
+            throw new Error('Queued write is missing table information');
+        }
+
+        switch (entry.operation.toLowerCase()) {
+            case 'insert':
+                if (!params.data) {
+                    throw new Error('Queued insert is missing data payload');
+                }
+                await this.insert(params.table, params.data);
+                break;
+            case 'update':
+                if (!params.data || !params.where) {
+                    throw new Error('Queued update is missing data or where clause');
+                }
+                await this.update(params.table, params.data, params.where);
+                break;
+            case 'delete':
+                if (!params.where) {
+                    throw new Error('Queued delete is missing where clause');
+                }
+                await this.delete(params.table, params.where);
+                break;
+            default:
+                throw new Error(`Unsupported queued write operation: ${entry.operation}`);
+        }
+
+        logger.info('PostgreSQL', `Replayed queued ${entry.operation} on ${params.table}`);
     }
 
     /**

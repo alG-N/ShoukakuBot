@@ -8,7 +8,7 @@ import { SlashCommandBuilder, ChatInputCommandInteraction, ButtonInteraction, Au
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import logger from '../../core/Logger.js';
-import _musicHandlers, { historyHandler, favoritesHandler } from '../../handlers/music/index.js';
+import _musicHandlers, { historyHandler } from '../../handlers/music/index.js';
 import lavalinkService from '../../services/music/core/LavalinkService.js';
 import type { MusicHandler, MusicHandlers } from '../../types/commands/music-command.js';
 // COMMAND
@@ -48,11 +48,6 @@ class MusicCommand extends BaseCommand {
                 .addBooleanOption(opt => opt
                     .setName('shuffle')
                     .setDescription('Shuffle the playlist')
-                    .setRequired(false)
-                )
-                .addBooleanOption(opt => opt
-                    .setName('priority')
-                    .setDescription('Add to front of queue')
                     .setRequired(false)
                 )
             )
@@ -176,18 +171,6 @@ class MusicCommand extends BaseCommand {
                 )
             )
             
-            // Favorites subcommand
-            .addSubcommand(sub => sub
-                .setName('favorites')
-                .setDescription('View your saved favorite tracks')
-                .addIntegerOption(opt => opt
-                    .setName('page')
-                    .setDescription('Page number')
-                    .setRequired(false)
-                    .setMinValue(1)
-                )
-            )
-            
             // Autoplay subcommand
             .addSubcommand(sub => sub
                 .setName('autoplay')
@@ -222,11 +205,6 @@ class MusicCommand extends BaseCommand {
         try {
             if (subcommand === 'history') {
                 await historyHandler.handleHistoryList(interaction, userId);
-                return;
-            }
-
-            if (subcommand === 'favorites') {
-                await favoritesHandler.handleFavoritesList(interaction, userId);
                 return;
             }
 

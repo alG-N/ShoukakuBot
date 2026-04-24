@@ -24,6 +24,7 @@ import _videoEmbedBuilder from '../../utils/video/videoEmbedBuilder.js';
 import urlValidatorModule from '../../middleware/urlValidator.js';
 import _videoConfig from '../../config/features/video.js';
 import logger from '../../core/Logger.js';
+import cacheService from '../../cache/CacheService.js';
 import type { ProgressData } from '../../types/video/processing.js';
 import type {
     VideoConfig,
@@ -38,13 +39,23 @@ const platformDetector: PlatformDetector = _platformDetector as any;
 const videoEmbedBuilder: VideoEmbedBuilder = _videoEmbedBuilder as any;
 const videoConfig: VideoConfig = _videoConfig as any;
 const { validateUrl } = urlValidatorModule as UrlValidator;
-// RATE LIMITING
-const userCooldowns = new Map<string, number>();
-const activeDownloads = new Set<string>();
+// Distributed video state (Redis via CacheService, with memory fallback)
+const VIDEO_CACHE_NAMESPACE = 'video';
+const VIDEO_COMMAND_COOLDOWN = 'download';
+const VIDEO_BURST_KEY_PREFIX = 'burst:';
+const VIDEO_GLOBAL_ACTIVE_KEY = 'active:global';
+const VIDEO_GUILD_ACTIVE_KEY_PREFIX = 'active:guild:';
+const VIDEO_DOWNLOAD_TIMEOUT_MS = (videoConfig as VideoConfig & { DOWNLOAD_TIMEOUT?: number }).DOWNLOAD_TIMEOUT || 120000;
+const VIDEO_DOWNLOAD_LEASE_MS = Math.max(
+    VIDEO_DOWNLOAD_TIMEOUT_MS + 180000,
+    300000
+);
 
-// Smart Rate Limiting
-const guildActiveDownloads = new Map<string, Set<string>>(); // guildId -> Set<userId>
-const userBurstTracking = new Map<string, number[]>(); // userId -> timestamps
+interface VideoSlotAcquisition {
+    acquired: boolean;
+    blockedBy?: 'guild' | 'global';
+    limits: ReturnType<typeof getEffectiveLimits>;
+}
 
 function isPeakHours(): boolean {
     const smartConfig = videoConfig?.smartRateLimiting;
@@ -82,80 +93,79 @@ function getEffectiveLimits() {
     };
 }
 
-function checkBurstLimit(userId: string): boolean {
+async function checkBurstLimit(userId: string): Promise<{ allowed: boolean; remaining: number }> {
     const smartConfig = videoConfig?.smartRateLimiting;
-    if (!smartConfig?.enabled || !smartConfig.burstProtection?.enabled) return true;
-    
-    const now = Date.now();
+    if (!smartConfig?.enabled || !smartConfig.burstProtection?.enabled) {
+        return { allowed: true, remaining: 0 };
+    }
+
     const windowMs = smartConfig.burstProtection.windowSeconds * 1000;
     const maxRequests = smartConfig.burstProtection.maxRequestsPerWindow;
-    
-    // Get user's request timestamps
-    const timestamps = userBurstTracking.get(userId) || [];
-    
-    // Filter to only requests within the window
-    const recentTimestamps = timestamps.filter(t => now - t < windowMs);
-    
-    if (recentTimestamps.length >= maxRequests) {
-        return false; // Burst limit exceeded
-    }
-    
-    // Add current request
-    recentTimestamps.push(now);
-    userBurstTracking.set(userId, recentTimestamps);
-    return true;
+    const result = await cacheService.checkSlidingWindowLimit(
+        VIDEO_CACHE_NAMESPACE,
+        `${VIDEO_BURST_KEY_PREFIX}${userId}`,
+        windowMs,
+        maxRequests
+    );
+
+    return {
+        allowed: result.allowed,
+        remaining: result.remaining
+    };
 }
 
-function checkGuildLimit(guildId: string): boolean {
+async function checkCooldown(userId: string): Promise<number> {
+    const remainingMs = await cacheService.getCooldown(VIDEO_COMMAND_COOLDOWN, userId);
+    return remainingMs ? Math.ceil(remainingMs / 1000) : 0;
+}
+
+async function setCooldown(userId: string, seconds?: number): Promise<void> {
     const limits = getEffectiveLimits();
-    const guildDownloads = guildActiveDownloads.get(guildId);
-    if (!guildDownloads) return true;
-    return guildDownloads.size < limits.perGuildMax;
+    const cooldownSeconds = seconds ?? limits.userCooldown;
+    await cacheService.setCooldown(VIDEO_COMMAND_COOLDOWN, userId, cooldownSeconds * 1000);
 }
 
-function addGuildDownload(guildId: string, userId: string): void {
-    if (!guildActiveDownloads.has(guildId)) {
-        guildActiveDownloads.set(guildId, new Set());
-    }
-    guildActiveDownloads.get(guildId)!.add(userId);
+function getGuildActiveKey(guildId: string): string {
+    return `${VIDEO_GUILD_ACTIVE_KEY_PREFIX}${guildId}`;
 }
 
-function removeGuildDownload(guildId: string, userId: string): void {
-    const guildDownloads = guildActiveDownloads.get(guildId);
-    if (guildDownloads) {
-        guildDownloads.delete(userId);
-        if (guildDownloads.size === 0) {
-            guildActiveDownloads.delete(guildId);
-        }
-    }
-}
-
-function checkCooldown(userId: string): number {
-    const cooldown = userCooldowns.get(userId);
-    if (cooldown && Date.now() < cooldown) {
-        return Math.ceil((cooldown - Date.now()) / 1000);
-    }
-    return 0;
-}
-
-function setCooldown(userId: string): void {
+async function acquireDownloadSlots(guildId: string, leaseToken: string): Promise<VideoSlotAcquisition> {
     const limits = getEffectiveLimits();
-    userCooldowns.set(userId, Date.now() + (limits.userCooldown * 1000));
-}
 
-function checkConcurrentLimit(): boolean {
-    const limits = getEffectiveLimits();
-    return activeDownloads.size >= limits.maxConcurrent;
-}
+    const guildLease = await cacheService.tryAcquireExpiringSlot(
+        VIDEO_CACHE_NAMESPACE,
+        getGuildActiveKey(guildId),
+        leaseToken,
+        limits.perGuildMax,
+        VIDEO_DOWNLOAD_LEASE_MS
+    );
 
-// Cleanup old cooldowns periodically
-const cooldownCleanupTimer = setInterval(() => {
-    const now = Date.now();
-    for (const [userId, expiry] of userCooldowns.entries()) {
-        if (now > expiry) userCooldowns.delete(userId);
+    if (!guildLease.acquired) {
+        return { acquired: false, blockedBy: 'guild', limits };
     }
-}, 60000);
-cooldownCleanupTimer.unref(); // Don't prevent process exit
+
+    const globalLease = await cacheService.tryAcquireExpiringSlot(
+        VIDEO_CACHE_NAMESPACE,
+        VIDEO_GLOBAL_ACTIVE_KEY,
+        leaseToken,
+        limits.maxConcurrent,
+        VIDEO_DOWNLOAD_LEASE_MS
+    );
+
+    if (!globalLease.acquired) {
+        await cacheService.releaseExpiringSlot(VIDEO_CACHE_NAMESPACE, getGuildActiveKey(guildId), leaseToken);
+        return { acquired: false, blockedBy: 'global', limits };
+    }
+
+    return { acquired: true, limits };
+}
+
+async function releaseDownloadSlots(guildId: string, leaseToken: string): Promise<void> {
+    await Promise.all([
+        cacheService.releaseExpiringSlot(VIDEO_CACHE_NAMESPACE, VIDEO_GLOBAL_ACTIVE_KEY, leaseToken),
+        cacheService.releaseExpiringSlot(VIDEO_CACHE_NAMESPACE, getGuildActiveKey(guildId), leaseToken)
+    ]);
+}
 // COMMAND
 class DownloadCommand extends BaseCommand {
     constructor() {
@@ -213,7 +223,7 @@ class DownloadCommand extends BaseCommand {
         const mode = interaction.options.getString('mode') || 'download';
 
         // Check user cooldown
-        const remainingCooldown = checkCooldown(userId);
+        const remainingCooldown = await checkCooldown(userId);
         if (remainingCooldown > 0) {
             const cooldownEmbed = new EmbedBuilder()
                 .setColor(COLORS.ERROR)
@@ -225,38 +235,16 @@ class DownloadCommand extends BaseCommand {
         }
 
         // Burst protection check
-        if (!checkBurstLimit(userId)) {
+        const burstStatus = await checkBurstLimit(userId);
+        if (!burstStatus.allowed) {
             const smartConfig = videoConfig?.smartRateLimiting;
+            const waitSeconds = Math.max(1, Math.ceil(burstStatus.remaining / 1000));
             const burstEmbed = new EmbedBuilder()
                 .setColor(COLORS.ERROR)
                 .setTitle('⚡ Too Many Requests')
-                .setDescription(`You're requesting too quickly. Max **${smartConfig?.burstProtection?.maxRequestsPerWindow || 3}** requests per **${smartConfig?.burstProtection?.windowSeconds || 60}** seconds.\n\nPlease wait a moment before trying again.`)
+                .setDescription(`You're requesting too quickly. Max **${smartConfig?.burstProtection?.maxRequestsPerWindow || 3}** requests per **${smartConfig?.burstProtection?.windowSeconds || 60}** seconds.\n\nPlease wait about **${waitSeconds} seconds** before trying again.`)
                 .setFooter({ text: 'Burst protection active' });
             await interaction.editReply({ embeds: [burstEmbed] });
-            return;
-        }
-
-        // Check per-guild limit
-        if (!checkGuildLimit(guildId)) {
-            const limits = getEffectiveLimits();
-            const guildLimitEmbed = new EmbedBuilder()
-                .setColor(COLORS.ERROR)
-                .setTitle('🏠 Server Limit Reached')
-                .setDescription(`This server has reached max concurrent downloads (**${limits.perGuildMax}**).\nPlease wait for other downloads to finish.`)
-                .setFooter({ text: isPeakHours() ? '🔥 Peak hours - Reduced limits' : 'Per-server rate limiting' });
-            await interaction.editReply({ embeds: [guildLimitEmbed] });
-            return;
-        }
-
-        // Check global concurrent download limit
-        if (checkConcurrentLimit()) {
-            const limits = getEffectiveLimits();
-            const busyEmbed = new EmbedBuilder()
-                .setColor(COLORS.ERROR)
-                .setTitle('🚦 Server Busy')
-                .setDescription(`Too many downloads in progress globally. Please wait a moment and try again.\n\n*Max concurrent: ${limits.maxConcurrent}*`)
-                .setFooter({ text: isPeakHours() ? '🔥 Peak hours - Reduced capacity' : 'This helps keep the bot responsive' });
-            await interaction.editReply({ embeds: [busyEmbed] });
             return;
         }
 
@@ -285,7 +273,7 @@ class DownloadCommand extends BaseCommand {
 
                 // Set cooldown (shorter for link mode)
                 const linkCooldownSeconds = Math.floor((videoConfig?.USER_COOLDOWN_SECONDS || 30) / 2);
-                userCooldowns.set(userId, Date.now() + (linkCooldownSeconds * 1000));
+                await setCooldown(userId, linkCooldownSeconds);
 
                 const successEmbed = new EmbedBuilder()
                     .setColor(COLORS.SUCCESS)
@@ -337,9 +325,32 @@ class DownloadCommand extends BaseCommand {
             return;
         }
 
-        activeDownloads.add(userId);
-        addGuildDownload(guildId, userId);
+        const leaseToken = `${interaction.id}:${userId}`;
+        let slotsAcquired = false;
         let downloadedFilePath: string | null = null;
+
+        const slotAcquisition = await acquireDownloadSlots(guildId, leaseToken);
+        if (!slotAcquisition.acquired) {
+            if (slotAcquisition.blockedBy === 'guild') {
+                const guildLimitEmbed = new EmbedBuilder()
+                    .setColor(COLORS.ERROR)
+                    .setTitle('🏠 Server Limit Reached')
+                    .setDescription(`This server has reached max concurrent downloads (**${slotAcquisition.limits.perGuildMax}**).\nPlease wait for other downloads to finish.`)
+                    .setFooter({ text: isPeakHours() ? '🔥 Peak hours - Reduced limits' : 'Per-server rate limiting' });
+                await interaction.editReply({ embeds: [guildLimitEmbed] });
+                return;
+            }
+
+            const busyEmbed = new EmbedBuilder()
+                .setColor(COLORS.ERROR)
+                .setTitle('🚦 Server Busy')
+                .setDescription(`Too many downloads in progress globally. Please wait a moment and try again.\n\n*Max concurrent: ${slotAcquisition.limits.maxConcurrent}*`)
+                .setFooter({ text: isPeakHours() ? '🔥 Peak hours - Reduced capacity' : 'This helps keep the bot responsive' });
+            await interaction.editReply({ embeds: [busyEmbed] });
+            return;
+        }
+
+        slotsAcquired = true;
 
         try {
             // Setup progress updates
@@ -418,8 +429,7 @@ class DownloadCommand extends BaseCommand {
                             `• Use 🔗 **Link mode** for a direct download link`
                         )
                         .setFooter({ text: `Max capacity: ${maxFileSizeMB} MB` });
-                    
-                    activeDownloads.delete(userId);
+
                     await interaction.editReply({ embeds: [sizeErrorEmbed], components: [] });
                     return;
                 }
@@ -465,8 +475,7 @@ class DownloadCommand extends BaseCommand {
                                   `• Subscribe to **Discord Nitro** to upload files up to 500 MB`
                         )
                         .setFooter({ text: hasNitro ? `Max capacity: ${maxFileSizeMB} MB` : 'Non-Nitro server limit: 10 MB • Get Nitro for up to 500 MB' });
-                    
-                    activeDownloads.delete(userId);
+
                     await interaction.editReply({ embeds: [discordLimitEmbed], components: [] });
                     return;
                 }
@@ -544,7 +553,7 @@ class DownloadCommand extends BaseCommand {
                     }
                 }
 
-                setCooldown(userId);
+                await setCooldown(userId);
 
             } finally {
                 // Remove event listeners
@@ -704,8 +713,9 @@ class DownloadCommand extends BaseCommand {
 
             await interaction.editReply({ embeds: [errorEmbed], files: [], components: [] }).catch(() => {});
         } finally {
-            activeDownloads.delete(userId);
-            removeGuildDownload(guildId, userId);
+            if (slotsAcquired) {
+                await releaseDownloadSlots(guildId, leaseToken);
+            }
             
             // Safety net: clean up any leftover downloaded file
             if (downloadedFilePath && fs.existsSync(downloadedFilePath)) {

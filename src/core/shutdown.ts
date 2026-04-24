@@ -5,6 +5,7 @@
  */
 
 import logger from './Logger.js';
+import * as sentry from './sentry.js';
 import container from '../container.js';
 import * as readline from 'readline';
 import type { ShutdownHandler, ShutdownResult, ShutdownOptions } from '../types/core/shutdown.js';
@@ -70,6 +71,7 @@ export async function handleShutdown(
         
     } catch (error) {
         logger.error('Shutdown', `Shutdown error: ${(error as Error).message}`);
+        await sentry.flush(1000);
         process.exit(1);
     }
 }
@@ -141,6 +143,16 @@ async function runShutdownSequence(client: { destroy: () => void } | null): Prom
         results.push({ name: 'PaginationState', success: true });
     } catch (error) {
         results.push({ name: 'PaginationState', success: false, error: (error as Error).message });
+    }
+
+    // 5. Flush and close Sentry last so shutdown errors are still captured
+    try {
+        logger.info('Shutdown', 'Closing Sentry...');
+        await sentry.close();
+        results.push({ name: 'Sentry', success: true });
+    } catch (error) {
+        logger.error('Shutdown', `Sentry shutdown failed: ${(error as Error).message}`);
+        results.push({ name: 'Sentry', success: false, error: (error as Error).message });
     }
     
     return results;

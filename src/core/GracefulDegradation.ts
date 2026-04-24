@@ -47,6 +47,12 @@ export class GracefulDegradation extends EventEmitter {
     
     /** Queued operations for when service recovers */
     private writeQueue: QueuedWrite[] = [];
+
+    /** Queued write replay handlers keyed by service name */
+    private writeReplayHandlers: Map<string, (entry: QueuedWrite) => Promise<void>> = new Map();
+
+    /** Avoid repeating the same missing-handler warning for every recovery */
+    private warnedMissingReplayHandlers: Set<string> = new Set();
     
     /** Max queue size before dropping */
     private maxQueueSize: number = 1000;
@@ -154,6 +160,19 @@ export class GracefulDegradation extends EventEmitter {
         handler: (error: Error | null, options: Record<string, unknown>) => Promise<unknown>
     ): void {
         this.fallbackHandlers.set(serviceName, handler);
+    }
+
+    /**
+     * Register a queued write replay handler for a service
+     * @param serviceName - Service name
+     * @param handler - Async function that replays a queued write entry
+     */
+    registerWriteReplay(
+        serviceName: string,
+        handler: (entry: QueuedWrite) => Promise<void>
+    ): void {
+        this.writeReplayHandlers.set(serviceName, handler);
+        this.warnedMissingReplayHandlers.delete(serviceName);
     }
 
     /**
@@ -459,6 +478,7 @@ export class GracefulDegradation extends EventEmitter {
 
             // Parse and add to memory queue (dedupe by timestamp)
             const existingTimestamps = new Set(this.writeQueue.map(w => w.timestamp));
+            const recoveredServices = new Set<string>();
             let recovered = 0;
 
             for (const entryStr of pending) {
@@ -467,6 +487,7 @@ export class GracefulDegradation extends EventEmitter {
                     if (!existingTimestamps.has(entry.timestamp)) {
                         this.writeQueue.push(entry);
                         existingTimestamps.add(entry.timestamp);
+                        recoveredServices.add(entry.serviceName);
                         recovered++;
                     }
                 } catch {
@@ -475,6 +496,13 @@ export class GracefulDegradation extends EventEmitter {
             }
 
             logger.info('GracefulDegradation', `Recovered ${recovered} queued writes from Redis`);
+
+            for (const serviceName of recoveredServices) {
+                if (this.getServiceState(serviceName) === ServiceState.HEALTHY) {
+                    await this._processQueue(serviceName);
+                }
+            }
+
             return recovered;
         } catch (error) {
             logger.error('GracefulDegradation', `Failed to recover write queue: ${(error as Error).message}`);
@@ -490,12 +518,23 @@ export class GracefulDegradation extends EventEmitter {
         const pending = this.writeQueue.filter(w => w.serviceName === serviceName);
         if (pending.length === 0) return;
 
+        const replayHandler = this.writeReplayHandlers.get(serviceName);
+        if (!replayHandler) {
+            if (!this.warnedMissingReplayHandlers.has(serviceName)) {
+                logger.warn(
+                    'GracefulDegradation',
+                    `No queued write replay handler registered for ${serviceName}; preserving ${pending.length} queued writes to avoid silent loss.`
+                );
+                this.warnedMissingReplayHandlers.add(serviceName);
+            }
+            return;
+        }
+
         logger.info('GracefulDegradation', `Processing ${pending.length} queued writes for ${serviceName}`);
 
         for (const item of pending) {
             try {
-                // Emit event for handler to process
-                this.emit('processQueuedWrite', item);
+                await replayHandler(item);
                 
                 // Remove from memory queue
                 const idx = this.writeQueue.indexOf(item);
@@ -511,6 +550,11 @@ export class GracefulDegradation extends EventEmitter {
                     if (idx > -1) this.writeQueue.splice(idx, 1);
                     await this._removeFromRedisQueue(item);
                     logger.error('GracefulDegradation', `Failed to process queued write after 3 retries: ${(error as Error).message}`);
+                } else {
+                    logger.warn(
+                        'GracefulDegradation',
+                        `Queued write replay failed for ${serviceName}/${item.operation} (attempt ${item.retries}/3): ${(error as Error).message}`
+                    );
                 }
             }
         }
@@ -628,6 +672,8 @@ export class GracefulDegradation extends EventEmitter {
     shutdown(): void {
         this.services.clear();
         this.fallbackHandlers.clear();
+        this.writeReplayHandlers.clear();
+        this.warnedMissingReplayHandlers.clear();
         this.fallbackCache.clear();
         // Note: writeQueue in Redis is preserved for recovery on restart
         this.writeQueue = [];

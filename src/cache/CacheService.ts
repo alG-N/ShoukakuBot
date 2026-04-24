@@ -32,6 +32,7 @@ export const DEFAULT_NAMESPACES: Record<string, NamespaceConfig> = {
     'api:search': { ttl: 300, maxSize: 200, useRedis: true },    // Wikipedia search - 5min
     'api:translate': { ttl: 1800, maxSize: 100, useRedis: true }, // Pixiv translations - 30min
     'music': { ttl: 3600, maxSize: 200, useRedis: true },      // Music queues - 1h
+    'video': { ttl: 300, maxSize: 5000, useRedis: true },      // Video download state - 5min
     'automod': { ttl: 60, maxSize: 5000, useRedis: true },     // AutoMod tracking - 1min
     'ratelimit': { ttl: 60, maxSize: 10000, useRedis: true },  // Rate limits - 1min
     'snipe': { ttl: 43200, maxSize: 500, useRedis: true },     // Snipe messages - 12h
@@ -454,6 +455,237 @@ export class CacheService {
             this.metrics.errors++;
             logger.error('CacheService', `Increment error: ${(error as Error).message}`);
             return 1;
+        }
+    }
+
+    /**
+     * Track a request against a sliding window rate limit.
+     * Returns whether the request is allowed and, if blocked, how long until the oldest entry expires.
+     */
+    async checkSlidingWindowLimit(
+        namespace: string,
+        key: string,
+        windowMs: number,
+        maxRequests: number
+    ): Promise<{ allowed: boolean; count: number; remaining: number }> {
+        this.metrics.specializedOps++;
+
+        const fullKey = this._buildKey(namespace, key);
+        const config = this._getNamespaceConfig(namespace);
+        const actualWindowMs = Math.max(1, windowMs);
+        const actualLimit = Math.max(1, maxRequests);
+        const now = Date.now();
+
+        try {
+            if (config.useRedis && this.isRedisConnected && this.redis) {
+                const result = await this.redis.eval(
+                    `
+                    local key = KEYS[1]
+                    local now = tonumber(ARGV[1])
+                    local windowMs = tonumber(ARGV[2])
+                    local maxRequests = tonumber(ARGV[3])
+                    local member = ARGV[4]
+
+                    redis.call('ZREMRANGEBYSCORE', key, '-inf', now - windowMs)
+                    local count = redis.call('ZCARD', key)
+
+                    if count >= maxRequests then
+                        local oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
+                        local remaining = windowMs
+                        if oldest[2] then
+                            remaining = math.max(0, windowMs - (now - tonumber(oldest[2])))
+                        end
+                        return {0, count, remaining}
+                    end
+
+                    redis.call('ZADD', key, now, member)
+                    redis.call('PEXPIRE', key, windowMs)
+                    return {1, count + 1, 0}
+                    `,
+                    1,
+                    fullKey,
+                    now.toString(),
+                    actualWindowMs.toString(),
+                    actualLimit.toString(),
+                    `${now}:${Math.random().toString(36).slice(2, 10)}`
+                ) as Array<number | string>;
+
+                return {
+                    allowed: Number(result[0]) === 1,
+                    count: Number(result[1]) || 0,
+                    remaining: Number(result[2]) || 0,
+                };
+            }
+
+            const memNs = this._getOrCreateMemoryNamespace(namespace);
+            const entry = memNs.get(key);
+            const timestamps = Array.isArray(entry?.value)
+                ? (entry.value as number[]).filter(timestamp => now - timestamp < actualWindowMs)
+                : [];
+
+            if (timestamps.length >= actualLimit) {
+                const oldest = timestamps[0] ?? now;
+                const remaining = Math.max(0, actualWindowMs - (now - oldest));
+                memNs.set(key, { value: timestamps, expiresAt: now + remaining });
+                return { allowed: false, count: timestamps.length, remaining };
+            }
+
+            timestamps.push(now);
+            memNs.set(key, { value: timestamps, expiresAt: now + actualWindowMs });
+            return { allowed: true, count: timestamps.length, remaining: 0 };
+        } catch (error) {
+            this.metrics.errors++;
+            logger.error('CacheService', `checkSlidingWindowLimit error: ${(error as Error).message}`);
+            return { allowed: true, count: 0, remaining: 0 };
+        }
+    }
+
+    /**
+     * Try to acquire a distributed slot with an expiring lease.
+     * Useful for cross-shard concurrent-operation limits.
+     */
+    async tryAcquireExpiringSlot(
+        namespace: string,
+        key: string,
+        member: string,
+        limit: number,
+        ttlMs: number
+    ): Promise<{ acquired: boolean; count: number }> {
+        this.metrics.specializedOps++;
+
+        const fullKey = this._buildKey(namespace, key);
+        const config = this._getNamespaceConfig(namespace);
+        const actualLimit = Math.max(1, limit);
+        const actualTtlMs = Math.max(1, ttlMs);
+        const now = Date.now();
+
+        try {
+            if (config.useRedis && this.isRedisConnected && this.redis) {
+                const result = await this.redis.eval(
+                    `
+                    local key = KEYS[1]
+                    local now = tonumber(ARGV[1])
+                    local limit = tonumber(ARGV[2])
+                    local ttlMs = tonumber(ARGV[3])
+                    local member = ARGV[4]
+
+                    redis.call('ZREMRANGEBYSCORE', key, '-inf', now)
+                    local count = redis.call('ZCARD', key)
+
+                    if count >= limit then
+                        return {0, count}
+                    end
+
+                    redis.call('ZADD', key, now + ttlMs, member)
+                    redis.call('PEXPIRE', key, ttlMs)
+                    return {1, count + 1}
+                    `,
+                    1,
+                    fullKey,
+                    now.toString(),
+                    actualLimit.toString(),
+                    actualTtlMs.toString(),
+                    member
+                ) as Array<number | string>;
+
+                return {
+                    acquired: Number(result[0]) === 1,
+                    count: Number(result[1]) || 0,
+                };
+            }
+
+            const memNs = this._getOrCreateMemoryNamespace(namespace);
+            const entry = memNs.get(key);
+            const rawLeases = (entry?.value && typeof entry.value === 'object' && !Array.isArray(entry.value))
+                ? entry.value as Record<string, number>
+                : {};
+
+            const leases = Object.fromEntries(
+                Object.entries(rawLeases).filter(([, expiresAt]) => expiresAt > now)
+            );
+            const count = Object.keys(leases).length;
+
+            if (count >= actualLimit) {
+                const nextExpiry = Math.min(...Object.values(leases));
+                memNs.set(key, { value: leases, expiresAt: Number.isFinite(nextExpiry) ? nextExpiry : now + actualTtlMs });
+                return { acquired: false, count };
+            }
+
+            leases[member] = now + actualTtlMs;
+            memNs.set(key, {
+                value: leases,
+                expiresAt: Math.max(...Object.values(leases))
+            });
+
+            return { acquired: true, count: count + 1 };
+        } catch (error) {
+            this.metrics.errors++;
+            logger.error('CacheService', `tryAcquireExpiringSlot error: ${(error as Error).message}`);
+            return { acquired: true, count: 0 };
+        }
+    }
+
+    /**
+     * Release a previously acquired expiring slot.
+     * Returns the number of active slots left after release.
+     */
+    async releaseExpiringSlot(namespace: string, key: string, member: string): Promise<number> {
+        this.metrics.specializedOps++;
+
+        const fullKey = this._buildKey(namespace, key);
+        const config = this._getNamespaceConfig(namespace);
+        const now = Date.now();
+
+        try {
+            if (config.useRedis && this.isRedisConnected && this.redis) {
+                const result = await this.redis.eval(
+                    `
+                    local key = KEYS[1]
+                    local now = tonumber(ARGV[1])
+                    local member = ARGV[2]
+
+                    redis.call('ZREMRANGEBYSCORE', key, '-inf', now)
+                    redis.call('ZREM', key, member)
+                    local count = redis.call('ZCARD', key)
+                    if count == 0 then
+                        redis.call('DEL', key)
+                    end
+                    return count
+                    `,
+                    1,
+                    fullKey,
+                    now.toString(),
+                    member
+                ) as number | string;
+
+                return Number(result) || 0;
+            }
+
+            const memNs = this._getOrCreateMemoryNamespace(namespace);
+            const entry = memNs.get(key);
+            const rawLeases = (entry?.value && typeof entry.value === 'object' && !Array.isArray(entry.value))
+                ? entry.value as Record<string, number>
+                : {};
+
+            const leases = Object.fromEntries(
+                Object.entries(rawLeases).filter(([leaseMember, expiresAt]) => leaseMember !== member && expiresAt > now)
+            );
+            const count = Object.keys(leases).length;
+
+            if (count === 0) {
+                memNs.delete(key);
+                return 0;
+            }
+
+            memNs.set(key, {
+                value: leases,
+                expiresAt: Math.max(...Object.values(leases))
+            });
+            return count;
+        } catch (error) {
+            this.metrics.errors++;
+            logger.error('CacheService', `releaseExpiringSlot error: ${(error as Error).message}`);
+            return 0;
         }
     }
 
