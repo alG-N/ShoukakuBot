@@ -37,6 +37,23 @@ class CobaltService extends EventEmitter {
         this.emit('apiSwitch', { api: this.apiUrl });
     }
 
+    private _normalizeResponseUrl(rawUrl?: string): string {
+        if (!rawUrl?.trim()) {
+            throw new Error('Cobalt response did not include a download URL');
+        }
+
+        try {
+            const normalized = new URL(rawUrl.trim(), this.apiUrl);
+            if (normalized.protocol !== 'http:' && normalized.protocol !== 'https:') {
+                throw new Error(`Unsupported protocol: ${normalized.protocol}`);
+            }
+
+            return normalized.toString();
+        } catch (error) {
+            throw new Error(`Invalid download URL from Cobalt: ${(error as Error).message}`);
+        }
+    }
+
     async downloadVideo(url: string, tempDir: string, options: DownloadOptions = {}): Promise<string> {
         if (!fs.existsSync(tempDir)) {
             fs.mkdirSync(tempDir, { recursive: true });
@@ -175,7 +192,7 @@ class CobaltService extends EventEmitter {
                                 reject(new Error('CONTENT_IS_IMAGES:This content is an image/GIF/slideshow, not a downloadable video.'));
                                 return;
                             }
-                            resolve({ url: parsed.url, filename: parsed.filename });
+                            resolve({ url: this._normalizeResponseUrl(parsed.url), filename: parsed.filename });
                         } else if (parsed.status === 'picker' && parsed.picker?.length) {
                             // Multiple options available — only pick videos, reject if only images/slideshows
                             const videoOption = parsed.picker.find(p => p.type === 'video');
@@ -185,7 +202,7 @@ class CobaltService extends EventEmitter {
                                     reject(new Error('CONTENT_IS_IMAGES:This content is an image/GIF/slideshow, not a downloadable video.'));
                                     return;
                                 }
-                                resolve({ url: videoOption.url, filename: videoOption.filename });
+                                resolve({ url: this._normalizeResponseUrl(videoOption.url), filename: videoOption.filename });
                             } else {
                                 // Check if all picker items are images
                                 const hasOnlyImages = parsed.picker.every(p => 
@@ -200,7 +217,7 @@ class CobaltService extends EventEmitter {
                             }
                         } else if (parsed.url) {
                             // Direct URL response
-                            resolve({ url: parsed.url, filename: parsed.filename });
+                            resolve({ url: this._normalizeResponseUrl(parsed.url), filename: parsed.filename });
                         } else {
                             reject(new Error(`Unexpected response: ${parsed.status || 'unknown'}`));
                         }

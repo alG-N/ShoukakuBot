@@ -20,4 +20,5 @@ export interface BootstrapCommand {
 
 export interface ClientWithCommands extends Client {
     commands?: Map<string, BootstrapCommand>;
+    interactionAttachmentLimits?: Map<string, number>;
 }

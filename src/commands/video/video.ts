@@ -57,6 +57,29 @@ interface VideoSlotAcquisition {
     limits: ReturnType<typeof getEffectiveLimits>;
 }
 
+type InteractionWithAttachmentLimit = ChatInputCommandInteraction & {
+    attachmentSizeLimit?: number;
+    attachment_size_limit?: number;
+};
+
+function getInteractionAttachmentLimitBytes(interaction: ChatInputCommandInteraction): number | null {
+    const interactionWithLimit = interaction as InteractionWithAttachmentLimit;
+    const attachmentSizeLimit = interactionWithLimit.attachmentSizeLimit ?? interactionWithLimit.attachment_size_limit;
+
+    if (typeof attachmentSizeLimit !== 'number' || !Number.isFinite(attachmentSizeLimit) || attachmentSizeLimit <= 0) {
+        return null;
+    }
+
+    return attachmentSizeLimit;
+}
+
+function isDiscordUploadLimitError(error: Error & { code?: number }): boolean {
+    const message = error.message?.toLowerCase() || '';
+    return error.code === 40005 ||
+        error.message?.includes('Request entity too large') ||
+        (message.includes('payload') && message.includes('large'));
+}
+
 function isPeakHours(): boolean {
     const smartConfig = videoConfig?.smartRateLimiting;
     if (!smartConfig?.enabled || !smartConfig.peakHours?.enabled) return false;
@@ -253,6 +276,10 @@ class DownloadCommand extends BaseCommand {
         const platform = platformDetector?.detect(url) || { name: '🌐 Web', id: 'web' };
         const platformName = typeof platform === 'string' ? platform : (platform?.name || 'Unknown');
         const platformId = typeof platform === 'string' ? 'web' : (platform?.id || 'web');
+        const interactionAttachmentLimitBytes = getInteractionAttachmentLimitBytes(interaction);
+        const interactionAttachmentLimitMB = interactionAttachmentLimitBytes === null
+            ? null
+            : interactionAttachmentLimitBytes / (1024 * 1024);
 
         // === LINK MODE: Get direct URL without downloading ===
         if (mode === 'link') {
@@ -271,6 +298,17 @@ class DownloadCommand extends BaseCommand {
                     throw new Error('Could not get direct download link');
                 }
 
+                let directUrl: string;
+                try {
+                    const parsedDirectUrl = new URL(videoInfo.url.trim());
+                    if (parsedDirectUrl.protocol !== 'http:' && parsedDirectUrl.protocol !== 'https:') {
+                        throw new Error(`Unsupported protocol: ${parsedDirectUrl.protocol}`);
+                    }
+                    directUrl = parsedDirectUrl.toString();
+                } catch (error) {
+                    throw new Error(`Provider returned an invalid direct link: ${(error as Error).message}`);
+                }
+
                 // Set cooldown (shorter for link mode)
                 const linkCooldownSeconds = Math.floor((videoConfig?.USER_COOLDOWN_SECONDS || 30) / 2);
                 await setCooldown(userId, linkCooldownSeconds);
@@ -281,7 +319,7 @@ class DownloadCommand extends BaseCommand {
                     .setDescription(
                         `**Platform:** ${platformName}\n` +
                         `**Quality:** ${quality}p\n\n` +
-                        `**Download Link:**\n${videoInfo.url}\n\n` +
+                        `**Download Link:**\n${directUrl}\n\n` +
                         `*Link will expire in a few minutes*`
                     )
                     .setFooter({ text: '💡 Right-click and "Save link as..." to download' });
@@ -289,7 +327,7 @@ class DownloadCommand extends BaseCommand {
                 const downloadButton = new ButtonBuilder()
                     .setLabel('📥 Open Download Link')
                     .setStyle(ButtonStyle.Link)
-                    .setURL(videoInfo.url);
+                    .setURL(directUrl);
 
                 const row = new ActionRowBuilder<ButtonBuilder>().addComponents(downloadButton);
                 
@@ -446,14 +484,9 @@ class DownloadCommand extends BaseCommand {
                     // Ignore update errors
                 }
 
-                // Check file size against Discord's upload limit (based on user's Nitro status)
-                // Nitro users: up to 500MB (capped at our 100MB config limit)
-                // Non-Nitro users: 10MB max
-                const member = interaction.member as any;
-                const hasNitro = member?.premiumSince != null;
-                const userUploadLimitMB = hasNitro ? maxFileSizeMB : 10; // Nitro: config cap (100MB), Non-Nitro: 10MB
-
-                if (actualSizeMB > userUploadLimitMB) {
+                // Discord includes the effective attachment ceiling on the raw interaction payload.
+                // Use it when available instead of guessing from the requester's account state.
+                if (interactionAttachmentLimitMB !== null && actualSizeMB > interactionAttachmentLimitMB) {
                     // Clean up oversized file
                     if (downloadedFilePath && fs.existsSync(downloadedFilePath)) {
                         try { fs.unlinkSync(downloadedFilePath); } catch (e) { /* ignore */ }
@@ -463,18 +496,13 @@ class DownloadCommand extends BaseCommand {
                         .setColor(COLORS.ERROR)
                         .setTitle('❌ File Exceeds Discord Upload Limit')
                         .setDescription(
-                            hasNitro
-                                ? `Video **${actualSizeMB.toFixed(2)} MB** exceeds our max capacity (**${maxFileSizeMB} MB**).\n\n` +
-                                  `💡 **Try instead:**\n` +
-                                  `• Use a lower quality (480p)\n` +
-                                  `• Use 🔗 **Link mode** for a direct download link`
-                                : `Video **${actualSizeMB.toFixed(2)} MB** exceeds Discord's upload limit for non-Nitro users in this server (**10 MB**).\n\n` +
-                                  `💡 **Options:**\n` +
-                                  `• Use 🔗 **Link mode** for a direct download link\n` +
-                                  `• Use a lower quality (480p)\n` +
-                                  `• Subscribe to **Discord Nitro** to upload files up to 500 MB`
+                            `Video **${actualSizeMB.toFixed(2)} MB** exceeds Discord's current upload limit for this bot response (**${interactionAttachmentLimitMB.toFixed(2)} MB**).\n\n` +
+                            `💡 **Options:**\n` +
+                            `• Use 🔗 **Link mode** for a direct download link\n` +
+                            `• Use a lower quality (480p)\n` +
+                            `• Try again in a server or channel with a higher upload limit`
                         )
-                        .setFooter({ text: hasNitro ? `Max capacity: ${maxFileSizeMB} MB` : 'Non-Nitro server limit: 10 MB • Get Nitro for up to 500 MB' });
+                        .setFooter({ text: `Discord upload limit: ${interactionAttachmentLimitMB.toFixed(2)} MB` });
 
                     await interaction.editReply({ embeds: [discordLimitEmbed], components: [] });
                     return;
@@ -509,7 +537,7 @@ class DownloadCommand extends BaseCommand {
                 logger.info('Video', `Attempting upload: ${result.path} (${uploadFileSize.toFixed(2)} MB)`);
                 logger.info('Video', `File details: ${fileExtension} format, name: ${platformId}_${isGif ? 'gif' : 'video'}.${fileExtension}`);
                 
-                // Upload with retry logic for aborted operations
+                // Upload with retry logic for transient failures only.
                 let uploadSuccess = false;
                 let retryCount = 0;
                 const maxRetries = 2;
@@ -534,8 +562,9 @@ class DownloadCommand extends BaseCommand {
                     } catch (uploadErr) {
                         const uploadError = uploadErr as Error & { code?: number };
                         logger.error('Video', `Upload attempt ${retryCount + 1} failed: ${uploadError.message} (code: ${uploadError.code}, size: ${uploadFileSize.toFixed(2)} MB, platform: ${platformName})`);
+                        const isNonRetryableUploadError = isDiscordUploadLimitError(uploadError);
                         
-                        if (retryCount === maxRetries) {
+                        if (isNonRetryableUploadError || retryCount === maxRetries) {
                             throw uploadErr; // Re-throw on final failure
                         }
                         retryCount++;
@@ -596,9 +625,7 @@ class DownloadCommand extends BaseCommand {
                                    err.message?.toLowerCase().includes('entity') ||
                                    err.message?.startsWith('FILE_TOO_LARGE') ||
                                    err.code === 40005;
-            const isDiscordUploadLimit = err.code === 40005 || 
-                                        err.message?.includes('Request entity too large') ||
-                                        (err.message?.toLowerCase().includes('payload') && err.message?.toLowerCase().includes('large'));
+            const isDiscordUploadLimit = isDiscordUploadLimitError(err);
             const isTimeout = err.message?.toLowerCase().includes('abort') ||
                               err.message === 'This operation was aborted' ||
                               err.name === 'AbortError';
@@ -639,18 +666,24 @@ class DownloadCommand extends BaseCommand {
                     )
                     .setFooter({ text: 'Maximum video duration: 10 minutes' });
             } else if (isDiscordUploadLimit && !err.message?.startsWith('FILE_TOO_LARGE')) {
-                // Discord rejected the upload - file too large for user's account
+                const attachmentLimitText = interactionAttachmentLimitMB === null
+                    ? ''
+                    : ` (**${interactionAttachmentLimitMB.toFixed(2)} MB**)`;
                 errorEmbed = new EmbedBuilder()
                     .setColor(COLORS.ERROR)
                     .setTitle('❌ Upload Failed')
                     .setDescription(
-                        `This video couldn't be uploaded because it exceeds your Discord upload limit (**10 MB** for non-Nitro users).\n\n` +
+                        `Discord rejected the upload because the file is larger than the current attachment limit${attachmentLimitText} for this bot response.\n\n` +
                         `💡 **Options:**\n` +
                         `• Use 🔗 **Link mode** for a direct download link\n` +
                         `• Use a lower quality (480p)\n` +
-                        `• Subscribe to **Discord Nitro** to upload files up to 500 MB`
+                        `• Try again in a server or channel with a higher upload limit`
                     )
-                    .setFooter({ text: 'Non-Nitro limit: 10 MB • Use /video [url] mode:Link' });
+                    .setFooter({
+                        text: interactionAttachmentLimitMB === null
+                            ? 'Use /download mode:Link or a lower quality'
+                            : `Discord upload limit: ${interactionAttachmentLimitMB.toFixed(2)} MB • Use /download mode:Link`
+                    });
             } else if (isFileTooLarge) {
                 const sizeMatch = err.message.match(/FILE_TOO_LARGE:([\d.]+)MB/);
                 const fileSize = sizeMatch ? sizeMatch[1] : 'over 100';

@@ -31,6 +31,14 @@ import { bot, music } from './config/index.js';
 
 import postgres, { initializeDatabase } from './database/postgres.js';
 
+type RawInteractionPacket = {
+    t?: string;
+    d?: {
+        id?: string;
+        attachment_size_limit?: number;
+    };
+};
+
 let commandReg: CommandRegistry;
 let eventReg: EventRegistry;
 let redisCache: RedisCache;
@@ -42,6 +50,7 @@ class ShoukakuBot {
 
     constructor() {
         this.client = createClient() as ClientWithCommands;
+        this.client.interactionAttachmentLimits = new Map();
         this.rest = new REST({ version: '10', timeout: 120000 }).setToken(process.env.BOT_TOKEN!);
     }
 
@@ -199,7 +208,36 @@ class ShoukakuBot {
     }
 
     private setupInteractionListener(): void {
+        this.client.on(Events.Raw, (packet: RawInteractionPacket) => {
+            if (packet.t !== 'INTERACTION_CREATE') {
+                return;
+            }
+
+            const interactionId = packet.d?.id;
+            const attachmentSizeLimit = packet.d?.attachment_size_limit;
+            if (typeof interactionId !== 'string' || typeof attachmentSizeLimit !== 'number') {
+                return;
+            }
+
+            const attachmentLimits = this.client.interactionAttachmentLimits ?? new Map<string, number>();
+            attachmentLimits.set(interactionId, attachmentSizeLimit);
+            this.client.interactionAttachmentLimits = attachmentLimits;
+
+            if (attachmentLimits.size > 500) {
+                const oldestInteractionId = attachmentLimits.keys().next().value as string | undefined;
+                if (oldestInteractionId) {
+                    attachmentLimits.delete(oldestInteractionId);
+                }
+            }
+        });
+
         this.client.on(Events.InteractionCreate, async (interaction: Interaction) => {
+            const attachmentSizeLimit = this.client.interactionAttachmentLimits?.get(interaction.id);
+            if (typeof attachmentSizeLimit === 'number') {
+                (interaction as Interaction & { attachmentSizeLimit?: number }).attachmentSizeLimit = attachmentSizeLimit;
+                this.client.interactionAttachmentLimits?.delete(interaction.id);
+            }
+
             try {
                 if (interaction.isChatInputCommand()) {
                     const command = commandReg.get(interaction.commandName) as BootstrapCommand | undefined;
