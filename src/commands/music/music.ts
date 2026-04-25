@@ -10,7 +10,7 @@ import { checkAccess, AccessType } from '../../services/index.js';
 import logger from '../../core/Logger.js';
 import _musicHandlers, { historyHandler } from '../../handlers/music/index.js';
 import lavalinkService from '../../services/music/core/LavalinkService.js';
-import type { MusicHandler, MusicHandlers } from '../../types/commands/music-command.js';
+import type { MusicHandler, MusicHandlers } from '../../types/commands/music.js';
 // COMMAND
 class MusicCommand extends BaseCommand {
     private _handlers: MusicHandlers | null = null;

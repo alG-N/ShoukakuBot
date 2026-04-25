@@ -1,5 +1,5 @@
 import type { MALMediaType, AnimeContentSource } from './mal.js';
-import type { NHentaiGallery, SearchData } from './nhentai.js';
+import type { NHentaiGallery, SearchData } from '../nhentai/model.js';
 
 export interface AutocompleteOption {
     name: string;

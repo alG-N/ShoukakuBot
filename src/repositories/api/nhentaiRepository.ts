@@ -5,14 +5,14 @@
 
 import postgres from '../../database/postgres.js';
 import logger from '../../core/Logger.js';
-import type { NHentaiTag } from '../../types/api/models/nhentai.js';
+import type { NHentaiTag } from '../../types/api/nhentai/model.js';
 import type {
     NHentaiFavouriteGalleryInput,
     NHentaiFavourite,
     ToggleFavouriteResult,
     NHentaiUserSettings
-} from '../../types/api/repositories/nhentai-repository.js';
-export { type NHentaiGallery, type NHentaiTag } from '../../types/api/models/nhentai.js';
+} from '../../types/api/nhentai/repository.js';
+export { type NHentaiGallery, type NHentaiTag } from '../../types/api/nhentai/model.js';
 
 
 // NHentaiRepository Class

@@ -13,7 +13,7 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
-import type { EmbedField, ImageFormat } from '../../types/commands/general-avatar.js';
+import type { EmbedField, ImageFormat } from '../../types/commands/avatar.js';
 
 class AvatarCommand extends BaseCommand {
     constructor() {

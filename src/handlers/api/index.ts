@@ -25,8 +25,8 @@ export { type MediaImage, type MediaTrailer, type MediaStudio, type MediaRelatio
 // NHentai handler
 import nhentaiHandlerInstance from './nhentai/index.js';
 export { default as nhentaiHandler, NHentaiHandler } from './nhentai/index.js';
-export { type Gallery, type GalleryTitle, type GalleryTag, type GalleryImages, type PageSession, type SearchSession, type Favourite } from '../../types/api/handlers/nhentai-handler.js';
-export { type ParsedTags, type SearchData } from '../../types/api/models/nhentai.js';
+export { type Gallery, type GalleryTitle, type GalleryTag, type GalleryImages, type PageSession, type SearchSession, type Favourite } from '../../types/api/nhentai/handler.js';
+export { type ParsedTags, type SearchData } from '../../types/api/nhentai/model.js';
 
 // Pixiv handler
 import * as pixivContentHandlerModule from './pixiv/index.js';
@@ -35,8 +35,8 @@ export {
     createNoResultsEmbed as createPixivNoResultsEmbed,
     createErrorEmbed as createPixivErrorEmbed
 } from './pixiv/index.js';
-export { type PixivTag } from '../../types/api/models/pixiv.js';
-export { type PixivItem, type PixivContentUser, type ContentEmbedOptions, type ContentEmbedResult } from '../../types/api/handlers/pixiv-handler.js';
+export { type PixivTag } from '../../types/api/pixiv/model.js';
+export { type PixivItem, type PixivContentUser, type ContentEmbedOptions, type ContentEmbedResult } from '../../types/api/pixiv/handler.js';
 
 // Reddit handler
 import * as redditPostHandlerModule from './reddit/index.js';
@@ -48,8 +48,8 @@ export {
     createNotFoundEmbed,
     POSTS_PER_PAGE
 } from './reddit/index.js';
-export { type RedditPost } from '../../types/api/models/reddit.js';
-export { type RedditSortType as SortType } from '../../types/api/handlers/reddit-post-handler.js';
+export { type RedditPost } from '../../types/api/reddit/model.js';
+export { type RedditSortType as SortType } from '../../types/api/reddit/handler.js';
 
 // Rule34 handler
 import * as rule34PostHandlerModule from './rule34/index.js';
@@ -71,8 +71,8 @@ export {
     CONTENT_EMOJIS,
     SORT_DISPLAY
 } from './rule34/index.js';
-export { type Rule34Post, type PostRating, type Rule34ContentType as ContentType, type SortMode, type Rule34RelatedTag as RelatedTag, type Rule34HistoryEntry } from '../../types/api/models/rule34.js';
-export { type SearchResults, type PostEmbedOptions, type SearchFilters, type Rule34HandlerPreferences as UserPreferences, type FavoriteEntry, type EmbedResult } from '../../types/api/handlers/rule34-post-handler.js';
+export { type Rule34Post, type PostRating, type Rule34ContentType as ContentType, type SortMode, type Rule34RelatedTag as RelatedTag, type Rule34HistoryEntry } from '../../types/api/rule34/model.js';
+export { type SearchResults, type PostEmbedOptions, type SearchFilters, type Rule34HandlerPreferences as UserPreferences, type FavoriteEntry, type EmbedResult } from '../../types/api/rule34/handler.js';
 
 // Steam handler
 import * as steamSaleHandlerModule from './steam/index.js';

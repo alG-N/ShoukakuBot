@@ -11,10 +11,10 @@
  */
 
 import cacheService from '../CacheService.js';
-import type { RedditPost } from '../../types/api/models/reddit.js';
-import type { SortType, RedditSession } from '../../types/api/repositories/reddit-cache.js';
-export { type RedditPost } from '../../types/api/models/reddit.js';
-export { type SortType, type RedditSession } from '../../types/api/repositories/reddit-cache.js';
+import type { RedditPost } from '../../types/api/reddit/model.js';
+import type { RedditSession, SortType } from '../../types/api/reddit/cache.js';
+export { type RedditPost } from '../../types/api/reddit/model.js';
+export { type SortType, type RedditSession } from '../../types/api/reddit/cache.js';
 
 // ── CacheService namespace ───────────────────────────────────────────
 const NS = 'reddit:session';

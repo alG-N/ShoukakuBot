@@ -6,7 +6,7 @@
 
 import { EmbedBuilder, TextBasedChannel } from 'discord.js';
 import { TYPE_COLORS, OWNER_ID } from '../../../config/say/index.js';
-import type { SayType } from '../../../types/fun/say-service.js';
+import type { SayType } from '../../../types/fun/say.js';
 // SAY SERVICE CLASS
 class SayService {
     /**

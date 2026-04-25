@@ -13,14 +13,14 @@ import {
 import logger from '../../../core/Logger.js';
 import nhentaiService from '../../../services/api/nhentaiService.js';
 import nhentaiRepository, { NHentaiFavourite, NHentaiGallery } from '../../../repositories/api/nhentaiRepository.js';
-import type { SearchData } from '../../../types/api/models/nhentai.js';
+import type { SearchData } from '../../../types/api/nhentai/model.js';
 import type {
     FavouritesData,
     Gallery,
     PageSession,
     SearchSession,
     UserPreferences
-} from '../../../types/api/handlers/nhentai-handler.js';
+} from '../../../types/api/nhentai/handler.js';
 // applyTranslatedTitle no longer needed — translate now finds the English version
 
 type GalleryResponseOptions = {

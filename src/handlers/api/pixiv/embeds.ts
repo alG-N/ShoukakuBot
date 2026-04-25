@@ -7,8 +7,8 @@ import type {
     ContentEmbedResult,
     PixivContentUser,
     BuildEmbedOptions
-} from '../../../types/api/handlers/pixiv-handler.js';
-import type { PixivTag } from '../../../types/api/models/pixiv.js';
+} from '../../../types/api/pixiv/handler.js';
+import type { PixivTag } from '../../../types/api/pixiv/model.js';
 
 export { type PixivItem, type PixivTag, type PixivContentUser, type ContentEmbedOptions, type ContentEmbedResult, type BuildEmbedOptions };
 

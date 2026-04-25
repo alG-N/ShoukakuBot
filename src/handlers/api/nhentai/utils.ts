@@ -1,5 +1,5 @@
-import type { GalleryTag, GalleryTitle } from '../../../types/api/handlers/nhentai-handler.js';
-import type { ParsedTags } from '../../../types/api/models/nhentai.js';
+import type { ParsedTags } from '../../../types/api/nhentai/model.js';
+import type { GalleryTag, GalleryTitle } from '../../../types/api/nhentai/handler.js';
 
 export const COLORS = {
     NHENTAI: 0xED2553,

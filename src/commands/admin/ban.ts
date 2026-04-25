@@ -17,7 +17,7 @@ import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import logger from '../../core/Logger.js';
 import { moderationService } from '../../services/moderation/index.js';
-import type { BanValidationResult } from '../../types/commands/admin-actions.js';
+import type { BanValidationResult } from '../../types/commands/actions.js';
 
 class BanCommand extends BaseCommand {
     constructor() {

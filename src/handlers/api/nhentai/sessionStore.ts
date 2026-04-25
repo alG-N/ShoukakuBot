@@ -1,5 +1,5 @@
 import cacheService from '../../../cache/CacheService.js';
-import type { Gallery, PageSession, SearchSession, UserPreferences } from '../../../types/api/handlers/nhentai-handler.js';
+import type { Gallery, PageSession, SearchSession, UserPreferences } from '../../../types/api/nhentai/handler.js';
 import nhentaiRepository from '../../../repositories/api/nhentaiRepository.js';
 
 export const NHENTAI_CACHE_NS = 'api:nhentai';

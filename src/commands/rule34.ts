@@ -37,7 +37,7 @@ import type {
     Rule34ServiceContract,
     Rule34CacheContract,
     Rule34PostHandlerContract
-} from '../types/commands/external/rule34-command.js';
+} from '../types/commands/rule34.js';
 // TYPES
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const rule34Service: Rule34ServiceContract = _rule34Service as any;

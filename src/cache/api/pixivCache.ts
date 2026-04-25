@@ -10,7 +10,7 @@
  */
 
 import cacheService from '../CacheService.js';
-import type { PixivCacheSearchResult, PixivResultData } from '../../types/api/repositories/pixiv-cache.js';
+import type { PixivCacheSearchResult, PixivResultData } from '../../types/api/pixiv/cache.js';
 
 // ── CacheService namespace constants ─────────────────────────────────
 const NS = {

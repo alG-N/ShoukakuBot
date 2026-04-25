@@ -17,7 +17,7 @@ import { checkAccess, AccessType } from '../services/index.js';
 import logger from '../core/Logger.js';
 import _nhentaiServiceModule from '../services/api/nhentaiService.js';
 import _nhentaiHandlerModule from '../handlers/api/nhentai/index.js';
-import type { NHentaiService, NHentaiHandler } from '../types/commands/external/nhentai-command.js';
+import type { NHentaiService, NHentaiHandler } from '../types/commands/nhentai.js';
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const nhentaiService: NHentaiService = _nhentaiServiceModule as any;
 const nhentaiHandler: NHentaiHandler = _nhentaiHandlerModule as any;

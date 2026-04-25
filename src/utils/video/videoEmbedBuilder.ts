@@ -5,7 +5,7 @@
 
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ColorResolvable } from 'discord.js';
 import progressAnimator from './progressAnimator.js';
-import type { ProgressOptions, SuccessOptions } from '../../types/video/video-embed-builder.js';
+import type { ProgressOptions, SuccessOptions } from '../../types/video/embed-builder.js';
 
 // VIDEO EMBED BUILDER CLASS
 class VideoEmbedBuilder {

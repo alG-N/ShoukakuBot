@@ -9,7 +9,7 @@ import {
     ModalSubmitInteraction,
     AttachmentBuilder
 } from 'discord.js';
-import type { ParsedTags, SearchData } from '../../../types/api/models/nhentai.js';
+import type { ParsedTags, SearchData } from '../../../types/api/nhentai/model.js';
 import type {
     Gallery,
     GalleryTitle,
@@ -20,7 +20,7 @@ import type {
     FavouritesData,
     Favourite,
     UserPreferences
-} from '../../../types/api/handlers/nhentai-handler.js';
+} from '../../../types/api/nhentai/handler.js';
 import { NhentaiCdnClient } from './cdn.js';
 import { getExt } from './utils.js';
 import {

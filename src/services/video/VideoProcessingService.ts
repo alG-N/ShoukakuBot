@@ -17,7 +17,7 @@ import type {
     FFprobeOutput,
     ProgressData,
     StageData
-} from '../../types/video/video-processing-service.js';
+} from '../../types/video/processing-service.js';
 
 const config = videoConfig as unknown as VideoConfigType;
 // VIDEO PROCESSING SERVICE CLASS

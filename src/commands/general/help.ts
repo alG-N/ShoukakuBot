@@ -16,7 +16,7 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
-import type { HelpCategory } from '../../types/commands/general-help.js';
+import type { HelpCategory } from '../../types/commands/help.js';
 
 class HelpCommand extends BaseCommand {
     constructor() {

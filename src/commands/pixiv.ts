@@ -29,12 +29,12 @@ import type {
     PixivCachedSearch as CachedSearch,
     PixivUserPreferences
 } from '../types/api/models/content-session.js';
-import type { PixivSearchOptions } from '../types/api/models/pixiv.js';
+import type { PixivSearchOptions } from '../types/api/pixiv/model.js';
 import type {
     PixivService,
     PixivCache,
     ContentHandler
-} from '../types/commands/external/pixiv-command.js';
+} from '../types/commands/pixiv.js';
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const pixivService: PixivService = _pixivServiceModule as any;
 const pixivCache: PixivCache = _pixivCacheModule as any;

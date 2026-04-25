@@ -16,7 +16,7 @@ import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import logger from '../../core/Logger.js';
 import { moderationService } from '../../services/moderation/index.js';
-import type { KickValidationResult } from '../../types/commands/admin-actions.js';
+import type { KickValidationResult } from '../../types/commands/actions.js';
 
 class KickCommand extends BaseCommand {
     constructor() {

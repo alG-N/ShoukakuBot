@@ -18,7 +18,7 @@ import type {
     StageData,
     VideoConfigType
 } from '../../types/video/processing.js';
-import type { DirectUrlResult, DownloadResult } from '../../types/video/video-download-service.js';
+import type { DirectUrlResult, DownloadResult } from '../../types/video/download-service.js';
 
 const config = videoConfig as unknown as VideoConfigType;
 // VIDEO DOWNLOAD SERVICE CLASS

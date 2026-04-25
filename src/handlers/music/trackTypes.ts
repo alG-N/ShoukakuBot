@@ -4,7 +4,7 @@
  * @module handlers/music/trackTypes
  */
 
-import type { LoopMode } from '../../types/music/index.js';
+import type { LoopMode } from '../../types/music/playback.js';
 import type {
     SourcePlatform,
     SourceInfo,

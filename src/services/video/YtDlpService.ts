@@ -19,7 +19,7 @@ import type {
     DownloadOptions,
     ProgressData,
     StageData
-} from '../../types/video/ytdlp-service.js';
+} from '../../types/video/ytdlp.js';
 
 const config = videoConfig as unknown as VideoConfigType;
 

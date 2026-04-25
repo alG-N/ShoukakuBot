@@ -13,7 +13,7 @@ import pixivCache, { PixivCache } from '../../cache/api/pixivCache.js';
 import type { PixivCacheSearchResult, PixivResultData } from '../../cache/api/pixivCache.js';
 
 import pixivRepository, { PixivRepository } from './pixivRepository.js';
-import type { PixivUserSettings } from '../../types/api/repositories/pixiv-settings.js';
+import type { PixivUserSettings } from '../../types/api/pixiv/settings.js';
 
 import redditCache, { RedditCache } from '../../cache/api/redditCache.js';
 import type { RedditPost, SortType as RedditSortType } from '../../cache/api/redditCache.js';

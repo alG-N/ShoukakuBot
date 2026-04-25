@@ -19,7 +19,7 @@ import type {
     BattleService,
     EmbedBuilderService,
     DeathBattleConfig
-} from '../../types/fun/deathbattle-command.js';
+} from '../../types/fun/deathbattle.js';
 
 import _skillsetService from '../../services/fun/deathbattle/SkillsetService.js';
 import _battleService from '../../services/fun/deathbattle/BattleService.js';

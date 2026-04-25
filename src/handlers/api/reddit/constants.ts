@@ -1,4 +1,4 @@
-import type { RedditSortType, SortConfigItem } from '../../../types/api/handlers/reddit-post-handler.js';
+import type { RedditSortType, SortConfigItem } from '../../../types/api/reddit/handler.js';
 
 export const POSTS_PER_PAGE = 5;
 

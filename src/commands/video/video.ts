@@ -31,7 +31,7 @@ import type {
     PlatformDetector,
     VideoEmbedBuilder,
     UrlValidator,
-} from '../../types/video/download-command.js';
+} from '../../types/video/download.js';
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const videoDownloadService: VideoDownloadService = _videoDownloadService as any;
 const platformDetector: PlatformDetector = _platformDetector as any;

@@ -12,7 +12,7 @@ import { EventEmitter } from 'events';
 import * as videoConfig from '../../config/features/video.js';
 import logger from '../../core/Logger.js';
 import type { DownloadOptions, ProgressData } from '../../types/video/processing.js';
-import type { CobaltCompleteData, CobaltResponse, DownloadInfo } from '../../types/video/cobalt-service.js';
+import type { CobaltCompleteData, CobaltResponse, DownloadInfo } from '../../types/video/cobalt.js';
 // COBALT SERVICE CLASS
 class CobaltService extends EventEmitter {
     private apiUrls: string[];

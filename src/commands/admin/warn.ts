@@ -28,7 +28,7 @@ import _moderationConfigModule from '../../config/features/moderation/index.js';
 import _dbModule from '../../database/index.js';
 import type { EscalationResult, InfractionService } from '../../types/moderation/services.js';
 import type { ModerationConfig } from '../../config/features/moderation/index.js';
-import type { WarnThreshold, ModerationService, Database } from '../../types/commands/admin-warn.js';
+import type { WarnThreshold, ModerationService, Database } from '../../types/commands/warn.js';
 
 
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())

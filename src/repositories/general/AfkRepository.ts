@@ -7,7 +7,7 @@
 
 import db from '../../database/postgres.js';
 import logger from '../../core/Logger.js';
-import type { AfkType, AfkRecord, AfkInfo, SetAfkData } from '../../types/guild/afk-repository.js';
+import type { AfkInfo, AfkRecord, AfkType, SetAfkData } from '../../types/general/afk-repository.js';
 
 // ============================================================================
 // REPOSITORY CLASS

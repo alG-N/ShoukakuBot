@@ -12,7 +12,7 @@ import type {
     Rule34CacheContract,
     Rule34PostHandlerContract,
     Rule34ServiceContract
-} from '../../../types/commands/external/rule34-command.js';
+} from '../../../types/commands/rule34.js';
 
 export interface Rule34CommandHandlerDeps {
     rule34Service: Rule34ServiceContract;

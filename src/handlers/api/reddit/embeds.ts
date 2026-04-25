@@ -1,8 +1,8 @@
 import { EmbedBuilder } from 'discord.js';
 import { formatNumber, truncateText } from '../../../utils/common/embed.js';
 import { CONTENT_ICONS, POSTS_PER_PAGE, SORT_CONFIG } from './constants.js';
-import type { RedditPost } from '../../../types/api/models/reddit.js';
-import type { RedditSortType } from '../../../types/api/handlers/reddit-post-handler.js';
+import type { RedditPost } from '../../../types/api/reddit/model.js';
+import type { RedditSortType } from '../../../types/api/reddit/handler.js';
 
 export function createPostListEmbed(
     subreddit: string,

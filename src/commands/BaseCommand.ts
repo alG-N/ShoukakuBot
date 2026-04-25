@@ -32,7 +32,7 @@ import type {
     CooldownResult,
     CommandContext,
     CommandData
-} from '../types/commands/base-command.js';
+} from '../types/commands/base.js';
 // TYPES & INTERFACES
 /**
  * Command categories enum

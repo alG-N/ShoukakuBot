@@ -23,7 +23,7 @@ import type {
     RedditService,
     RedditCache,
     RedditPostHandler
-} from '../types/commands/external/reddit-command.js';
+} from '../types/commands/reddit.js';
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const redditService: RedditService = _redditService as any;
 const redditCache: RedditCache = _redditCache as any;

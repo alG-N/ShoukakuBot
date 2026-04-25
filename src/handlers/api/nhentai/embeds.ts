@@ -1,6 +1,6 @@
 import { EmbedBuilder } from 'discord.js';
-import type { SearchData } from '../../../types/api/models/nhentai.js';
-import type { Gallery, GalleryTag, GalleryTitle } from '../../../types/api/handlers/nhentai-handler.js';
+import type { SearchData } from '../../../types/api/nhentai/model.js';
+import type { Gallery, GalleryTag, GalleryTitle, UserPreferences } from '../../../types/api/nhentai/handler.js';
 import { NhentaiCdnClient } from './cdn.js';
 import {
     COLORS,
@@ -10,7 +10,6 @@ import {
     parseTags,
     truncate
 } from './utils.js';
-import type { UserPreferences } from '../../../types/api/handlers/nhentai-handler.js';
 
 function periodLabel(period: UserPreferences['popularPeriod']): string {
     const labels: Record<UserPreferences['popularPeriod'], string> = {

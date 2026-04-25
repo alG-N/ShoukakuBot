@@ -17,7 +17,7 @@ import type {
     Rule34SearchResult,
     Rule34AutocompleteSuggestion as AutocompleteSuggestion,
     Rule34RelatedTag as RelatedTag
-} from '../../types/api/models/rule34.js';
+} from '../../types/api/rule34/model.js';
 import type {
     Rule34Auth,
     AutocompleteItem,
@@ -25,7 +25,7 @@ import type {
     BuildQueryOptions,
     TagInfoResponse,
     CommentResponse
-} from '../../types/api/services/rule34-service.js';
+} from '../../types/api/rule34/service.js';
 export { type Rule34SearchOptions, type Rule34RawPost, type Rule34Post, type Rule34SearchResult, type AutocompleteSuggestion, type RelatedTag, type Rule34Auth, type FilterOptions, type BuildQueryOptions, type TagInfoResponse, type CommentResponse };
 
 dotenv.config({ path: path.join(__dirname, '../.env') });

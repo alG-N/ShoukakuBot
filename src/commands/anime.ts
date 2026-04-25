@@ -35,7 +35,7 @@ import type {
     MyAnimeListService,
     AnimeHandler,
     AnimeRepository
-} from '../types/commands/external/anime-command.js';
+} from '../types/commands/anime.js';
 
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const anilistService: AnilistService = _anilistService as any;

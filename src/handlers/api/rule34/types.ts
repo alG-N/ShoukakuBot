@@ -1,4 +1,4 @@
-import type { Rule34Post, PostRating, Rule34ContentType as ContentType, SortMode, Rule34RelatedTag as RelatedTag, Rule34HistoryEntry } from '../../../types/api/models/rule34.js';
+import type { Rule34Post, PostRating, Rule34ContentType as ContentType, SortMode, Rule34RelatedTag as RelatedTag, Rule34HistoryEntry } from '../../../types/api/rule34/model.js';
 import type {
     SearchResults,
     PostEmbedOptions,
@@ -6,7 +6,7 @@ import type {
     Rule34HandlerPreferences,
     FavoriteEntry,
     EmbedResult
-} from '../../../types/api/handlers/rule34-post-handler.js';
+} from '../../../types/api/rule34/handler.js';
 
 export type {
     Rule34Post,

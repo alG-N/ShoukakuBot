@@ -5,7 +5,7 @@
 
 import postgres from '../../database/postgres.js';
 import logger from '../../core/Logger.js';
-import type { PixivUserSettings } from '../../types/api/repositories/pixiv-settings.js';
+import type { PixivUserSettings } from '../../types/api/pixiv/settings.js';
 
 const VALID_CONTENT_TYPES = ['illust', 'manga', 'novel'];
 const VALID_NSFW_MODES = ['sfw', 'all'];

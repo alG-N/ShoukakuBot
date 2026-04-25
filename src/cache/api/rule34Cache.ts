@@ -24,7 +24,7 @@ import type {
     Rule34UserPreferences,
     Rule34CacheStats,
     FavoriteResult
-} from '../../types/api/repositories/rule34-cache.js';
+} from '../../types/api/rule34/cache.js';
 
 // ── CacheService namespace constants ─────────────────────────────────
 const NS = {

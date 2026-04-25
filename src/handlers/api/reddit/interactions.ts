@@ -10,8 +10,8 @@ import redditCache from '../../../cache/api/redditCache.js';
 import { createBackButton, createGalleryButtons, createPaginationButtons, createPostButtons } from './components.js';
 import { createPostListEmbed } from './embeds.js';
 import { POSTS_PER_PAGE } from './constants.js';
-import type { RedditPost } from '../../../types/api/models/reddit.js';
-import type { RedditSortType } from '../../../types/api/handlers/reddit-post-handler.js';
+import type { RedditPost } from '../../../types/api/reddit/model.js';
+import type { RedditSortType } from '../../../types/api/reddit/handler.js';
 
 export async function sendPostListEmbed(
     interaction: ChatInputCommandInteraction,
