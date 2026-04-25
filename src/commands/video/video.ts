@@ -11,8 +11,7 @@ import {
     ActionRowBuilder, 
     ButtonBuilder, 
     ButtonStyle,
-    ChatInputCommandInteraction,
-    GuildTextBasedChannel
+    ChatInputCommandInteraction
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
@@ -230,8 +229,8 @@ class DownloadCommand extends BaseCommand {
     }
 
     async run(interaction: ChatInputCommandInteraction): Promise<void> {
-        // Defer ephemerally so all progress/error messages are private;
-        // the final video file will be sent via channel.send() to stay public.
+        // Defer ephemerally so progress/error messages stay private.
+        // The final file is sent as a public interaction follow-up.
         await interaction.deferReply({ ephemeral: true });
 
         // Access control
@@ -549,7 +548,7 @@ class DownloadCommand extends BaseCommand {
                             await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s before retry
                         }
                         
-                        await (interaction.channel as GuildTextBasedChannel).send({ 
+                        await interaction.followUp({ 
                             content: successMessage,
                             files: [attachment],
                             components: [originalButton]
