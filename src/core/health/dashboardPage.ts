@@ -9,48 +9,44 @@ import { dashboardStyles } from './dashboardStyles.js';
 
 const dashboardBody = `
     <div class="shell">
-        <section class="hero">
-            <article class="hero-card">
-                <h1>Shoukaku Live Dashboard</h1>
-                <p class="subline">Port 3000 stays the bot health surface. Root now renders a detailed live view while the machine-friendly endpoints remain available for Docker and Prometheus.</p>
-                <div class="status-row" id="statusRow"></div>
+        <header class="page-header">
+            <section class="header-main">
+                <h1>Shoukaku Health Dashboard</h1>
+                <p class="subline">A simple runtime view for bot health, service status, and diagnostic endpoints on port 3000.</p>
                 <div class="link-row">
                     <a class="link-pill" href="/health" target="_blank" rel="noreferrer">/health</a>
                     <a class="link-pill" href="/metrics" target="_blank" rel="noreferrer">/metrics</a>
                     <a class="link-pill" href="/dashboard.json" target="_blank" rel="noreferrer">/dashboard.json</a>
                     <a class="link-pill" href="http://localhost:3030" target="_blank" rel="noreferrer">Grafana :3030</a>
                 </div>
-                <div class="meta-row">
-                    <span class="pill info">Auto-refresh 5s</span>
-                    <span class="pill info" id="snapshotAt">Waiting for first snapshot</span>
-                    <span class="pill info" id="fetchState">Connecting</span>
-                </div>
-            </article>
-            <aside class="hero-card refresh-card">
-                <h2>Refresh State</h2>
-                <div class="refresh-value" id="refreshSummary">Loading</div>
-                <p class="hint">If this page is unreachable, the bot container itself is usually not running. Grafana remains separate on port 3030.</p>
+            </section>
+            <aside class="header-side">
+                <div class="status-row" id="statusRow"></div>
                 <div class="meta-row">
                     <span class="pill info" id="lifecycleBadge">Lifecycle: starting</span>
                     <span class="pill info" id="overallBadge">Health: unknown</span>
+                    <span class="pill info">Auto-refresh 10m</span>
+                    <span class="pill info" id="snapshotAt">Waiting for first snapshot</span>
+                    <span class="pill info" id="fetchState">Connecting</span>
                 </div>
+                <p class="hint" id="refreshSummary">Waiting for first snapshot.</p>
             </aside>
-        </section>
+        </header>
 
         <section class="overview-grid" id="overviewGrid"></section>
 
         <section class="grid">
-            <article class="panel span-4">
+            <article class="panel span-12">
                 <h2>Health Checks</h2>
                 <div class="checks" id="healthChecks"></div>
             </article>
 
-            <article class="panel span-4">
+            <article class="panel span-6">
                 <h2>Cache</h2>
                 <div id="cacheSummary"></div>
             </article>
 
-            <article class="panel span-4">
+            <article class="panel span-6">
                 <h2>Lavalink</h2>
                 <div id="lavalinkSummary"></div>
             </article>
@@ -81,7 +77,7 @@ const dashboardBody = `
             </article>
         </section>
 
-        <div class="footer-note">Detailed health checks refresh automatically every 5 seconds.</div>
+        <div class="footer-note">Dashboard refreshes automatically every 10 minutes.</div>
     </div>
 `;
 

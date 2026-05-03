@@ -1,5 +1,5 @@
 export const dashboardClientScript = `
-const REFRESH_MS = 5000;
+const REFRESH_MS = 10 * 60 * 1000;
 
 const statusRow = document.getElementById('statusRow');
 const snapshotAt = document.getElementById('snapshotAt');
@@ -209,7 +209,7 @@ function renderStatusSummary(data) {
     overallBadge.textContent = 'Health: ' + String(data.overallStatus || 'unknown');
 
     snapshotAt.textContent = 'Snapshot: ' + new Date(data.generatedAt).toLocaleString();
-    refreshSummary.textContent = String(data.overallStatus || 'unknown').toUpperCase();
+    refreshSummary.textContent = 'Current status: ' + String(data.overallStatus || 'unknown') + '. Automatic refresh runs every 10 minutes.';
 }
 
 function renderOverview(data) {
@@ -270,7 +270,7 @@ async function loadSnapshot() {
         renderSnapshot(data);
     } catch (error) {
         fetchState.textContent = 'Refresh failed';
-        refreshSummary.textContent = 'OFFLINE';
+        refreshSummary.textContent = 'Last refresh failed. The dashboard JSON endpoint did not respond cleanly.';
         statusRow.innerHTML = renderPill('Dashboard', 'unreachable', 'bad');
         rawSnapshot.textContent = String(error && error.message ? error.message : error);
     }
