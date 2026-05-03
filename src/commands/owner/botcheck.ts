@@ -5,17 +5,115 @@
  */
 
 import { SlashCommandBuilder, EmbedBuilder, ChatInputCommandInteraction, ActionRowBuilder, ButtonBuilder, ButtonStyle, version as djsVersion } from 'discord.js';
+import { existsSync } from 'fs';
 import os from 'os';
-import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../baseCommand.js';
 import { COLORS } from '../../constants.js';
 import { isOwner } from '../../config/owner.js';
 import { formatUptime } from '../../utils/common/time.js';
-import shardBridge from '../../services/guild/ShardBridge.js';
-import _commandRegistry from '../../services/registry/CommandRegistry.js';
+import shardBridge from '../../services/guild/shardBridge.js';
+import _commandRegistry from '../../services/registry/commandRegistry.js';
 import _postgres from '../../database/postgres.js';
-import _lavalinkService from '../../services/music/core/LavalinkService.js';
+import _lavalinkService from '../../services/music/core/lavalinkService.js';
 import * as _coreExports from '../../core/index.js';
-import _cacheService from '../../cache/CacheService.js';
+import _cacheService from '../../cache/cacheService.js';
+
+type DashboardUrls = {
+    port: string;
+    localhostUrl: string;
+    lanUrls: string[];
+};
+
+const RUNNING_IN_CONTAINER = existsSync('/.dockerenv');
+
+function getDashboardPort(): string {
+    const configuredPort = process.env.HEALTH_PUBLISHED_PORT || process.env.HEALTH_PORT || '3000';
+    return /^\d+$/.test(configuredPort) ? configuredPort : '3000';
+}
+
+function getDashboardBindHost(): string {
+    const bindHost = (process.env.HEALTH_BIND_HOST || '').trim();
+    return bindHost || '127.0.0.1';
+}
+
+function getConfiguredLanHosts(): string[] {
+    const rawValue = process.env.HEALTH_PUBLIC_HOST || '';
+
+    return [...new Set(
+        rawValue
+            .split(',')
+            .map(host => host.trim())
+            .filter(host => host.length > 0 && host !== '127.0.0.1' && host !== 'localhost' && host !== '0.0.0.0')
+    )];
+}
+
+function getLanIpv4Addresses(): string[] {
+    const preferred: string[] = [];
+    const fallback: string[] = [];
+    const interfaces = os.networkInterfaces();
+
+    for (const interfaceName of Object.keys(interfaces)) {
+        const addresses = interfaces[interfaceName];
+
+        if (!Array.isArray(addresses)) {
+            continue;
+        }
+
+        for (const rawAddress of addresses as unknown[]) {
+            const address = rawAddress as {
+                address?: string;
+                internal?: boolean;
+            };
+            const ipAddress = address.address;
+
+            if (typeof ipAddress !== 'string' || !/^\d{1,3}(?:\.\d{1,3}){3}$/.test(ipAddress) || address.internal) {
+                continue;
+            }
+
+            if (/^(127\.|169\.254\.)/.test(ipAddress)) {
+                continue;
+            }
+
+            if (/^(192\.168\.|10\.)/.test(ipAddress)) {
+                preferred.push(ipAddress);
+                continue;
+            }
+
+            if (!RUNNING_IN_CONTAINER && /^172\.(1[6-9]|2\d|3[0-1])\./.test(ipAddress)) {
+                fallback.push(ipAddress);
+            }
+        }
+    }
+
+    return [...new Set([...preferred, ...fallback])];
+}
+
+function getDashboardUrls(): DashboardUrls {
+    const port = getDashboardPort();
+    const bindHost = getDashboardBindHost();
+    const localhostUrl = `http://localhost:${port}/`;
+    const lanUrls = new Set<string>();
+
+    for (const host of getConfiguredLanHosts()) {
+        lanUrls.add(`http://${host}:${port}/`);
+    }
+
+    if (bindHost !== '127.0.0.1' && bindHost !== 'localhost' && bindHost !== '0.0.0.0') {
+        lanUrls.add(`http://${bindHost}:${port}/`);
+    }
+
+    if (bindHost === '0.0.0.0') {
+        for (const ip of getLanIpv4Addresses()) {
+            lanUrls.add(`http://${ip}:${port}/`);
+        }
+    }
+
+    return {
+        port,
+        localhostUrl,
+        lanUrls: [...lanUrls]
+    };
+}
 
 class BotCheckCommand extends BaseCommand {
     constructor() {
@@ -40,6 +138,8 @@ class BotCheckCommand extends BaseCommand {
             return;
         }
 
+        const dashboardUrls = getDashboardUrls();
+        const primaryLanUrl = dashboardUrls.lanUrls[0] || null;
         const client = interaction.client;
         
         // System metrics
@@ -126,7 +226,7 @@ class BotCheckCommand extends BaseCommand {
 
         // Redis - Check actual Redis connection by pinging via CacheService
         try {
-            const cacheModule = await import('../../cache/CacheService.js');
+            const cacheModule = await import('../../cache/cacheService.js');
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const mod = (cacheModule.default || cacheModule) as any;
             const cacheServiceInstance = (mod && typeof mod === 'object' && 'default' in mod) ? mod.default : mod;
@@ -283,7 +383,7 @@ class BotCheckCommand extends BaseCommand {
         }
 
         try {
-            const cacheModule = await import('../../cache/CacheService.js');
+            const cacheModule = await import('../../cache/cacheService.js');
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const mod2 = (cacheModule.default || cacheModule) as any;
             const cacheServiceInstance = (mod2 && typeof mod2 === 'object' && 'default' in mod2) ? mod2.default : mod2;
@@ -336,7 +436,15 @@ class BotCheckCommand extends BaseCommand {
                 { name: '📂 Working Dir', value: `\`${process.cwd().slice(-40)}\``, inline: false },
                 { name: '🌐 Node Env', value: `\`${process.env.NODE_ENV || 'development'}\``, inline: true },
                 { name: '🔐 Sentry', value: `\`${process.env.SENTRY_DSN ? 'Enabled' : 'Disabled'}\``, inline: true },
-                { name: '📊 Health Port', value: `\`${process.env.HEALTH_PORT || '3000'}\``, inline: true }
+                { name: '📊 Health Port', value: `\`${dashboardUrls.port}\``, inline: true },
+                { name: '🔗 Local Dashboard', value: `[Open local dashboard](${dashboardUrls.localhostUrl})\n\`${dashboardUrls.localhostUrl}\``, inline: false },
+                {
+                    name: '🌐 LAN Dashboard',
+                    value: dashboardUrls.lanUrls.length > 0
+                        ? dashboardUrls.lanUrls.slice(0, 4).map(url => `[${url}](${url})`).join('\n')
+                        : 'No LAN dashboard URL detected. Set `HEALTH_BIND_HOST=0.0.0.0` and, for Docker, `HEALTH_PUBLIC_HOST=<host-ip>` to expose one here.',
+                    inline: false
+                }
             );
 
         // All embeds for pagination
@@ -375,9 +483,29 @@ class BotCheckCommand extends BaseCommand {
             );
         };
 
+        const getLinkRow = () => {
+            const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+                new ButtonBuilder()
+                    .setLabel('Open Local Dashboard')
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(dashboardUrls.localhostUrl)
+            );
+
+            if (primaryLanUrl) {
+                row.addComponents(
+                    new ButtonBuilder()
+                        .setLabel('Open LAN Dashboard')
+                        .setStyle(ButtonStyle.Link)
+                        .setURL(primaryLanUrl)
+                );
+            }
+
+            return row;
+        };
+
         const reply = await this.safeReply(interaction, { 
             embeds: [embeds[currentPage]],
-            components: [getButtons(currentPage)]
+            components: [getButtons(currentPage), getLinkRow()]
         });
 
         if (!reply) return;
@@ -406,7 +534,7 @@ class BotCheckCommand extends BaseCommand {
 
             await i.update({
                 embeds: [embeds[currentPage]],
-                components: [getButtons(currentPage)]
+                components: [getButtons(currentPage), getLinkRow()]
             });
         });
 
@@ -420,7 +548,7 @@ class BotCheckCommand extends BaseCommand {
                     new ButtonBuilder().setCustomId('botcheck_next').setEmoji('▶️').setStyle(ButtonStyle.Primary).setDisabled(true),
                     new ButtonBuilder().setCustomId('botcheck_last').setEmoji('⏭️').setStyle(ButtonStyle.Secondary).setDisabled(true)
                 );
-                await reply.edit({ components: [disabledRow] });
+                await reply.edit({ components: [disabledRow, getLinkRow()] });
             } catch {
                 // Message might be deleted
             }

@@ -15,4 +15,4 @@ export interface LockResults {
     failed: string[];
 }
 
-export type AntiRaidService = typeof import('../../services/moderation/AntiRaidService.js').default;
+export type AntiRaidService = typeof import('../../services/moderation/antiRaidService.js').default;

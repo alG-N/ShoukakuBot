@@ -7,7 +7,7 @@
 import { GraphQLClient, gql } from 'graphql-request';
 import { circuitBreakerRegistry } from '../../core/resilience/CircuitBreakerRegistry.js';
 import logger from '../../core/observability/Logger.js';
-import cacheService from '../../cache/CacheService.js';
+import cacheService from '../../cache/cacheService.js';
 import gracefulDegradation from '../../core/resilience/GracefulDegradation.js';
 import type {
     AnimeMedia,

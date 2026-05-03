@@ -18,10 +18,10 @@ import type {
 
 import { getDefault } from '../utils/common/moduleHelper.js';
 // Lazy-load cacheService to avoid circular dependency at module init
-let _cacheService: typeof import('../cache/CacheService').default | null = null;
+let _cacheService: typeof import('../cache/cacheService').default | null = null;
 const getCacheService = () => {
     if (!_cacheService) {
-        try { _cacheService = getDefault(require('../cache/CacheService')); } catch { /* not ready */ }
+        try { _cacheService = getDefault(require('../cache/cacheService')); } catch { /* not ready */ }
     }
     return _cacheService;
 };

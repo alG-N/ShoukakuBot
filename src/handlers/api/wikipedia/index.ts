@@ -1,4 +1,4 @@
-import { WikipediaHandler } from './WikipediaHandler.js';
+import { WikipediaHandler } from './wikipediaHandler.js';
 
 export { WikipediaHandler };
 export { type WikiArticle as WikipediaArticle, type WikiSearchResult, type OnThisDayEvent, type OnThisDayDate } from '../../../types/api/models/wikipedia.js';

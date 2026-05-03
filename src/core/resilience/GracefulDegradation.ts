@@ -13,10 +13,10 @@ import { DegradationLevel, ServiceState, ServiceInfo, DegradationServiceOptions,
 export { DegradationLevel, ServiceState } from '../../types/core/runtime.js';
 
 // Lazy-load cacheService to avoid circular dependency
-let _cacheService: typeof import('../../cache/CacheService').default | null = null;
+let _cacheService: typeof import('../../cache/cacheService').default | null = null;
 const getCacheService = () => {
     if (!_cacheService) {
-        _cacheService = getDefault(require('../../cache/CacheService'));
+        _cacheService = getDefault(require('../../cache/cacheService'));
     }
     return _cacheService;
 };

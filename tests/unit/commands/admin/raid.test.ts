@@ -66,7 +66,7 @@ const mockDeactivateRaidMode = jest.fn().mockResolvedValue({ duration: 300000, f
 const mockGetRaidModeState = jest.fn().mockResolvedValue(null);
 const mockGetFlaggedAccounts = jest.fn().mockResolvedValue([]);
 const mockUpdateStats = jest.fn().mockResolvedValue(undefined);
-jest.mock('../../../../src/services/moderation/AntiRaidService', () => ({
+jest.mock('../../../../src/services/moderation/antiRaidService', () => ({
     __esModule: true,
     default: {
         isRaidModeActive: mockIsRaidModeActive,
@@ -82,7 +82,7 @@ jest.mock('../../../../src/services/moderation/AntiRaidService', () => ({
 const mockLockServer = jest.fn().mockResolvedValue({ success: ['ch1'], skipped: [], failed: [] });
 const mockUnlockServer = jest.fn().mockResolvedValue({ success: ['ch1'], skipped: [], failed: [] });
 const mockGetLockStatus = jest.fn().mockResolvedValue({ lockedCount: 0 });
-jest.mock('../../../../src/services/moderation/LockdownService', () => ({
+jest.mock('../../../../src/services/moderation/lockdownService', () => ({
     __esModule: true,
     default: {
         lockServer: mockLockServer,

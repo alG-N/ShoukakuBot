@@ -21,7 +21,7 @@ import {
     GuildMember,
     Message
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../baseCommand.js';
 import logger from '../../core/observability/Logger.js';
 import { infractionService as _infractionSvc, moderationService as _moderationSvc } from '../../services/moderation/index.js';
 import _moderationConfigModule from '../../config/features/moderation/index.js';

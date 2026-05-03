@@ -10,7 +10,7 @@
  * - Audio features & mood profiling
  * - Playlist/album embed scraping
  * 
- * @module services/music/spotify/SpotifyService
+ * @module services/music/spotify/spotifyService
  */
 
 import logger from '../../../core/observability/Logger.js';

@@ -10,7 +10,7 @@ import {
     PermissionFlagsBits,
     ChatInputCommandInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../baseCommand.js';
 import logger from '../../core/observability/Logger.js';
 import { infractionService as _infractionSvc } from '../../services/moderation/index.js';
 import type { InfractionService } from '../../types/moderation/services.js';

@@ -15,7 +15,7 @@ import {
     User,
     Message
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../baseCommand.js';
 import { formatDuration } from '../../utils/common/time.js';
 import logger from '../../core/observability/Logger.js';
 import { infractionService as _infractionSvc } from '../../services/moderation/index.js';

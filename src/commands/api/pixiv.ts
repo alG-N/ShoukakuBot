@@ -18,7 +18,7 @@ import {
     EmbedBuilder,
     StringSelectMenuBuilder
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../baseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import logger from '../../core/observability/Logger.js';
 import _pixivServiceModule from '../../services/api/pixivService.js';

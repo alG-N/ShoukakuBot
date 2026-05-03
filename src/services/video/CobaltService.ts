@@ -1,7 +1,7 @@
 /**
  * Cobalt Service
  * Enhanced Cobalt API client with progress tracking and event emission
- * @module services/video/CobaltService
+ * @module services/video/cobaltService
  */
 
 import https from 'https';

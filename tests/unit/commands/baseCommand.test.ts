@@ -53,7 +53,7 @@ jest.mock('../../../src/utils/common/cooldown', () => ({
     },
 }));
 
-import { BaseCommand, CommandCategory, CommandOptions, CommandContext } from '../../../src/commands/BaseCommand';
+import { BaseCommand, CommandCategory, CommandOptions, CommandContext } from '../../../src/commands/baseCommand';
 import { ChatInputCommandInteraction, SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
 import { trackCommand, commandsActive, commandErrorsTotal } from '../../../src/core/metrics';
 
@@ -355,7 +355,7 @@ describe('BaseCommand', () => {
         });
 
         it('should use AppError message for operational errors', async () => {
-            const { ValidationError } = require('../../../src/errors/AppError');
+            const { ValidationError } = require('../../../src/errors/appError');
             const cmd = new TestCommand();
             cmd.runFn.mockRejectedValue(new ValidationError('Invalid option'));
             const interaction = createMockInteraction();

@@ -14,7 +14,7 @@ import {
     ConfigurationError,
     TimeoutError,
     CooldownError,
-} from '../../../src/errors/AppError';
+} from '../../../src/errors/appError';
 import { MusicError } from '../../../src/errors/MusicError';
 import { VideoError } from '../../../src/errors/VideoError';
 import { ApiError } from '../../../src/errors/ApiError';

@@ -1,4 +1,4 @@
-import cacheService from '../../../cache/CacheService.js';
+import cacheService from '../../../cache/cacheService.js';
 import type { Gallery, PageSession, SearchSession, UserPreferences } from '../../../types/api/nhentai/handler.js';
 import nhentaiRepository from '../../../repositories/api/nhentaiRepository.js';
 

@@ -2,7 +2,7 @@
  * Music Facade — Skip Vote Manager
  * Handles skip vote lifecycle — delegation to musicCache + event emission.
  * Extracted from MusicFacade.ts for modularity.
- * @module services/music/MusicSkipVoteManager
+ * @module services/music/musicSkipVoteManager
  */
 
 import musicCache from '../../../cache/music/MusicCacheFacade.js';

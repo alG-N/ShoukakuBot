@@ -2,7 +2,7 @@
  * BaseCommand Class
  * Abstract base class for all slash commands
  * Provides common functionality: error handling, cooldowns, validation
- * @module commands/BaseCommand
+ * @module commands/baseCommand
  */
 
 import {

@@ -7,7 +7,7 @@
  * - Request data from specific shards
  * - Aggregate stats across all shards
  * 
- * @module services/guild/ShardBridge
+ * @module services/guild/shardBridge
  */
 
 import { EventEmitter } from 'events';
@@ -65,7 +65,7 @@ class ShardBridge extends EventEmitter {
         try {
             // Check if Redis is connected via CacheService singleton
             // eslint-disable-next-line @typescript-eslint/no-require-imports
-            const cacheService = require('../../cache/CacheService.js').default as { 
+            const cacheService = require('../../cache/cacheService.js').default as { 
                 getStats: () => { redis: { connected: boolean } } 
             };
             const stats = cacheService.getStats();

@@ -4,7 +4,7 @@
  */
 
 import { EmbedBuilder, User, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import type { BattleHistoryEntry } from '../../services/fun/deathbattle/BattleService.js';
+import type { BattleHistoryEntry } from '../../services/fun/deathbattle/battleService.js';
 import type { Player, BattleSkillset, BattleState, RoundResult } from '../../types/fun/deathbattle/embed.js';
 // DEATHBATTLE EMBED BUILDER CLASS
 class DeathBattleEmbedBuilder {

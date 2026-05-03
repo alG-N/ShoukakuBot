@@ -2,7 +2,7 @@
  * Music Facade — User Data Service
  * Handles favorites, history, preferences — pure delegation to musicCache.
  * Extracted from MusicFacade.ts for modularity.
- * @module services/music/MusicUserDataService
+ * @module services/music/musicUserDataService
  */
 
 import musicCache from '../../../cache/music/MusicCacheFacade.js';

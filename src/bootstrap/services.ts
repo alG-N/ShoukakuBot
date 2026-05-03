@@ -3,9 +3,9 @@ import { logger } from '../core/observability/Logger.js';
 
 import postgres from '../database/postgres.js';
 import redisCache from '../cache/RedisCache.js';
-import cacheService from '../cache/CacheService.js';
-import commandRegistry from '../services/registry/CommandRegistry.js';
-import eventRegistry from '../services/registry/EventRegistry.js';
+import cacheService from '../cache/cacheService.js';
+import commandRegistry from '../services/registry/commandRegistry.js';
+import eventRegistry from '../services/registry/eventRegistry.js';
 
 import circuitBreakerRegistry from '../core/resilience/CircuitBreakerRegistry.js';
 import gracefulDegradation from '../core/resilience/GracefulDegradation.js';
@@ -20,15 +20,15 @@ import rule34Service from '../services/api/rule34Service.js';
 import steamService from '../services/api/steamService.js';
 import wikipediaService from '../services/api/wikipediaService.js';
 
-import lavalinkService from '../services/music/core/LavalinkService.js';
-import musicFacade from '../services/music/core/MusicFacade.js';
-import voiceConnectionService from '../services/music/voice/VoiceConnectionService.js';
-import queueService from '../services/music/queue/QueueService.js';
-import playbackService from '../services/music/playback/PlaybackService.js';
-import autoPlayService from '../services/music/autoplay/AutoPlayService.js';
-import spotifyService from '../services/music/spotify/SpotifyService.js';
-import musicEventBus from '../services/music/events/MusicEventBus.js';
-import playbackEventHandler from '../services/music/events/PlaybackEventHandler.js';
+import lavalinkService from '../services/music/core/lavalinkService.js';
+import musicFacade from '../services/music/core/musicFacade.js';
+import voiceConnectionService from '../services/music/voice/voiceConnectionService.js';
+import queueService from '../services/music/queue/queueService.js';
+import playbackService from '../services/music/playback/playbackService.js';
+import autoPlayService from '../services/music/autoplay/autoPlayService.js';
+import spotifyService from '../services/music/spotify/spotifyService.js';
+import musicEventBus from '../services/music/events/musicEventBus.js';
+import playbackEventHandler from '../services/music/events/playbackEventHandler.js';
 
 import musicCacheFacade from '../cache/music/MusicCacheFacade.js';
 import queueCache from '../cache/music/QueueCache.js';
@@ -36,20 +36,20 @@ import userMusicCache from '../cache/music/UserMusicCache.js';
 import voteCache from '../cache/music/VoteCache.js';
 import guildMusicCache from '../cache/music/GuildMusicCache.js';
 
-import videoDownloadService from '../services/video/VideoDownloadService.js';
-import videoProcessingService from '../services/video/VideoProcessingService.js';
-import cobaltService from '../services/video/CobaltService.js';
-import ytDlpService from '../services/video/YtDlpService.js';
+import videoDownloadService from '../services/video/videoDownloadService.js';
+import videoProcessingService from '../services/video/videoProcessingService.js';
+import cobaltService from '../services/video/cobaltService.js';
+import ytDlpService from '../services/video/ytDlpService.js';
 
-import shardBridge from '../services/guild/ShardBridge.js';
-import setupWizardService from '../services/guild/SetupWizardService.js';
+import shardBridge from '../services/guild/shardBridge.js';
+import setupWizardService from '../services/guild/setupWizardService.js';
 
-import antiRaidService from '../services/moderation/AntiRaidService.js';
-import lockdownService from '../services/moderation/LockdownService.js';
-import snipeService from '../services/moderation/SnipeService.js';
+import antiRaidService from '../services/moderation/antiRaidService.js';
+import lockdownService from '../services/moderation/lockdownService.js';
+import snipeService from '../services/moderation/snipeService.js';
 
-import battleService from '../services/fun/deathbattle/BattleService.js';
-import sayService from '../services/fun/say/SayService.js';
+import battleService from '../services/fun/deathbattle/battleService.js';
+import sayService from '../services/fun/say/sayService.js';
 
 import nhentaiHandler from '../handlers/api/nhentai/index.js';
 

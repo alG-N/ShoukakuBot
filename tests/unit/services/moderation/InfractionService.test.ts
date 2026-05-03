@@ -14,7 +14,7 @@ const mockGetRecent = jest.fn();
 const mockGetStats = jest.fn();
 const mockExpireOld = jest.fn();
 
-jest.mock('../../../../src/repositories/moderation/InfractionRepository', () => ({
+jest.mock('../../../../src/repositories/moderation/infractionRepository', () => ({
     __esModule: true,
     default: {
         create: mockCreate,
@@ -30,7 +30,7 @@ jest.mock('../../../../src/repositories/moderation/InfractionRepository', () => 
 }));
 
 const mockLogInfraction = jest.fn();
-jest.mock('../../../../src/services/moderation/ModLogService', () => ({
+jest.mock('../../../../src/services/moderation/modLogService', () => ({
     __esModule: true,
     logInfraction: mockLogInfraction,
     default: { logInfraction: mockLogInfraction },
@@ -124,7 +124,7 @@ import {
     INFRACTION_TYPES,
     COLORS,
     EMOJIS,
-} from '../../../../src/services/moderation/InfractionService.js';
+} from '../../../../src/services/moderation/infractionService.js';
 
 // Helpers
 const mockGuild = {

@@ -4,7 +4,7 @@
  */
 
 // Mock CacheService before importing maintenance
-jest.mock('../../../src/cache/CacheService', () => ({
+jest.mock('../../../src/cache/cacheService', () => ({
     __esModule: true,
     default: {
         set: jest.fn().mockResolvedValue(undefined),

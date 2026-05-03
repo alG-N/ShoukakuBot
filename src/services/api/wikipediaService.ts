@@ -7,7 +7,7 @@
 import axios, { AxiosRequestConfig } from 'axios';
 import { circuitBreakerRegistry } from '../../core/resilience/CircuitBreakerRegistry.js';
 import logger from '../../core/observability/Logger.js';
-import cacheService from '../../cache/CacheService.js';
+import cacheService from '../../cache/cacheService.js';
 import type {
     WikiSearchResult,
     WikiSearchResponse,

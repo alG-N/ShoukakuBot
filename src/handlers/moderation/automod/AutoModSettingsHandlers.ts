@@ -1,7 +1,7 @@
 /**
  * AutoMod Command — Interaction Handlers
  * Modal, filter, config, action, and escalation handlers extracted from automod.ts.
- * @module handlers/moderation/AutoModSettingsHandlers
+ * @module handlers/moderation/autoModSettingsHandlers
  */
 
 import {
@@ -21,7 +21,7 @@ import {
 } from 'discord.js';
 import type { AutoModService } from '../../../types/moderation/handlers.js';
 import type { ModerationConfig } from '../../../config/features/moderation/index.js';
-import { showFilterSection, showConfigSection, showActionsSection, showExemptSection, showEscalationConfig } from './AutoModPanels.js';
+import { showFilterSection, showConfigSection, showActionsSection, showExemptSection, showEscalationConfig } from './autoModPanels.js';
 
 // ─── FILTER ACTIONS ────────────────────────────────────────────────────────────
 

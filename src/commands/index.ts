@@ -4,8 +4,8 @@
  * @module commands
  */
 
-export { BaseCommand, CommandCategory } from './BaseCommand.js';
-export { type CommandData, type CommandOptions } from './BaseCommand.js';
+export { BaseCommand, CommandCategory } from './baseCommand.js';
+export { type CommandData, type CommandOptions } from './baseCommand.js';
 
 // Export all command modules
 export * as general from './general/index.js';

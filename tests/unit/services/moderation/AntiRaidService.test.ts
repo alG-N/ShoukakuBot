@@ -10,7 +10,7 @@ const mockSet = jest.fn();
 const mockDelete = jest.fn();
 const mockRegisterNamespace = jest.fn();
 
-jest.mock('../../../../src/cache/CacheService', () => ({
+jest.mock('../../../../src/cache/cacheService', () => ({
     __esModule: true,
     default: {
         peek: mockPeek,
@@ -38,7 +38,7 @@ jest.mock('../../../../src/config/features/moderation/automod', () => ({
     },
 }));
 
-import antiRaidService, { AntiRaidService, JoinAnalysis } from '../../../../src/services/moderation/AntiRaidService.js';
+import antiRaidService, { AntiRaidService, JoinAnalysis } from '../../../../src/services/moderation/antiRaidService.js';
 import logger from '../../../../src/core/observability/Logger.js';
 
 // Helper to create mock GuildMember

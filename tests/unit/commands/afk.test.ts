@@ -71,7 +71,7 @@ const mockSetAfk = jest.fn();
 const mockRemoveAfk = jest.fn();
 const mockGetMultipleAfk = jest.fn();
 
-jest.mock('../../../src/repositories/general/AfkRepository', () => ({
+jest.mock('../../../src/repositories/general/afkRepository', () => ({
     __esModule: true,
     default: {
         setAfk: mockSetAfk,

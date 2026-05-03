@@ -3,7 +3,7 @@
  * Single interface for all caching needs
  * Supports Redis (distributed) with in-memory fallback
  * Integrates with GracefulDegradation for automatic failover
- * @module cache/CacheService
+ * @module cache/cacheService
  */
 
 import type { Redis } from 'ioredis';

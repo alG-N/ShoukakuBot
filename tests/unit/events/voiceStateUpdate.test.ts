@@ -27,7 +27,7 @@ const mockPeek = jest.fn();
 const mockSet = jest.fn().mockResolvedValue(undefined);
 const mockDelete = jest.fn().mockResolvedValue(undefined);
 
-jest.mock('../../../src/cache/CacheService', () => ({
+jest.mock('../../../src/cache/cacheService', () => ({
     __esModule: true,
     default: {
         peek: mockPeek,
@@ -38,7 +38,7 @@ jest.mock('../../../src/cache/CacheService', () => ({
 
 // Mock MusicFacade
 const mockCleanup = jest.fn().mockResolvedValue(undefined);
-jest.mock('../../../src/services/music/core/MusicFacade', () => ({
+jest.mock('../../../src/services/music/core/musicFacade', () => ({
     __esModule: true,
     musicFacade: {
         cleanup: mockCleanup,

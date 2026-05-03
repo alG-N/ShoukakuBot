@@ -18,7 +18,7 @@ jest.mock('../../../../src/core/Logger', () => ({
 // Mock CacheService
 const mockGetOrSet = jest.fn();
 const mockDelete = jest.fn().mockResolvedValue(undefined);
-jest.mock('../../../../src/cache/CacheService', () => ({
+jest.mock('../../../../src/cache/cacheService', () => ({
     __esModule: true,
     default: {
         getOrSet: mockGetOrSet,
@@ -36,7 +36,7 @@ const mockFilterRepoRemoveAll = jest.fn();
 const mockFilterRepoCount = jest.fn();
 const mockFilterRepoSearch = jest.fn();
 
-jest.mock('../../../../src/repositories/moderation/FilterRepository', () => ({
+jest.mock('../../../../src/repositories/moderation/filterRepository', () => ({
     __esModule: true,
     default: {
         getAll: mockFilterRepoGetAll,
@@ -106,7 +106,7 @@ import {
     getFilterCount,
     invalidateCache,
     type Filter,
-} from '../../../../src/services/moderation/FilterService';
+} from '../../../../src/services/moderation/filterService';
 
 describe('FilterService', () => {
     beforeEach(() => {

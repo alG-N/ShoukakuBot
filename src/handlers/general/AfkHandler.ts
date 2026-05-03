@@ -2,11 +2,11 @@
  * AFK Handler
  * Handles AFK-related message events: welcome-back notification and mention alerts
  * Extracted from commands/general/afk.ts to maintain proper layer boundaries
- * @module handlers/general/AfkHandler
+ * @module handlers/general/afkHandler
  */
 
 import { EmbedBuilder, Message, Client } from 'discord.js';
-import afkRepository from '../../repositories/general/AfkRepository.js';
+import afkRepository from '../../repositories/general/afkRepository.js';
 import { formatDuration } from '../../commands/general/afk.js';
 import logger from '../../core/observability/Logger.js';
 

@@ -10,8 +10,8 @@ import {
     EmbedBuilder,
     ChatInputCommandInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
-import afkRepository, { type AfkInfo } from '../../repositories/general/AfkRepository.js';
+import { BaseCommand, CommandCategory, CommandData } from '../baseCommand.js';
+import afkRepository, { type AfkInfo } from '../../repositories/general/afkRepository.js';
 
 // ============================================================================
 // UTILITY FUNCTIONS

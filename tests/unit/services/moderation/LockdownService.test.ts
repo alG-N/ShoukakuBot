@@ -8,7 +8,7 @@ const mockPeek = jest.fn();
 const mockSet = jest.fn();
 const mockDelete = jest.fn();
 
-jest.mock('../../../../src/cache/CacheService', () => ({
+jest.mock('../../../../src/cache/cacheService', () => ({
     __esModule: true,
     default: {
         peek: mockPeek,
@@ -23,7 +23,7 @@ jest.mock('../../../../src/core/Logger', () => ({
     logger: { error: jest.fn(), debug: jest.fn(), info: jest.fn(), warn: jest.fn(), success: jest.fn() },
 }));
 
-import lockdownService, { LockdownService } from '../../../../src/services/moderation/LockdownService.js';
+import lockdownService, { LockdownService } from '../../../../src/services/moderation/lockdownService.js';
 
 // Helpers
 const createMockChannel = (id: string, name: string, opts: { locked?: boolean; editFails?: boolean } = {}) => {

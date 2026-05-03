@@ -2,12 +2,12 @@
  * Playback Event Handler
  * Handles player events via the event bus
  * Decouples event handling from service logic
- * @module services/music/events/PlaybackEventHandler
+ * @module services/music/events/playbackEventHandler
  */
 
 import type { Message, TextBasedChannel, TextChannel } from 'discord.js';
-import musicEventBus from './MusicEventBus.js';
-import { MusicEvents, MusicTrack } from './MusicEvents.js';
+import musicEventBus from './musicEventBus.js';
+import { MusicEvents, MusicTrack } from './musicEvents.js';
 import logger from '../../../core/observability/Logger.js';
 import musicCache from '../../../cache/music/MusicCacheFacade.js';
 import type { MessageRef } from '../../../cache/music/QueueCache.js';

@@ -2,7 +2,7 @@
  * Music Facade — Now Playing Manager
  * Handles now-playing message lifecycle: create, update, disable controls, loop updates.
  * Extracted from MusicFacade.ts for modularity.
- * @module services/music/MusicNowPlayingManager
+ * @module services/music/musicNowPlayingManager
  */
 
 import {

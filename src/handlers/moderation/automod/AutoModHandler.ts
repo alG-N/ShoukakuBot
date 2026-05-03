@@ -1,16 +1,16 @@
 /**
  * Auto-Mod Handler
  * Integrates auto-mod with message events
- * @module handlers/moderation/AutoModHandler
+ * @module handlers/moderation/autoModHandler
  */
 
 import { EmbedBuilder, Message, Guild, GuildTextBasedChannel } from 'discord.js';
 import { logger } from '../../../core/observability/Logger.js';
-import AutoModService from '../../../services/moderation/AutoModService.js';
+import AutoModService from '../../../services/moderation/autoModService.js';
 import moderationConfig from '../../../config/features/moderation/index.js';
 import type { AutoModSettings } from '../../../types/moderation/automod.js';
 import type { ActionType } from '../../../config/features/moderation/index.js';
-import type { Violation } from '../../../services/moderation/AutoModService.js';
+import type { Violation } from '../../../services/moderation/autoModService.js';
 import type { ActionResult, FeatureConfig } from '../../../types/moderation/handlers.js';
 /**
  * Action type display mapping

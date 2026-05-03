@@ -1,14 +1,14 @@
 /**
  * Mod Log Service
  * Handles sending mod logs to designated channels
- * @module services/moderation/ModLogService
+ * @module services/moderation/modLogService
  */
 
 import { EmbedBuilder, Guild, User, Snowflake, Message } from 'discord.js';
 import { formatDuration } from '../../utils/common/time.js';
 import logger from '../../core/observability/Logger.js';
-import type { Infraction } from './InfractionService.js';
-import ModLogRepository from '../../repositories/moderation/ModLogRepository.js';
+import type { Infraction } from './infractionService.js';
+import ModLogRepository from '../../repositories/moderation/modLogRepository.js';
 import moderationConfig from '../../config/features/moderation/index.js';
 import type { ModLogSettings } from '../../types/moderation/modlog.js';
 

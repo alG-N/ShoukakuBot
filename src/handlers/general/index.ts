@@ -3,4 +3,4 @@
  * @module handlers/general
  */
 
-export { handleAfkMessage } from './AfkHandler.js';
+export { handleAfkMessage } from './afkHandler.js';

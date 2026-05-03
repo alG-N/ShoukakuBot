@@ -1,7 +1,7 @@
 /**
  * Say Service
  * Handles the say command functionality
- * @module services/fun/say/SayService
+ * @module services/fun/say/sayService
  */
 
 import { EmbedBuilder, TextBasedChannel } from 'discord.js';

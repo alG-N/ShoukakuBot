@@ -1,7 +1,7 @@
 /**
  * YtDlpService - Video downloader via yt-dlp HTTP API
  * Bot calls the yt-dlp-api container over HTTP. Files are shared via Docker volume.
- * @module services/video/YtDlpService
+ * @module services/video/ytDlpService
  */
 
 import * as fs from 'fs';

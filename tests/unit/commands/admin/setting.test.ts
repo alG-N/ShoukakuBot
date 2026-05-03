@@ -70,7 +70,7 @@ const mockGetModRoles = jest.fn();
 const mockSetSnipeLimit = jest.fn();
 const mockSetDeleteLimit = jest.fn();
 
-jest.mock('../../../../src/services/guild/GuildSettingsService', () => ({
+jest.mock('../../../../src/services/guild/guildSettingsService', () => ({
     __esModule: true,
     default: {
         getGuildSettings: mockGetGuildSettings,

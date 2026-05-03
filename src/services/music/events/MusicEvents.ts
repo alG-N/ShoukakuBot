@@ -1,7 +1,7 @@
 /**
  * Music Event Constants
  * Centralized event names for the music system
- * @module services/music/events/MusicEvents
+ * @module services/music/events/musicEvents
  */
 
 export { type TrackInfo } from '../../../types/music/track.js';

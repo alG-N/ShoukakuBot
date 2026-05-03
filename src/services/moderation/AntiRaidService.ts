@@ -2,11 +2,11 @@
  * Anti-Raid Service
  * Detects and responds to raid attacks
  * Shard-safe: Uses Redis via CacheService for all state
- * @module services/moderation/AntiRaidService
+ * @module services/moderation/antiRaidService
  */
 
 import { type GuildMember, Snowflake } from 'discord.js';
-import cacheService from '../../cache/CacheService.js';
+import cacheService from '../../cache/cacheService.js';
 import logger from '../../core/observability/Logger.js';
 import automodConfig from '../../config/features/moderation/automod.js';
 import type {

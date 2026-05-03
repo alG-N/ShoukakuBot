@@ -2,11 +2,11 @@
  * Anti-Raid Handler
  * Orchestrates anti-raid responses for new member joins
  * Extracted from events/guildMemberAdd.ts to maintain proper layer boundaries
- * @module handlers/moderation/AntiRaidHandler
+ * @module handlers/moderation/antiRaidHandler
  */
 
 import { Client, GuildMember, EmbedBuilder, Guild, TextChannel } from 'discord.js';
-import antiRaidService, { type JoinAnalysis } from '../../services/moderation/AntiRaidService.js';
+import antiRaidService, { type JoinAnalysis } from '../../services/moderation/antiRaidService.js';
 import moderationConfig from '../../config/features/moderation/index.js';
 import { ModLogRepository } from '../../repositories/moderation/index.js';
 import { logger } from '../../core/observability/Logger.js';

@@ -15,7 +15,7 @@ jest.mock('../../../src/core/Logger', () => ({
 }));
 
 // Mock CacheService
-jest.mock('../../../src/cache/CacheService', () => ({
+jest.mock('../../../src/cache/cacheService', () => ({
     __esModule: true,
     default: {
         getRedis: jest.fn().mockReturnValue(null),

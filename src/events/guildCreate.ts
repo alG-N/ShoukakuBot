@@ -7,7 +7,7 @@
 import { Events, Client, Guild } from 'discord.js';
 import { BaseEvent } from './BaseEvent.js';
 import logger from '../core/observability/Logger.js';
-import { setupWizardService } from '../services/guild/SetupWizardService.js';
+import { setupWizardService } from '../services/guild/setupWizardService.js';
 
 // GUILD CREATE EVENT
 class GuildCreateEvent extends BaseEvent {

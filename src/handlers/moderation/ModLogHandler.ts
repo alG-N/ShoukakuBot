@@ -1,7 +1,7 @@
 /**
  * Mod Log Handler
  * Formats and sends mod log messages
- * @module handlers/moderation/ModLogHandler
+ * @module handlers/moderation/modLogHandler
  */
 
 import { 
@@ -14,7 +14,7 @@ import {
 } from 'discord.js';
 import { logger } from '../../core/observability/Logger.js';
 import { formatDuration } from '../../utils/common/time.js';
-import ModLogService from '../../services/moderation/ModLogService.js';
+import ModLogService from '../../services/moderation/modLogService.js';
 import type { ModActionType, QuickEmbedOptions } from '../../types/moderation/handlers.js';
 
 /**

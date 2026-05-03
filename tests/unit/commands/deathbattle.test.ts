@@ -71,7 +71,7 @@ jest.mock('../../../src/services/index', () => ({
 // Mock SkillsetService
 const mockIsValidSkillset = jest.fn();
 const mockGetAllSkillsets = jest.fn();
-jest.mock('../../../src/services/fun/deathbattle/SkillsetService', () => ({
+jest.mock('../../../src/services/fun/deathbattle/skillsetService', () => ({
     __esModule: true,
     default: {
         isValidSkillset: mockIsValidSkillset,
@@ -86,7 +86,7 @@ const mockExecuteRound = jest.fn();
 const mockEndBattle = jest.fn();
 const mockGetBattleHistory = jest.fn();
 const mockRemoveBattle = jest.fn();
-jest.mock('../../../src/services/fun/deathbattle/BattleService', () => ({
+jest.mock('../../../src/services/fun/deathbattle/battleService', () => ({
     __esModule: true,
     default: {
         createBattle: mockCreateBattle,

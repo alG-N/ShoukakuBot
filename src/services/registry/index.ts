@@ -4,11 +4,11 @@
  * @module services/registry
  */
 
-export { CommandRegistry, default as commandRegistry } from './CommandRegistry.js';
-export { type RegistryCommand } from './CommandRegistry.js';
+export { CommandRegistry, default as commandRegistry } from './commandRegistry.js';
+export { type RegistryCommand } from './commandRegistry.js';
 
-export { EventRegistry, default as eventRegistry } from './EventRegistry.js';
-export { type Event } from './EventRegistry.js';
+export { EventRegistry, default as eventRegistry } from './eventRegistry.js';
+export { type Event } from './eventRegistry.js';
 
 
 

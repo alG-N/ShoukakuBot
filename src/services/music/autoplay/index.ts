@@ -3,4 +3,4 @@
  * @module services/music/autoplay
  */
 
-export { default as autoPlayService, AutoPlayService } from './AutoPlayService.js';
+export { default as autoPlayService, AutoPlayService } from './autoPlayService.js';

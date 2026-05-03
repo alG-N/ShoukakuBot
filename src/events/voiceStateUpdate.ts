@@ -7,8 +7,8 @@
 
 import { Events, Client, VoiceState, VoiceBasedChannel } from 'discord.js';
 import { BaseEvent } from './BaseEvent.js';
-import cacheService from '../cache/CacheService.js';
-import { musicFacade } from '../services/music/core/MusicFacade.js';
+import cacheService from '../cache/cacheService.js';
+import { musicFacade } from '../services/music/core/musicFacade.js';
 
 // Cache namespace for voice disconnect deadlines
 const CACHE_NAMESPACE = 'voice';

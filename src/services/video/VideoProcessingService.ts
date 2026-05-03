@@ -1,7 +1,7 @@
 /**
  * VideoProcessingService - Ensures videos are mobile-compatible
  * Converts videos to H.264 + AAC format for universal playback
- * @module services/video/VideoProcessingService
+ * @module services/video/videoProcessingService
  */
 
 import { spawn, execSync } from 'child_process';

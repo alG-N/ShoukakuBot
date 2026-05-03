@@ -5,8 +5,8 @@
  */
 
 // Cache Service
-export { CacheService, DEFAULT_NAMESPACES } from './CacheService.js';
-export { type NamespaceConfig, type CacheMetrics, type CacheServiceStats, type CacheServiceOptions } from './CacheService.js';
+export { CacheService, DEFAULT_NAMESPACES } from './cacheService.js';
+export { type NamespaceConfig, type CacheMetrics, type CacheServiceStats, type CacheServiceOptions } from './cacheService.js';
 
 // Music Caches (moved from repositories/music)
 export * as music from './music/index.js';
@@ -20,7 +20,7 @@ export {
 } from './music/index.js';
 
 // Default export is the unified cache service singleton
-import cacheService from './CacheService.js';
+import cacheService from './cacheService.js';
 export default cacheService;
 
 // Re-export cacheService as named export

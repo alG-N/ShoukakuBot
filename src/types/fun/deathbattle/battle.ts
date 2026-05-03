@@ -1,5 +1,5 @@
 import type { User } from 'discord.js';
-import type { Skillset } from '../../../services/fun/deathbattle/SkillsetService.js';
+import type { Skillset } from '../../../services/fun/deathbattle/skillsetService.js';
 
 export interface NamedEffect {
     name: string;

@@ -3,8 +3,8 @@
  * @module services/fun/say
  */
 
-export { SayService, default as sayService } from './SayService.js';
-export { type SayType } from './SayService.js';
+export { SayService, default as sayService } from './sayService.js';
+export { type SayType } from './sayService.js';
 
 
 

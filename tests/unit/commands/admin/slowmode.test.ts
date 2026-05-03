@@ -62,7 +62,7 @@ jest.mock('../../../../src/errors/index', () => ({
 // Mock lockdown service
 const mockSetSlowmode = jest.fn();
 const mockSetServerSlowmode = jest.fn();
-jest.mock('../../../../src/services/moderation/LockdownService', () => ({
+jest.mock('../../../../src/services/moderation/lockdownService', () => ({
     __esModule: true,
     default: {
         setSlowmode: mockSetSlowmode,

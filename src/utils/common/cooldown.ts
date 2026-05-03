@@ -5,7 +5,7 @@
  * @module utils/common/cooldown
  */
 
-import cacheService from '../../cache/CacheService.js';
+import cacheService from '../../cache/cacheService.js';
 import type {
     CooldownCheckResult,
     CooldownCheckAndSetResult,

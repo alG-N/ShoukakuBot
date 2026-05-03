@@ -27,7 +27,7 @@ const mockLavalinkService = {
     searchPlaylist: jest.fn(),
 };
 
-jest.mock('../../../../src/services/music/core/LavalinkService', () => ({
+jest.mock('../../../../src/services/music/core/lavalinkService', () => ({
     __esModule: true,
     default: mockLavalinkService,
 }));
@@ -68,7 +68,7 @@ jest.mock('../../../../src/config/features/music', () => ({
     TRACK_TRANSITION_DELAY: 100, // Short delay for tests
 }));
 
-import playbackService from '../../../../src/services/music/playback/PlaybackService.js';
+import playbackService from '../../../../src/services/music/playback/playbackService.js';
 
 function makeTrack(title: string, encoded: string = `enc_${title}`) {
     return {

@@ -1,7 +1,7 @@
 /**
  * Base Application Error
  * All custom errors extend from this class
- * @module errors/AppError
+ * @module errors/appError
  */
 import type { SerializedError } from '../types/errors/app-error.js';
 export { type AppErrorCode, type SerializedError } from '../types/errors/app-error.js';

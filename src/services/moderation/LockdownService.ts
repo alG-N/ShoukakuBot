@@ -2,11 +2,11 @@
  * Lockdown Service
  * Channel and server lockdown functionality
  * SHARD-SAFE: Uses Redis via CacheService for state persistence
- * @module services/moderation/LockdownService
+ * @module services/moderation/lockdownService
  */
 
 import { PermissionFlagsBits, ChannelType, Guild, TextChannel, Snowflake } from 'discord.js';
-import cacheService from '../../cache/CacheService.js';
+import cacheService from '../../cache/cacheService.js';
 import logger from '../../core/observability/Logger.js';
 import type { SavedPermissions, LockdownState, LockResult, ServerLockResult, LockStatus } from '../../types/moderation/lockdown.js';
 

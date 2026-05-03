@@ -26,7 +26,7 @@ jest.mock('../../../../src/core/Logger', () => ({
 const mockPeek = jest.fn();
 const mockSet = jest.fn().mockResolvedValue(undefined);
 const mockCacheDelete = jest.fn().mockResolvedValue(undefined);
-jest.mock('../../../../src/cache/CacheService', () => ({
+jest.mock('../../../../src/cache/cacheService', () => ({
     __esModule: true,
     default: {
         peek: mockPeek,
@@ -36,7 +36,7 @@ jest.mock('../../../../src/cache/CacheService', () => ({
 }));
 
 // Mock GuildSettingsService
-jest.mock('../../../../src/services/guild/GuildSettingsService', () => ({
+jest.mock('../../../../src/services/guild/guildSettingsService', () => ({
     __esModule: true,
     default: {
         getSnipeLimit: jest.fn().mockResolvedValue(25),
@@ -47,7 +47,7 @@ import {
     getDeletedMessages,
     getMessage,
     clearMessages,
-} from '../../../../src/services/moderation/SnipeService';
+} from '../../../../src/services/moderation/snipeService';
 
 // Sample tracked messages for testing
 const sampleMessages = [

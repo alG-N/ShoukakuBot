@@ -7,7 +7,7 @@
 const mockModLogRepoGet = jest.fn();
 const mockModLogRepoUpdate = jest.fn();
 
-jest.mock('../../../../src/repositories/moderation/ModLogRepository', () => ({
+jest.mock('../../../../src/repositories/moderation/modLogRepository', () => ({
     __esModule: true,
     default: {
         get: mockModLogRepoGet,
@@ -64,7 +64,7 @@ import {
     getSettings,
     updateSettings,
     setLogChannel,
-} from '../../../../src/services/moderation/ModLogService.js';
+} from '../../../../src/services/moderation/modLogService.js';
 import logger from '../../../../src/core/observability/Logger.js';
 
 // Helpers

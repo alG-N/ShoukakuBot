@@ -2,7 +2,7 @@
  * AFK Repository
  * Database operations for AFK status management
  * Replaces legacy file-based storage with PostgreSQL
- * @module repositories/general/AfkRepository
+ * @module repositories/general/afkRepository
  */
 
 import db from '../../database/postgres.js';

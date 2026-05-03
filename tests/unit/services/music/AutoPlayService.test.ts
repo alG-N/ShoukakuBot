@@ -16,7 +16,7 @@ const mockLavalinkService = {
     searchMultiple: jest.fn(),
 };
 
-jest.mock('../../../../src/services/music/core/LavalinkService', () => ({
+jest.mock('../../../../src/services/music/core/lavalinkService', () => ({
     __esModule: true,
     default: mockLavalinkService,
 }));
@@ -32,7 +32,7 @@ jest.mock('../../../../src/services/music/queue/index', () => ({
     default: mockQueueService,
 }));
 
-import autoPlayService from '../../../../src/services/music/autoplay/AutoPlayService.js';
+import autoPlayService from '../../../../src/services/music/autoplay/autoPlayService.js';
 
 function makeTrack(title: string, author: string = 'Test Artist') {
     return {

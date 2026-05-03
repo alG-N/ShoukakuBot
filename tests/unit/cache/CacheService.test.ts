@@ -26,7 +26,7 @@ jest.mock('../../../src/core/GracefulDegradation', () => ({
     __esModule: true,
 }));
 
-import { CacheService, DEFAULT_NAMESPACES } from '../../../src/cache/CacheService';
+import { CacheService, DEFAULT_NAMESPACES } from '../../../src/cache/cacheService';
 
 // Mock Redis client
 const createMockRedis = () => ({
@@ -83,7 +83,7 @@ describe('CacheService', () => {
     afterAll(() => {
         jest.clearAllTimers();
         // Clean up the singleton instance's interval if imported
-        const singletonCache = require('../../../src/cache/CacheService').default;
+        const singletonCache = require('../../../src/cache/cacheService').default;
         if (singletonCache && typeof singletonCache.shutdown === 'function') {
             singletonCache.shutdown();
         }

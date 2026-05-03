@@ -202,6 +202,10 @@ services:
       YTDLP_API_URL: "http://ytdlp-api:8900"
       # Sentry (optional)
       SENTRY_DSN: ${SENTRY_DSN:-}
+      # Health dashboard access metadata (used by /botcheck link generation)
+      HEALTH_BIND_HOST: ${HEALTH_BIND_HOST:-127.0.0.1}
+      HEALTH_PUBLISHED_PORT: ${HEALTH_PUBLISHED_PORT:-3000}
+      HEALTH_PUBLIC_HOST: ${HEALTH_PUBLIC_HOST:-}
       # Node.js configuration
       NODE_ENV: ${NODE_ENV:-production}
       NODE_OPTIONS: "--max-old-space-size=384"

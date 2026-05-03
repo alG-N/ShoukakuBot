@@ -71,7 +71,7 @@ jest.mock('../../../src/services/index', () => ({
 // Mock say service
 const mockValidateChannel = jest.fn().mockReturnValue(true);
 const mockSanitizeMessage = jest.fn().mockImplementation((msg: string) => msg.replace(/@(everyone|here)/gi, '@\u200b$1'));
-jest.mock('../../../src/services/fun/say/SayService', () => ({
+jest.mock('../../../src/services/fun/say/sayService', () => ({
     __esModule: true,
     default: {
         validateChannel: mockValidateChannel,

@@ -26,7 +26,7 @@ jest.mock('../../../src/core/Logger', () => ({
 
 // Mock CacheService
 const mockDeleteByPrefix = jest.fn().mockResolvedValue(0);
-jest.mock('../../../src/cache/CacheService', () => ({
+jest.mock('../../../src/cache/cacheService', () => ({
     __esModule: true,
     default: {
         deleteByPrefix: mockDeleteByPrefix,

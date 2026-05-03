@@ -1,16 +1,16 @@
 /**
  * Auto-Mod Service
  * Handles automatic moderation (spam, links, mentions, etc.)
- * @module services/moderation/AutoModService
+ * @module services/moderation/autoModService
  */
 
 import type { Message, GuildMember } from 'discord.js';
-import * as FilterService from './FilterService.js';
-import * as InfractionService from './InfractionService.js';
+import * as FilterService from './filterService.js';
+import * as InfractionService from './infractionService.js';
 import logger from '../../core/observability/Logger.js';
-import cacheService from '../../cache/CacheService.js';
+import cacheService from '../../cache/cacheService.js';
 import { trackAutomodViolation } from '../../core/observability/metrics.js';
-import AutoModRepository from '../../repositories/moderation/AutoModRepository.js';
+import AutoModRepository from '../../repositories/moderation/autoModRepository.js';
 import automodConfig from '../../config/features/moderation/automod.js';
 import type { AutoModSettings } from '../../types/moderation/automod.js';
 import type { Violation, ExecuteActionResult } from '../../types/moderation/automod-service.js';

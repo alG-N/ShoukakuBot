@@ -209,7 +209,7 @@ describe('interactionErrorBoundary()', () => {
     });
 
     it('should reply with operational error message', async () => {
-        const { ValidationError } = require('../../../src/errors/AppError');
+        const { ValidationError } = require('../../../src/errors/appError');
         const handler = jest.fn().mockRejectedValue(new ValidationError('Bad input'));
         const wrapped = interactionErrorBoundary(handler);
         const interaction = createMockInteraction();

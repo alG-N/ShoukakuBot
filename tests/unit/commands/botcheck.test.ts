@@ -42,7 +42,7 @@ jest.mock('../../../src/utils/common/cooldown', () => ({
 // Mock ShardBridge
 const mockGetShardInfo = jest.fn().mockReturnValue({ totalShards: 1, isInitialized: false });
 const mockGetAggregateStats = jest.fn();
-jest.mock('../../../src/services/guild/ShardBridge', () => ({
+jest.mock('../../../src/services/guild/shardBridge', () => ({
     __esModule: true,
     default: {
         getShardInfo: mockGetShardInfo,
@@ -51,7 +51,7 @@ jest.mock('../../../src/services/guild/ShardBridge', () => ({
 }));
 
 // Mock CommandRegistry
-jest.mock('../../../src/services/registry/CommandRegistry', () => ({
+jest.mock('../../../src/services/registry/commandRegistry', () => ({
     __esModule: true,
     default: {
         commands: new Map([['ping', {}], ['help', {}]]),
@@ -73,7 +73,7 @@ jest.mock('../../../src/database/postgres', () => ({
 }));
 
 // Mock LavalinkService
-jest.mock('../../../src/services/music/core/LavalinkService', () => ({
+jest.mock('../../../src/services/music/core/lavalinkService', () => ({
     __esModule: true,
     default: {
         getNodeStatus: jest.fn().mockReturnValue({ ready: true, nodes: [{}] }),
@@ -89,7 +89,7 @@ jest.mock('../../../src/core/index', () => ({
 }));
 
 // Mock CacheService
-jest.mock('../../../src/cache/CacheService', () => ({
+jest.mock('../../../src/cache/cacheService', () => ({
     __esModule: true,
     default: {
         getStats: jest.fn().mockReturnValue({
@@ -345,7 +345,7 @@ describe('BotCheckCommand', () => {
         });
 
         it('should handle Lavalink check failure gracefully', async () => {
-            const lavalink = require('../../../src/services/music/core/LavalinkService').default;
+            const lavalink = require('../../../src/services/music/core/lavalinkService').default;
             lavalink.getNodeStatus.mockImplementationOnce(() => { throw new Error('No nodes'); });
 
             const interaction = makeInteraction();

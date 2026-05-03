@@ -8,7 +8,7 @@ import * as path from 'path';
 import * as dotenv from 'dotenv';
 import logger from '../../core/observability/Logger.js';
 import { circuitBreakerRegistry } from '../../core/resilience/CircuitBreakerRegistry.js';
-import cacheService from '../../cache/CacheService.js';
+import cacheService from '../../cache/cacheService.js';
 import type {
     PixivIllust,
     PixivNovel,

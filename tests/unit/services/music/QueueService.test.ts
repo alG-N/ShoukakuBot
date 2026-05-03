@@ -47,7 +47,7 @@ jest.mock('../../../../src/cache/music/MusicCacheFacade', () => ({
 }));
 
 // Import after mocking
-import { QueueService } from '../../../../src/services/music/queue/QueueService';
+import { QueueService } from '../../../../src/services/music/queue/queueService';
 
 // Mock track factory
 const createMockTrack = (overrides = {}) => ({

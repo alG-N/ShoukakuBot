@@ -11,7 +11,7 @@ import musicCache from '../../cache/music/MusicCacheFacade.js';
 import { checkSameVoiceChannel } from '../../middleware/voiceChannelCheck.js';
 import { music } from '../../config/index.js';
 import { logger } from '../../core/observability/Logger.js';
-import { musicFacade as musicService } from '../../services/music/core/MusicFacade.js';
+import { musicFacade as musicService } from '../../services/music/core/musicFacade.js';
 import type { Track } from '../../types/music/track.js';
 import type { NowPlayingOptions } from '../../types/music/playback.js';
 import type { VoteResult, VoteSkipStatus } from '../../types/music/vote.js';

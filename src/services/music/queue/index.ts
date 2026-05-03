@@ -3,8 +3,8 @@
  * @module services/music/queue
  */
 
-export { default as queueService, QueueService } from './QueueService.js';
-export { type MusicQueue, type QueueState } from './QueueService.js';
+export { default as queueService, QueueService } from './queueService.js';
+export { type MusicQueue, type QueueState } from './queueService.js';
 
 
 

@@ -1,15 +1,15 @@
 /**
  * Filter Service
  * Handles word filtering and content scanning
- * @module services/moderation/FilterService
+ * @module services/moderation/filterService
  */
 
-import FilterRepository from '../../repositories/moderation/FilterRepository.js';
+import FilterRepository from '../../repositories/moderation/filterRepository.js';
 import filterConfig from '../../config/features/moderation/filters.js';
 import type { Filter, FilterMatch } from '../../types/moderation/filter-service.js';
 export { type Filter, type FilterMatch } from '../../types/moderation/filter-service.js';
 
-import cacheService from '../../cache/CacheService.js';
+import cacheService from '../../cache/cacheService.js';
 
 const CACHE_TTL_SECONDS = 300; // 5 minutes
 // CORE FUNCTIONS

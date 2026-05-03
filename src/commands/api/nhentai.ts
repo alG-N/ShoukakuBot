@@ -12,7 +12,7 @@ import {
     StringSelectMenuInteraction,
     ModalSubmitInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../baseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import logger from '../../core/observability/Logger.js';
 import _nhentaiServiceModule from '../../services/api/nhentaiService.js';

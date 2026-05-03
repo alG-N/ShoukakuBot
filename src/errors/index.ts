@@ -5,7 +5,7 @@
  */
 
 // Base error
-export { AppError } from './AppError.js';
+export { AppError } from './appError.js';
 
 export { type SerializedError, type AppErrorCode } from '../types/errors/app-error.js';
 

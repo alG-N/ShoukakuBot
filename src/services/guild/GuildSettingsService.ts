@@ -1,11 +1,11 @@
 /**
  * Guild Settings Service
  * Manages server settings with Redis + PostgreSQL caching
- * @module services/guild/GuildSettingsService
+ * @module services/guild/guildSettingsService
  */
 
 import type { GuildMember, Snowflake, Role } from 'discord.js';
-import cacheService from '../../cache/CacheService.js';
+import cacheService from '../../cache/cacheService.js';
 import logger from '../../core/observability/Logger.js';
 import db from '../../database/postgres.js';
 import type { GuildSettings } from '../../types/guild/guild-settings-service.js';

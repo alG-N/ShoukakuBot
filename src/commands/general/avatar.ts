@@ -11,7 +11,7 @@ import {
     User,
     ImageExtension 
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../baseCommand.js';
 import { COLORS } from '../../constants.js';
 import type { EmbedField, ImageFormat } from '../../types/commands/avatar.js';
 

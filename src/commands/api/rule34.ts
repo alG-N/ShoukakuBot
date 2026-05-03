@@ -11,7 +11,7 @@ import {
     ButtonInteraction,
     StringSelectMenuInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../baseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import _rule34Service from '../../services/api/rule34Service.js';
 import _rule34Cache from '../../cache/api/rule34Cache.js';

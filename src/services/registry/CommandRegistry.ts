@@ -1,7 +1,7 @@
 /**
  * Command Registry - Application Layer
  * Centralized command registration and management
- * @module services/registry/CommandRegistry
+ * @module services/registry/commandRegistry
  */
 
 import { Collection } from 'discord.js';

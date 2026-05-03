@@ -48,7 +48,7 @@ jest.mock('../../../src/utils/common/cooldown', () => ({
 const mockGetShardInfo = jest.fn().mockReturnValue({ totalShards: 1, isInitialized: false });
 const mockGetAggregateStats = jest.fn();
 
-jest.mock('../../../src/services/guild/ShardBridge', () => ({
+jest.mock('../../../src/services/guild/shardBridge', () => ({
     __esModule: true,
     default: {
         getShardInfo: mockGetShardInfo,

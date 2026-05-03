@@ -14,9 +14,9 @@ import {
     AutocompleteInteraction,
     ButtonInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../baseCommand.js';
 import { COLORS } from '../../constants.js';
-import cacheService from '../../cache/CacheService.js';
+import cacheService from '../../cache/cacheService.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import _anilistService from '../../services/api/anilistService.js';
 import _myAnimeListService from '../../services/api/myAnimeListService.js';

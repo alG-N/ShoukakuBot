@@ -13,8 +13,8 @@ jest.mock('../../../src/database/postgres', () => ({
     },
 }));
 
-import InfractionRepository from '../../../src/repositories/moderation/InfractionRepository';
-import FilterRepository from '../../../src/repositories/moderation/FilterRepository';
+import InfractionRepository from '../../../src/repositories/moderation/infractionRepository';
+import FilterRepository from '../../../src/repositories/moderation/filterRepository';
 
 describe('InfractionRepository', () => {
     beforeEach(() => {

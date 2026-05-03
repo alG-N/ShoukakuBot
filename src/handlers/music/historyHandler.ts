@@ -7,7 +7,7 @@
 import { ChatInputCommandInteraction } from 'discord.js';
 import { trackHandler } from './trackHandler.js';
 import { checkVoiceChannel, checkVoicePermissions } from '../../middleware/voiceChannelCheck.js';
-import { musicFacade as musicService } from '../../services/music/core/MusicFacade.js';
+import { musicFacade as musicService } from '../../services/music/core/musicFacade.js';
 import type { Track } from '../../types/music/track.js';
 import type { HistorySubcommand } from '../../types/music/handlers.js';
 

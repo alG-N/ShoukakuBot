@@ -3,8 +3,8 @@
  * @module services/music/voice
  */
 
-export { default as voiceConnectionService, VoiceConnectionService } from './VoiceConnectionService.js';
-export { type ConnectionState, type PlayerEventHandlers } from './VoiceConnectionService.js';
+export { default as voiceConnectionService, VoiceConnectionService } from './voiceConnectionService.js';
+export { type ConnectionState, type PlayerEventHandlers } from './voiceConnectionService.js';
 
 
 

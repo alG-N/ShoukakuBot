@@ -1,15 +1,15 @@
 /**
  * VideoDownloadService - Cobalt with yt-dlp fallback
  * Uses self-hosted Cobalt API for video downloads
- * @module services/video/VideoDownloadService
+ * @module services/video/videoDownloadService
  */
 
 import * as path from 'path';
 import * as fs from 'fs';
 import { EventEmitter } from 'events';
-import cobaltService from './CobaltService.js';
-import ytDlpService from './YtDlpService.js';
-import videoProcessingService from './VideoProcessingService.js';
+import cobaltService from './cobaltService.js';
+import ytDlpService from './ytDlpService.js';
+import videoProcessingService from './videoProcessingService.js';
 import * as videoConfig from '../../config/features/video.js';
 import logger from '../../core/observability/Logger.js';
 import type {

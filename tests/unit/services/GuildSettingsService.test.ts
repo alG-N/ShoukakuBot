@@ -26,7 +26,7 @@ const mockGetGuildSettings = jest.fn();
 const mockSetGuildSettings = jest.fn().mockResolvedValue(undefined);
 const mockInvalidateGuildSettings = jest.fn().mockResolvedValue(undefined);
 
-jest.mock('../../../src/cache/CacheService', () => ({
+jest.mock('../../../src/cache/cacheService', () => ({
     __esModule: true,
     default: {
         getGuildSettings: mockGetGuildSettings,
@@ -74,7 +74,7 @@ import {
     clearCache,
     DEFAULT_GUILD_SETTINGS,
     type GuildSettings,
-} from '../../../src/services/guild/GuildSettingsService';
+} from '../../../src/services/guild/guildSettingsService';
 
 // Helper to create mock GuildMember
 function createMockMember(overrides: Record<string, unknown> = {}) {

@@ -871,7 +871,3 @@ export function isDatabaseReady(): boolean {
 
 // Default export
 export default defaultInstance;
-
-
-
-

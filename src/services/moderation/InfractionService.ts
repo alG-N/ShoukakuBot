@@ -1,13 +1,13 @@
 /**
  * Infraction Service
  * Handles creation and management of mod cases/infractions
- * @module services/moderation/InfractionService
+ * @module services/moderation/infractionService
  */
 
 import { EmbedBuilder, Guild, User } from 'discord.js';
-import * as ModLogService from './ModLogService.js';
+import * as ModLogService from './modLogService.js';
 import { formatDuration } from '../../utils/common/time.js';
-import InfractionRepository from '../../repositories/moderation/InfractionRepository.js';
+import InfractionRepository from '../../repositories/moderation/infractionRepository.js';
 import moderationConfig from '../../config/features/moderation/index.js';
 import db from '../../database/index.js';
 import type { Infraction } from '../../types/moderation/infraction.js';

@@ -218,7 +218,7 @@ jest.mock('../../../../src/handlers/music/trackHandler', () => ({
     default: mockTrackHandler,
 }));
 
-import { musicFacade, MusicFacade } from '../../../../src/services/music/core/MusicFacade.js';
+import { musicFacade, MusicFacade } from '../../../../src/services/music/core/musicFacade.js';
 
 function makeTrack(title: string) {
     return {

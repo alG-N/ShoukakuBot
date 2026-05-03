@@ -1,7 +1,7 @@
 /**
  * Lavalink Service
  * Low-level Lavalink connection management using Shoukaku
- * @module services/music/LavalinkService
+ * @module services/music/lavalinkService
  */
 
 import { Shoukaku, Connectors } from 'shoukaku';
@@ -11,10 +11,10 @@ import * as sentry from '../../../core/observability/sentry.js';
 import * as lavalinkConfig from '../../../config/features/lavalink.js';
 import circuitBreakerRegistry from '../../../core/resilience/CircuitBreakerRegistry.js';
 import gracefulDegradation from '../../../core/resilience/GracefulDegradation.js';
-import cacheService from '../../../cache/CacheService.js';
+import cacheService from '../../../cache/cacheService.js';
 import { updateLavalinkMetrics } from '../../../core/observability/metrics.js';
-import type { MusicTrack } from '../events/MusicEvents.js';
-import spotifyService from '../spotify/SpotifyService.js';
+import type { MusicTrack } from '../events/musicEvents.js';
+import spotifyService from '../spotify/spotifyService.js';
 import type { NodeConfig, LavalinkSearchResult, PlaylistResult, PreservedState, NodeStatus } from '../../../types/music/lavalink.js';
 import type { CircuitBreaker, ShoukakuNode, ShoukakuPlayer, TrackData } from '../../../types/music/lavalink-service.js';
 // LAVALINK SERVICE CLASS

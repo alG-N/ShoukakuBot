@@ -3,7 +3,7 @@
  * Redis write-through cache + PostgreSQL fallback for per-user preferences
  */
 
-import cacheService from '../../../cache/CacheService.js';
+import cacheService from '../../../cache/cacheService.js';
 import pixivRepository from '../../../repositories/api/pixivRepository.js';
 import type { PixivUserPreferences } from '../../../types/api/models/content-session.js';
 

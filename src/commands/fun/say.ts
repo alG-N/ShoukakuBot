@@ -13,11 +13,11 @@ import {
     ButtonBuilder,
     ButtonStyle
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../baseCommand.js';
 import { COLORS } from '../../constants.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import logger from '../../core/observability/Logger.js';
-import sayService from '../../services/fun/say/SayService.js';
+import sayService from '../../services/fun/say/sayService.js';
 
 // Message type colors
 const TYPE_COLORS: Record<string, number> = {

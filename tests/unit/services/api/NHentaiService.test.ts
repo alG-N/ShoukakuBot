@@ -28,7 +28,7 @@ jest.mock('axios', () => ({
 const mockCacheGet = jest.fn().mockResolvedValue(null);
 const mockCacheSet = jest.fn().mockResolvedValue(undefined);
 const mockCacheClearNamespace = jest.fn().mockResolvedValue(undefined);
-jest.mock('../../../../src/cache/CacheService', () => ({
+jest.mock('../../../../src/cache/cacheService', () => ({
     __esModule: true,
     default: {
         get: mockCacheGet,

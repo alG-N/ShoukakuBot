@@ -2,12 +2,12 @@
  * Snipe Service
  * Tracks deleted messages for the /snipe command
  * SHARD-SAFE: Uses Redis via CacheService for cross-shard message tracking
- * @module services/moderation/SnipeService
+ * @module services/moderation/snipeService
  */
 
 import type { Client, Message, Snowflake } from 'discord.js';
-import GuildSettingsService from '../guild/GuildSettingsService.js';
-import cacheService from '../../cache/CacheService.js';
+import GuildSettingsService from '../guild/guildSettingsService.js';
+import cacheService from '../../cache/cacheService.js';
 import logger from '../../core/observability/Logger.js';
 import type {
     TrackedAttachment,

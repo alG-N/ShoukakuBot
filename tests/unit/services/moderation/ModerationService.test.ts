@@ -23,7 +23,7 @@ jest.mock('../../../../src/core/Logger', () => ({
 }));
 
 // Mock GuildSettingsService
-jest.mock('../../../../src/services/guild/GuildSettingsService', () => ({
+jest.mock('../../../../src/services/guild/guildSettingsService', () => ({
     __esModule: true,
     default: {
         getLogChannel: jest.fn().mockResolvedValue(null),
@@ -50,8 +50,8 @@ import {
     createLogEmbed,
     parseDuration,
     CONFIG,
-} from '../../../../src/services/moderation/ModerationService';
-import GuildSettingsService from '../../../../src/services/guild/GuildSettingsService';
+} from '../../../../src/services/moderation/moderationService';
+import GuildSettingsService from '../../../../src/services/guild/guildSettingsService';
 import type { Guild, GuildMember, User, TextChannel } from 'discord.js';
 
 // Helper to create mock GuildMember

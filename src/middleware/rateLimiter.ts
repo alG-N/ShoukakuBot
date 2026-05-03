@@ -4,7 +4,7 @@
  * @module middleware/rateLimiter
  */
 
-import cacheService from '../cache/CacheService.js';
+import cacheService from '../cache/cacheService.js';
 import type {
     RateLimiterOptions,
     DistributedRateLimiterOptions,

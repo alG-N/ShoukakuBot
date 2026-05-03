@@ -6,14 +6,14 @@
 
 // Mock dependencies
 const mockCheckMessage = jest.fn();
-jest.mock('../../../../src/services/moderation/FilterService', () => ({
+jest.mock('../../../../src/services/moderation/filterService', () => ({
     __esModule: true,
     checkMessage: mockCheckMessage,
     default: { checkMessage: mockCheckMessage },
 }));
 
 const mockLogAutoMod = jest.fn();
-jest.mock('../../../../src/services/moderation/InfractionService', () => ({
+jest.mock('../../../../src/services/moderation/infractionService', () => ({
     __esModule: true,
     logAutoMod: mockLogAutoMod,
     default: { logAutoMod: mockLogAutoMod },
@@ -28,7 +28,7 @@ const mockResetDuplicateTracker = jest.fn();
 const mockTrackAutomodWarn = jest.fn();
 const mockResetAutomodWarn = jest.fn();
 
-jest.mock('../../../../src/cache/CacheService', () => ({
+jest.mock('../../../../src/cache/cacheService', () => ({
     __esModule: true,
     default: {
         getOrSet: mockGetOrSet,
@@ -50,7 +50,7 @@ const mockGetOrCreate = jest.fn();
 const mockAutoModRepoUpdate = jest.fn();
 const mockToggleFeature = jest.fn();
 
-jest.mock('../../../../src/repositories/moderation/AutoModRepository', () => ({
+jest.mock('../../../../src/repositories/moderation/autoModRepository', () => ({
     __esModule: true,
     default: {
         getOrCreate: mockGetOrCreate,
@@ -97,7 +97,7 @@ import {
     removeIgnoredChannel,
     addIgnoredRole,
     removeIgnoredRole,
-} from '../../../../src/services/moderation/AutoModService.js';
+} from '../../../../src/services/moderation/autoModService.js';
 
 // Helpers
 const defaultSettings = {

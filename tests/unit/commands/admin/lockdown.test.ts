@@ -65,7 +65,7 @@ const mockUnlockChannel = jest.fn().mockResolvedValue({ success: true });
 const mockLockServer = jest.fn().mockResolvedValue({ success: ['ch1'], skipped: [], failed: [] });
 const mockUnlockServer = jest.fn().mockResolvedValue({ success: ['ch1'], skipped: [], failed: [] });
 const mockGetLockStatus = jest.fn().mockResolvedValue({ lockedCount: 0, channelIds: [] });
-jest.mock('../../../../src/services/moderation/LockdownService', () => ({
+jest.mock('../../../../src/services/moderation/lockdownService', () => ({
     __esModule: true,
     default: {
         lockChannel: mockLockChannel,

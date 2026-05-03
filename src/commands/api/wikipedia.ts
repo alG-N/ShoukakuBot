@@ -11,8 +11,8 @@ import {
     ButtonInteraction,
     StringSelectMenuInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
-import cacheService from '../../cache/CacheService.js';
+import { BaseCommand, CommandCategory, CommandData } from '../baseCommand.js';
+import cacheService from '../../cache/cacheService.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import logger from '../../core/observability/Logger.js';
 import wikipediaService from '../../services/api/wikipediaService.js';

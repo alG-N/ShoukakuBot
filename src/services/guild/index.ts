@@ -32,11 +32,11 @@ export {
     isServerOwner,
     clearCache,
     default as GuildSettingsService,
-} from './GuildSettingsService.js';
-export { type GuildSettings } from './GuildSettingsService.js';
+} from './guildSettingsService.js';
+export { type GuildSettings } from './guildSettingsService.js';
 
 // Setup Wizard Service
-export { SetupWizardService, setupWizardService } from './SetupWizardService.js';
+export { SetupWizardService, setupWizardService } from './setupWizardService.js';
 
 
 

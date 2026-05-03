@@ -1,7 +1,7 @@
 /**
  * Setup Wizard Service
  * Guides new server owners through bot configuration
- * @module services/guild/SetupWizardService
+ * @module services/guild/setupWizardService
  */
 
 import {

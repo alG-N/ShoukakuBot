@@ -1,7 +1,7 @@
 /**
  * Skillset Service for Death Battle
  * Manages different anime skillsets and powers
- * @module services/fun/deathbattle/SkillsetService
+ * @module services/fun/deathbattle/skillsetService
  */
 
 import jjkSkillset from '../../../config/deathbattle/skillsets/jjk.js';

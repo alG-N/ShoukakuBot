@@ -26,7 +26,7 @@ jest.mock('../../../src/core/Logger', () => ({
 
 // Mock SetupWizardService
 const mockStartWizard = jest.fn().mockResolvedValue(undefined);
-jest.mock('../../../src/services/guild/SetupWizardService', () => ({
+jest.mock('../../../src/services/guild/setupWizardService', () => ({
     __esModule: true,
     setupWizardService: {
         startWizard: mockStartWizard,

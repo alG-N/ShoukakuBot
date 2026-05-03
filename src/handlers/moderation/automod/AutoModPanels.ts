@@ -2,7 +2,7 @@
  * AutoMod Command — Panel Builders
  * Functions that build embed + component payloads for each automod settings panel.
  * Extracted from automod.ts (~1092 lines) for modularity.
- * @module handlers/moderation/AutoModPanels
+ * @module handlers/moderation/autoModPanels
  */
 
 import {

@@ -21,12 +21,12 @@ import container from './container.js';
 import { registerServices } from './bootstrap/services.js';
 
 import { snipeService as SnipeService } from './services/index.js';
-import shardBridge from './services/guild/ShardBridge.js';
+import shardBridge from './services/guild/shardBridge.js';
 
-import type { CommandRegistry } from './services/registry/CommandRegistry.js';
-import type { EventRegistry } from './services/registry/EventRegistry.js';
+import type { CommandRegistry } from './services/registry/commandRegistry.js';
+import type { EventRegistry } from './services/registry/eventRegistry.js';
 import type { RedisCache } from './cache/RedisCache.js';
-import type { CacheService } from './cache/CacheService.js';
+import type { CacheService } from './cache/cacheService.js';
 
 import { bot, music } from './config/index.js';
 
@@ -178,7 +178,7 @@ class ShoukakuBot {
     private async registerHealthChecks(): Promise<void> {
         let lavalinkService: { getNodeStatus?: () => { ready?: boolean; nodes?: unknown[]; activeConnections?: number } } | undefined;
         if (music.enabled) {
-            const lavalinkModule = await import('./services/music/core/LavalinkService.js');
+            const lavalinkModule = await import('./services/music/core/lavalinkService.js');
             const mod = lavalinkModule.default as Record<string, unknown>;
             lavalinkService = ((mod && typeof mod === 'object' && 'default' in mod) ? mod.default : mod) as typeof lavalinkService;
         }
@@ -321,7 +321,7 @@ class ShoukakuBot {
 
     private async initializeLavalink(): Promise<void> {
         try {
-            const lavalinkModule = await import('./services/music/core/LavalinkService.js');
+            const lavalinkModule = await import('./services/music/core/lavalinkService.js');
             const mod = lavalinkModule.default as Record<string, unknown>;
             const lavalinkService = ((mod && typeof mod === 'object' && 'default' in mod) ? mod.default : mod) as { preInitialize: (client: unknown) => void };
             lavalinkService.preInitialize(this.client);

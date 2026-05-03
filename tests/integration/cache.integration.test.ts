@@ -5,7 +5,7 @@
  */
 
 import { getTestRedis, clearTestRedis, testUtils, cleanupTestResources } from './setup';
-import { CacheService } from '../../src/cache/CacheService';
+import { CacheService } from '../../src/cache/cacheService';
 
 // Skip if not running integration tests
 const describeIntegration = process.env.RUN_INTEGRATION_TESTS ? describe : describe.skip;

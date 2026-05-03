@@ -10,7 +10,7 @@
  * @module cache/api/redditCache
  */
 
-import cacheService from '../CacheService.js';
+import cacheService from '../cacheService.js';
 import type { RedditPost } from '../../types/api/reddit/model.js';
 import type { RedditSession, SortType } from '../../types/api/reddit/cache.js';
 export { type RedditPost } from '../../types/api/reddit/model.js';

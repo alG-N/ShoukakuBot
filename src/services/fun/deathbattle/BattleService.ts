@@ -1,13 +1,13 @@
 /**
  * Battle Service for Death Battle
  * Manages combat mechanics and state
- * @module services/fun/deathbattle/BattleService
+ * @module services/fun/deathbattle/battleService
  */
 
 import type { User } from 'discord.js';
-import skillsetService from './SkillsetService.js';
-import type { Power } from './SkillsetService.js';
-import cacheService from '../../../cache/CacheService.js';
+import skillsetService from './skillsetService.js';
+import type { Power } from './skillsetService.js';
+import cacheService from '../../../cache/cacheService.js';
 import type {
     NamedEffect,
     BattleEffects,

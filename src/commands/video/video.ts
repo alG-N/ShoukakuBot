@@ -13,17 +13,17 @@ import {
     ButtonStyle,
     ChatInputCommandInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../baseCommand.js';
 import { COLORS } from '../../constants.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import fs from 'fs';
-import _videoDownloadService from '../../services/video/VideoDownloadService.js';
+import _videoDownloadService from '../../services/video/videoDownloadService.js';
 import _platformDetector from '../../utils/video/platformDetector.js';
 import _videoEmbedBuilder from '../../utils/video/videoEmbedBuilder.js';
 import urlValidatorModule from '../../middleware/urlValidator.js';
 import _videoConfig from '../../config/features/video.js';
 import logger from '../../core/observability/Logger.js';
-import cacheService from '../../cache/CacheService.js';
+import cacheService from '../../cache/cacheService.js';
 import type { ProgressData } from '../../types/video/processing.js';
 import type {
     VideoConfig,

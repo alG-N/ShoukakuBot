@@ -1,11 +1,11 @@
 /**
  * Moderation Service
  * Handles kick, mute, and ban operations with logging
- * @module services/moderation/ModerationService
+ * @module services/moderation/moderationService
  */
 
 import { EmbedBuilder, Guild, GuildMember, User } from 'discord.js';
-import GuildSettingsService from '../guild/GuildSettingsService.js';
+import GuildSettingsService from '../guild/guildSettingsService.js';
 import { formatDuration } from '../../utils/common/time.js';
 import { Result } from '../../core/errors/Result.js';
 import { ErrorCodes } from '../../core/errors/ErrorCodes.js';

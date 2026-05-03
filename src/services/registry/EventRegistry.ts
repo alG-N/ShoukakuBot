@@ -1,7 +1,7 @@
 /**
  * Event Registry - Application Layer
  * Centralized event registration and management
- * @module services/registry/EventRegistry
+ * @module services/registry/eventRegistry
  */
 
 import type { Client as DiscordClient } from 'discord.js';

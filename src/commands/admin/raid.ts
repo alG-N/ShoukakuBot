@@ -10,13 +10,13 @@ import {
     PermissionFlagsBits,
     ChatInputCommandInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
-import _antiRaidModule from '../../services/moderation/AntiRaidService.js';
-import _lockdownModule from '../../services/moderation/LockdownService.js';
+import { BaseCommand, CommandCategory, CommandData } from '../baseCommand.js';
+import _antiRaidModule from '../../services/moderation/antiRaidService.js';
+import _lockdownModule from '../../services/moderation/lockdownService.js';
 import _moderationConfigModule from '../../config/features/moderation/index.js';
 import type { ModerationConfig } from '../../config/features/moderation/index.js';
 import type { LockdownService } from '../../types/moderation/services.js';
-import type { DeactivateResult } from '../../services/moderation/AntiRaidService.js';
+import type { DeactivateResult } from '../../services/moderation/antiRaidService.js';
 import type { AntiRaidService } from '../../types/commands/raid.js';
 
 

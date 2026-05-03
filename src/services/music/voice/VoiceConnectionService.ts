@@ -2,17 +2,17 @@
  * Voice Connection Service
  * Handles voice channel connection and monitoring
  * Extracted from MusicService for single responsibility
- * @module services/music/voice/VoiceConnectionService
+ * @module services/music/voice/voiceConnectionService
  */
 
 import { ChannelType, type ChatInputCommandInteraction, type Guild, type GuildMember, type VoiceBasedChannel } from 'discord.js';
-import lavalinkService from '../core/LavalinkService.js';
+import lavalinkService from '../core/lavalinkService.js';
 import { queueService } from '../queue/index.js';
 import logger from '../../../core/observability/Logger.js';
 import { Result } from '../../../core/errors/Result.js';
 import { ErrorCodes } from '../../../core/errors/ErrorCodes.js';
 import { INACTIVITY_TIMEOUT, VC_CHECK_INTERVAL } from '../../../config/features/music.js';
-import cacheService from '../../../cache/CacheService.js';
+import cacheService from '../../../cache/cacheService.js';
 import type { PlayerLike } from '../../../types/music/infrastructure.js';
 import type { PlayerEventHandlers } from '../../../types/music/events.js';
 import type { EventBusLike, EventsModule, ConnectionState } from '../../../types/music/voice.js';

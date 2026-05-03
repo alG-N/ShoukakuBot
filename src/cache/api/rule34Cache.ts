@@ -13,7 +13,7 @@
  * @module cache/api/rule34Cache
  */
 
-import cacheService from '../CacheService.js';
+import cacheService from '../cacheService.js';
 import type {
     Rule34Session,
     PaginationState,

@@ -8,7 +8,7 @@ export {
     handleMessageUpdate as handleAutoModUpdate,
     buildSettingsEmbed,
     formatAction
-} from './AutoModHandler.js';
+} from './autoModHandler.js';
 
 export {
     showMainPanel,
@@ -18,7 +18,7 @@ export {
     showActionsSection,
     showExemptSection,
     showEscalationConfig
-} from './AutoModPanels.js';
+} from './autoModPanels.js';
 
 export {
     handleFilterAction,
@@ -32,4 +32,4 @@ export {
     handleEscalationSelect,
     handleEscalationActionSelect,
     handleEscalationActionValue
-} from './AutoModSettingsHandlers.js';
+} from './autoModSettingsHandlers.js';

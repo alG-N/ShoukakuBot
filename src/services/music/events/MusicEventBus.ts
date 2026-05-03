@@ -2,11 +2,11 @@
  * Music Event Bus
  * Central event emitter for the music system
  * Enables decoupled communication between music services
- * @module services/music/events/MusicEventBus
+ * @module services/music/events/musicEventBus
  */
 
 import { EventEmitter } from 'events';
-import { MusicEvents, MusicTrack } from './MusicEvents.js';
+import { MusicEvents, MusicTrack } from './musicEvents.js';
 import logger from '../../../core/observability/Logger.js';
 import type { MusicEventData as EventData } from '../../../types/music/infrastructure.js';
 import type { EventStats } from '../../../types/music/event-bus.js';

@@ -10,9 +10,9 @@ import {
     Message,
     ComponentType
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../baseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
-import type { Battle } from '../../services/fun/deathbattle/BattleService.js';
+import type { Battle } from '../../services/fun/deathbattle/battleService.js';
 import coreLogger from '../../core/observability/Logger.js';
 import type {
     SkillsetService,
@@ -21,8 +21,8 @@ import type {
     DeathBattleConfig
 } from '../../types/fun/deathbattle/contracts.js';
 
-import _skillsetService from '../../services/fun/deathbattle/SkillsetService.js';
-import _battleService from '../../services/fun/deathbattle/BattleService.js';
+import _skillsetService from '../../services/fun/deathbattle/skillsetService.js';
+import _battleService from '../../services/fun/deathbattle/battleService.js';
 import _embedBuilder from '../../utils/deathbattle/embedBuilder.js';
 import deathbattleConfig from '../../config/deathbattle/index.js';
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())

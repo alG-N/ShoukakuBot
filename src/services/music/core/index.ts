@@ -4,15 +4,15 @@
  * @module services/music/core
  */
 
-export { default as lavalinkService, LavalinkService } from './LavalinkService.js';
-export { type LavalinkSearchResult, type PlaylistResult, type PreservedState, type NodeStatus } from './LavalinkService.js';
+export { default as lavalinkService, LavalinkService } from './lavalinkService.js';
+export { type LavalinkSearchResult, type PlaylistResult, type PreservedState, type NodeStatus } from './lavalinkService.js';
 
-export { default as musicFacade, musicFacade as MusicFacade } from './MusicFacade.js';
-export { musicFacade as MusicService } from './MusicFacade.js';
+export { default as musicFacade, musicFacade as MusicFacade } from './musicFacade.js';
+export { musicFacade as MusicService } from './musicFacade.js';
 
-export { MusicNowPlayingManager } from './MusicNowPlayingManager.js';
-export { MusicUserDataService } from './MusicUserDataService.js';
-export { MusicSkipVoteManager } from './MusicSkipVoteManager.js';
+export { MusicNowPlayingManager } from './musicNowPlayingManager.js';
+export { MusicUserDataService } from './musicUserDataService.js';
+export { MusicSkipVoteManager } from './musicSkipVoteManager.js';
 
 export type { Track, TrackInfo } from '../../../types/music/track.js';
 export type { LoopMode, NowPlayingOptions, PlayNextResult } from '../../../types/music/playback.js';

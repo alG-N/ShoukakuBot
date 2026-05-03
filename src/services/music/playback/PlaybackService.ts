@@ -1,4 +1,4 @@
-import lavalinkService from '../core/LavalinkService.js';
+import lavalinkService from '../core/lavalinkService.js';
 import { queueService } from '../queue/index.js';
 import musicCache from '../../../cache/music/MusicCacheFacade.js';
 import logger from '../../../core/observability/Logger.js';

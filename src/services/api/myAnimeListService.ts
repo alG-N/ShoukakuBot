@@ -6,7 +6,7 @@
 
 import { circuitBreakerRegistry } from '../../core/resilience/CircuitBreakerRegistry.js';
 import logger from '../../core/observability/Logger.js';
-import cacheService from '../../cache/CacheService.js';
+import cacheService from '../../cache/cacheService.js';
 import type { MALMediaType as MediaType, MALMediaTypeConfig as MediaTypeConfig } from '../../types/api/models/mal.js';
 import type {
     MALAnimeData,

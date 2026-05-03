@@ -1,7 +1,7 @@
 /**
  * AutoMod Command - Interactive Panel with Sections
  * Fixed: Use deferUpdate() + editReply() pattern to prevent timeout
- * Refactored: Panels -> handlers/moderation/AutoModPanels.ts, Handlers -> handlers/moderation/AutoModSettingsHandlers.ts, Types -> handlers/moderation/AutoModTypes.ts
+ * Refactored: Panels -> handlers/moderation/autoModPanels.ts, Handlers -> handlers/moderation/autoModSettingsHandlers.ts, Types -> handlers/moderation/AutoModTypes.ts
  * @module commands/admin/automod
  */
 
@@ -16,13 +16,13 @@ import {
     Message,
     MessageComponentInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
+import { BaseCommand, CommandCategory, CommandData } from '../baseCommand.js';
 import logger from '../../core/observability/Logger.js';
 import { autoModService as _autoModService } from '../../services/moderation/index.js';
 import _moderationConfigModule from '../../config/features/moderation/index.js';
 import type { AutoModService } from '../../types/moderation/handlers.js';
 import type { ModerationConfig } from '../../config/features/moderation/index.js';
-import { showMainPanel, showToggleSection, showFilterSection, showConfigSection, showActionsSection, showExemptSection, showEscalationConfig } from '../../handlers/moderation/automod/AutoModPanels.js';
+import { showMainPanel, showToggleSection, showFilterSection, showConfigSection, showActionsSection, showExemptSection, showEscalationConfig } from '../../handlers/moderation/automod/autoModPanels.js';
 import {
     handleFilterAction,
     handleFilterActionDeferred,
@@ -35,7 +35,7 @@ import {
     handleEscalationSelect,
     handleEscalationActionSelect,
     handleEscalationActionValue
-} from '../../handlers/moderation/automod/AutoModSettingsHandlers.js';
+} from '../../handlers/moderation/automod/autoModSettingsHandlers.js';
 
 // SERVICE IMPORTS
 const AutoModServiceInstance: AutoModService = _autoModService as any;

@@ -8,7 +8,7 @@ import { ChatInputCommandInteraction } from 'discord.js';
 import { trackHandler } from './trackHandler.js';
 import musicCache from '../../cache/music/MusicCacheFacade.js';
 import { checkSameVoiceChannel } from '../../middleware/voiceChannelCheck.js';
-import { musicFacade as musicService } from '../../services/music/core/MusicFacade.js';
+import { musicFacade as musicService } from '../../services/music/core/musicFacade.js';
 import type { Track } from '../../types/music/track.js';
 
 export const queueHandler = {

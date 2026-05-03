@@ -9,7 +9,7 @@
  * @module cache/api/pixivCache
  */
 
-import cacheService from '../CacheService.js';
+import cacheService from '../cacheService.js';
 import type { PixivCacheSearchResult, PixivResultData } from '../../types/api/pixiv/cache.js';
 
 // ── CacheService namespace constants ─────────────────────────────────

@@ -10,7 +10,7 @@ import logger from '../core/observability/Logger.js';
 import { setPresence } from '../core/runtime/Client.js';
 import { bot } from '../config/index.js';
 import { updateDiscordMetrics, redisConnectionStatus, musicPlayersActive, musicQueueSize, musicVoiceConnections, commandsActive } from '../core/observability/metrics.js';
-import cacheService from '../cache/CacheService.js';
+import cacheService from '../cache/cacheService.js';
 // READY EVENT
 class ReadyEvent extends BaseEvent {
     private _metricsInterval: ReturnType<typeof setInterval> | null = null;
