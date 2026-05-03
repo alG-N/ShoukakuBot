@@ -563,42 +563,6 @@ class Rule34InteractionController {
         }
     }
 
-    private async _handleRelatedFromSession(interaction: ButtonInteraction, userId: string, sessionId: string = 'latest'): Promise<void> {
-        const session = this.deps.rule34Cache?.getSession?.(userId, sessionId);
-
-        if (!session) {
-            await interaction.reply({
-                content: '⏱️ Session expired. Please run the command again.',
-                ephemeral: true
-            });
-            return;
-        }
-
-        await interaction.deferUpdate();
-
-        const currentPost = session.posts[session.currentIndex];
-        const queryFallback = (session.query || '').split(/\s+/).find(Boolean) || '';
-        const baseTag = currentPost?.tagList?.[0] || queryFallback;
-
-        if (!baseTag) {
-            await interaction.followUp({
-                content: '❌ Cannot determine a tag for related search.',
-                ephemeral: true
-            });
-            return;
-        }
-
-        let relatedTags: Array<{ name?: string; tag?: string; count?: number }> = [];
-        await this._withFetchingState(interaction, 'related tags', async () => {
-            relatedTags = await this.deps.rule34Service?.getRelatedTags?.(baseTag, 20) || [];
-        });
-
-        const embed = this.deps.postHandler?.createRelatedTagsEmbed?.(baseTag, relatedTags as any)
-            || this.deps.infoEmbed('Related Tags', relatedTags.map(t => `• ${t.name || t.tag || 'unknown'}`).join('\n') || 'No related tags found');
-
-        await interaction.followUp({ embeds: [embed], ephemeral: true });
-    }
-
     private async _handleWatchVideo(interaction: ButtonInteraction, postIdStr: string, userId: string, sessionId: string): Promise<void> {
         const session = this.deps.rule34Cache?.getSession?.(userId, sessionId);
         if (!session || !Array.isArray(session.posts) || session.posts.length === 0) {

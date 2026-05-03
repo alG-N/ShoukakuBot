@@ -17,7 +17,6 @@ import type { CobaltCompleteData, CobaltResponse, DownloadInfo } from '../../typ
 class CobaltService extends EventEmitter {
     private apiUrls: string[];
     private currentApiIndex: number = 0;
-    private currentQuality: string = '720';
 
     constructor() {
         super();
@@ -61,9 +60,8 @@ class CobaltService extends EventEmitter {
 
         const timestamp = Date.now();
         let lastError: Error | null = null;
-        // Capture quality as a local constant so concurrent requests don't interfere via this.currentQuality
+        // Keep quality request-scoped so concurrent downloads cannot clobber shared state.
         const quality = options.quality || (videoConfig as { COBALT_VIDEO_QUALITY?: string }).COBALT_VIDEO_QUALITY || '720';
-        this.currentQuality = quality; // kept for logging/compat
         
         logger.info('CobaltService', `Cobalt quality requested: ${quality}p`);
 

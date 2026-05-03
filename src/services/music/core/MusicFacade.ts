@@ -133,7 +133,6 @@ export class MusicFacade {
         return result.isOk();
     }
     async playTrack(guildId: string, track: Track): Promise<Track> {
-        const ptStart = performance.now();
         const player = playbackService.getPlayer(guildId);
         if (!player) throw new Error('NO_PLAYER');
         

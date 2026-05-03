@@ -6,11 +6,6 @@
 
 import { 
     SlashCommandBuilder, 
-    EmbedBuilder,
-    ActionRowBuilder,
-    ButtonBuilder,
-    ButtonStyle,
-    StringSelectMenuBuilder,
     ChatInputCommandInteraction,
     AutocompleteInteraction,
     ButtonInteraction,

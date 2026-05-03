@@ -1,5 +1,3 @@
-import type { NHentaiGallery } from './model.js';
-
 // v2 API GalleryListItem — lightweight object returned by search/list endpoints
 export interface NHentaiGalleryListItem {
     id: number;

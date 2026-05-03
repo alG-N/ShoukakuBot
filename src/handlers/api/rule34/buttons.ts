@@ -18,8 +18,7 @@ export function createPostButtons(
         sessionId = 'latest',
         searchPage = 1,
         hasMore = true,
-        sessionType = 'search',
-        maxPage = 200
+        sessionType = 'search'
     } = options;
     const rows: ActionRowBuilder<ButtonBuilder>[] = [];
     const showPageControls = sessionType !== 'single' && sessionType !== 'trending';

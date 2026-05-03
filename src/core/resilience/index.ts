@@ -14,7 +14,6 @@ export { type RegistryHealth, type RegistrySummary, type FallbackResult } from '
 
 export {
     default as gracefulDegradation,
-    gracefulDegradation as gracefulDegradationInstance,
     GracefulDegradation,
     DegradationLevel,
     ServiceState

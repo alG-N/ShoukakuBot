@@ -477,19 +477,6 @@ class NHentaiService {
         return { success: false, error: 'Could not fetch any popular gallery. The service may be temporarily unavailable.' };
     }
 
-    private getPeriodWindowSeconds(period: 'today' | 'week' | 'month' | 'all'): number {
-        switch (period) {
-            case 'today':
-                return 24 * 60 * 60;
-            case 'week':
-                return 7 * 24 * 60 * 60;
-            case 'month':
-                return 30 * 24 * 60 * 60;
-            default:
-                return Number.POSITIVE_INFINITY;
-        }
-    }
-
     private getMaxRecentPageWindow(period: 'today' | 'week' | 'month' | 'all'): number {
         switch (period) {
             case 'today':

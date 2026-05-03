@@ -37,7 +37,7 @@ export function createGalleryEmbed(
     options: { isRandom?: boolean; isPopular?: boolean; popularPeriod?: string } = {}
 ): EmbedBuilder {
     const { isRandom = false, isPopular = false, popularPeriod } = options;
-    const { id, media_id, title, tags, num_pages, images, num_favorites } = gallery;
+    const { id, media_id, title, tags, images, num_favorites } = gallery;
 
     const embed = new EmbedBuilder()
         .setColor(COLORS.NHENTAI)
@@ -129,7 +129,7 @@ export function createErrorEmbed(message: string): EmbedBuilder {
         .setTimestamp();
 }
 
-export function createSettingsEmbed(userId: string, prefs: UserPreferences): EmbedBuilder {
+export function createSettingsEmbed(_userId: string, prefs: UserPreferences): EmbedBuilder {
     return new EmbedBuilder()
         .setColor(COLORS.NHENTAI)
         .setTitle('⚙️ NHentai Settings')

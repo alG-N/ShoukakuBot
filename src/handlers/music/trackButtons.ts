@@ -20,7 +20,6 @@ export function createControlButtons(guildId: string, options: ControlButtonsOpt
         isPaused = false,
         loopMode = 'off',
         isShuffled = false,
-        trackUrl = null,
         autoPlay = false
     } = options;
 

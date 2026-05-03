@@ -102,7 +102,7 @@ export async function createPostEmbed(post: Rule34Post, options: PostEmbedOption
 }
 
 export function createVideoEmbed(post: Rule34Post, options: PostEmbedOptions = {}): EmbedResult {
-    const { resultIndex = 0, totalResults = 1, searchPage = 1, userId = '', hasMore = true, sessionType = 'search', maxPage = 200 } = options;
+    const { resultIndex = 0, totalResults = 1, searchPage = 1, hasMore = true, sessionType = 'search', maxPage = 200 } = options;
 
     const postRating = post.rating as PostRating;
     const ratingEmoji = RATING_EMOJIS[postRating] || '❓';

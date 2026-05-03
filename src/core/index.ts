@@ -80,7 +80,6 @@ export * as health from './health/index.js';
 export {
     registerHealthCheck,
     runHealthChecks,
-    getHealthStatus,
     setStatus as setHealthStatus,
     startHealthServer,
     registerDefaultChecks
@@ -89,7 +88,6 @@ export {
 // Graceful Degradation
 export { 
     default as gracefulDegradation,
-    gracefulDegradation as gracefulDegradationInstance,
     GracefulDegradation, 
     DegradationLevel, 
     ServiceState 

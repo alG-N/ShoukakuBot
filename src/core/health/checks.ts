@@ -62,15 +62,6 @@ export async function runHealthChecks(): Promise<HealthResponse> {
     return results;
 }
 
-export function getHealthStatus(): HealthResponse {
-    return {
-        status: healthState.status === 'healthy' ? 'healthy' : 'unhealthy',
-        timestamp: new Date().toISOString(),
-        uptime: Math.floor((Date.now() - healthState.startTime) / 1000),
-        checks: healthState.checks
-    };
-}
-
 export function setStatus(status: HealthStatus): void {
     healthState.status = status;
 }
