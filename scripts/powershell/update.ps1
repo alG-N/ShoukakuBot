@@ -13,6 +13,7 @@
 
 $ErrorActionPreference = "Stop"
 Set-Location "$PSScriptRoot\..\.."
+. "$PSScriptRoot\common.ps1"
 
 Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host "  Shoukaku - Force Update to Latest" -ForegroundColor Cyan
@@ -26,7 +27,10 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # ── 1. Pull latest code ────────────────────────────────────────
-Write-Host "`n[1/3] Pulling latest code from git..." -ForegroundColor Yellow
+Write-Host "`n[1/4] Probing external providers..." -ForegroundColor Yellow
+Invoke-ExternalSitePreflight
+
+Write-Host "`n[2/4] Pulling latest code from git..." -ForegroundColor Yellow
 
 $gitAvailable = Get-Command git -ErrorAction SilentlyContinue
 if (-not $gitAvailable) {
@@ -64,7 +68,7 @@ if ($LASTEXITCODE -ne 0 -and $netResult -notmatch "already exists") {
 }
 
 # ── 2. Rebuild bot image ────────────────────────────────────────
-Write-Host "`n[2/3] Rebuilding bot image (no cache)..." -ForegroundColor Yellow
+Write-Host "`n[3/4] Rebuilding bot image (no cache)..." -ForegroundColor Yellow
 docker compose -f docker-compose.yml build bot --no-cache
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: Build failed." -ForegroundColor Red
@@ -75,7 +79,7 @@ Write-Host "  ✅ Build complete" -ForegroundColor Green
 # ── 3. Restart bot only ─────────────────────────────────────────
 # Database and Redis stay running - no data loss, minimal downtime.
 # Bot will auto-deploy all slash commands to Discord when it starts.
-Write-Host "`n[3/3] Restarting bot container..." -ForegroundColor Yellow
+Write-Host "`n[4/4] Restarting bot container..." -ForegroundColor Yellow
 docker compose -f docker-compose.yml up -d bot --force-recreate
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: Failed to restart bot." -ForegroundColor Red

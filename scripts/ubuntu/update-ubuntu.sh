@@ -28,8 +28,12 @@ echo "=============================================="
 check_docker_ready
 validate_env_soft
 
-# ── 1. Pull latest code ────────────────────────────────────────
-log_section "[1/4] Pulling latest code from git..."
+# ── 1. Probe external providers ────────────────────────────────
+log_section "[1/5] Probing external providers..."
+run_external_site_preflight
+
+# ── 2. Pull latest code ────────────────────────────────────────
+log_section "[2/5] Pulling latest code from git..."
 if ! command -v git >/dev/null 2>&1; then
   log_warn "git not found — skipping git pull. Make sure code is already up-to-date."
 else
@@ -47,19 +51,19 @@ else
   log_ok "Up to date: $COMMIT"
 fi
 
-# ── 2. Refresh npm dependencies ────────────────────────────────
-log_section "[2/4] Refreshing npm dependencies..."
+# ── 3. Refresh npm dependencies ────────────────────────────────
+log_section "[3/5] Refreshing npm dependencies..."
 refresh_direct_npm_dependencies
 
-# ── 3. Rebuild bot image (no cache) ────────────────────────────
-log_section "[3/4] Rebuilding bot image (no cache)..."
+# ── 4. Rebuild bot image (no cache) ────────────────────────────
+log_section "[4/5] Rebuilding bot image (no cache)..."
 $COMPOSE -f docker-compose.yml build bot --no-cache
 log_ok "Bot image rebuilt"
 
-# ── 4. Restart bot only ────────────────────────────────────────
+# ── 5. Restart bot only ────────────────────────────────────────
 # Database and Redis are kept running — no downtime for those services.
 # The bot will auto-deploy all slash commands to Discord when it starts.
-log_section "[4/4] Restarting bot container..."
+log_section "[5/5] Restarting bot container..."
 $COMPOSE -f docker-compose.yml up -d bot --force-recreate
 wait_stack_running "docker-compose.yml" "Bot stack" 120
 

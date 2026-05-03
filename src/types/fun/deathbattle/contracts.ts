@@ -5,7 +5,7 @@ import type {
     EmbedBuilder,
     User
 } from 'discord.js';
-import type { Battle, BattleHistoryEntry } from '../../services/fun/deathbattle/BattleService.js';
+import type { Battle, BattleHistoryEntry } from '../../../services/fun/deathbattle/BattleService.js';
 
 export interface BattleRoundResult {
     attacker: User;

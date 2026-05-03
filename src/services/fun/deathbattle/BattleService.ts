@@ -13,7 +13,7 @@ import type {
     BattleEffects,
     BattleHistoryEntry,
     Battle
-} from '../../../types/fun/deathbattle-battle-service.js';
+} from '../../../types/fun/deathbattle/battle.js';
 
 // DEFAULT EFFECTS
 const createDefaultEffects = (): BattleEffects => ({

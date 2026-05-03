@@ -7,6 +7,16 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 COMPOSE="docker compose"
 NPM_UPDATE_IMAGE="${NPM_UPDATE_IMAGE:-node:22-alpine}"
 
+EXTERNAL_SITE_CHECKS=(
+  "nhentai|https://nhentai.net/"
+  "pixiv-web|https://www.pixiv.net/"
+  "pixiv-api|https://app-api.pixiv.net/"
+  "reddit|https://www.reddit.com/"
+  "x|https://x.com/"
+  "instagram|https://www.instagram.com/"
+  "tiktok|https://www.tiktok.com/"
+)
+
 on_error() {
   local exit_code="$?"
   local line_no="${1:-unknown}"
@@ -93,6 +103,76 @@ check_docker_ready() {
   check_compose_file_valid "docker-compose.monitoring.yml"
 
   log_ok "Docker daemon, Compose plugin, and compose files are valid"
+}
+
+probe_http_signal() {
+  local url="$1"
+  local timeout_seconds="${2:-8}"
+  local http_code
+
+  http_code="$(curl \
+    --user-agent 'ShoukakuPreflight/1.0' \
+    --location \
+    --silent \
+    --show-error \
+    --output /dev/null \
+    --write-out '%{http_code}' \
+    --connect-timeout 5 \
+    --max-time "$timeout_seconds" \
+    "$url" 2>/dev/null || true)"
+
+  if [[ ! "$http_code" =~ ^[0-9]{3}$ ]]; then
+    http_code="000"
+  fi
+
+  printf '%s' "$http_code"
+}
+
+run_external_site_preflight() {
+  local timeout_seconds="${EXTERNAL_SITE_TIMEOUT_SECONDS:-8}"
+  local allow_failures="${ALLOW_EXTERNAL_SITE_FAILURES:-0}"
+  local unreachable=()
+  local degraded=()
+
+  local spec
+  for spec in "${EXTERNAL_SITE_CHECKS[@]}"; do
+    IFS='|' read -r name url <<< "$spec"
+
+    local http_code
+    http_code="$(probe_http_signal "$url" "$timeout_seconds")"
+
+    if [[ "$http_code" == "000" ]]; then
+      log_warn "$name did not return a signal ($url)"
+      unreachable+=("$name")
+      continue
+    fi
+
+    if (( 10#$http_code >= 500 )); then
+      log_warn "$name responded with HTTP $http_code ($url)"
+      degraded+=("$name")
+      continue
+    fi
+
+    log_ok "$name responded with HTTP $http_code"
+  done
+
+  if [[ "${#degraded[@]}" -gt 0 ]]; then
+    log_warn "Some providers returned 5xx responses: ${degraded[*]}"
+  fi
+
+  if [[ "${#unreachable[@]}" -eq 0 ]]; then
+    return 0
+  fi
+
+  if [[ "$allow_failures" == "1" ]]; then
+    log_warn "Continuing despite unreachable providers because ALLOW_EXTERNAL_SITE_FAILURES=1: ${unreachable[*]}"
+    return 0
+  fi
+
+  echo
+  echo "ERROR: External provider preflight failed for: ${unreachable[*]}" >&2
+  echo "Set ALLOW_EXTERNAL_SITE_FAILURES=1 to continue anyway." >&2
+  return 1
 }
 
 refresh_direct_npm_dependencies() {

@@ -4,6 +4,7 @@
 
 $ErrorActionPreference = "Stop"
 Set-Location "$PSScriptRoot\..\.."
+. "$PSScriptRoot\common.ps1"
 
 Write-Host ============================== -ForegroundColor Cyan
 Write-Host "  shoukaku - Rebuild Bot" -ForegroundColor Cyan
@@ -16,6 +17,9 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+Write-Host "`n[1/3] Probing external providers..." -ForegroundColor Yellow
+Invoke-ExternalSitePreflight
+
 # Ensure network exists
 $ErrorActionPreference = "Continue"
 $netResult = docker network create shoukaku-net 2>&1 | Out-String
@@ -25,11 +29,11 @@ if ($LASTEXITCODE -ne 0 -and $netResult -notmatch "already exists") {
     exit 1
 }
 
-Write-Host "`n[1/2] Building bot image..." -ForegroundColor Yellow
+Write-Host "`n[2/3] Building bot image..." -ForegroundColor Yellow
 docker compose -f docker-compose.yml build bot --no-cache
 Write-Host "  âœ… Build complete" -ForegroundColor Green
 
-Write-Host "`n[2/2] Restarting bot..." -ForegroundColor Yellow
+Write-Host "`n[3/3] Restarting bot..." -ForegroundColor Yellow
 docker compose -f docker-compose.yml up -d bot --force-recreate
 Write-Host "  âœ… Bot restarted" -ForegroundColor Green
 

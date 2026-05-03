@@ -11,6 +11,7 @@ import {
     logger, 
     initializeShutdownHandlers, 
     initializeErrorHandlers,
+    circuitBreakerRegistry,
     sentry,
     health,
     gracefulDegradation
@@ -187,7 +188,9 @@ class ShoukakuBot {
             database: postgres,
             redis: redisCache as { isConnected: boolean; client: { ping: () => Promise<unknown> } },
             lavalink: lavalinkService,
-            cacheService: cacheService
+            cacheService: cacheService,
+            circuitBreakerRegistry,
+            gracefulDegradation
         });
     }
 

@@ -1,5 +1,5 @@
 import type { User } from 'discord.js';
-import type { BattleHistoryEntry } from './deathbattle-battle-service.js';
+import type { BattleHistoryEntry } from './battle.js';
 
 export interface Player {
     username: string;

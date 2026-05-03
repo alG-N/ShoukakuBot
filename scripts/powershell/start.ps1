@@ -1,5 +1,6 @@
 $ErrorActionPreference = "Stop"
 Set-Location "$PSScriptRoot\..\.."
+. "$PSScriptRoot\common.ps1"
 
 Write-Host "==========================================="
 Write-Host "  Shoukaku - Starting All Services"
@@ -30,7 +31,11 @@ if (Test-Path ".env") {
 
 # 1. Create shared network
 Write-Host ""
-Write-Host "[1/5] Creating shared network..."
+Write-Host "[1/6] Probing external providers..."
+Invoke-ExternalSitePreflight
+
+Write-Host ""
+Write-Host "[2/6] Creating shared network..."
 $ErrorActionPreference = "Continue"
 $netResult = docker network create shoukaku-net 2>&1 | Out-String
 if ($LASTEXITCODE -ne 0 -and $netResult -notmatch "already exists") {
@@ -42,7 +47,7 @@ Write-Host "  Done - network shoukaku-net ready"
 
 # 2. Start Lavalink
 Write-Host ""
-Write-Host "[2/5] Starting Lavalink nodes..."
+Write-Host "[3/6] Starting Lavalink nodes..."
 docker compose -f docker-compose.lavalink.yml up -d
 Write-Host "  Done - Lavalink nodes starting"
 
@@ -74,19 +79,19 @@ if ($lavalinkReady) {
 
 # 3. Start Cobalt
 Write-Host ""
-Write-Host "[3/5] Starting Cobalt instances..."
+Write-Host "[4/6] Starting Cobalt instances..."
 docker compose -f docker-compose.cobalt.yml up -d
 Write-Host "  Done - Cobalt instances starting"
 
 # 4. Start Monitoring
 Write-Host ""
-Write-Host "[4/5] Starting Monitoring stack..."
+Write-Host "[5/6] Starting Monitoring stack..."
 docker compose -f docker-compose.monitoring.yml up -d
 Write-Host "  Done - Monitoring starting"
 
 # 5. Start Bot
 Write-Host ""
-Write-Host "[5/5] Starting Bot + Database + Cache..."
+Write-Host "[6/6] Starting Bot + Database + Cache..."
 docker compose -f docker-compose.yml up -d
 Write-Host "  Done - Bot starting"
 

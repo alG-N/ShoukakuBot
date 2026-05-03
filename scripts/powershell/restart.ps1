@@ -11,6 +11,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 Set-Location "$PSScriptRoot\..\.."
+. "$PSScriptRoot\common.ps1"
 
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host "  shoukaku - Restart & Apply Changes" -ForegroundColor Cyan
@@ -34,19 +35,22 @@ if ($ServicesOnly) {
     # ── Services-only restart (no bot rebuild) ──
     Write-Host "`n--- Restarting Docker services only ---" -ForegroundColor Yellow
 
-    Write-Host "`n[1/4] Restarting Lavalink nodes..." -ForegroundColor Yellow
+    Write-Host "`n[1/5] Probing external providers..." -ForegroundColor Yellow
+    Invoke-ExternalSitePreflight
+
+    Write-Host "`n[2/5] Restarting Lavalink nodes..." -ForegroundColor Yellow
     docker compose -f docker-compose.lavalink.yml up -d --force-recreate
     Write-Host "  Lavalink restarted" -ForegroundColor Green
 
-    Write-Host "`n[2/4] Restarting Cobalt instances..." -ForegroundColor Yellow
+    Write-Host "`n[3/5] Restarting Cobalt instances..." -ForegroundColor Yellow
     docker compose -f docker-compose.cobalt.yml up -d --force-recreate
     Write-Host "  Cobalt restarted" -ForegroundColor Green
 
-    Write-Host "`n[3/4] Restarting Monitoring..." -ForegroundColor Yellow
+    Write-Host "`n[4/5] Restarting Monitoring..." -ForegroundColor Yellow
     docker compose -f docker-compose.monitoring.yml up -d --force-recreate
     Write-Host "  Monitoring restarted" -ForegroundColor Green
 
-    Write-Host "`n[4/4] Restarting Bot + Database + Cache..." -ForegroundColor Yellow
+    Write-Host "`n[5/5] Restarting Bot + Database + Cache..." -ForegroundColor Yellow
     docker compose -f docker-compose.yml up -d --force-recreate
     Write-Host "  Bot restarted" -ForegroundColor Green
 
@@ -54,11 +58,14 @@ if ($ServicesOnly) {
     # ── Bot-only rebuild & restart ──
     Write-Host "`n--- Rebuilding & restarting bot only ---" -ForegroundColor Yellow
 
-    Write-Host "`n[1/2] Building bot image (no cache)..." -ForegroundColor Yellow
+    Write-Host "`n[1/3] Probing external providers..." -ForegroundColor Yellow
+    Invoke-ExternalSitePreflight
+
+    Write-Host "`n[2/3] Building bot image (no cache)..." -ForegroundColor Yellow
     docker compose -f docker-compose.yml build bot --no-cache
     Write-Host "  Build complete" -ForegroundColor Green
 
-    Write-Host "`n[2/2] Restarting bot container..." -ForegroundColor Yellow
+    Write-Host "`n[3/3] Restarting bot container..." -ForegroundColor Yellow
     docker compose -f docker-compose.yml up -d bot --force-recreate
     Write-Host "  Bot restarted" -ForegroundColor Green
 
@@ -66,27 +73,30 @@ if ($ServicesOnly) {
     # ── Full restart: rebuild bot + restart all services ──
     Write-Host "`n--- Full rebuild & restart ---" -ForegroundColor Yellow
 
-    Write-Host "`n[1/6] Building bot image (no cache)..." -ForegroundColor Yellow
+    Write-Host "`n[1/7] Probing external providers..." -ForegroundColor Yellow
+    Invoke-ExternalSitePreflight
+
+    Write-Host "`n[2/7] Building bot image (no cache)..." -ForegroundColor Yellow
     docker compose -f docker-compose.yml build bot --no-cache
     Write-Host "  Build complete" -ForegroundColor Green
 
-    Write-Host "`n[2/6] Rebuilding yt-dlp API..." -ForegroundColor Yellow
+    Write-Host "`n[3/7] Rebuilding yt-dlp API..." -ForegroundColor Yellow
     docker compose -f docker-compose.yml build ytdlp-api --no-cache
     Write-Host "  yt-dlp API rebuilt" -ForegroundColor Green
 
-    Write-Host "`n[3/6] Restarting Lavalink nodes..." -ForegroundColor Yellow
+    Write-Host "`n[4/7] Restarting Lavalink nodes..." -ForegroundColor Yellow
     docker compose -f docker-compose.lavalink.yml up -d --force-recreate
     Write-Host "  Lavalink restarted" -ForegroundColor Green
 
-    Write-Host "`n[4/6] Restarting Cobalt instances..." -ForegroundColor Yellow
+    Write-Host "`n[5/7] Restarting Cobalt instances..." -ForegroundColor Yellow
     docker compose -f docker-compose.cobalt.yml up -d --force-recreate
     Write-Host "  Cobalt restarted" -ForegroundColor Green
 
-    Write-Host "`n[5/6] Restarting Monitoring..." -ForegroundColor Yellow
+    Write-Host "`n[6/7] Restarting Monitoring..." -ForegroundColor Yellow
     docker compose -f docker-compose.monitoring.yml up -d --force-recreate
     Write-Host "  Monitoring restarted" -ForegroundColor Green
 
-    Write-Host "`n[6/6] Restarting Bot + Database + Cache..." -ForegroundColor Yellow
+    Write-Host "`n[7/7] Restarting Bot + Database + Cache..." -ForegroundColor Yellow
     docker compose -f docker-compose.yml up -d --force-recreate
     Write-Host "  Bot restarted" -ForegroundColor Green
 }
