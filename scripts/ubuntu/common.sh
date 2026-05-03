@@ -8,13 +8,14 @@ COMPOSE="docker compose"
 NPM_UPDATE_IMAGE="${NPM_UPDATE_IMAGE:-node:22-alpine}"
 
 EXTERNAL_SITE_CHECKS=(
-  "nhentai|https://nhentai.net/"
-  "pixiv-web|https://www.pixiv.net/"
-  "pixiv-api|https://app-api.pixiv.net/"
-  "reddit|https://www.reddit.com/"
-  "x|https://x.com/"
-  "instagram|https://www.instagram.com/"
-  "tiktok|https://www.tiktok.com/"
+  "fxtwitter|https://fxtwitter.com/"
+  "fixupx|https://fixupx.com/"
+  "tfxktok|https://tfxktok.com/"
+  "ddinstagram|https://ddinstagram.com/"
+  "rxddit|https://rxddit.com/"
+  "fxbsky|https://fxbsky.app/"
+  "facebed|https://facebed.com/"
+  "fixthreads|https://fixthreads.net/"
 )
 
 on_error() {
@@ -131,8 +132,10 @@ probe_http_signal() {
 run_external_site_preflight() {
   local timeout_seconds="${EXTERNAL_SITE_TIMEOUT_SECONDS:-8}"
   local allow_failures="${ALLOW_EXTERNAL_SITE_FAILURES:-0}"
+  local strict_failures="${STRICT_EXTERNAL_SITE_FAILURES:-0}"
   local unreachable=()
   local degraded=()
+  local signaled=0
 
   local spec
   for spec in "${EXTERNAL_SITE_CHECKS[@]}"; do
@@ -147,9 +150,16 @@ run_external_site_preflight() {
       continue
     fi
 
+    signaled=$((signaled + 1))
+
     if (( 10#$http_code >= 500 )); then
       log_warn "$name responded with HTTP $http_code ($url)"
       degraded+=("$name")
+      continue
+    fi
+
+    if (( 10#$http_code >= 400 )); then
+      log_info "$name responded with HTTP $http_code (domain is reachable; non-2xx root response is acceptable)"
       continue
     fi
 
@@ -158,6 +168,18 @@ run_external_site_preflight() {
 
   if [[ "${#degraded[@]}" -gt 0 ]]; then
     log_warn "Some providers returned 5xx responses: ${degraded[*]}"
+  fi
+
+  if [[ "$signaled" -eq 0 ]]; then
+    if [[ "$allow_failures" == "1" ]]; then
+      log_warn "No embed providers returned a signal, but continuing because ALLOW_EXTERNAL_SITE_FAILURES=1"
+      return 0
+    fi
+
+    echo
+    echo "ERROR: No embed providers returned a signal. Check outbound DNS/network access." >&2
+    echo "Set ALLOW_EXTERNAL_SITE_FAILURES=1 to continue anyway." >&2
+    return 1
   fi
 
   if [[ "${#unreachable[@]}" -eq 0 ]]; then
@@ -169,10 +191,15 @@ run_external_site_preflight() {
     return 0
   fi
 
-  echo
-  echo "ERROR: External provider preflight failed for: ${unreachable[*]}" >&2
-  echo "Set ALLOW_EXTERNAL_SITE_FAILURES=1 to continue anyway." >&2
-  return 1
+  if [[ "$strict_failures" == "1" ]]; then
+    echo
+    echo "ERROR: Embed provider preflight failed for: ${unreachable[*]}" >&2
+    echo "Unset STRICT_EXTERNAL_SITE_FAILURES or set ALLOW_EXTERNAL_SITE_FAILURES=1 to continue." >&2
+    return 1
+  fi
+
+  log_warn "Proceeding with partial embed provider signal. Unreachable: ${unreachable[*]}"
+  return 0
 }
 
 refresh_direct_npm_dependencies() {

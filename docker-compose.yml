@@ -146,7 +146,7 @@ services:
     networks:
       - shoukaku-net
     ports:
-      - "127.0.0.1:3000:3000"  # Restricted to localhost; Prometheus accesses via internal Docker network
+      - "${HEALTH_BIND_HOST:-127.0.0.1}:${HEALTH_PUBLISHED_PORT:-3000}:3000"  # Set HEALTH_BIND_HOST=0.0.0.0 for LAN access
     volumes:
       - video_temp:/app/dist/services/video/temp
     depends_on:

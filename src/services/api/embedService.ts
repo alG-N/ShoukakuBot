@@ -71,12 +71,10 @@ const EMBED_FIX_RULES: EmbedFixRule[] = [
         name: 'Facebook',
         emoji: '📘',
         patterns: [
-            /https?:\/\/(www\.|m\.|web\.)?facebook\.com\/.+/i,
-            /https?:\/\/fb\.watch\/.+/i
+            /https?:\/\/(www\.|m\.|web\.)?facebook\.com\/.+/i
         ],
         replacements: [
-            ['facebook.com', 'facebed.com'],
-            ['fb.watch', 'facebed.com/fb.watch']
+            ['facebook.com', 'facebed.com']
         ],
         service: 'Facebed',
         reliable: true

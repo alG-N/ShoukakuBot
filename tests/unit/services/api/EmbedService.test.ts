@@ -117,6 +117,15 @@ describe('EmbedService', () => {
             expect(result.platform!.id).toBe('threads');
         });
 
+        // ── Facebook ──
+
+        it('should convert facebook.com post URLs to facebed.com', () => {
+            const result = embedService.convert('https://www.facebook.com/zuck/posts/10102577175875681');
+            expect(result.success).toBe(true);
+            expect(result.fixedUrl).toBe('https://www.facebed.com/zuck/posts/10102577175875681');
+            expect(result.platform!.id).toBe('facebook');
+        });
+
         // ── Error cases ──
 
         it('should return error for unsupported URLs', () => {
@@ -188,18 +197,19 @@ describe('EmbedService', () => {
             expect(embedService.isSupported('https://twitter.com/user/status/123')).toBe(true);
             expect(embedService.isSupported('https://tiktok.com/@u/video/1')).toBe(true);
             expect(embedService.isSupported('https://instagram.com/p/abc/')).toBe(true);
+            expect(embedService.isSupported('https://facebook.com/zuck/posts/10102577175875681')).toBe(true);
         });
 
         it('should return false for unsupported platforms', () => {
             expect(embedService.isSupported('https://youtube.com/watch?v=abc')).toBe(false);
-            expect(embedService.isSupported('https://facebook.com/post/123')).toBe(false);
+            expect(embedService.isSupported('https://fb.watch/abc123/')).toBe(false);
         });
     });
 
     describe('getSupportedPlatforms', () => {
-        it('should return all 6 platforms', () => {
+        it('should return all 7 platforms', () => {
             const platforms = embedService.getSupportedPlatforms();
-            expect(platforms).toHaveLength(6);
+            expect(platforms).toHaveLength(7);
         });
 
         it('should include required fields for each platform', () => {
@@ -213,10 +223,10 @@ describe('EmbedService', () => {
             }
         });
 
-        it('should include twitter, tiktok, instagram, reddit, bluesky, threads', () => {
+        it('should include twitter, tiktok, instagram, reddit, bluesky, threads, facebook', () => {
             const ids = embedService.getSupportedPlatforms().map(p => p.id);
             expect(ids).toEqual(expect.arrayContaining([
-                'twitter', 'tiktok', 'instagram', 'reddit', 'bluesky', 'threads',
+                'twitter', 'tiktok', 'instagram', 'reddit', 'bluesky', 'threads', 'facebook',
             ]));
         });
     });

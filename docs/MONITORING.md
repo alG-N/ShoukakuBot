@@ -28,8 +28,14 @@ docker-compose up -d
 ```
 
 Access:
+- **Bot Live Dashboard**: http://localhost:3000
 - **Grafana**: http://localhost:3030 (admin/admin)
 - **Prometheus**: http://localhost:9090
+
+LAN access:
+- By default the bot dashboard is published only to `127.0.0.1`.
+- Set `HEALTH_BIND_HOST=0.0.0.0` in `.env` if you want to open port 3000 to other devices on your network.
+- Optionally set `HEALTH_PUBLISHED_PORT` if you want to expose a different external port.
 
 ### Verify Metrics Collection
 

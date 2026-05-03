@@ -22,6 +22,8 @@ import embedService from '../services/api/embedService.js';
 
 // IMAGE/GIF DETECTION
 
+const FACEBOOK_WATCH_HOSTS = new Set(['fb.watch', 'www.fb.watch']);
+
 /** Known image hosting domains */
 const IMAGE_HOSTS = [
     'imgur.com', 'i.imgur.com',
@@ -168,6 +170,41 @@ function cleanUrl(url: string): string {
     }
 }
 
+function isFacebookWatchUrl(url: string): boolean {
+    try {
+        return FACEBOOK_WATCH_HOSTS.has(new URL(url).hostname.toLowerCase());
+    } catch {
+        return false;
+    }
+}
+
+async function normalizeSocialUrl(url: string): Promise<string> {
+    const cleaned = cleanUrl(url);
+    if (!isFacebookWatchUrl(cleaned)) {
+        return cleaned;
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    try {
+        const response = await fetch(cleaned, {
+            method: 'HEAD',
+            redirect: 'follow',
+            signal: controller.signal,
+            headers: {
+                'User-Agent': 'ShoukakuMedia/1.0'
+            }
+        });
+
+        return cleanUrl(response.url || cleaned);
+    } catch {
+        return cleaned;
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
 // COMMAND
 
 class MediaCommand extends BaseCommand {
@@ -201,7 +238,7 @@ class MediaCommand extends BaseCommand {
         }
 
         // Clean tracking params from input URL
-        const url = cleanUrl(rawUrl);
+        const url = await normalizeSocialUrl(rawUrl);
 
         // 1. Check if it's a direct image/GIF URL
         const imageCheck = isDirectImageUrl(url);
@@ -217,8 +254,11 @@ class MediaCommand extends BaseCommand {
             const platforms = embedService.getSupportedPlatforms()
                 .map(p => `${p.emoji} ${p.name}`)
                 .join(', ');
+            const facebookWatchHint = isFacebookWatchUrl(rawUrl)
+                ? '\n**Note:** `fb.watch` links must resolve to a canonical Facebook post/reel URL before they can be fixed.'
+                : '';
             await interaction.reply({
-                content: `❌ Unsupported URL.\n\n**Supported platforms:** ${platforms}\n**Also supports:** direct image/GIF URLs`,
+                content: `❌ Unsupported URL.\n\n**Supported platforms:** ${platforms}\n**Also supports:** direct image/GIF URLs${facebookWatchHint}`,
                 ephemeral: true,
             });
             return;
