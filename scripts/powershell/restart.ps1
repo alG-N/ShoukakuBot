@@ -19,17 +19,11 @@ Write-Host "==========================================" -ForegroundColor Cyan
 
 # 0. Check Docker daemon
 Write-Host "`n[0] Checking Docker daemon..." -ForegroundColor Gray
-docker info 2>&1 | Out-Null
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "  ERROR: Docker is not running! Please start Docker Desktop first." -ForegroundColor Red
-    exit 1
-}
+Assert-DockerReady
 Write-Host "  Docker is running" -ForegroundColor Green
 
 # Ensure network exists
-$ErrorActionPreference = "Continue"
-$netResult = docker network create shoukaku-net 2>&1 | Out-String
-$ErrorActionPreference = "Stop"
+Ensure-DockerNetwork -Name "shoukaku-net"
 
 if ($ServicesOnly) {
     # ── Services-only restart (no bot rebuild) ──
@@ -39,19 +33,19 @@ if ($ServicesOnly) {
     Invoke-ExternalSitePreflight
 
     Write-Host "`n[2/5] Restarting Lavalink nodes..." -ForegroundColor Yellow
-    docker compose -f docker-compose.lavalink.yml up -d --force-recreate
+    Invoke-DockerComposeChecked -Arguments @('-f', 'docker-compose.lavalink.yml', 'up', '-d', '--force-recreate') -FailureMessage 'Failed to restart Lavalink.'
     Write-Host "  Lavalink restarted" -ForegroundColor Green
 
     Write-Host "`n[3/5] Restarting Cobalt instances..." -ForegroundColor Yellow
-    docker compose -f docker-compose.cobalt.yml up -d --force-recreate
+    Invoke-DockerComposeChecked -Arguments @('-f', 'docker-compose.cobalt.yml', 'up', '-d', '--force-recreate') -FailureMessage 'Failed to restart Cobalt.'
     Write-Host "  Cobalt restarted" -ForegroundColor Green
 
     Write-Host "`n[4/5] Restarting Monitoring..." -ForegroundColor Yellow
-    docker compose -f docker-compose.monitoring.yml up -d --force-recreate
+    Invoke-DockerComposeChecked -Arguments @('-f', 'docker-compose.monitoring.yml', 'up', '-d', '--force-recreate') -FailureMessage 'Failed to restart Monitoring.'
     Write-Host "  Monitoring restarted" -ForegroundColor Green
 
     Write-Host "`n[5/5] Restarting Bot + Database + Cache..." -ForegroundColor Yellow
-    docker compose -f docker-compose.yml up -d --force-recreate
+    Invoke-DockerComposeChecked -Arguments @('-f', 'docker-compose.yml', 'up', '-d', '--force-recreate') -FailureMessage 'Failed to restart the bot stack.'
     Write-Host "  Bot restarted" -ForegroundColor Green
 
 } elseif ($BotOnly) {
@@ -62,11 +56,11 @@ if ($ServicesOnly) {
     Invoke-ExternalSitePreflight
 
     Write-Host "`n[2/3] Building bot image (no cache)..." -ForegroundColor Yellow
-    docker compose -f docker-compose.yml build bot --no-cache
+    Invoke-DockerComposeChecked -Arguments @('-f', 'docker-compose.yml', 'build', 'bot', '--no-cache') -FailureMessage 'Failed to build the bot image.'
     Write-Host "  Build complete" -ForegroundColor Green
 
     Write-Host "`n[3/3] Restarting bot container..." -ForegroundColor Yellow
-    docker compose -f docker-compose.yml up -d bot --force-recreate
+    Invoke-DockerComposeChecked -Arguments @('-f', 'docker-compose.yml', 'up', '-d', 'bot', '--force-recreate') -FailureMessage 'Failed to restart the bot container.'
     Write-Host "  Bot restarted" -ForegroundColor Green
 
 } else {
@@ -77,27 +71,27 @@ if ($ServicesOnly) {
     Invoke-ExternalSitePreflight
 
     Write-Host "`n[2/7] Building bot image (no cache)..." -ForegroundColor Yellow
-    docker compose -f docker-compose.yml build bot --no-cache
+    Invoke-DockerComposeChecked -Arguments @('-f', 'docker-compose.yml', 'build', 'bot', '--no-cache') -FailureMessage 'Failed to build the bot image.'
     Write-Host "  Build complete" -ForegroundColor Green
 
     Write-Host "`n[3/7] Rebuilding yt-dlp API..." -ForegroundColor Yellow
-    docker compose -f docker-compose.yml build ytdlp-api --no-cache
+    Invoke-DockerComposeChecked -Arguments @('-f', 'docker-compose.yml', 'build', 'ytdlp-api', '--no-cache') -FailureMessage 'Failed to rebuild the yt-dlp API image.'
     Write-Host "  yt-dlp API rebuilt" -ForegroundColor Green
 
     Write-Host "`n[4/7] Restarting Lavalink nodes..." -ForegroundColor Yellow
-    docker compose -f docker-compose.lavalink.yml up -d --force-recreate
+    Invoke-DockerComposeChecked -Arguments @('-f', 'docker-compose.lavalink.yml', 'up', '-d', '--force-recreate') -FailureMessage 'Failed to restart Lavalink.'
     Write-Host "  Lavalink restarted" -ForegroundColor Green
 
     Write-Host "`n[5/7] Restarting Cobalt instances..." -ForegroundColor Yellow
-    docker compose -f docker-compose.cobalt.yml up -d --force-recreate
+    Invoke-DockerComposeChecked -Arguments @('-f', 'docker-compose.cobalt.yml', 'up', '-d', '--force-recreate') -FailureMessage 'Failed to restart Cobalt.'
     Write-Host "  Cobalt restarted" -ForegroundColor Green
 
     Write-Host "`n[6/7] Restarting Monitoring..." -ForegroundColor Yellow
-    docker compose -f docker-compose.monitoring.yml up -d --force-recreate
+    Invoke-DockerComposeChecked -Arguments @('-f', 'docker-compose.monitoring.yml', 'up', '-d', '--force-recreate') -FailureMessage 'Failed to restart Monitoring.'
     Write-Host "  Monitoring restarted" -ForegroundColor Green
 
     Write-Host "`n[7/7] Restarting Bot + Database + Cache..." -ForegroundColor Yellow
-    docker compose -f docker-compose.yml up -d --force-recreate
+    Invoke-DockerComposeChecked -Arguments @('-f', 'docker-compose.yml', 'up', '-d', '--force-recreate') -FailureMessage 'Failed to restart the bot stack.'
     Write-Host "  Bot restarted" -ForegroundColor Green
 }
 
@@ -110,9 +104,9 @@ Write-Host "`n==========================================" -ForegroundColor Green
 Write-Host "  All changes applied!" -ForegroundColor Green
 Write-Host "==========================================" -ForegroundColor Green
 Write-Host "`nContainer Status:" -ForegroundColor Cyan
-docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | Select-Object -First 20
+Show-ContainerSummary
 Write-Host ""
 
 # Show recent bot logs
 Write-Host "Recent bot logs:" -ForegroundColor Cyan
-docker logs shoukaku-bot --tail 15 2>&1
+Show-BotLogs -Tail 15

@@ -20,11 +20,7 @@ Write-Host "  Shoukaku - Force Update to Latest" -ForegroundColor Cyan
 Write-Host "=============================================" -ForegroundColor Cyan
 
 # ── Check Docker ───────────────────────────────────────────────
-docker info 2>&1 | Out-Null
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: Docker is not running! Please start Docker Desktop first." -ForegroundColor Red
-    exit 1
-}
+Assert-DockerReady
 
 # ── 1. Pull latest code ────────────────────────────────────────
 Write-Host "`n[1/4] Probing external providers..." -ForegroundColor Yellow
@@ -59,32 +55,18 @@ if (-not $gitAvailable) {
 }
 
 # ── Ensure network ─────────────────────────────────────────────
-$ErrorActionPreference = "Continue"
-$netResult = docker network create shoukaku-net 2>&1 | Out-String
-$ErrorActionPreference = "Stop"
-if ($LASTEXITCODE -ne 0 -and $netResult -notmatch "already exists") {
-    Write-Host "ERROR: Failed to create network: $netResult" -ForegroundColor Red
-    exit 1
-}
+Ensure-DockerNetwork -Name "shoukaku-net"
 
 # ── 2. Rebuild bot image ────────────────────────────────────────
 Write-Host "`n[3/4] Rebuilding bot image (no cache)..." -ForegroundColor Yellow
-docker compose -f docker-compose.yml build bot --no-cache
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: Build failed." -ForegroundColor Red
-    exit 1
-}
+Invoke-DockerComposeChecked -Arguments @('-f', 'docker-compose.yml', 'build', 'bot', '--no-cache') -FailureMessage 'Build failed.'
 Write-Host "  ✅ Build complete" -ForegroundColor Green
 
 # ── 3. Restart bot only ─────────────────────────────────────────
 # Database and Redis stay running - no data loss, minimal downtime.
 # Bot will auto-deploy all slash commands to Discord when it starts.
 Write-Host "`n[4/4] Restarting bot container..." -ForegroundColor Yellow
-docker compose -f docker-compose.yml up -d bot --force-recreate
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: Failed to restart bot." -ForegroundColor Red
-    exit 1
-}
+Invoke-DockerComposeChecked -Arguments @('-f', 'docker-compose.yml', 'up', '-d', 'bot', '--force-recreate') -FailureMessage 'Failed to restart bot.'
 Write-Host "  ✅ Bot restarted" -ForegroundColor Green
 
 # ── Show startup logs ──────────────────────────────────────────
@@ -92,7 +74,7 @@ Write-Host "`nWaiting for bot to initialize and deploy commands..." -ForegroundC
 Start-Sleep 12
 
 Write-Host "`nRecent bot startup logs:" -ForegroundColor Cyan
-docker logs shoukaku-bot --tail 25 2>&1
+Show-BotLogs -Tail 25
 
 Write-Host "`n=============================================" -ForegroundColor Cyan
 Write-Host "  Update complete!" -ForegroundColor Green

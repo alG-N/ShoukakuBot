@@ -11,32 +11,22 @@ Write-Host "  shoukaku - Rebuild Bot" -ForegroundColor Cyan
 Write-Host ============================== -ForegroundColor Cyan
 
 # Check Docker daemon
-docker info 2>&1 | Out-Null
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: Docker is not running! Please start Docker Desktop first." -ForegroundColor Red
-    exit 1
-}
+Assert-DockerReady
 
 Write-Host "`n[1/3] Probing external providers..." -ForegroundColor Yellow
 Invoke-ExternalSitePreflight
 
 # Ensure network exists
-$ErrorActionPreference = "Continue"
-$netResult = docker network create shoukaku-net 2>&1 | Out-String
-$ErrorActionPreference = "Stop"
-if ($LASTEXITCODE -ne 0 -and $netResult -notmatch "already exists") {
-    Write-Host "ERROR: Failed to create network: $netResult" -ForegroundColor Red
-    exit 1
-}
+Ensure-DockerNetwork -Name "shoukaku-net"
 
 Write-Host "`n[2/3] Building bot image..." -ForegroundColor Yellow
-docker compose -f docker-compose.yml build bot --no-cache
-Write-Host "  âœ… Build complete" -ForegroundColor Green
+Invoke-DockerComposeChecked -Arguments @('-f', 'docker-compose.yml', 'build', 'bot', '--no-cache') -FailureMessage 'Failed to build the bot image.'
+Write-Host "  Done - Build complete" -ForegroundColor Green
 
 Write-Host "`n[3/3] Restarting bot..." -ForegroundColor Yellow
-docker compose -f docker-compose.yml up -d bot --force-recreate
-Write-Host "  âœ… Bot restarted" -ForegroundColor Green
+Invoke-DockerComposeChecked -Arguments @('-f', 'docker-compose.yml', 'up', '-d', 'bot', '--force-recreate') -FailureMessage 'Failed to restart the bot container.'
+Write-Host "  Done - Bot restarted" -ForegroundColor Green
 
 Write-Host "`nWaiting for startup..." -ForegroundColor Gray
 Start-Sleep 10
-docker logs shoukaku-bot --tail 10 2>&1
+Show-BotLogs -Tail 10

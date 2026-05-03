@@ -9,11 +9,7 @@ Write-Host "==========================================="
 # 0. Check Docker daemon
 Write-Host ""
 Write-Host "[0/5] Checking Docker daemon..."
-docker info 2>&1 | Out-Null
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "  ERROR: Docker is not running! Please start Docker Desktop first." -ForegroundColor Red
-    exit 1
-}
+Assert-DockerReady
 Write-Host "  Done - Docker daemon is running"
 
 # 0.5 Validate required env vars
@@ -36,19 +32,13 @@ Invoke-ExternalSitePreflight
 
 Write-Host ""
 Write-Host "[2/6] Creating shared network..."
-$ErrorActionPreference = "Continue"
-$netResult = docker network create shoukaku-net 2>&1 | Out-String
-if ($LASTEXITCODE -ne 0 -and $netResult -notmatch "already exists") {
-    Write-Host "  ERROR: Failed to create network: $netResult" -ForegroundColor Red
-    exit 1
-}
-$ErrorActionPreference = "Stop"
+Ensure-DockerNetwork -Name "shoukaku-net"
 Write-Host "  Done - network shoukaku-net ready"
 
 # 2. Start Lavalink
 Write-Host ""
 Write-Host "[3/6] Starting Lavalink nodes..."
-docker compose -f docker-compose.lavalink.yml up -d
+Invoke-DockerComposeChecked -Arguments @('-f', 'docker-compose.lavalink.yml', 'up', '-d') -FailureMessage 'Failed to start Lavalink stack.'
 Write-Host "  Done - Lavalink nodes starting"
 
 # 2.5 Wait for at least one Lavalink node to be healthy
@@ -80,19 +70,19 @@ if ($lavalinkReady) {
 # 3. Start Cobalt
 Write-Host ""
 Write-Host "[4/6] Starting Cobalt instances..."
-docker compose -f docker-compose.cobalt.yml up -d
+Invoke-DockerComposeChecked -Arguments @('-f', 'docker-compose.cobalt.yml', 'up', '-d') -FailureMessage 'Failed to start Cobalt stack.'
 Write-Host "  Done - Cobalt instances starting"
 
 # 4. Start Monitoring
 Write-Host ""
 Write-Host "[5/6] Starting Monitoring stack..."
-docker compose -f docker-compose.monitoring.yml up -d
+Invoke-DockerComposeChecked -Arguments @('-f', 'docker-compose.monitoring.yml', 'up', '-d') -FailureMessage 'Failed to start Monitoring stack.'
 Write-Host "  Done - Monitoring starting"
 
 # 5. Start Bot
 Write-Host ""
 Write-Host "[6/6] Starting Bot + Database + Cache..."
-docker compose -f docker-compose.yml up -d
+Invoke-DockerComposeChecked -Arguments @('-f', 'docker-compose.yml', 'up', '-d') -FailureMessage 'Failed to start the bot stack.'
 Write-Host "  Done - Bot starting"
 
 Write-Host ""
@@ -103,4 +93,4 @@ Write-Host "==========================================="
 
 Write-Host ""
 Write-Host "Container Status:"
-docker ps --format 'table {{.Names}}  {{.Status}}'
+Show-ContainerSummary

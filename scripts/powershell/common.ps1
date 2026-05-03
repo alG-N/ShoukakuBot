@@ -1,3 +1,90 @@
+function Assert-DockerReady {
+    docker info 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "ERROR: Docker is not running! Please start Docker Desktop first." -ForegroundColor Red
+        exit 1
+    }
+
+    docker compose version 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "ERROR: Docker Compose is not available. Install the Docker Compose plugin and retry." -ForegroundColor Red
+        exit 1
+    }
+}
+
+function Ensure-DockerNetwork {
+    param(
+        [string]$Name = "shoukaku-net"
+    )
+
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        $result = docker network create $Name 2>&1 | Out-String
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+
+    if ($LASTEXITCODE -ne 0 -and $result -notmatch "already exists") {
+        Write-Host "ERROR: Failed to create network '$Name': $($result.Trim())" -ForegroundColor Red
+        exit 1
+    }
+}
+
+function Remove-DockerNetworkIfExists {
+    param(
+        [string]$Name = "shoukaku-net"
+    )
+
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        $result = docker network rm $Name 2>&1 | Out-String
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "  Done - network $Name removed" -ForegroundColor Green
+        return
+    }
+
+    $message = $result.Trim()
+    if (-not $message -or $message -match "No such network") {
+        Write-Host "  Done - network $Name already absent" -ForegroundColor Gray
+        return
+    }
+
+    Write-Host "  WARNING: Could not remove network ${Name}: $message" -ForegroundColor Yellow
+}
+
+function Invoke-DockerComposeChecked {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments,
+        [Parameter(Mandatory = $true)]
+        [string]$FailureMessage
+    )
+
+    & docker compose @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "ERROR: $FailureMessage" -ForegroundColor Red
+        exit 1
+    }
+}
+
+function Show-ContainerSummary {
+    docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | Select-Object -First 20
+}
+
+function Show-BotLogs {
+    param(
+        [int]$Tail = 15
+    )
+
+    docker logs shoukaku-bot --tail $Tail 2>&1
+}
+
 function Get-ExternalSiteChecks {
     @(
         [pscustomobject]@{ Name = 'fxtwitter'; Url = 'https://fxtwitter.com/' }
