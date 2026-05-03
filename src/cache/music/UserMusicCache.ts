@@ -7,7 +7,7 @@
 
 import postgres from '../../database/postgres.js';
 import cacheService from '../CacheService.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import type {
     UserPreferences,
     FavoriteTrack,

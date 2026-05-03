@@ -17,7 +17,7 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 
 class ReportCommand extends BaseCommand {
     constructor() {

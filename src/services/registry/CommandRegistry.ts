@@ -5,7 +5,7 @@
  */
 
 import { Collection } from 'discord.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import type { RegistryCommand } from '../../types/core/registry.js';
 
 // COMMAND REGISTRY CLASS
@@ -30,8 +30,7 @@ class CommandRegistry {
      * Load commands from commands directory
      */
     private async _loadPresentationCommands(): Promise<void> {
-        const categories = ['general', 'admin', 'owner', 'fun', 'music', 'video'];
-        const rootApiCommands = ['anime', 'media', 'nhentai', 'pixiv', 'reddit', 'rule34', 'steam', 'wikipedia'];
+        const categories = ['general', 'admin', 'owner', 'fun', 'music', 'video', 'api'];
 
         for (const category of categories) {
             try {
@@ -39,15 +38,6 @@ class CommandRegistry {
                 this._registerCommandExports((commands.default || commands) as Record<string, unknown>, category);
             } catch (error) {
                 logger.error('CommandRegistry', `Error loading ${category}: ${(error as Error).message}`);
-            }
-        }
-
-        for (const commandName of rootApiCommands) {
-            try {
-                const commandModule = await import(`../../commands/${commandName}.js`);
-                this._registerCommandExports((commandModule.default || commandModule) as Record<string, unknown>, 'api');
-            } catch (error) {
-                logger.error('CommandRegistry', `Error loading root command ${commandName}: ${(error as Error).message}`);
             }
         }
     }

@@ -18,23 +18,23 @@ import {
     EmbedBuilder,
     StringSelectMenuBuilder
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from './BaseCommand.js';
-import { checkAccess, AccessType } from '../services/index.js';
-import logger from '../core/Logger.js';
-import _pixivServiceModule from '../services/api/pixivService.js';
-import _pixivCacheModule from '../cache/api/pixivCache.js';
-import * as _contentHandlerModule from '../handlers/api/pixiv/index.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
+import { checkAccess, AccessType } from '../../services/index.js';
+import logger from '../../core/observability/Logger.js';
+import _pixivServiceModule from '../../services/api/pixivService.js';
+import _pixivCacheModule from '../../cache/api/pixivCache.js';
+import * as _contentHandlerModule from '../../handlers/api/pixiv/index.js';
 import type {
     PixivCommandSearchOptions,
     PixivCachedSearch as CachedSearch,
     PixivUserPreferences
-} from '../types/api/models/content-session.js';
-import type { PixivSearchOptions } from '../types/api/pixiv/model.js';
+} from '../../types/api/models/content-session.js';
+import type { PixivSearchOptions } from '../../types/api/pixiv/model.js';
 import type {
     PixivService,
     PixivCache,
     ContentHandler
-} from '../types/commands/pixiv.js';
+} from '../../types/commands/pixiv.js';
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const pixivService: PixivService = _pixivServiceModule as any;
 const pixivCache: PixivCache = _pixivCacheModule as any;

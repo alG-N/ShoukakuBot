@@ -6,7 +6,7 @@
 
 import { EmbedBuilder, Guild, User, Snowflake, Message } from 'discord.js';
 import { formatDuration } from '../../utils/common/time.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import type { Infraction } from './InfractionService.js';
 import ModLogRepository from '../../repositories/moderation/ModLogRepository.js';
 import moderationConfig from '../../config/features/moderation/index.js';

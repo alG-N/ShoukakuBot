@@ -5,12 +5,12 @@
  */
 
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from './BaseCommand.js';
-import { checkAccess, AccessType } from '../services/index.js';
-import logger from '../core/Logger.js';
-import * as _steamHandler from '../handlers/api/steam/index.js';
-import _steamService from '../services/api/steamService.js';
-import type { SaleHandler, SteamAppDetail, SteamStoreSearchItem } from '../types/commands/steam.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
+import { checkAccess, AccessType } from '../../services/index.js';
+import logger from '../../core/observability/Logger.js';
+import * as _steamHandler from '../../handlers/api/steam/index.js';
+import _steamService from '../../services/api/steamService.js';
+import type { SaleHandler, SteamAppDetail, SteamStoreSearchItem } from '../../types/commands/steam.js';
 // SERVICE IMPORTS
 const handleSaleCommand: SaleHandler | undefined = (_steamHandler as any)?.handleSaleCommand;
 const steamService: any = _steamService;

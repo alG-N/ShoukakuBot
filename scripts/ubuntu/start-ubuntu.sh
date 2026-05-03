@@ -41,6 +41,7 @@ compose_up_retry "docker-compose.yml"
 wait_stack_running "docker-compose.yml" "Bot stack" 120
 
 log_section "[8/8] Final verification..."
+wait_dashboard_access 90 || true
 print_container_summary
 
 echo

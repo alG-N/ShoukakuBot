@@ -3,29 +3,35 @@
  * Central exports for core infrastructure
  * @module core
  */
+
+export * as runtime from './runtime/index.js';
+export * as errors from './errors/index.js';
+export * as observability from './observability/index.js';
+export * as resilience from './resilience/index.js';
+
 // TYPESCRIPT MODULES
 // Logger
-export { default as logger } from './Logger.js';
-export * from './Logger.js';
+export { default as logger } from './observability/Logger.js';
+export * from './observability/Logger.js';
 
 // Result Pattern
-export { Result } from './Result.js';
-export { type ErrorDetails, type ReplyOptions, type DiscordReply, type ResultJSON } from './Result.js';
+export { Result } from './errors/Result.js';
+export { type ErrorDetails, type ReplyOptions, type DiscordReply, type ResultJSON } from './errors/Result.js';
 
 // Error Codes
-export { ErrorCodes, getErrorMessage, isErrorCategory } from './ErrorCodes.js';
-export { type CoreErrorCode, type ErrorCategory } from './ErrorCodes.js';
+export { ErrorCodes, getErrorMessage, isErrorCategory } from './errors/ErrorCodes.js';
+export { type CoreErrorCode, type ErrorCategory } from './errors/ErrorCodes.js';
 
 // Circuit Breaker
-export * from './CircuitBreaker.js';
+export * from './resilience/CircuitBreaker.js';
 
 // Circuit Breaker Registry
 export { 
     circuitBreakerRegistry, 
     CircuitBreakerRegistry, 
     CIRCUIT_CONFIGS 
-} from './CircuitBreakerRegistry.js';
-export { type RegistryHealth, type RegistrySummary, type FallbackResult } from './CircuitBreakerRegistry.js';
+} from './resilience/CircuitBreakerRegistry.js';
+export { type RegistryHealth, type RegistrySummary, type FallbackResult } from './resilience/CircuitBreakerRegistry.js';
 
 // Client
 export { 
@@ -34,8 +40,8 @@ export {
     getClientStats, 
     ActivityType,
     CLIENT_OPTIONS 
-} from './Client.js';
-export { type ClientStats } from './Client.js';
+} from './runtime/Client.js';
+export { type ClientStats } from './runtime/Client.js';
 
 // Shutdown
 export { 
@@ -43,7 +49,7 @@ export {
     handleShutdown, 
     initializeShutdownHandlers,
     getIsShuttingDown
-} from './shutdown.js';
+} from './runtime/shutdown.js';
 
 // Error Handler
 export { 
@@ -52,10 +58,10 @@ export {
     withErrorHandling,
     withTimeout,
     interactionErrorBoundary
-} from './errorHandler.js';
+} from './errors/errorHandler.js';
 
 // Sentry
-export * as sentry from './sentry.js';
+export * as sentry from './observability/sentry.js';
 export {
     initialize as initializeSentry,
     captureException,
@@ -67,10 +73,10 @@ export {
     flush as flushSentry,
     close as closeSentry,
     isEnabled as isSentryEnabled
-} from './sentry.js';
+} from './observability/sentry.js';
 
 // Health
-export * as health from './health.js';
+export * as health from './health/index.js';
 export {
     registerHealthCheck,
     runHealthChecks,
@@ -78,7 +84,7 @@ export {
     setStatus as setHealthStatus,
     startHealthServer,
     registerDefaultChecks
-} from './health.js';
+} from './health/index.js';
 
 // Graceful Degradation
 export { 
@@ -87,7 +93,7 @@ export {
     GracefulDegradation, 
     DegradationLevel, 
     ServiceState 
-} from './GracefulDegradation.js';
+} from './resilience/GracefulDegradation.js';
 
 
 

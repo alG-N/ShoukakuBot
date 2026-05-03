@@ -67,6 +67,9 @@ log_section "[5/5] Restarting bot container..."
 $COMPOSE -f docker-compose.yml up -d bot --force-recreate
 wait_stack_running "docker-compose.yml" "Bot stack" 120
 
+log_section "[Dashboard] Verifying local dashboard access..."
+wait_dashboard_access 90 || true
+
 echo
 echo "Waiting for bot to initialize and deploy commands..."
 sleep 10

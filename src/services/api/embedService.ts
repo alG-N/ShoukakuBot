@@ -5,7 +5,7 @@
  * @module services/api/embedService
  */
 
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import type { EmbedFixRule, EmbedFixResult, EmbedFixStats } from '../../types/api/services/embed-service.js';
 
 const EMBED_FIX_RULES: EmbedFixRule[] = [
@@ -77,15 +77,6 @@ const EMBED_FIX_RULES: EmbedFixRule[] = [
             ['facebook.com', 'facebed.com']
         ],
         service: 'Facebed',
-        reliable: true
-    },
-    {
-        platformId: 'threads',
-        name: 'Threads',
-        emoji: '🧵',
-        patterns: [/https?:\/\/(www\.)?threads\.net\/@.+\/post\/.+/i],
-        replacements: [['threads.net', 'fixthreads.net']],
-        service: 'FixThreads',
         reliable: true
     }
 ];

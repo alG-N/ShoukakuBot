@@ -9,7 +9,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { EventEmitter } from 'events';
 import * as videoConfig from '../../config/features/video.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import type { VideoConfigType } from '../../types/video/processing.js';
 import type {
     VideoAnalysis,

@@ -1,6 +1,6 @@
 import { EmbedBuilder } from 'discord.js';
 import nhentaiRepository, { NHentaiFavourite } from '../../../repositories/api/nhentaiRepository.js';
-import logger from '../../../core/Logger.js';
+import logger from '../../../core/observability/Logger.js';
 import type { FavouritesData, Gallery } from '../../../types/api/nhentai/handler.js';
 import { COLORS, truncate } from './utils.js';
 import { createFavouritesButtons } from './buttons.js';

@@ -48,6 +48,9 @@ log_section "[9/9] Restarting Bot + Database + Cache..."
 compose_up_retry "docker-compose.yml" --force-recreate
 wait_stack_running "docker-compose.yml" "Bot stack" 120
 
+log_section "[Dashboard] Verifying local dashboard access..."
+wait_dashboard_access 90 || true
+
 echo
 echo "Waiting for startup logs..."
 sleep 8 

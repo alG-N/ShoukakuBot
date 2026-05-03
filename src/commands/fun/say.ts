@@ -16,7 +16,7 @@ import {
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
 import { checkAccess, AccessType } from '../../services/index.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import sayService from '../../services/fun/say/SayService.js';
 
 // Message type colors

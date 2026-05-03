@@ -6,17 +6,17 @@
  */
 
 import { EventEmitter } from 'events';
-import logger from './Logger.js';
-import { getDefault } from '../utils/common/moduleHelper.js';
-import { DegradationLevel, ServiceState, ServiceInfo, DegradationServiceOptions, ExecuteOptions, ExecuteResult, CachedData, QueuedWrite, ServiceStatusInfo, SystemStatus, HealthResult } from '../types/core/runtime.js';
+import logger from '../observability/Logger.js';
+import { getDefault } from '../../utils/common/moduleHelper.js';
+import { DegradationLevel, ServiceState, ServiceInfo, DegradationServiceOptions, ExecuteOptions, ExecuteResult, CachedData, QueuedWrite, ServiceStatusInfo, SystemStatus, HealthResult } from '../../types/core/runtime.js';
 
-export { DegradationLevel, ServiceState } from '../types/core/runtime.js';
+export { DegradationLevel, ServiceState } from '../../types/core/runtime.js';
 
 // Lazy-load cacheService to avoid circular dependency
-let _cacheService: typeof import('../cache/CacheService').default | null = null;
+let _cacheService: typeof import('../../cache/CacheService').default | null = null;
 const getCacheService = () => {
     if (!_cacheService) {
-        _cacheService = getDefault(require('../cache/CacheService'));
+        _cacheService = getDefault(require('../../cache/CacheService'));
     }
     return _cacheService;
 };

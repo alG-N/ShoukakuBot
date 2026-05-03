@@ -17,7 +17,7 @@ import {
     MessageComponentInteraction
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import { autoModService as _autoModService } from '../../services/moderation/index.js';
 import _moderationConfigModule from '../../config/features/moderation/index.js';
 import type { AutoModService } from '../../types/moderation/handlers.js';

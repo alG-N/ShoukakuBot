@@ -1,6 +1,6 @@
 import lavalinkService from '../core/LavalinkService.js';
 import { queueService } from '../queue/index.js';
-import logger from '../../../core/Logger.js';
+import logger from '../../../core/observability/Logger.js';
 import type { MusicTrack, TrackInfo } from '../events/MusicEvents.js';
 
 /**

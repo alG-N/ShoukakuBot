@@ -12,7 +12,7 @@ import {
     TextInputBuilder,
     TextInputStyle
 } from 'discord.js';
-import logger from '../../../core/Logger.js';
+import logger from '../../../core/observability/Logger.js';
 import type {
     Post,
     Rule34CacheContract,

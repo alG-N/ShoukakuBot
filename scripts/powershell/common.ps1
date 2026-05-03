@@ -94,7 +94,6 @@ function Get-ExternalSiteChecks {
         [pscustomobject]@{ Name = 'rxddit'; Url = 'https://rxddit.com/' }
         [pscustomobject]@{ Name = 'fxbsky'; Url = 'https://fxbsky.app/' }
         [pscustomobject]@{ Name = 'facebed'; Url = 'https://facebed.com/' }
-        [pscustomobject]@{ Name = 'fixthreads'; Url = 'https://fixthreads.net/' }
     )
 }
 
@@ -202,4 +201,150 @@ function Invoke-ExternalSitePreflight {
     }
 
     Write-Host "  WARNING: Proceeding with partial embed provider signal. Unreachable: $($unreachable -join ', ')" -ForegroundColor Yellow
+}
+
+function Get-DotEnvValue {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Key
+    )
+
+    if (-not (Test-Path '.env')) {
+        return $null
+    }
+
+    $escapedKey = [regex]::Escape($Key)
+    $match = Select-String -Path '.env' -Pattern "^\s*${escapedKey}=(.*)$" | Select-Object -Last 1
+    if (-not $match) {
+        return $null
+    }
+
+    $value = $match.Matches[0].Groups[1].Value.Trim()
+    if ($value.Length -ge 2 -and $value.StartsWith('"') -and $value.EndsWith('"')) {
+        $value = $value.Substring(1, $value.Length - 2)
+    }
+
+    return $value.Trim()
+}
+
+function Get-DashboardAccessConfig {
+    $bindHost = if ($env:HEALTH_BIND_HOST) { $env:HEALTH_BIND_HOST } else { Get-DotEnvValue -Key 'HEALTH_BIND_HOST' }
+    if (-not $bindHost) {
+        $bindHost = '127.0.0.1'
+    }
+
+    $portValue = if ($env:HEALTH_PUBLISHED_PORT) { $env:HEALTH_PUBLISHED_PORT } else { Get-DotEnvValue -Key 'HEALTH_PUBLISHED_PORT' }
+    [int]$port = 3000
+    [int]$parsedPort = 0
+    if ($portValue -and [int]::TryParse($portValue, [ref]$parsedPort)) {
+        $port = $parsedPort
+    }
+
+    return [pscustomobject]@{
+        BindHost = $bindHost
+        Port = $port
+    }
+}
+
+function Get-LanIPv4Addresses {
+    $addresses = @()
+
+    if (Get-Command Get-NetIPConfiguration -ErrorAction SilentlyContinue) {
+        $addresses = Get-NetIPConfiguration -ErrorAction SilentlyContinue |
+            Where-Object {
+                $_.NetAdapter.Status -eq 'Up' -and
+                $_.IPv4DefaultGateway -ne $null -and
+                $_.IPv4Address -ne $null
+            } |
+            ForEach-Object { $_.IPv4Address.IPAddress }
+    }
+
+    if (-not $addresses) {
+        $addresses = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+            Where-Object {
+                $_.IPAddress -notmatch '^(127\.|169\.254\.)'
+            } |
+            Select-Object -ExpandProperty IPAddress
+    }
+
+    return $addresses | Where-Object { $_ } | Sort-Object -Unique
+}
+
+function Get-DashboardPrimaryTarget {
+    param(
+        [Parameter(Mandatory = $true)]
+        [pscustomobject]$Config
+    )
+
+    $bindHostValue = if ($null -ne $Config.BindHost -and $Config.BindHost.ToString().Length -gt 0) { $Config.BindHost } else { '127.0.0.1' }
+    $bindHost = $bindHostValue.ToString().ToLowerInvariant()
+    $probeHost = $Config.BindHost
+    $displayHost = $Config.BindHost
+
+    if ($bindHost -eq '0.0.0.0' -or $bindHost -eq '127.0.0.1' -or $bindHost -eq 'localhost') {
+        $probeHost = '127.0.0.1'
+        $displayHost = 'localhost'
+    }
+
+    return [pscustomobject]@{
+        ProbeUrl = "http://${probeHost}:$($Config.Port)/dashboard.json"
+        DisplayUrl = "http://${displayHost}:$($Config.Port)/dashboard"
+        ProbeHost = $probeHost
+        DisplayHost = $displayHost
+    }
+}
+
+function Show-DashboardAccessSummary {
+    param(
+        [Parameter(Mandatory = $true)]
+        [pscustomobject]$Config,
+        [Parameter(Mandatory = $true)]
+        [pscustomobject]$PrimaryTarget
+    )
+
+    Write-Host "  Open on this machine: $($PrimaryTarget.DisplayUrl)" -ForegroundColor Gray
+
+    $bindHost = $Config.BindHost.ToString().ToLowerInvariant()
+    if ($bindHost -eq '0.0.0.0') {
+        $lanAddresses = Get-LanIPv4Addresses
+        if ($lanAddresses) {
+            foreach ($ip in $lanAddresses) {
+                Write-Host "  Open from another device: http://${ip}:$($Config.Port)/dashboard" -ForegroundColor Gray
+            }
+        } else {
+            Write-Host "  WARNING: HEALTH_BIND_HOST=0.0.0.0 but no LAN IPv4 address was detected to print." -ForegroundColor Yellow
+        }
+        return
+    }
+
+    if ($bindHost -ne '127.0.0.1' -and $bindHost -ne 'localhost') {
+        Write-Host "  Bound specifically to: http://$($Config.BindHost):$($Config.Port)/dashboard" -ForegroundColor Gray
+    }
+}
+
+function Wait-DashboardAccess {
+    param(
+        [int]$TimeoutSec = 90
+    )
+
+    $config = Get-DashboardAccessConfig
+    $primaryTarget = Get-DashboardPrimaryTarget -Config $config
+    $waited = 0
+
+    while ($waited -lt $TimeoutSec) {
+        $result = Test-HttpSignal -Url $primaryTarget.ProbeUrl -TimeoutSec 3
+        if ($result.Reachable -and $result.StatusCode -lt 500) {
+            Write-Host "  Done - Dashboard responded via $($primaryTarget.DisplayUrl)" -ForegroundColor Green
+            Show-DashboardAccessSummary -Config $config -PrimaryTarget $primaryTarget
+            return $true
+        }
+
+        Start-Sleep -Seconds 3
+        $waited += 3
+        Write-Host "  Waiting for dashboard at $($primaryTarget.DisplayUrl)... ($waited/${TimeoutSec}s)`r" -NoNewline
+    }
+
+    Write-Host ""
+    Write-Host "  WARNING: Dashboard did not become reachable from this machine at $($primaryTarget.DisplayUrl) after ${TimeoutSec}s" -ForegroundColor Yellow
+    return $false
 }

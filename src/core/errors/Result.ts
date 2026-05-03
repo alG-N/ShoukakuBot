@@ -3,7 +3,7 @@
  * Standardized return type for service operations
  * @module core/Result
  */
-import type { ErrorDetails, ReplyOptions, DiscordReply, ResultJSON } from '../types/core/result.js';
+import type { ErrorDetails, ReplyOptions, DiscordReply, ResultJSON } from '../../types/core/result.js';
 // RESULT CLASS
 /**
  * Result class for consistent service returns

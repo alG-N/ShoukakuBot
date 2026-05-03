@@ -5,10 +5,10 @@
  */
 
 import { GraphQLClient, gql } from 'graphql-request';
-import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
-import logger from '../../core/Logger.js';
+import { circuitBreakerRegistry } from '../../core/resilience/CircuitBreakerRegistry.js';
+import logger from '../../core/observability/Logger.js';
 import cacheService from '../../cache/CacheService.js';
-import gracefulDegradation from '../../core/GracefulDegradation.js';
+import gracefulDegradation from '../../core/resilience/GracefulDegradation.js';
 import type {
     AnimeMedia,
     AnimeTitle,

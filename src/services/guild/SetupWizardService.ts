@@ -21,7 +21,7 @@ import {
     PermissionFlagsBits
 } from 'discord.js';
 import { COLORS } from '../../constants.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 
 /**
  * Setup Wizard Service Class

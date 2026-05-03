@@ -21,10 +21,10 @@ import {
 
 import { COLORS, TIMEOUTS, EMOJIS } from '../constants.js';
 import { AppError } from '../errors/index.js';
-import { ErrorCodes } from '../core/ErrorCodes.js';
-import { trackCommand, commandsActive, commandErrorsTotal } from '../core/metrics.js';
+import { ErrorCodes } from '../core/errors/ErrorCodes.js';
+import { trackCommand, commandsActive, commandErrorsTotal } from '../core/observability/metrics.js';
 import { isOwner } from '../config/owner.js';
-import { logger } from '../core/Logger.js';
+import { logger } from '../core/observability/Logger.js';
 import { globalCooldownManager } from '../utils/common/cooldown.js';
 import type {
     CommandCategoryType,

@@ -3,7 +3,7 @@
  * Convert social media URLs to embed-fix URLs for better Discord embedding
  * Also supports direct image/GIF URLs from any source
  * Usage: /media [link]
- * Supports: Twitter/X, TikTok, Instagram, Reddit, Bluesky, Threads, Direct Images/GIFs
+ * Supports: Twitter/X, TikTok, Instagram, Reddit, Bluesky, Facebook, Direct Images/GIFs
  * @module commands/media
  */
 
@@ -15,10 +15,10 @@ import {
     ButtonBuilder,
     ButtonStyle,
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from './BaseCommand.js';
-import { COLORS } from '../constants.js';
-import logger from '../core/Logger.js';
-import embedService from '../services/api/embedService.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
+import { COLORS } from '../../constants.js';
+import logger from '../../core/observability/Logger.js';
+import embedService from '../../services/api/embedService.js';
 
 // IMAGE/GIF DETECTION
 

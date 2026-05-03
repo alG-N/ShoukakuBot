@@ -4,7 +4,7 @@
  */
 
 import postgres from '../../database/postgres.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import type { AnimeFavourite, AnimeNotification } from '../../types/api/repositories/anime-repository.js';
 
 

@@ -86,7 +86,7 @@ class HelpCommand extends BaseCommand {
                         {
                             name: '🔗 Embed Fix',
                             value: [
-                                '`/media [url]` - Fix embed for Twitter, TikTok, Instagram, Reddit, Facebook, Bluesky, Threads'
+                                '`/media [url]` - Fix embed for Twitter, TikTok, Instagram, Reddit, Facebook, and Bluesky'
                             ].join('\n'),
                             inline: false
                         },

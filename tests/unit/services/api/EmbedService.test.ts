@@ -108,15 +108,6 @@ describe('EmbedService', () => {
             expect(result.platform!.id).toBe('bluesky');
         });
 
-        // ── Threads ──
-
-        it('should convert threads.net URLs to fixthreads.net', () => {
-            const result = embedService.convert('https://www.threads.net/@user/post/abc123');
-            expect(result.success).toBe(true);
-            expect(result.fixedUrl).toBe('https://www.fixthreads.net/@user/post/abc123');
-            expect(result.platform!.id).toBe('threads');
-        });
-
         // ── Facebook ──
 
         it('should convert facebook.com post URLs to facebed.com', () => {
@@ -203,13 +194,14 @@ describe('EmbedService', () => {
         it('should return false for unsupported platforms', () => {
             expect(embedService.isSupported('https://youtube.com/watch?v=abc')).toBe(false);
             expect(embedService.isSupported('https://fb.watch/abc123/')).toBe(false);
+            expect(embedService.isSupported('https://www.threads.net/@user/post/abc123')).toBe(false);
         });
     });
 
     describe('getSupportedPlatforms', () => {
-        it('should return all 7 platforms', () => {
+        it('should return all 6 platforms', () => {
             const platforms = embedService.getSupportedPlatforms();
-            expect(platforms).toHaveLength(7);
+            expect(platforms).toHaveLength(6);
         });
 
         it('should include required fields for each platform', () => {
@@ -223,10 +215,10 @@ describe('EmbedService', () => {
             }
         });
 
-        it('should include twitter, tiktok, instagram, reddit, bluesky, threads, facebook', () => {
+        it('should include twitter, tiktok, instagram, reddit, bluesky, and facebook', () => {
             const ids = embedService.getSupportedPlatforms().map(p => p.id);
             expect(ids).toEqual(expect.arrayContaining([
-                'twitter', 'tiktok', 'instagram', 'reddit', 'bluesky', 'threads', 'facebook',
+                'twitter', 'tiktok', 'instagram', 'reddit', 'bluesky', 'facebook',
             ]));
         });
     });

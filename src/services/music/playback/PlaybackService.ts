@@ -1,9 +1,9 @@
 import lavalinkService from '../core/LavalinkService.js';
 import { queueService } from '../queue/index.js';
 import musicCache from '../../../cache/music/MusicCacheFacade.js';
-import logger from '../../../core/Logger.js';
-import { Result } from '../../../core/Result.js';
-import { ErrorCodes } from '../../../core/ErrorCodes.js';
+import logger from '../../../core/observability/Logger.js';
+import { Result } from '../../../core/errors/Result.js';
+import { ErrorCodes } from '../../../core/errors/ErrorCodes.js';
 import type { MusicTrack } from '../../../types/music/events.js';
 import type { PlayNextResult } from '../../../types/music/playback.js';
 import type { PlayerLike } from '../../../types/music/infrastructure.js';

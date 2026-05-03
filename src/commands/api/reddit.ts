@@ -11,19 +11,19 @@ import {
     AutocompleteInteraction,
     ButtonInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from './BaseCommand.js';
-import { COLORS } from '../constants.js';
-import { checkAccess, AccessType } from '../services/index.js';
-import _redditService from '../services/api/redditService.js';
-import _redditCache from '../cache/api/redditCache.js';
-import * as _postHandler from '../handlers/api/reddit/index.js';
-import logger from '../core/Logger.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
+import { COLORS } from '../../constants.js';
+import { checkAccess, AccessType } from '../../services/index.js';
+import _redditService from '../../services/api/redditService.js';
+import _redditCache from '../../cache/api/redditCache.js';
+import * as _postHandler from '../../handlers/api/reddit/index.js';
+import logger from '../../core/observability/Logger.js';
 import type {
     FetchResult,
     RedditService,
     RedditCache,
     RedditPostHandler
-} from '../types/commands/reddit.js';
+} from '../../types/commands/reddit.js';
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const redditService: RedditService = _redditService as any;
 const redditCache: RedditCache = _redditCache as any;

@@ -12,7 +12,7 @@
 
 import { EventEmitter } from 'events';
 import type { Client } from 'discord.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import type {
     ShardMessage,
     ShardRequest,

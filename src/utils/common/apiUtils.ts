@@ -4,7 +4,7 @@
  * @module utils/common/apiUtils
  */
 
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import type { RetryOptions, ErrorWithResponse } from '../../types/utils/common/api-utils.js';
 // CONFIGURATION
 /**

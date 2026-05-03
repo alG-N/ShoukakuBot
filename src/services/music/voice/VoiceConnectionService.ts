@@ -8,9 +8,9 @@
 import { ChannelType, type ChatInputCommandInteraction, type Guild, type GuildMember, type VoiceBasedChannel } from 'discord.js';
 import lavalinkService from '../core/LavalinkService.js';
 import { queueService } from '../queue/index.js';
-import logger from '../../../core/Logger.js';
-import { Result } from '../../../core/Result.js';
-import { ErrorCodes } from '../../../core/ErrorCodes.js';
+import logger from '../../../core/observability/Logger.js';
+import { Result } from '../../../core/errors/Result.js';
+import { ErrorCodes } from '../../../core/errors/ErrorCodes.js';
 import { INACTIVITY_TIMEOUT, VC_CHECK_INTERVAL } from '../../../config/features/music.js';
 import cacheService from '../../../cache/CacheService.js';
 import type { PlayerLike } from '../../../types/music/infrastructure.js';

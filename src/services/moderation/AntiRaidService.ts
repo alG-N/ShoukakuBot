@@ -7,7 +7,7 @@
 
 import { type GuildMember, Snowflake } from 'discord.js';
 import cacheService from '../../cache/CacheService.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import automodConfig from '../../config/features/moderation/automod.js';
 import type {
     JoinEntry,

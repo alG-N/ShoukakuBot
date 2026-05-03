@@ -8,7 +8,7 @@
 import type { Message, TextBasedChannel, TextChannel } from 'discord.js';
 import musicEventBus from './MusicEventBus.js';
 import { MusicEvents, MusicTrack } from './MusicEvents.js';
-import logger from '../../../core/Logger.js';
+import logger from '../../../core/observability/Logger.js';
 import musicCache from '../../../cache/music/MusicCacheFacade.js';
 import type { MessageRef } from '../../../cache/music/QueueCache.js';
 import trackHandler, { type Track, type LoopMode } from '../../../handlers/music/trackHandler.js';

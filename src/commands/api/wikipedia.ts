@@ -11,16 +11,16 @@ import {
     ButtonInteraction,
     StringSelectMenuInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from './BaseCommand.js';
-import cacheService from '../cache/CacheService.js';
-import { checkAccess, AccessType } from '../services/index.js';
-import logger from '../core/Logger.js';
-import wikipediaService from '../services/api/wikipediaService.js';
-import wikipediaHandler from '../handlers/api/wikipedia/index.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
+import cacheService from '../../cache/CacheService.js';
+import { checkAccess, AccessType } from '../../services/index.js';
+import logger from '../../core/observability/Logger.js';
+import wikipediaService from '../../services/api/wikipediaService.js';
+import wikipediaHandler from '../../handlers/api/wikipedia/index.js';
 import type {
     OnThisDayDate,
     WikiSearchResult
-} from '../types/api/models/wikipedia.js';
+} from '../../types/api/models/wikipedia.js';
 
 const WIKIPEDIA_SEARCH_SESSION_NS = 'api:search';
 const WIKIPEDIA_SEARCH_SESSION_TTL = 600;

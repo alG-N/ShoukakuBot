@@ -5,7 +5,7 @@
  */
 
 import type { Client as DiscordClient } from 'discord.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import type { Event } from '../../types/core/registry.js';
 // EVENT REGISTRY CLASS
 class EventRegistry {

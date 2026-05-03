@@ -86,6 +86,10 @@ Invoke-DockerComposeChecked -Arguments @('-f', 'docker-compose.yml', 'up', '-d')
 Write-Host "  Done - Bot starting"
 
 Write-Host ""
+Write-Host "[Dashboard] Verifying local dashboard access..."
+[void](Wait-DashboardAccess -TimeoutSec 90)
+
+Write-Host ""
 Write-Host "==========================================="
 Write-Host "  All services started!"
 Write-Host "  Bot will auto-reconnect to Lavalink"

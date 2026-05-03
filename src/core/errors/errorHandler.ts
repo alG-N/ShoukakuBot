@@ -5,14 +5,14 @@
  */
 
 import type { Client, ChatInputCommandInteraction } from 'discord.js';
-import logger from './Logger.js';
-import * as sentry from './sentry.js';
-import { AppError } from '../errors/index.js';
+import logger from '../observability/Logger.js';
+import * as sentry from '../observability/sentry.js';
+import { AppError } from '../../errors/index.js';
 import type {
     AsyncFunction,
     ErrorHandlingOptions,
     InteractionErrorBoundaryOptions
-} from '../types/core/error-handler.js';
+} from '../../types/core/error-handler.js';
 // FUNCTIONS
 /**
  * Initialize global error handlers

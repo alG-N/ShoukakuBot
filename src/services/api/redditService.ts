@@ -2,8 +2,8 @@ import axios, { AxiosResponse } from 'axios';
 import { Buffer } from 'buffer';
 import config from '../../config/services.js';
 import { withRetry } from '../../utils/common/apiUtils.js';
-import logger from '../../core/Logger.js';
-import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
+import logger from '../../core/observability/Logger.js';
+import { circuitBreakerRegistry } from '../../core/resilience/CircuitBreakerRegistry.js';
 import cacheService from '../../cache/CacheService.js';
 import type { SubredditInfo, RedditPost, RedditPostsResult } from '../../types/api/reddit/model.js';
 import type {

@@ -11,7 +11,7 @@
  */
 
 import Redis from 'ioredis';
-import logger from '../core/Logger.js';
+import logger from '../core/observability/Logger.js';
 import type {
     CacheTTL,
     DuplicateResult,

@@ -1,6 +1,6 @@
 import https from 'node:https';
 import axios from 'axios';
-import logger from '../../../core/Logger.js';
+import logger from '../../../core/observability/Logger.js';
 import { nhentai as nhentaiConfig } from '../../../config/services.js';
 import { getExt } from './utils.js';
 

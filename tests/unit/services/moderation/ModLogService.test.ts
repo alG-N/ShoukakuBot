@@ -65,7 +65,7 @@ import {
     updateSettings,
     setLogChannel,
 } from '../../../../src/services/moderation/ModLogService.js';
-import logger from '../../../../src/core/Logger.js';
+import logger from '../../../../src/core/observability/Logger.js';
 
 // Helpers
 const mockSend = jest.fn().mockResolvedValue(undefined);

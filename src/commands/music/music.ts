@@ -7,7 +7,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, ButtonInteraction, AutocompleteInteraction } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import _musicHandlers, { historyHandler } from '../../handlers/music/index.js';
 import lavalinkService from '../../services/music/core/LavalinkService.js';
 import type { MusicHandler, MusicHandlers } from '../../types/commands/music.js';

@@ -15,7 +15,6 @@ EXTERNAL_SITE_CHECKS=(
   "rxddit|https://rxddit.com/"
   "fxbsky|https://fxbsky.app/"
   "facebed|https://facebed.com/"
-  "fixthreads|https://fixthreads.net/"
 )
 
 on_error() {
@@ -284,6 +283,133 @@ wait_http_ok() {
 
   echo
   log_warn "$label did not become reachable after ${timeout_seconds}s"
+  return 1
+}
+
+get_dashboard_bind_host() {
+  local bind_host="${HEALTH_BIND_HOST:-}"
+  if [[ -z "$bind_host" ]]; then
+    bind_host="$(get_env_var_from_dotenv "HEALTH_BIND_HOST" || true)"
+  fi
+  if [[ -z "$bind_host" ]]; then
+    bind_host="127.0.0.1"
+  fi
+
+  printf '%s' "$bind_host"
+}
+
+get_dashboard_published_port() {
+  local port="${HEALTH_PUBLISHED_PORT:-}"
+  if [[ -z "$port" ]]; then
+    port="$(get_env_var_from_dotenv "HEALTH_PUBLISHED_PORT" || true)"
+  fi
+  if [[ ! "$port" =~ ^[0-9]+$ ]]; then
+    port="3000"
+  fi
+
+  printf '%s' "$port"
+}
+
+get_dashboard_primary_probe_url() {
+  local bind_host="$1"
+  local port="$2"
+
+  case "$bind_host" in
+    0.0.0.0|127.0.0.1|localhost)
+      printf 'http://127.0.0.1:%s/dashboard.json' "$port"
+      ;;
+    *)
+      printf 'http://%s:%s/dashboard.json' "$bind_host" "$port"
+      ;;
+  esac
+}
+
+get_dashboard_primary_display_url() {
+  local bind_host="$1"
+  local port="$2"
+
+  case "$bind_host" in
+    0.0.0.0|127.0.0.1|localhost)
+      printf 'http://localhost:%s/dashboard' "$port"
+      ;;
+    *)
+      printf 'http://%s:%s/dashboard' "$bind_host" "$port"
+      ;;
+  esac
+}
+
+get_lan_ipv4_addresses() {
+  local values=""
+  if command -v hostname >/dev/null 2>&1; then
+    values="$(hostname -I 2>/dev/null || true)"
+  fi
+
+  if [[ -z "$values" ]] && command -v ip >/dev/null 2>&1; then
+    values="$(ip -4 route get 1 2>/dev/null | awk '{for (i = 1; i <= NF; i++) if ($i == "src") { print $(i + 1); exit }}' || true)"
+  fi
+
+  printf '%s\n' "$values" |
+    tr ' ' '\n' |
+    awk 'NF && $1 !~ /^(127\.|169\.254\.)/' |
+    sort -u
+}
+
+print_dashboard_access_summary() {
+  local bind_host="$1"
+  local port="$2"
+  local display_url="$3"
+
+  log_info "Open on this machine: $display_url"
+
+  if [[ "$bind_host" == "0.0.0.0" ]]; then
+    local lan_found=0
+    while IFS= read -r ip; do
+      [[ -z "$ip" ]] && continue
+      lan_found=1
+      log_info "Open from another device: http://${ip}:${port}/dashboard"
+    done < <(get_lan_ipv4_addresses)
+
+    if [[ "$lan_found" -eq 0 ]]; then
+      log_warn "HEALTH_BIND_HOST=0.0.0.0 but no LAN IPv4 address was detected to print."
+    fi
+    return 0
+  fi
+
+  if [[ "$bind_host" != "127.0.0.1" && "$bind_host" != "localhost" ]]; then
+    log_info "Bound specifically to: http://${bind_host}:${port}/dashboard"
+  fi
+}
+
+wait_dashboard_access() {
+  local timeout_seconds="${1:-90}"
+  local bind_host
+  local port
+  local probe_url
+  local display_url
+
+  bind_host="$(get_dashboard_bind_host)"
+  port="$(get_dashboard_published_port)"
+  probe_url="$(get_dashboard_primary_probe_url "$bind_host" "$port")"
+  display_url="$(get_dashboard_primary_display_url "$bind_host" "$port")"
+
+  local waited=0
+  while [[ "$waited" -lt "$timeout_seconds" ]]; do
+    local http_code
+    http_code="$(probe_http_signal "$probe_url" 3)"
+
+    if [[ "$http_code" =~ ^[0-9]{3}$ ]] && [[ "$http_code" != "000" ]] && (( 10#$http_code < 500 )); then
+      log_ok "Dashboard responded via $display_url"
+      print_dashboard_access_summary "$bind_host" "$port" "$display_url"
+      return 0
+    fi
+
+    sleep 3
+    waited=$((waited + 3))
+    printf "  Waiting for dashboard at %s... (%ss/%ss)\r" "$display_url" "$waited" "$timeout_seconds"
+  done
+
+  echo
+  log_warn "Dashboard did not become reachable from this machine at ${display_url} after ${timeout_seconds}s"
   return 1
 }
 

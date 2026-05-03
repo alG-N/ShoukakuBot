@@ -8,7 +8,7 @@
 
 import { EmbedBuilder } from 'discord.js';
 import { isOwner, OWNER_IDS } from './owner.js';
-import logger from '../core/Logger.js';
+import logger from '../core/observability/Logger.js';
 import type {
     ScheduledMaintenance,
     MaintenanceState,

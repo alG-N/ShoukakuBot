@@ -22,7 +22,7 @@ import _platformDetector from '../../utils/video/platformDetector.js';
 import _videoEmbedBuilder from '../../utils/video/videoEmbedBuilder.js';
 import urlValidatorModule from '../../middleware/urlValidator.js';
 import _videoConfig from '../../config/features/video.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import cacheService from '../../cache/CacheService.js';
 import type { ProgressData } from '../../types/video/processing.js';
 import type {

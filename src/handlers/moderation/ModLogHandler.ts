@@ -12,7 +12,7 @@ import {
     User,
     SendableChannels
 } from 'discord.js';
-import { logger } from '../../core/Logger.js';
+import { logger } from '../../core/observability/Logger.js';
 import { formatDuration } from '../../utils/common/time.js';
 import ModLogService from '../../services/moderation/ModLogService.js';
 import type { ModActionType, QuickEmbedOptions } from '../../types/moderation/handlers.js';

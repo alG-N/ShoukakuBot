@@ -5,7 +5,7 @@
  */
 
 import { EventEmitter } from 'events';
-import logger from './Logger.js';
+import logger from '../observability/Logger.js';
 import type {
     CircuitBreakerError,
     CircuitBreakerMetrics,
@@ -13,9 +13,9 @@ import type {
     CircuitHealth,
     CircuitMetrics,
     CircuitStateType
-} from '../types/core/runtime.js';
+} from '../../types/core/runtime.js';
 
-export { type CircuitBreakerError, type CircuitBreakerMetrics, type CircuitBreakerOptions, type CircuitHealth, type CircuitMetrics, type CircuitStateType, type StateChange } from '../types/core/runtime.js';
+export { type CircuitBreakerError, type CircuitBreakerMetrics, type CircuitBreakerOptions, type CircuitHealth, type CircuitMetrics, type CircuitStateType, type StateChange } from '../../types/core/runtime.js';
 
 // TYPES & INTERFACES
 /**

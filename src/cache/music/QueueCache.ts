@@ -5,7 +5,7 @@
  */
 
 import { CACHE_LIMITS } from '../../constants.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import type { MusicTrack, MusicQueue, MessageRef } from '../../types/music/queue.js';
 import type { AddTrackResult, AddTracksResult, QueueStats } from '../../types/cache/music/queue-cache.js';
 // QueueCache Class

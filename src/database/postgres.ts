@@ -6,9 +6,9 @@
  */
 
 import { Pool, QueryResult, PoolConfig } from 'pg';
-import gracefulDegradation, { ServiceState } from '../core/GracefulDegradation.js';
-import { databasePoolSize } from '../core/metrics.js';
-import logger from '../core/Logger.js';
+import gracefulDegradation, { ServiceState } from '../core/resilience/GracefulDegradation.js';
+import { databasePoolSize } from '../core/observability/metrics.js';
+import logger from '../core/observability/Logger.js';
 import type {
     DatabaseStatus,
     QueuedResponse,

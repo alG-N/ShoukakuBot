@@ -12,7 +12,7 @@ import {
     Options,
     PresenceStatusData
 } from 'discord.js';
-import type { ClientStats } from '../types/core/client.js';
+import type { ClientStats } from '../../types/core/client.js';
 // CLIENT CONFIGURATION
 /**
  * Client configuration optimized for 1000+ servers

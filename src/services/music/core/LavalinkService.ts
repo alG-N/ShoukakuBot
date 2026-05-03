@@ -6,13 +6,13 @@
 
 import { Shoukaku, Connectors } from 'shoukaku';
 import type { Client } from 'discord.js';
-import logger from '../../../core/Logger.js';
-import * as sentry from '../../../core/sentry.js';
+import logger from '../../../core/observability/Logger.js';
+import * as sentry from '../../../core/observability/sentry.js';
 import * as lavalinkConfig from '../../../config/features/lavalink.js';
-import circuitBreakerRegistry from '../../../core/CircuitBreakerRegistry.js';
-import gracefulDegradation from '../../../core/GracefulDegradation.js';
+import circuitBreakerRegistry from '../../../core/resilience/CircuitBreakerRegistry.js';
+import gracefulDegradation from '../../../core/resilience/GracefulDegradation.js';
 import cacheService from '../../../cache/CacheService.js';
-import { updateLavalinkMetrics } from '../../../core/metrics.js';
+import { updateLavalinkMetrics } from '../../../core/observability/metrics.js';
 import type { MusicTrack } from '../events/MusicEvents.js';
 import spotifyService from '../spotify/SpotifyService.js';
 import type { NodeConfig, LavalinkSearchResult, PlaylistResult, PreservedState, NodeStatus } from '../../../types/music/lavalink.js';

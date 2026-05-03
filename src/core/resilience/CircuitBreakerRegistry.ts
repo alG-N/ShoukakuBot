@@ -10,8 +10,8 @@ import {
     CircuitBreakerMetrics,
     CircuitState 
 } from './CircuitBreaker.js';
-import logger from './Logger.js';
-import type { FallbackResult, RegistryHealth, RegistrySummary } from '../types/core/circuit-breaker-registry.js';
+import logger from '../observability/Logger.js';
+import type { FallbackResult, RegistryHealth, RegistrySummary } from '../../types/core/circuit-breaker-registry.js';
 // PRE-CONFIGURED CIRCUIT CONFIGS
 /**
  * Pre-configured circuit breaker configs for different services

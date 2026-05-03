@@ -1,5 +1,5 @@
 import container from '../container.js';
-import { logger } from '../core/Logger.js';
+import { logger } from '../core/observability/Logger.js';
 
 import postgres from '../database/postgres.js';
 import redisCache from '../cache/RedisCache.js';
@@ -7,8 +7,8 @@ import cacheService from '../cache/CacheService.js';
 import commandRegistry from '../services/registry/CommandRegistry.js';
 import eventRegistry from '../services/registry/EventRegistry.js';
 
-import circuitBreakerRegistry from '../core/CircuitBreakerRegistry.js';
-import gracefulDegradation from '../core/GracefulDegradation.js';
+import circuitBreakerRegistry from '../core/resilience/CircuitBreakerRegistry.js';
+import gracefulDegradation from '../core/resilience/GracefulDegradation.js';
 
 import anilistService from '../services/api/anilistService.js';
 import embedService from '../services/api/embedService.js';

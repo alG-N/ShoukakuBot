@@ -7,9 +7,9 @@
 import { EmbedBuilder, Guild, GuildMember, User } from 'discord.js';
 import GuildSettingsService from '../guild/GuildSettingsService.js';
 import { formatDuration } from '../../utils/common/time.js';
-import { Result } from '../../core/Result.js';
-import { ErrorCodes } from '../../core/ErrorCodes.js';
-import logger from '../../core/Logger.js';
+import { Result } from '../../core/errors/Result.js';
+import { ErrorCodes } from '../../core/errors/ErrorCodes.js';
+import logger from '../../core/observability/Logger.js';
 import type { ModAction, ModerationServiceConfig } from '../../types/moderation/moderation-service.js';
 // CONFIG
 export const CONFIG: ModerationServiceConfig = {

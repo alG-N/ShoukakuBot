@@ -1,4 +1,4 @@
-export type CoreErrorCode = (typeof import('../../core/ErrorCodes.js').ErrorCodes)[keyof typeof import('../../core/ErrorCodes.js').ErrorCodes];
+export type CoreErrorCode = (typeof import('../../core/errors/ErrorCodes.js').ErrorCodes)[keyof typeof import('../../core/errors/ErrorCodes.js').ErrorCodes];
 
 export type ErrorMessages = Record<CoreErrorCode, string>;
 

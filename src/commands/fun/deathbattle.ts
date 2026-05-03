@@ -13,7 +13,7 @@ import {
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { checkAccess, AccessType } from '../../services/index.js';
 import type { Battle } from '../../services/fun/deathbattle/BattleService.js';
-import coreLogger from '../../core/Logger.js';
+import coreLogger from '../../core/observability/Logger.js';
 import type {
     SkillsetService,
     BattleService,

@@ -27,6 +27,8 @@ Write-Host "`n[3/3] Restarting bot..." -ForegroundColor Yellow
 Invoke-DockerComposeChecked -Arguments @('-f', 'docker-compose.yml', 'up', '-d', 'bot', '--force-recreate') -FailureMessage 'Failed to restart the bot container.'
 Write-Host "  Done - Bot restarted" -ForegroundColor Green
 
-Write-Host "`nWaiting for startup..." -ForegroundColor Gray
-Start-Sleep 10
+Write-Host "`n[Dashboard] Verifying local dashboard access..." -ForegroundColor Yellow
+[void](Wait-DashboardAccess -TimeoutSec 90)
+
+Write-Host "`nRecent bot logs:" -ForegroundColor Cyan
 Show-BotLogs -Tail 10

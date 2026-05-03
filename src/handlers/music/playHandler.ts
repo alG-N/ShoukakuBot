@@ -10,7 +10,7 @@ import musicCache from '../../cache/music/MusicCacheFacade.js';
 import { checkVoiceChannelSync, checkVoicePermissionsSync } from '../../middleware/voiceChannelCheck.js';
 import { music } from '../../config/index.js';
 import { musicFacade as musicService } from '../../services/music/core/MusicFacade.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import type { Track } from '../../types/music/track.js';
 import type { VoteSkipStatus } from '../../types/music/vote.js';
 import type { PendingLongTrack, PlaylistData } from '../../types/music/handlers.js';

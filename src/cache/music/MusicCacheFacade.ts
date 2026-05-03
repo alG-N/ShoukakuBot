@@ -16,7 +16,7 @@ import userMusicCache, { UserPreferences, FavoriteTrack, HistoryTrack, AddFavori
 import voteCache, { VoteResult, AddVoteResult, VoteSkipStatus } from './VoteCache.js';
 import guildMusicCache, { GuildMusicSettings, RecentlyPlayedTrack, DJLockState, CachedPlaylist } from './GuildMusicCache.js';
 import type { MessageRef } from './QueueCache.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import type { MusicCacheStats } from '../../types/cache/music/music-cache-facade.js';
 
 // Re-export types for convenience

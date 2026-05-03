@@ -7,8 +7,8 @@
  */
 
 import type { Redis } from 'ioredis';
-import gracefulDegradation from '../core/GracefulDegradation.js';
-import logger from '../core/Logger.js';
+import gracefulDegradation from '../core/resilience/GracefulDegradation.js';
+import logger from '../core/observability/Logger.js';
 import type {
     CacheFactory,
     CacheMetrics,

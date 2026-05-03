@@ -8,7 +8,7 @@
 import type { Client, Message, Snowflake } from 'discord.js';
 import GuildSettingsService from '../guild/GuildSettingsService.js';
 import cacheService from '../../cache/CacheService.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import type {
     TrackedAttachment,
     TrackedEmbed,

@@ -8,7 +8,7 @@
 import { EmbedBuilder, Message, Client } from 'discord.js';
 import afkRepository from '../../repositories/general/AfkRepository.js';
 import { formatDuration } from '../../commands/general/afk.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 
 /**
  * Handle message events for AFK system

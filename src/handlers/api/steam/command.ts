@@ -1,5 +1,5 @@
 import { ChatInputCommandInteraction, EmbedBuilder, Message } from 'discord.js';
-import logger from '../../../core/Logger.js';
+import logger from '../../../core/observability/Logger.js';
 import steamService from '../../../services/api/steamService.js';
 import { createPaginationButtons, enrichWithSteamSpyData, generateSaleEmbed, setupCollector } from './ui.js';
 import { ITEMS_PER_PAGE } from './constants.js';

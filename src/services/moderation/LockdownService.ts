@@ -7,7 +7,7 @@
 
 import { PermissionFlagsBits, ChannelType, Guild, TextChannel, Snowflake } from 'discord.js';
 import cacheService from '../../cache/CacheService.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import type { SavedPermissions, LockdownState, LockResult, ServerLockResult, LockStatus } from '../../types/moderation/lockdown.js';
 
 // Redis key helpers

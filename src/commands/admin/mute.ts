@@ -14,7 +14,7 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { COLORS } from '../../constants.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import { moderationService } from '../../services/moderation/index.js';
 import type { MuteValidationResult } from '../../types/commands/actions.js';
 

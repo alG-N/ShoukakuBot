@@ -5,7 +5,7 @@
  */
 
 import { EmbedBuilder, Message, Guild, GuildTextBasedChannel } from 'discord.js';
-import { logger } from '../../../core/Logger.js';
+import { logger } from '../../../core/observability/Logger.js';
 import AutoModService from '../../../services/moderation/AutoModService.js';
 import moderationConfig from '../../../config/features/moderation/index.js';
 import type { AutoModSettings } from '../../../types/moderation/automod.js';

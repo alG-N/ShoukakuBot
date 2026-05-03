@@ -6,10 +6,10 @@
 
 import { Events, Client, ActivityType, PresenceStatusData } from 'discord.js';
 import { BaseEvent } from './BaseEvent.js';
-import logger from '../core/Logger.js';
-import { setPresence } from '../core/Client.js';
+import logger from '../core/observability/Logger.js';
+import { setPresence } from '../core/runtime/Client.js';
 import { bot } from '../config/index.js';
-import { updateDiscordMetrics, redisConnectionStatus, musicPlayersActive, musicQueueSize, musicVoiceConnections, commandsActive } from '../core/metrics.js';
+import { updateDiscordMetrics, redisConnectionStatus, musicPlayersActive, musicQueueSize, musicVoiceConnections, commandsActive } from '../core/observability/metrics.js';
 import cacheService from '../cache/CacheService.js';
 // READY EVENT
 class ReadyEvent extends BaseEvent {

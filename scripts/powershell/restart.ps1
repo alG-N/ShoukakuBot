@@ -96,8 +96,8 @@ if ($ServicesOnly) {
 }
 
 # Wait for services to start before showing status/logs
-Write-Host "`nWaiting for services to initialize..." -ForegroundColor Gray
-Start-Sleep 10
+Write-Host "`n[Dashboard] Verifying local dashboard access..." -ForegroundColor Yellow
+[void](Wait-DashboardAccess -TimeoutSec 90)
 
 # Show container status
 Write-Host "`n==========================================" -ForegroundColor Green

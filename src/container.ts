@@ -5,7 +5,7 @@
  * @module container
  */
 
-import { logger } from './core/Logger.js';
+import { logger } from './core/observability/Logger.js';
 import type {
     ContainerServiceOptions,
     ServiceRegistration,

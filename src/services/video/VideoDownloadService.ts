@@ -11,7 +11,7 @@ import cobaltService from './CobaltService.js';
 import ytDlpService from './YtDlpService.js';
 import videoProcessingService from './VideoProcessingService.js';
 import * as videoConfig from '../../config/features/video.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import type {
     DownloadProgressOptions as DownloadOptions,
     ProgressData,

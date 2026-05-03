@@ -1,5 +1,5 @@
-import { Result } from '../../../core/Result.js';
-import { ErrorCodes } from '../../../core/ErrorCodes.js';
+import { Result } from '../../../core/errors/Result.js';
+import { ErrorCodes } from '../../../core/errors/ErrorCodes.js';
 import type { MusicTrack } from '../../../types/music/events.js';
 import type { MusicQueue, QueueState } from '../../../types/music/queue.js';
 import musicCacheImport from '../../../cache/music/MusicCacheFacade.js';

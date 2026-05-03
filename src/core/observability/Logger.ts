@@ -16,10 +16,10 @@ import type {
     LogLevelConfig,
     LogMetadata,
     RequestLogOptions
-} from '../types/core/runtime.js';
-import type { StructuredLog } from '../types/core/logger.js';
+} from '../../types/core/runtime.js';
+import type { StructuredLog } from '../../types/core/logger.js';
 
-export { type CommandLogOptions, type LogFormat, type LogLevel, type LogMetadata, type RequestLogOptions } from '../types/core/runtime.js';
+export { type CommandLogOptions, type LogFormat, type LogLevel, type LogMetadata, type RequestLogOptions } from '../../types/core/runtime.js';
 
 // CONFIGURATION
 /**

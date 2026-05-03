@@ -4,7 +4,7 @@
  */
 
 import postgres from '../../database/postgres.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import type { PixivUserSettings } from '../../types/api/pixiv/settings.js';
 
 const VALID_CONTENT_TYPES = ['illust', 'manga', 'novel'];

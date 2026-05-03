@@ -3,7 +3,7 @@
  * Centralized error codes for consistent error handling
  * @module core/ErrorCodes
  */
-import type { CoreErrorCode, ErrorCategory, ErrorMessages } from '../types/core/error-codes.js';
+import type { CoreErrorCode, ErrorCategory, ErrorMessages } from '../../types/core/error-codes.js';
 // ERROR CODES
 /**
  * Error codes organized by domain

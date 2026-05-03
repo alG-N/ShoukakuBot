@@ -6,7 +6,7 @@
 
 import { Events, Client, Guild } from 'discord.js';
 import { BaseEvent } from './BaseEvent.js';
-import logger from '../core/Logger.js';
+import logger from '../core/observability/Logger.js';
 import cacheService from '../cache/CacheService.js';
 
 /** Guild-scoped cache namespaces to clean up when the bot leaves a server */

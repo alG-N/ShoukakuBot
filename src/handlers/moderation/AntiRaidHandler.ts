@@ -9,7 +9,7 @@ import { Client, GuildMember, EmbedBuilder, Guild, TextChannel } from 'discord.j
 import antiRaidService, { type JoinAnalysis } from '../../services/moderation/AntiRaidService.js';
 import moderationConfig from '../../config/features/moderation/index.js';
 import { ModLogRepository } from '../../repositories/moderation/index.js';
-import { logger } from '../../core/Logger.js';
+import { logger } from '../../core/observability/Logger.js';
 import type { ModLogSettings } from '../../types/moderation/modlog.js';
 
 /**

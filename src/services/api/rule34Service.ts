@@ -6,8 +6,8 @@
 
 import * as path from 'path';
 import * as dotenv from 'dotenv';
-import { circuitBreakerRegistry } from '../../core/CircuitBreakerRegistry.js';
-import logger from '../../core/Logger.js';
+import { circuitBreakerRegistry } from '../../core/resilience/CircuitBreakerRegistry.js';
+import logger from '../../core/observability/Logger.js';
 import type {
     Rule34SearchOptions,
     Rule34RandomOptions as RandomOptions,

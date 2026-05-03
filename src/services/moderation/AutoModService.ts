@@ -7,9 +7,9 @@
 import type { Message, GuildMember } from 'discord.js';
 import * as FilterService from './FilterService.js';
 import * as InfractionService from './InfractionService.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import cacheService from '../../cache/CacheService.js';
-import { trackAutomodViolation } from '../../core/metrics.js';
+import { trackAutomodViolation } from '../../core/observability/metrics.js';
 import AutoModRepository from '../../repositories/moderation/AutoModRepository.js';
 import automodConfig from '../../config/features/moderation/automod.js';
 import type { AutoModSettings } from '../../types/moderation/automod.js';

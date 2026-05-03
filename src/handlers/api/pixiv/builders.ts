@@ -1,5 +1,5 @@
 import { EmbedBuilder } from 'discord.js';
-import logger from '../../../core/Logger.js';
+import logger from '../../../core/observability/Logger.js';
 import pixivService from '../../../services/api/pixivService.js';
 import type { BuildEmbedOptions, PixivItem } from '../../../types/api/pixiv/handler.js';
 

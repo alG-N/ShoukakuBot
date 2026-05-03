@@ -6,7 +6,7 @@
 
 import { CACHE_LIMITS } from '../../constants.js';
 import { MusicTrack } from './QueueCache.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import type {
     GuildMusicSettings,
     RecentlyPlayedTrack,

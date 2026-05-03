@@ -4,11 +4,11 @@
  * @module core/shutdown
  */
 
-import logger from './Logger.js';
-import * as sentry from './sentry.js';
-import container from '../container.js';
+import logger from '../observability/Logger.js';
+import * as sentry from '../observability/sentry.js';
+import container from '../../container.js';
 import * as readline from 'readline';
-import type { ShutdownHandler, ShutdownResult, ShutdownOptions } from '../types/core/shutdown.js';
+import type { ShutdownHandler, ShutdownResult, ShutdownOptions } from '../../types/core/shutdown.js';
 // STATE
 const shutdownHandlers: ShutdownHandler[] = [];
 let isShuttingDown = false;
@@ -137,7 +137,7 @@ async function runShutdownSequence(client: { destroy: () => void } | null): Prom
 
     // 4. Cleanup static resources (not managed by container)
     try {
-        const { PaginationState } = await import('../utils/common/pagination.js');
+        const { PaginationState } = await import('../../utils/common/pagination.js');
         PaginationState.destroyAll();
         logger.info('Shutdown', 'Pagination state cleanup complete');
         results.push({ name: 'PaginationState', success: true });

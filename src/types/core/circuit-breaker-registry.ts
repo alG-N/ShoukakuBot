@@ -1,4 +1,4 @@
-import type { CircuitHealth } from '../../core/CircuitBreaker.js';
+import type { CircuitHealth } from '../../core/resilience/CircuitBreaker.js';
 
 export interface RegistryHealth {
     status: 'healthy' | 'degraded' | 'unhealthy';

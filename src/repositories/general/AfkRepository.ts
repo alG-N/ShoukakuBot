@@ -6,7 +6,7 @@
  */
 
 import db from '../../database/postgres.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import type { AfkInfo, AfkRecord, AfkType, SetAfkData } from '../../types/general/afk-repository.js';
 
 // ============================================================================

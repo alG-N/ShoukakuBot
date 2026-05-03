@@ -10,7 +10,7 @@ import fs from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
 import * as videoConfig from '../../config/features/video.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import type { DownloadOptions, ProgressData } from '../../types/video/processing.js';
 import type { CobaltCompleteData, CobaltResponse, DownloadInfo } from '../../types/video/cobalt.js';
 // COBALT SERVICE CLASS

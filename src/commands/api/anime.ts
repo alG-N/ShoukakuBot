@@ -14,28 +14,28 @@ import {
     AutocompleteInteraction,
     ButtonInteraction
 } from 'discord.js';
-import { BaseCommand, CommandCategory, CommandData } from './BaseCommand.js';
-import { COLORS } from '../constants.js';
-import cacheService from '../cache/CacheService.js';
-import { checkAccess, AccessType } from '../services/index.js';
-import _anilistService from '../services/api/anilistService.js';
-import _myAnimeListService from '../services/api/myAnimeListService.js';
-import * as _animeHandler from '../handlers/api/anime/index.js';
-import _animeRepository from '../repositories/api/animeRepository.js';
-import logger from '../core/Logger.js';
+import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
+import { COLORS } from '../../constants.js';
+import cacheService from '../../cache/CacheService.js';
+import { checkAccess, AccessType } from '../../services/index.js';
+import _anilistService from '../../services/api/anilistService.js';
+import _myAnimeListService from '../../services/api/myAnimeListService.js';
+import * as _animeHandler from '../../handlers/api/anime/index.js';
+import _animeRepository from '../../repositories/api/animeRepository.js';
+import logger from '../../core/observability/Logger.js';
 import type {
     AnimeCommandTitle,
     AnimeLookupItem as Anime,
     AnimeCachedSearch as CachedAnime,
     TimedAutocompleteCache as AutocompleteCache
-} from '../types/api/models/content-session.js';
-import type { AnimeContentSource, MALMediaType, MALTypeDisplay } from '../types/api/models/mal.js';
+} from '../../types/api/models/content-session.js';
+import type { AnimeContentSource, MALMediaType, MALTypeDisplay } from '../../types/api/models/mal.js';
 import type {
     AnilistService,
     MyAnimeListService,
     AnimeHandler,
     AnimeRepository
-} from '../types/commands/anime.js';
+} from '../../types/commands/anime.js';
 
 // SERVICE IMPORTS — static ESM imports (converted from CJS require())
 const anilistService: AnilistService = _anilistService as any;

@@ -6,7 +6,7 @@
 
 import * as Sentry from '@sentry/node';
 import logger from './Logger.js';
-import type { SentryInitOptions, SentryContext, BreadcrumbData } from '../types/core/sentry.js';
+import type { SentryInitOptions, SentryContext, BreadcrumbData } from '../../types/core/sentry.js';
 // STATE
 let isInitialized = false;
 let currentShardId: number | null = null;

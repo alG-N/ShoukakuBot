@@ -7,7 +7,7 @@
 import { Events, Client, GuildMember } from 'discord.js';
 import { BaseEvent } from './BaseEvent.js';
 import { handleMemberJoin, handleAntiRaid } from '../handlers/moderation/index.js';
-import { logger } from '../core/Logger.js';
+import { logger } from '../core/observability/Logger.js';
 
 // GUILD MEMBER ADD EVENT
 class GuildMemberAddEvent extends BaseEvent {

@@ -39,7 +39,7 @@ jest.mock('../../../../src/config/features/moderation/automod', () => ({
 }));
 
 import antiRaidService, { AntiRaidService, JoinAnalysis } from '../../../../src/services/moderation/AntiRaidService.js';
-import logger from '../../../../src/core/Logger.js';
+import logger from '../../../../src/core/observability/Logger.js';
 
 // Helper to create mock GuildMember
 const createMockMember = (id: string, username: string, createdDaysAgo: number = 30) => ({

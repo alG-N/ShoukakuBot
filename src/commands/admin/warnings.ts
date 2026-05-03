@@ -17,7 +17,7 @@ import {
 } from 'discord.js';
 import { BaseCommand, CommandCategory, CommandData } from '../BaseCommand.js';
 import { formatDuration } from '../../utils/common/time.js';
-import logger from '../../core/Logger.js';
+import logger from '../../core/observability/Logger.js';
 import { infractionService as _infractionSvc } from '../../services/moderation/index.js';
 import _moderationConfigModule from '../../config/features/moderation/index.js';
 import type { Infraction } from '../../types/moderation/infraction.js';
